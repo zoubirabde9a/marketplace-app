@@ -17,7 +17,14 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const p = await getProduct(id).catch(() => null);
   if (!p) notFound();
   const title = p.title.value;
-  const desc = p.description?.value?.slice(0, 200);
+  // Meta descriptions render as a single line in search/social previews, so
+  // collapse whitespace and trim leading decorative symbols (✅, ✔️, ⭐, …)
+  // that scraped seller copy tends to lead with — those break the snippet.
+  const desc = p.description?.value
+    ?.replace(/\s+/g, " ")
+    .replace(/^[\s\p{P}\p{S}]+/u, "")
+    .slice(0, 200)
+    .trim();
   // Resolve full hero metadata (width/height/alt) so social previews can size
   // the image without a round-trip and avoid Facebook "image too small" warnings.
   const heroImage = p.heroImageUrl
