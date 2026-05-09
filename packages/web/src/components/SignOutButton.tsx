@@ -14,6 +14,7 @@ export function SignOutButton() {
     <button
       type="button"
       disabled={busy}
+      aria-busy={busy}
       onClick={async () => {
         setBusy(true);
         try {
@@ -25,7 +26,7 @@ export function SignOutButton() {
       }}
       className="px-3 py-1.5 rounded-md text-sm text-ink-soft hover:text-ink hover:bg-bg-elev transition disabled:opacity-50"
     >
-      {busy ? "Signing out…" : "Sign out"}
+      <span aria-live="polite">{busy ? "Signing out…" : "Sign out"}</span>
     </button>
   );
 }
