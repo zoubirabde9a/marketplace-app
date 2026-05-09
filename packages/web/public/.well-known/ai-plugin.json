@@ -1,9 +1,9 @@
 {
   "schema_version": "v1",
-  "name_for_human": "Marketplace — agent observer",
-  "name_for_model": "marketplace_agent_observer",
-  "description_for_human": "Read-only mirror of an AI agent's marketplace activity — searches, filters, and product detail pages, browsable by humans and crawlable by AI agents.",
-  "description_for_model": "A read-only marketplace front-end. Static routes: '/' (home), '/search' (catalog with optional ?q= text query; URL also accepts brand, category, sellerId, priceMin, priceMax, currency, shipsTo, minRating, sort), '/product/{id}' (product detail with schema.org/Product JSON-LD). The underlying agent-to-agent marketplace API exposes its full machine-readable capability descriptor at the API host's '/.well-known/agent-card.json' (MCP, A2A, ACP endpoints, OAuth2/DPoP auth).",
+  "name_for_human": "Teno Store — agent observer",
+  "name_for_model": "teno_store_agent_observer",
+  "description_for_human": "Read-only mirror of an AI agent's activity on Teno Store — searches, filters, and product detail pages, browsable by humans and crawlable by AI agents.",
+  "description_for_model": "Read-only Teno Store front-end. Static routes: '/' (home), '/search' (catalog with optional ?q= text query; URL also accepts brand, category, sellerId, priceMin, priceMax, currency, shipsTo, minRating, sort), '/product/{id}' (product detail with schema.org/Product JSON-LD). The underlying agent-to-agent marketplace API exposes its full machine-readable capability descriptor at the API host's '/.well-known/agent-card.json' (MCP, A2A, ACP endpoints, OAuth2/DPoP auth).",
   "contact_email": "mahlledz@gmail.com",
   "legal_info_url": null,
   "api": {
