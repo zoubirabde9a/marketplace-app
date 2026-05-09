@@ -16,20 +16,32 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   const q = (Array.isArray(sp.q) ? sp.q[0] : sp.q) ?? "";
   const brand = (Array.isArray(sp.brand) ? sp.brand[0] : sp.brand) ?? "";
-  // Canonicalize. q-only and brand-only slices are worth indexing as their
-  // own pages; everything else (cursor, sellerId, price ranges, ratings,
-  // multi-filter combinations) collapses back to the bare /search canonical.
+  const sellerIdParam = sp.sellerId;
+  const sellerId = Array.isArray(sellerIdParam)
+    ? sellerIdParam.length === 1
+      ? sellerIdParam[0]
+      : ""
+    : sellerIdParam ?? "";
+  const definedKeys = Object.keys(sp).filter((k) => sp[k] !== undefined);
+  // Canonicalize. q-only, brand-only, and single-seller slices are worth
+  // indexing as their own pages; everything else (cursor, price ranges,
+  // ratings, multi-filter combinations) collapses back to the bare /search
+  // canonical.
   const canonical = q
     ? `/search?q=${encodeURIComponent(q)}`
-    : brand && Object.keys(sp).filter((k) => sp[k] !== undefined).length === 1
+    : brand && definedKeys.length === 1
       ? `/search?brand=${encodeURIComponent(brand)}`
-      : "/search";
-  const indexableKeys = new Set(["q", "brand"]);
-  const hasNonIndexableParam = Object.keys(sp).some(
-    (k) => sp[k] !== undefined && !indexableKeys.has(k),
-  );
-  // Only index single-key q-only or brand-only views; multi-key slices noindex.
-  const isMultiFilter = Object.keys(sp).filter((k) => sp[k] !== undefined).length > 1;
+      : sellerId && definedKeys.length === 1
+        ? `/search?sellerId=${encodeURIComponent(sellerId)}`
+        : "/search";
+  const indexableKeys = new Set(["q", "brand", "sellerId"]);
+  const hasNonIndexableParam = definedKeys.some((k) => !indexableKeys.has(k));
+  // Only index single-key q-only, brand-only, or seller-only views.
+  const isMultiFilter = definedKeys.length > 1;
+  // Multi-valued sellerId collapses to "" — that's a synthetic combo, not a
+  // single seller landing, so noindex it even though it's a single key.
+  const isMultiValuedSeller =
+    definedKeys.length === 1 && Array.isArray(sellerIdParam) && sellerIdParam.length > 1;
 
   let title: string;
   let description: string;
@@ -49,7 +61,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     description,
     alternates: { canonical },
     robots:
-      hasNonIndexableParam || isMultiFilter
+      hasNonIndexableParam || isMultiFilter || isMultiValuedSeller
         ? { index: false, follow: true }
         : { index: true, follow: true },
   };

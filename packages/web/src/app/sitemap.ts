@@ -26,11 +26,13 @@ interface SitemapProduct {
 interface SitemapHarvest {
   products: SitemapProduct[];
   brands: string[];
+  sellerIds: string[];
 }
 
 async function fetchAllProducts(): Promise<SitemapHarvest> {
   const products: SitemapProduct[] = [];
   const brands: string[] = [];
+  const sellerIds: string[] = [];
   let cursor: string | null = null;
   // Cap pagination so a misbehaving API can't cause an unbounded sitemap build.
   const MAX_PAGES = 50;
@@ -54,7 +56,10 @@ async function fetchAllProducts(): Promise<SitemapHarvest> {
     let body: {
       data?: SitemapProductHit[];
       pagination?: { cursor: string | null };
-      facets?: { brands?: Array<{ value: string; count: number }> };
+      facets?: {
+        brands?: Array<{ value: string; count: number }>;
+        sellers?: Array<{ sellerId?: string; value?: string; count: number }>;
+      };
     };
     try {
       body = await res.json();
@@ -68,16 +73,20 @@ async function fetchAllProducts(): Promise<SitemapHarvest> {
       products.push({ productId: hit.productId, lastModified });
     }
     // Brand facets are global (not per-page), so capture from the first page only.
-    if (page === 0 && body.facets?.brands) {
-      for (const b of body.facets.brands) {
+    if (page === 0) {
+      for (const b of body.facets?.brands ?? []) {
         if (b.value && b.count > 0 && !brands.includes(b.value)) brands.push(b.value);
+      }
+      for (const s of body.facets?.sellers ?? []) {
+        const id = s.sellerId ?? s.value;
+        if (id && s.count > 0 && !sellerIds.includes(id)) sellerIds.push(id);
       }
     }
     cursor = body.pagination?.cursor ?? null;
     if (!cursor) break;
   }
 
-  return { products, brands };
+  return { products, brands, sellerIds };
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -112,8 +121,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   let productEntries: MetadataRoute.Sitemap = [];
   let brandEntries: MetadataRoute.Sitemap = [];
+  let sellerEntries: MetadataRoute.Sitemap = [];
   try {
-    const { products, brands } = await fetchAllProducts();
+    const { products, brands, sellerIds } = await fetchAllProducts();
     productEntries = products.map((p) => ({
       url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
       lastModified: Number.isFinite(p.lastModified.getTime()) ? p.lastModified : now,
@@ -128,11 +138,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.6,
     }));
+    sellerEntries = sellerIds.map((id) => ({
+      url: `${SITE_URL}/search?sellerId=${encodeURIComponent(id)}`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.6,
+    }));
   } catch {
     // API unreachable — fall back to static-only sitemap.
     productEntries = [];
     brandEntries = [];
+    sellerEntries = [];
   }
 
-  return [...staticEntries, ...brandEntries, ...productEntries];
+  return [...staticEntries, ...brandEntries, ...sellerEntries, ...productEntries];
 }

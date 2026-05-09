@@ -38,8 +38,14 @@ describe("search page generateMetadata", () => {
     expect(m.robots).toEqual({ index: false, follow: true });
   });
 
-  it("?sellerId=abc → noindex,follow (filter slice)", async () => {
+  it("?sellerId=abc alone → indexable single-seller landing", async () => {
     const m = await M({ sellerId: "abc" });
+    expect(m.alternates?.canonical).toBe("/search?sellerId=abc");
+    expect(m.robots).toEqual({ index: true, follow: true });
+  });
+
+  it("?sellerId=a&sellerId=b (two values) → noindex, canonical /search", async () => {
+    const m = await M({ sellerId: ["a", "b"] });
     expect(m.alternates?.canonical).toBe("/search");
     expect(m.robots).toEqual({ index: false, follow: true });
   });
