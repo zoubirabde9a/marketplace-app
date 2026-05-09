@@ -18,7 +18,14 @@ export function Gallery({ images, alt }: { images: Img[]; alt: string }) {
       if (e.key === "ArrowLeft") setIdx((i) => (i - 1 + images.length) % images.length);
     }
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // Lock background scroll while the lightbox is open so the underlying
+    // page can't drift behind the overlay (especially on mobile).
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [open, images.length]);
 
   if (!images.length) {
@@ -58,6 +65,7 @@ export function Gallery({ images, alt }: { images: Img[]; alt: string }) {
               key={img.id}
               onClick={() => setIdx(i)}
               aria-label={`Image ${i + 1} of ${images.length}`}
+              aria-current={i === idx ? "true" : undefined}
               className={clsx(
                 "aspect-square rounded-lg overflow-hidden border transition",
                 i === idx ? "border-accent shadow-glow" : "border-line-soft hover:border-line",

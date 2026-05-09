@@ -33,22 +33,41 @@ export default async function Home() {
 }
 
 function SignedOutLanding() {
+  // Emit WebSite + Organization in a single @graph payload so Google can
+  // resolve "Teno Store" as a knowledge-graph entity AND wire up SearchAction
+  // sitelinks search box from one document.
   const websiteJsonLd = {
     "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: "Teno Store",
-    alternateName: "Teno Store — agent observer",
-    description:
-      "Teno Store is an agent-to-agent marketplace. Watch what your AI agent is searching, browsing and buying in real time.",
-    url: SITE_URL,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": `${SITE_URL}/#website`,
+        name: "Teno Store",
+        alternateName: "Teno Store — agent observer",
+        description:
+          "Teno Store is an agent-to-agent marketplace. Watch what your AI agent is searching, browsing and buying in real time.",
+        url: SITE_URL,
+        publisher: { "@id": `${SITE_URL}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
       },
-      "query-input": "required name=search_term_string",
-    },
+      {
+        "@type": "Organization",
+        "@id": `${SITE_URL}/#organization`,
+        name: "Teno Store",
+        url: SITE_URL,
+        logo: {
+          "@type": "ImageObject",
+          url: `${SITE_URL}/icon.svg`,
+        },
+      },
+    ],
   };
 
   return (
@@ -95,7 +114,7 @@ function SignedOutLanding() {
 function Card({ title, body }: { title: string; body: string }) {
   return (
     <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-5 backdrop-blur hover:border-line transition">
-      <h3 className="font-medium text-ink mb-1">{title}</h3>
+      <h2 className="font-medium text-ink mb-1">{title}</h2>
       <p className="text-sm text-ink-soft leading-relaxed">{body}</p>
     </div>
   );

@@ -5,11 +5,13 @@ export function EmptyState({
   hint,
   q,
   hasFilters,
+  showSellCta,
 }: {
   title: string;
   hint: string;
   q?: string;
   hasFilters?: boolean;
+  showSellCta?: boolean;
 }) {
   const showReset = Boolean(q) || Boolean(hasFilters);
   const resetLabel = q ? "Clear search" : "Clear filters";
@@ -28,6 +30,11 @@ export function EmptyState({
       {showReset && (
         <Link href="/search" className="inline-flex mt-6 px-4 h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition">
           {resetLabel}
+        </Link>
+      )}
+      {showSellCta && (
+        <Link href="/seller" className="inline-flex mt-6 px-4 h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition">
+          Sell on Teno Store →
         </Link>
       )}
     </div>

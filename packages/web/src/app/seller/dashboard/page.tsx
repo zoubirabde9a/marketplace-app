@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, syntheticAgentId } from "@/lib/sellerSession";
@@ -6,6 +7,11 @@ import { CreateSellerForm } from "./CreateSellerForm";
 import { LogoutButton } from "./LogoutButton";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Seller dashboard",
+  robots: { index: false, follow: false },
+};
 
 export default async function DashboardPage() {
   const session = await getCurrentUser();

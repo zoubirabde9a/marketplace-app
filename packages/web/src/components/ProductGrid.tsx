@@ -3,15 +3,25 @@ import { ProductCard } from "./ProductCard";
 
 export function ProductGrid({ hits }: { hits: SearchHit[] }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {hits.map((h) => <ProductCard key={h.productId} hit={h} />)}
-    </div>
+    <ul
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 list-none p-0 m-0"
+      aria-label={`${hits.length} product${hits.length === 1 ? "" : "s"}`}
+    >
+      {hits.map((h) => (
+        <li key={h.productId}>
+          <ProductCard hit={h} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
 export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <div
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+      aria-hidden="true"
+    >
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="rounded-2xl border border-line-soft bg-bg-soft overflow-hidden">
           <div className="skeleton aspect-[4/3] rounded-none" />

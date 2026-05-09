@@ -94,6 +94,8 @@ export function ActiveFilters({
         <Link
           key={c.label + c.href}
           href={c.href}
+          aria-label={`Remove filter: ${c.label}`}
+          title={`Remove filter: ${c.label}`}
           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 transition"
         >
           <span className="truncate max-w-[20ch]">{c.label}</span>

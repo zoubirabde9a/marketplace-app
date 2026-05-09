@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, syntheticAgentId } from "@/lib/sellerSession";
 import { getProduct, listMySellers } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Edit product",
+  robots: { index: false, follow: false },
+};
 
 export default async function EditProductPage({
   params,

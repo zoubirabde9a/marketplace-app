@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, syntheticAgentId } from "@/lib/sellerSession";
@@ -5,6 +6,11 @@ import { listMySellers } from "@/lib/api";
 import { NewProductForm } from "./NewProductForm";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "New product",
+  robots: { index: false, follow: false },
+};
 
 export default async function NewProductPage({
   searchParams,

@@ -41,9 +41,9 @@ export function ProductCard({ hit }: { hit: SearchHit }) {
         </div>
       </div>
       <div className="p-4 flex flex-col gap-2 flex-1">
-        <h3 className="text-sm font-medium text-ink line-clamp-2 leading-snug untrusted">
+        <h2 className="text-sm font-medium text-ink line-clamp-2 leading-snug untrusted">
           {hit.title.value}
-        </h3>
+        </h2>
         {(() => {
           const posted = formatRelativeTime(hit.postedAt ?? null);
           return posted ? (

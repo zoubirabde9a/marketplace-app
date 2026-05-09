@@ -54,8 +54,8 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
     return (
       <main className="max-w-3xl mx-auto p-6">
         <h1 className="text-2xl font-semibold mb-2">Snapshot not found</h1>
-        <p className="text-gray-600">This link is invalid.</p>
-        <Link href="/" className="text-blue-600 underline">Back to marketplace</Link>
+        <p className="text-ink-soft">This link is invalid.</p>
+        <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
       </main>
     );
   }
@@ -64,11 +64,11 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
     return (
       <main className="max-w-3xl mx-auto p-6">
         <h1 className="text-2xl font-semibold mb-2">Snapshot expired</h1>
-        <p className="text-gray-600 mb-4">
+        <p className="text-ink-soft mb-4">
           Agent result snapshots are kept for 24 hours and then deleted. Ask the agent to run the
           request again to get a fresh snapshot.
         </p>
-        <Link href="/" className="text-blue-600 underline">Back to marketplace</Link>
+        <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
       </main>
     );
   }
@@ -78,12 +78,12 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
 
   return (
     <main className="max-w-5xl mx-auto p-6">
-      <header className="mb-6 border-b pb-4">
-        <p className="text-sm text-gray-500 uppercase tracking-wide">
+      <header className="mb-6 border-b border-line-soft pb-4">
+        <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold">
           Agent {snap.kind} snapshot
         </p>
         <h1 className="text-2xl font-semibold mt-1">What the agent saw</h1>
-        <p className="text-sm text-gray-600 mt-2">
+        <p className="text-sm text-ink-soft mt-2">
           Captured {created} · expires in {remaining} · this is a frozen copy and will not update.
         </p>
       </header>
@@ -117,13 +117,13 @@ function SearchSnapshot({ output, input }: { output: unknown; input: unknown }) 
 
   return (
     <section>
-      {i?.query && <p className="text-sm text-gray-600 mb-3">Query: <span className="font-mono">{i.query}</span></p>}
-      <p className="text-sm text-gray-500 mb-4">
+      {i?.query && <p className="text-sm text-ink-soft mb-3">Query: <span className="font-mono">{i.query}</span></p>}
+      <p className="text-sm text-ink-mute mb-4">
         {o.hits?.length ?? 0} of ~{o.totalEstimate ?? 0} results
       </p>
       <ul className="grid gap-3">
         {(o.hits ?? []).map((h) => (
-          <li key={h.productId} className="border rounded p-3">
+          <li key={h.productId} className="border border-line-soft bg-bg-soft/60 rounded p-3">
             <div className="flex justify-between items-baseline">
               <h2 className="font-medium">{plain(h.title)}</h2>
               {h.priceMinor && (
@@ -132,7 +132,7 @@ function SearchSnapshot({ output, input }: { output: unknown; input: unknown }) 
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-ink-mute mt-1">
               {h.brand ? `${h.brand} · ` : ""}seller {h.sellerId}
               {!h.inStock ? " · out of stock" : ""}
               {h.counterfeitRisk !== "low" ? ` · risk: ${h.counterfeitRisk}` : ""}
@@ -156,21 +156,21 @@ function ProductSnapshot({ output }: { output: unknown }) {
   return (
     <section>
       <h2 className="text-xl font-medium">{plain(p.title)}</h2>
-      <p className="text-xs text-gray-500 mt-1">
+      <p className="text-xs text-ink-mute mt-1">
         {p.brand ? `${p.brand} · ` : ""}seller {p.sellerId} · id {p.productId}
       </p>
-      {p.description ? <p className="mt-3 whitespace-pre-wrap">{plain(p.description)}</p> : null}
+      {p.description ? <p className="mt-3 whitespace-pre-wrap text-ink-soft">{plain(p.description)}</p> : null}
       {p.variants?.length ? (
         <table className="mt-4 text-sm w-full">
-          <thead className="text-left text-gray-500">
-            <tr><th>SKU</th><th>Price</th><th>Stock</th></tr>
+          <thead className="text-left text-ink-mute text-xs uppercase tracking-wider">
+            <tr><th className="py-2">SKU</th><th>Price</th><th>Stock</th></tr>
           </thead>
           <tbody>
             {p.variants.map((v) => (
-              <tr key={v.id} className="border-t">
-                <td className="py-1 font-mono">{v.sku}</td>
+              <tr key={v.id} className="border-t border-line-soft">
+                <td className="py-2 font-mono text-xs text-ink-soft">{v.sku}</td>
                 <td>{(Number(v.priceMinor) / 100).toFixed(2)} {v.currency}</td>
-                <td>{v.inStock ? "in stock" : "out"}</td>
+                <td>{v.inStock ? <span className="text-ok text-xs">● in stock</span> : <span className="text-ink-mute text-xs">○ out</span>}</td>
               </tr>
             ))}
           </tbody>
@@ -182,7 +182,7 @@ function ProductSnapshot({ output }: { output: unknown }) {
 
 function RawSnapshot({ output }: { output: unknown }) {
   return (
-    <pre className="text-xs bg-gray-50 border rounded p-3 overflow-auto">
+    <pre className="text-xs bg-bg-soft/60 border border-line-soft rounded p-3 overflow-auto text-ink-soft">
       {JSON.stringify(output, null, 2)}
     </pre>
   );

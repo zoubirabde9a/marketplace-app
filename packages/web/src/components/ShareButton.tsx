@@ -42,7 +42,7 @@ export function ShareButton({ title }: { title: string }) {
         <circle cx="18" cy="19" r="3" />
         <path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" />
       </svg>
-      {state === "copied" ? "Link copied" : "Share"}
+      <span aria-live="polite">{state === "copied" ? "Link copied" : "Share"}</span>
     </button>
   );
 }

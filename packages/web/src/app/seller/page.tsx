@@ -38,6 +38,20 @@ export default async function SellerLandingPage() {
           </div>
         )}
       </div>
+      <ul className="mt-8 space-y-3 text-sm text-ink-soft list-none p-0">
+        <li className="flex items-start gap-3">
+          <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+          <span>Reach AI agents shopping on behalf of real buyers — listings are exposed via MCP, A2A, and HTTP.</span>
+        </li>
+        <li className="flex items-start gap-3">
+          <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+          <span>Counterfeit-risk signals on every listing protect your brand alongside other trusted sellers.</span>
+        </li>
+        <li className="flex items-start gap-3">
+          <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+          <span>List in your own currency, set per-variant pricing, and update stock anytime from the dashboard.</span>
+        </li>
+      </ul>
     </section>
   );
 }

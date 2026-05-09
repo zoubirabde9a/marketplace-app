@@ -3,14 +3,9 @@ import type { Metadata } from "next";
 import { searchProducts } from "@/lib/api";
 import { parseSearchParams } from "@/lib/url";
 import { ActiveFilters } from "@/components/ActiveFilters";
-import { ProductGrid } from "@/components/ProductGrid";
+import { ProductGrid, ProductGridSkeleton } from "@/components/ProductGrid";
 import { EmptyState } from "@/components/EmptyState";
 import { Pagination } from "@/components/Pagination";
-import { SortSelect } from "@/components/SortSelect";
-import { IncludeOutOfStockToggle } from "@/components/IncludeOutOfStockToggle";
-import { BrandSelect } from "@/components/BrandSelect";
-import { CategorySelect } from "@/components/CategorySelect";
-import { MinRatingSelect } from "@/components/MinRatingSelect";
 import { jsonLdString } from "@/lib/jsonld";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
@@ -66,7 +61,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="pt-8">
-      <Suspense fallback={null}>
+      <Suspense
+        fallback={
+          <>
+            <div className="skeleton h-8 w-1/3 mb-6" />
+            <ProductGridSkeleton />
+          </>
+        }
+      >
         <Results input={input} sp={sp} />
       </Suspense>
     </div>
@@ -207,21 +209,13 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
         })()}
         brand={input.brand}
       />
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <ActiveFilters sp={sp} sellerDisplayNames={sellerDisplayNames} />
-        <div className="flex items-center gap-4 flex-wrap">
-          <CategorySelect categories={result.facets?.categories ?? []} />
-          <BrandSelect brands={result.facets?.brands ?? []} />
-          <MinRatingSelect />
-          <IncludeOutOfStockToggle />
-          {result.data.length > 0 && <SortSelect />}
-        </div>
-      </div>
+      <ActiveFilters sp={sp} sellerDisplayNames={sellerDisplayNames} />
       {result.data.length === 0 ? (
         Object.keys(input).length === 0 ? (
           <EmptyState
             title="Catalog is empty"
-            hint="No listings yet. Check back soon."
+            hint="No listings yet. If you sell products, you can be the first."
+            showSellCta
           />
         ) : (
           <EmptyState

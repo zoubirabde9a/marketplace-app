@@ -15,7 +15,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { getProduct } from "@/lib/api";
-import ProductPage from "./page";
+import ProductPage, { generateMetadata } from "./page";
 
 afterEach(() => {
   cleanup();
@@ -95,5 +95,84 @@ describe("ProductPage", () => {
     await expect(
       ProductPage({ params: Promise.resolve({ id: "missing" }) }),
     ).rejects.toThrowError("NEXT_NOT_FOUND");
+  });
+
+  it("emits BreadcrumbList JSON-LD with Home → Catalog → product trail", async () => {
+    const product = baseProduct();
+    vi.mocked(getProduct).mockResolvedValueOnce(product);
+
+    const tree = await ProductPage({ params: Promise.resolve({ id: "p-123" }) });
+    const { container } = render(tree);
+
+    const scripts = container.querySelectorAll('script[type="application/ld+json"]');
+    const bc = Array.from(scripts)
+      .map((s) => JSON.parse(s.innerHTML))
+      .find((o) => o["@type"] === "BreadcrumbList");
+    expect(bc).toBeDefined();
+    expect(bc.itemListElement).toHaveLength(3);
+    expect(bc.itemListElement[0].name).toBe("Home");
+    expect(bc.itemListElement[1].name).toBe("Catalog");
+    expect(bc.itemListElement[2].name).toBe("Test Widget 9000");
+  });
+
+  it("includes SKU on single-variant Offer and at the Product level", async () => {
+    const product = baseProduct();
+    vi.mocked(getProduct).mockResolvedValueOnce(product);
+
+    const tree = await ProductPage({ params: Promise.resolve({ id: "p-123" }) });
+    const { container } = render(tree);
+
+    const scripts = container.querySelectorAll('script[type="application/ld+json"]');
+    const prod = Array.from(scripts)
+      .map((s) => JSON.parse(s.innerHTML))
+      .find((o) => o["@type"] === "Product");
+    expect(prod).toBeDefined();
+    expect(prod.sku).toBe("SKU-1");
+    expect(prod.offers["@type"]).toBe("Offer");
+    expect(prod.offers.sku).toBe("SKU-1");
+    expect(prod.offers.itemCondition).toBe("https://schema.org/NewCondition");
+    expect(prod.offers.priceValidUntil).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe("ProductPage generateMetadata", () => {
+  it("emits per-product canonical, OpenGraph and Twitter Card with hero image dimensions", async () => {
+    const product = baseProduct({
+      images: [
+        {
+          id: "m1",
+          url: "https://cdn.example.com/m1.jpg",
+          contentType: "image/jpeg",
+          width: 800,
+          height: 600,
+          altText: "Test Widget hero shot",
+        },
+      ],
+    });
+    vi.mocked(getProduct).mockResolvedValueOnce(product);
+
+    const m = await generateMetadata({ params: Promise.resolve({ id: "p-123" }) });
+
+    expect(m.title).toBe("Test Widget 9000");
+    expect(m.alternates?.canonical).toBe("/product/p-123");
+    // OG image carries dimensions and alt for fast social previews.
+    const ogImg = (m.openGraph?.images as Array<Record<string, unknown>>)[0];
+    expect(ogImg).toMatchObject({
+      url: "https://cdn.example.com/m1.jpg",
+      width: 800,
+      height: 600,
+      alt: "Test Widget hero shot",
+    });
+    expect(m.twitter?.card).toBe("summary_large_image");
+  });
+
+  it("falls back to summary card and product title alt when there is no hero image", async () => {
+    const product = baseProduct({ heroImageUrl: null, images: [] });
+    vi.mocked(getProduct).mockResolvedValueOnce(product);
+
+    const m = await generateMetadata({ params: Promise.resolve({ id: "p-123" }) });
+
+    expect(m.openGraph?.images).toBeUndefined();
+    expect(m.twitter?.card).toBe("summary");
   });
 });
