@@ -46,8 +46,7 @@ Everything in `/deploy/` is a fresh-eyes-friendly source of truth. Quick links:
 - [`CHANGELOG.md`](./CHANGELOG.md) — append-only timeline of every server change
 - [`runbooks/01-provision-vps.md`](./runbooks/01-provision-vps.md) → buying & receiving a VPS
 - [`runbooks/02-ssh-bootstrap.md`](./runbooks/02-ssh-bootstrap.md) → key-based SSH
-- [`runbooks/03-harden-server.md`](./runbooks/03-harden-server.md) → ufw + fail2ban + unattended-upgrades
-- [`runbooks/04-install-docker.md`](./runbooks/04-install-docker.md) → Docker + Compose plugin
+- [`runbooks/03-harden-server.md`](./runbooks/03-harden-server.md) → ufw + fail2ban + unattended-upgrades + Docker / Compose plugin
 - [`runbooks/05-deploy-app.md`](./runbooks/05-deploy-app.md) → first-time bring-up of the marketplace stack
 - [`runbooks/06-seed-catalog.md`](./runbooks/06-seed-catalog.md) → populate the catalog (Algerian-style)
 - [`runbooks/07-deploy-changes.md`](./runbooks/07-deploy-changes.md) → ship a code change to vps-eu

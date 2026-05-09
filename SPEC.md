@@ -6,6 +6,27 @@
 
 > The world's most feature-complete marketplace built API-first for AI agents. No UI. Agents discover, browse, negotiate, transact, and resolve disputes through standardized protocols (MCP, A2A, AP2, ACP). Humans participate only via delegated authorization.
 
+## Contents
+
+- [§0 Goals & Non-Goals](#0-goals--non-goals)
+- [§1 Tech Stack](#1-tech-stack-versions-pinned-may-2026)
+- [§2 Architecture](#2-architecture)
+- [§3 Identity, Authorization & Agent Trust](#3-identity-authorization--agent-trust)
+- [§4 Domain Model](#4-domain-model-postgresql-schemas)
+- [§5 API Surfaces](#5-api-surfaces)
+- [§6 Feature Catalog](#6-feature-catalog)
+- [§7 Payments & Money Movement](#7-payments--money-movement)
+  - [§7a Agent Reputation System](#7a-agent-reputation-system-resolved)
+  - [§7b Negotiation, Auctions & Dynamic Pricing](#7b-negotiation-auctions--dynamic-pricing-resolved)
+- [§8 Search, Discovery & Recommendations](#8-search-discovery--recommendations)
+  - [§8a Trust & Safety](#8a-trust--safety)
+- [§9 Observability & Operations](#9-observability--operations)
+- [§10 Testing Strategy](#10-testing-strategy)
+- [§11 Security Controls](#11-security-controls)
+- [§12 Roadmap](#12-roadmap-driving-the-spec-not-committed-dates)
+- [§13 Open Questions](#13-open-questions--continuous-refinement-backlog) → backlog lives in [`OPEN_QUESTIONS.md`](./OPEN_QUESTIONS.md)
+- [Appendix A — Sources](#appendix-a--sources-may-2026-versions)
+
 ---
 
 ## 0. Goals & Non-Goals

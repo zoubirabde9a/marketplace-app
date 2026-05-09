@@ -6,7 +6,10 @@ around an HTTP API (`@marketplace/api`), a Model Context Protocol tool surface
 shared domain logic (`@marketplace/domain`), DB schema (`@marketplace/db`), and an
 in-process simulation harness (`@marketplace/agent-sim`).
 
-The high-level spec lives in `SPEC.md`. End-to-end scenarios are in `scenarios/`.
+- **[`ARCHITECTURE.md`](./ARCHITECTURE.md)** — 5-minute tour of the code, package map, layer rules, worked example.
+- **[`SPEC.md`](./SPEC.md)** — full design spec.
+- **[`scenarios/`](./scenarios/)** — end-to-end scenario descriptions (the human-readable counterpart to `agent-sim` journeys).
+- **[`OPEN_QUESTIONS.md`](./OPEN_QUESTIONS.md)** — refinement backlog.
 
 ## Production deployment
 
@@ -223,19 +226,24 @@ read-only into the container.
 
 ## Repo layout
 
+See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the package map, layer rules,
+and a worked end-to-end example. Quick version:
+
 ```
 packages/
-  shared/      # logger, errors, ids, time, money — pure utilities
-  db/          # drizzle schema, migrate/seed scripts
-  domain/      # business logic: catalog, identity, payment, auctions, etc.
+  shared/      # pure utilities — errors, ids, money, time, untrusted envelopes
+  db/          # drizzle schema, migrations, repo implementations
+  domain/      # business logic: catalog, identity, payment, auctions, …
   mcp-server/  # MCP tool registry + tool definitions
-  a2a-server/  # A2A skill registry + skill definitions
+  a2a-server/  # A2A skill registry + skill definitions (negotiation, auctions)
   api/         # Fastify HTTP edge — dev/demo surface lives here
-  agent-sim/   # in-process scenario harness (the "tests as scenarios")
-  test-utils/  # shared test helpers
-scenarios/     # human-readable scenario descriptions (SOP-style)
-SPEC.md        # high-level spec
-OPEN_QUESTIONS.md  # backlog of open design questions
+  agent-sim/   # in-process scenario harness — journeys as vitest tests
+  test-utils/  # shared test helpers (in-memory repos, builders, fixed clock)
+scenarios/     # SOP-style scenario descriptions
+deploy/        # production deployment runbooks + status
+ARCHITECTURE.md
+SPEC.md
+OPEN_QUESTIONS.md
 ```
 
 ## Troubleshooting

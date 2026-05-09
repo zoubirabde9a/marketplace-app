@@ -19,8 +19,7 @@ deploy/
 └── runbooks/
     ├── 01-provision-vps.md    ← buying & receiving a VPS
     ├── 02-ssh-bootstrap.md    ← getting key-based SSH working
-    ├── 03-harden-server.md    ← firewall, disable root login, fail2ban (TODO)
-    ├── 04-install-docker.md   ← Docker + Compose plugin (TODO)
+    ├── 03-harden-server.md    ← firewall, fail2ban + Docker install (TODO)
     ├── 05-deploy-app.md       ← bring up the marketplace stack (TODO)
     ├── 06-seed-catalog.md     ← populate the prod catalog with Algerian-style listings
     ├── 07-deploy-changes.md   ← how to deploy a code change to vps-eu

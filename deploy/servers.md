@@ -61,8 +61,7 @@ The complete list of every machine the marketplace-app owns or rents. **No secre
 ### Runbooks completed
 - [x] [`01-provision-vps`](./runbooks/01-provision-vps.md) — purchased & received credentials 2026-05-08
 - [x] [`02-ssh-bootstrap`](./runbooks/02-ssh-bootstrap.md) — key installed and verified 2026-05-08; `ssh vps-eu` works passwordlessly
-- [x] [`03-harden-server`](./runbooks/03-harden-server.md) — ufw + fail2ban + unattended-upgrades 2026-05-08
-- [x] [`04-install-docker`](./runbooks/04-install-docker.md) — Docker 29.4.3 + Compose v5.1.3 2026-05-08
+- [x] [`03-harden-server`](./runbooks/03-harden-server.md) — ufw + fail2ban + unattended-upgrades + Docker 29.4.3 + Compose v5.1.3 2026-05-08 *(runbook 04 merged into 03)*
 - [x] [`05-deploy-app`](./runbooks/05-deploy-app.md) — production stack live at `https://teno-store.com` 2026-05-08; Let's Encrypt certs issued for apex / www / api
 
 ### Notes / quirks

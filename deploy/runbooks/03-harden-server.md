@@ -1,6 +1,11 @@
-# Runbook 03 — Harden the server (TODO)
+# Runbook 03 — Harden the server + install Docker (TODO)
 
 **Status:** not yet authored. Will be filled in once we run it on `vps-eu`.
+
+This runbook covers the two steps that always happen together on a fresh box:
+hardening the SSH/firewall surface, and installing Docker so the next runbook
+(`05-deploy-app.md`) has something to build on. Previously split into 03 + 04;
+04 was a 12-line stub and the steps are never run independently.
 
 ## Policy decisions for this project
 
@@ -26,3 +31,15 @@
 - Not setting `PasswordAuthentication no` — see policy above.
 - Not creating a separate sudo user — single operator, no benefit.
 - Not changing the SSH port — security-by-obscurity, not real defense; just shifts the noise to wherever you moved it.
+
+## Install Docker (formerly runbook 04)
+
+- [ ] Install Docker Engine + Compose plugin from Docker's official apt repo (NOT the distro's older `docker.io` package).
+- [ ] Add the admin user to the `docker` group.
+- [ ] Verify: `docker run --rm hello-world`.
+- [ ] Configure log rotation in `/etc/docker/daemon.json`:
+  ```json
+  { "log-driver": "json-file", "log-opts": { "max-size": "10m", "max-file": "3" } }
+  ```
+- [ ] `systemctl restart docker`.
+- [ ] Update `servers.md` and add a CHANGELOG entry.
