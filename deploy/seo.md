@@ -57,5 +57,5 @@ Bot Fight Mode is **on** (per `dns.md`). It blocks low-reputation crawlers. Conf
 - [ ] **Submit to Bing Webmaster Tools** — same flow at `https://www.bing.com/webmasters/`.
 - [ ] **Run Google Rich Results Test** — `https://search.google.com/test/rich-results` on one product URL after seeding. Confirms the `Product` JSON-LD parses and shows the rich-card preview.
 - [ ] **Flip Cloudflare SSL/TLS to Full (strict)** — already noted as TODO in `dns.md`.
-- [ ] **Decide on French-language strategy** — either tag product pages with `og:locale=fr_DZ` or add `/fr` routes; punt until catalog ≥ 50 products.
+- [x] ~~**Decide on French-language strategy** — either tag product pages with `og:locale=fr_DZ` or add `/fr` routes; punt until catalog ≥ 50 products.~~ Done — product page detects French content via the DZD-currency heuristic and tags with `og:locale=fr_DZ`, `<article lang="fr">`, and `inLanguage: "fr"` in the Product JSON-LD. Per-locale routing was rejected as overkill for the current catalog scale.
 - [x] ~~**Optional but cheap:** add a `/about` page with substantive plain-text content describing how the marketplace works for sellers and agents.~~ Done — `/about` is live, listed in `sitemap.xml`, allowed in `robots.txt` for both `*` and the AI-bot allow-list.
