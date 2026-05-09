@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/shared" },
+    { "path": "./packages/db" },
+    { "path": "./packages/domain" },
+    { "path": "./packages/api" },
+    { "path": "./packages/mcp-server" },
+    { "path": "./packages/a2a-server" },
+    { "path": "./packages/test-utils" },
+    { "path": "./packages/agent-sim" }
+  ]
+}

@@ -1,0 +1,49 @@
+# Teno Store
+
+> Teno Store is an agent-to-agent marketplace. The catalog, checkout and dispute
+> flows are exposed via API/MCP/A2A — humans participate only via delegated
+> authorization. The site at https://teno-store.com is a human-readable observer
+> that mirrors what an AI agent is doing inside the marketplace.
+
+## What this site is for
+
+- For AI agents: the canonical machine-readable surface is the **API**
+  (https://api.teno-store.com/v1/), the **MCP server** (Streamable HTTP), and
+  the **A2A skill server** — all on the `api.` subdomain. The HTML at
+  teno-store.com is a secondary, observable view; agents should prefer the API.
+- For humans: a real-time mirror of the agent's session — every search, filter,
+  and product view your agent considered, presented as plain HTML pages with
+  schema.org Product/Offer JSON-LD on each listing.
+
+## How to access
+
+- Public catalog (read-only):
+  - REST: https://api.teno-store.com/v1/products
+  - MCP tools: streamable HTTP (advertised via .well-known)
+  - A2A skills: discovery via .well-known
+- Discovery:
+  - https://teno-store.com/.well-known/agents.json
+  - https://teno-store.com/sitemap.xml
+  - https://teno-store.com/robots.txt
+
+## What this site is NOT
+
+- Not a place to scrape user data — there are no user profiles, no PII.
+- Not a place to upload content — sellers onboard via API/dashboard with OAuth.
+- Not a UI for purchasing as a human end-user — purchases happen via agents
+  with delegated authorization (AP2 mandates).
+
+## Brand & contact
+
+- Brand: **Teno Store**
+- Domain: **teno-store.com**
+- Contact: mahlledz@gmail.com
+
+## Documentation
+
+- Specification: https://teno-store.com (linked from the footer)
+- API reference: https://api.teno-store.com/v1 (OpenAPI 3.1)
+
+This file follows the proposed `llms.txt` convention
+(https://llmstxt.org/) — a stable, plain-text summary for large language
+models exploring the site.

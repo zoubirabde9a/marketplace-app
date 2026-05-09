@@ -1,0 +1,15 @@
+{
+  "kid": "dev-key-1",
+  "alg": "EdDSA",
+  "privateJwk": {
+    "crv": "Ed25519",
+    "d": "njsHwAH8DxG53XYEo1LfSwND7UmW320zD-dJrfF7Gbo",
+    "x": "oLRqu9fgoNx3hQwDhlJEwMTNA3TSNLL2ZIxCxj3hQcc",
+    "kty": "OKP"
+  },
+  "publicJwk": {
+    "crv": "Ed25519",
+    "x": "oLRqu9fgoNx3hQwDhlJEwMTNA3TSNLL2ZIxCxj3hQcc",
+    "kty": "OKP"
+  }
+}

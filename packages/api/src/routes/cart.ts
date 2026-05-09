@@ -1,0 +1,106 @@
+// Cart endpoints. Anonymous and authenticated callers both supported.
+
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { cart as cartDomain } from "@marketplace/domain";
+import { NotFoundError, ValidationError } from "@marketplace/shared/errors";
+import type { CartRepo, CartRecord } from "../repos/cart.js";
+
+const AddItemSchema = z.object({
+  variantId: z.string().min(1),
+  qty: z.coerce.number().int().min(1).max(999),
+});
+
+const UpdateQtySchema = z.object({
+  qty: z.coerce.number().int().min(0).max(999),
+});
+
+export async function registerCartRoutes(app: FastifyInstance, carts: CartRepo): Promise<void> {
+  function shapeCart(c: CartRecord): Record<string, unknown> {
+    const totals = cartDomain.totalsFor({
+      cartId: c.cartId,
+      currency: c.currency,
+      lines: c.lines,
+    });
+    return {
+      cartId: c.cartId,
+      currency: c.currency,
+      ownerKind: c.ownerKind,
+      lines: c.lines.map((l) => ({
+        variantId: l.variantId,
+        sellerId: l.sellerId,
+        qty: l.qty,
+        unitPriceMinor: l.unitPriceMinor.toString(),
+      })),
+      totals: {
+        subtotalMinor: totals.subtotalMinor.toString(),
+        shippingMinor: totals.shippingMinor.toString(),
+        taxMinor: totals.taxMinor.toString(),
+        discountMinor: totals.discountMinor.toString(),
+        tipMinor: totals.tipMinor.toString(),
+        totalMinor: totals.totalMinor.toString(),
+      },
+    };
+  }
+
+  async function resolveCart(req: import("fastify").FastifyRequest): Promise<CartRecord> {
+    const userId = req.userPrincipal?.userId;
+    const headerCartId = typeof req.headers["x-mp-cart-id"] === "string" ? req.headers["x-mp-cart-id"] : undefined;
+    return carts.getOrCreate({
+      ...(userId !== undefined ? { userId } : {}),
+      ...(headerCartId !== undefined ? { cartId: headerCartId } : {}),
+    });
+  }
+
+  app.get("/v1/cart", async (req, reply) => {
+    const c = await resolveCart(req);
+    void reply.header("x-mp-cart-id", c.cartId);
+    return shapeCart(c);
+  });
+
+  app.post("/v1/cart/items", async (req, reply) => {
+    const body = AddItemSchema.parse(req.body);
+    const c = await resolveCart(req);
+    let resolved;
+    try {
+      resolved = await carts.resolveLine(body.variantId, body.qty);
+    } catch (e) {
+      throw new NotFoundError("variant", body.variantId);
+    }
+    let cart = c;
+    if (cart.lines.length === 0) {
+      if (cart.currency !== resolved.currency) {
+        cart = await carts.setCurrency(cart.cartId, resolved.currency);
+      }
+    } else if (cart.currency !== resolved.currency) {
+      throw new ValidationError([
+        { path: "variantId", message: `currency_mismatch:cart=${cart.currency},variant=${resolved.currency}` },
+      ]);
+    }
+    const updated = await carts.setLines(cart.cartId, cartDomain.addLine(cart.lines, resolved.line));
+    void reply.header("x-mp-cart-id", updated.cartId);
+    void reply.code(200);
+    return shapeCart(updated);
+  });
+
+  app.patch<{ Params: { variantId: string } }>("/v1/cart/items/:variantId", async (req, reply) => {
+    const body = UpdateQtySchema.parse(req.body);
+    const c = await resolveCart(req);
+    let lines;
+    try {
+      lines = cartDomain.updateLineQty(c.lines, req.params.variantId, body.qty);
+    } catch (e) {
+      throw new ValidationError([{ path: "qty", message: (e as Error).message }]);
+    }
+    const updated = await carts.setLines(c.cartId, lines);
+    void reply.header("x-mp-cart-id", updated.cartId);
+    return shapeCart(updated);
+  });
+
+  app.delete<{ Params: { variantId: string } }>("/v1/cart/items/:variantId", async (req, reply) => {
+    const c = await resolveCart(req);
+    const updated = await carts.setLines(c.cartId, cartDomain.removeLine(c.lines, req.params.variantId));
+    void reply.header("x-mp-cart-id", updated.cartId);
+    return shapeCart(updated);
+  });
+}

@@ -1,0 +1,102 @@
+// Home page. Two states:
+//   - signed in:  personalized "Hi, <name>" header + agent list + activity feed
+//   - signed out: marketing landing with WebSite JSON-LD + sign-in CTA
+//
+// Auth state is read from the mp_session cookie via getCurrentUser(). The home
+// page is always dynamic (cookies are per-request).
+
+import Link from "next/link";
+import { getCurrentUser } from "@/lib/sellerSession";
+import { getMyActivity } from "@/lib/api";
+import { AgentActivity } from "@/components/AgentActivity";
+import { jsonLdString } from "@/lib/jsonld";
+
+export const dynamic = "force-dynamic";
+
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
+
+export default async function Home() {
+  const me = await getCurrentUser();
+
+  if (me) {
+    let activity;
+    try {
+      activity = await getMyActivity(me.jwt);
+    } catch {
+      // API hiccup — degrade gracefully to the empty-state view rather than crashing the home page.
+      activity = { user: { id: me.user.id, email: me.user.email, displayName: me.user.displayName, picture: me.user.picture }, agents: [], recentActions: [] };
+    }
+    return <AgentActivity data={activity} />;
+  }
+
+  return <SignedOutLanding />;
+}
+
+function SignedOutLanding() {
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Teno Store",
+    alternateName: "Teno Store — agent observer",
+    description:
+      "Teno Store is an agent-to-agent marketplace. Watch what your AI agent is searching, browsing and buying in real time.",
+    url: SITE_URL,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
+  return (
+    <section className="relative">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(websiteJsonLd) }}
+      />
+      <div className="absolute inset-0 bg-grid opacity-50 pointer-events-none [mask-image:radial-gradient(closest-side,black,transparent)]" />
+      <div className="relative pt-24 pb-16 text-center max-w-3xl mx-auto">
+        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-accent bg-accent/10 border border-accent/30 mb-6">
+          <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> live
+        </span>
+        <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight bg-gradient-to-b from-ink to-ink-soft bg-clip-text text-transparent">
+          Watch your agent shop, in real time.
+        </h1>
+        <p className="mt-5 text-lg text-ink-soft leading-relaxed">
+          See every search, every product, every price your agent looked at — exactly as it saw them.
+        </p>
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <Link
+            href="/login"
+            className="inline-flex h-11 px-5 items-center rounded-xl bg-accent text-bg font-medium hover:bg-accent-hover transition shadow-glow"
+          >
+            Sign in to see your agent →
+          </Link>
+          <Link
+            href="/search"
+            className="inline-flex h-11 px-5 items-center rounded-xl bg-bg-soft border border-line text-ink-soft hover:border-accent/40 hover:text-ink transition"
+          >
+            Browse the catalog
+          </Link>
+        </div>
+        <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+          <Card title="Deep-linked searches" body="When your agent narrows a search, you get a URL that mirrors the same filters and results." />
+          <Card title="Full product detail" body="Photos, variants, prices, attributes, and seller info — exactly what the agent saw." />
+          <Card title="Trust signals" body="Counterfeit risk, stock state, and seller-supplied content tagged as untrusted by default." />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Card({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-5 backdrop-blur hover:border-line transition">
+      <h3 className="font-medium text-ink mb-1">{title}</h3>
+      <p className="text-sm text-ink-soft leading-relaxed">{body}</p>
+    </div>
+  );
+}

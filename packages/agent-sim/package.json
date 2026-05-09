@@ -1,0 +1,27 @@
+{
+  "name": "@marketplace/agent-sim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "sim:buyer": "tsx src/journeys/buyer.ts",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@marketplace/shared": "workspace:*",
+    "@marketplace/domain": "workspace:*",
+    "@marketplace/a2a-server": "workspace:*",
+    "@marketplace/mcp-server": "workspace:*",
+    "@modelcontextprotocol/sdk": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "tsx": "catalog:",
+    "@types/node": "catalog:"
+  }
+}

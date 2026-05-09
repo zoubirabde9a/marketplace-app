@@ -1,0 +1,37 @@
+{
+  "name": "marketplace-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent-to-Agent Marketplace — API-first marketplace for AI agents (MCP / A2A / AP2 / ACP).",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10"
+  },
+  "scripts": {
+    "preinstall": "npx -y only-allow pnpm",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "test:unit": "pnpm -r test:unit",
+    "test:contract": "pnpm -r test:contract",
+    "test:integration": "pnpm -r test:integration",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @marketplace/db db:generate",
+    "db:migrate": "pnpm --filter @marketplace/db db:migrate",
+    "db:seed": "pnpm --filter @marketplace/db db:seed",
+    "db:studio": "pnpm --filter @marketplace/db db:studio",
+    "dev:api": "pnpm --filter @marketplace/api dev",
+    "dev:mcp": "pnpm --filter @marketplace/mcp-server dev",
+    "dev:a2a": "pnpm --filter @marketplace/a2a-server dev",
+    "dev:web": "pnpm --filter @marketplace/web dev",
+    "demo": "pnpm --filter @marketplace/api demo"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "playwright": "^1.59.1",
+    "tsx": "^4.19.0",
+    "typescript": "6.0.3",
+    "vitest": "^3.0.0"
+  }
+}

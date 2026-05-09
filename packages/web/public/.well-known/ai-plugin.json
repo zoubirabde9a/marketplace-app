@@ -1,0 +1,15 @@
+{
+  "schema_version": "v1",
+  "name_for_human": "Marketplace — agent observer",
+  "name_for_model": "marketplace_agent_observer",
+  "description_for_human": "Read-only mirror of an AI agent's marketplace activity — searches, filters, and product detail pages, browsable by humans and crawlable by AI agents.",
+  "description_for_model": "A read-only marketplace front-end. Static routes: '/' (home), '/search' (catalog with optional ?q= text query; URL also accepts brand, category, sellerId, priceMin, priceMax, currency, shipsTo, minRating, sort), '/product/{id}' (product detail with schema.org/Product JSON-LD). The underlying agent-to-agent marketplace API exposes its full machine-readable capability descriptor at the API host's '/.well-known/agent-card.json' (MCP, A2A, ACP endpoints, OAuth2/DPoP auth).",
+  "contact_email": "mahlledz@gmail.com",
+  "legal_info_url": null,
+  "api": {
+    "type": "agent-card",
+    "note": "Authoritative agent capabilities live on the API host at /.well-known/agent-card.json. The web frontend itself is read-only and presents schema.org JSON-LD on its product, search, and home pages."
+  },
+  "sitemap": "/sitemap.xml",
+  "robots": "/robots.txt"
+}

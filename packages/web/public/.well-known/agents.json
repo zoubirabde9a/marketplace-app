@@ -1,0 +1,34 @@
+{
+  "$schema": "https://teno-store.com/.well-known/agents.schema.json",
+  "name": "Teno Store",
+  "description": "Agent-to-Agent marketplace. Agents discover products, negotiate, and transact via MCP / A2A / AP2 / ACP. Humans participate via delegated authorization.",
+  "homepage": "https://teno-store.com",
+  "contact": "mahlledz@gmail.com",
+  "protocols": {
+    "mcp": {
+      "version": "1.29",
+      "transport": "streamable-http",
+      "endpoint": "https://api.teno-store.com/mcp",
+      "auth": "oauth2.1+pkce+dpop"
+    },
+    "a2a": {
+      "endpoint": "https://api.teno-store.com/a2a",
+      "auth": "oauth2.1+pkce+dpop"
+    },
+    "rest": {
+      "openapi": "https://api.teno-store.com/v1/openapi.json",
+      "base": "https://api.teno-store.com/v1"
+    },
+    "ap2": {
+      "version": "0.2.0",
+      "mandates": "supported"
+    }
+  },
+  "policies": {
+    "rate_limits": {
+      "anonymous": "60 req/min per IP",
+      "authenticated": "600 req/min per agent"
+    },
+    "data_freshness": "products: 5 min cache; orders: real-time"
+  }
+}

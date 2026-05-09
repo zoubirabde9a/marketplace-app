@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+
+html, body {
+  background: radial-gradient(1200px 600px at 80% -10%, rgba(108,140,255,0.10), transparent 60%),
+              radial-gradient(900px 500px at -10% 20%, rgba(52,211,153,0.06), transparent 60%),
+              #0b0d12;
+  color: #e7eaf0;
+  min-height: 100%;
+}
+
+body { font-feature-settings: "ss01", "cv11"; }
+
+::selection { background: rgba(108,140,255,0.35); color: #fff; }
+
+/* Thin custom scrollbars */
+* { scrollbar-width: thin; scrollbar-color: #2a3146 transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: #2a3146; border-radius: 8px; }
+*::-webkit-scrollbar-thumb:hover { background: #394161; }
+
+/* Skeleton shimmer */
+.skeleton {
+  background: linear-gradient(90deg, #161a23 0%, #1d2230 50%, #161a23 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: 0.5rem;
+}
+
+/* Subtle grid for hero */
+.bg-grid {
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Untrusted-content marker — surfaces seller-supplied text without letting it visually masquerade as system UI. */
+.untrusted::before {
+  content: "";
+  display: inline-block;
+  width: 6px; height: 6px; border-radius: 999px;
+  background: #6c8cff; opacity: 0.55; margin-right: 8px; vertical-align: middle;
+}
+
+/* Focus ring */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid #6c8cff;
+  outline-offset: 2px;
+  border-radius: 6px;
+}

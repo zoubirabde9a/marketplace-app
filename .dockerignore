@@ -1,0 +1,28 @@
+# Never bake secrets or local state into the image.
+.env
+.env.*
+!.env.example
+
+# Local node + build output (rebuilt inside the image).
+**/node_modules
+**/dist
+**/.tsbuildinfo
+**/tsconfig.tsbuildinfo
+**/*.tsbuildinfo
+
+# VCS, IDE, OS noise.
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Repo-only docs/scripts that don't belong at runtime.
+scenarios
+*.md
+!README.md
+
+# Test outputs.
+coverage
+**/.vitest-cache

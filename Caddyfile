@@ -1,0 +1,84 @@
+# Caddyfile for teno-store.com — production reverse proxy.
+#
+# Caddy auto-issues Let's Encrypt certs for every site block on first start
+# and auto-renews. HTTP→HTTPS redirect is automatic. HTTP/2 + HTTP/3 enabled
+# by default. No manual cert wrangling.
+#
+# DNS layout (managed in Cloudflare, see deploy/dns.md):
+#   teno-store.com        → human/agent-readable web (Next.js observer)
+#   www.teno-store.com    → 301 redirect to apex
+#   api.teno-store.com    → REST/MCP/A2A endpoints (Fastify)
+#
+# Cloudflare is in front of all three with proxy ON (orange cloud), SSL/TLS
+# mode "Full". After Caddy issues its first Let's Encrypt cert, flip the mode
+# to "Full (strict)" in the Cloudflare dashboard (see dns.md).
+
+{
+	email mahlledz@gmail.com
+
+	# Cloudflare's edge IPs — Caddy will trust X-Forwarded-For from these so
+	# real-client logging works. Lists are stable; refresh annually from
+	# https://www.cloudflare.com/ips/
+	servers {
+		trusted_proxies static \
+			173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 \
+			141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 \
+			197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 \
+			104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 \
+			2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 \
+			2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+	}
+}
+
+# ─── Apex: human-readable observer (Next.js) ─────────────────────────────────
+teno-store.com {
+	encode zstd gzip
+	reverse_proxy web:3200
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "SAMEORIGIN"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		-Server
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
+
+# ─── www → apex ─────────────────────────────────────────────────────────────
+www.teno-store.com {
+	redir https://teno-store.com{uri} permanent
+}
+
+# ─── API subdomain: REST + (future) MCP / A2A endpoints (Fastify) ───────────
+api.teno-store.com {
+	encode zstd gzip
+	reverse_proxy api:3100
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin"
+		# Allow agent clients (browsers, MCP clients running in browser tabs)
+		# to talk to api.teno-store.com from any origin. Refine if/when we
+		# add cookie-based auth on this subdomain.
+		Access-Control-Allow-Origin "*"
+		Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+		Access-Control-Allow-Headers "Content-Type, Authorization, DPoP, X-Mp-Agent-Id"
+		Access-Control-Max-Age "86400"
+		-Server
+	}
+
+	@options method OPTIONS
+	respond @options 204
+
+	log {
+		output stdout
+		format json
+	}
+}

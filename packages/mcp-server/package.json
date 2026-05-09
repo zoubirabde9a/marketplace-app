@@ -1,0 +1,45 @@
+{
+  "name": "@marketplace/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./tools/*": {
+      "types": "./dist/tools/*.d.ts",
+      "development": "./src/tools/*.ts",
+      "default": "./dist/tools/*.js"
+    },
+    "./registry": {
+      "types": "./dist/registry.d.ts",
+      "development": "./src/registry.ts",
+      "default": "./dist/registry.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch --conditions=development src/server.ts",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@marketplace/shared": "workspace:*",
+    "@marketplace/domain": "workspace:*",
+    "@modelcontextprotocol/sdk": "catalog:",
+    "fastify": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "tsx": "catalog:",
+    "@types/node": "catalog:"
+  }
+}
