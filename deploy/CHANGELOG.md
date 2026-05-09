@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-09 — ship `snapshotUrl` on REST catalog reads to `vps-eu`
+
+- Targeted deploy: `scp` of just `packages/api/src/routes/products.ts` and `packages/api/src/server.ts` to `/opt/marketplace/` (deliberate two-file copy instead of the full `tar | ssh` flow that hit the `.env` overwrite incident in the previous entry).
+- Added `MARKETPLACE_WEB_BASE_URL=https://teno-store.com` to `/opt/marketplace/.env` (backup taken at `.env.bak.snapshoturl`, mode 600 preserved). The env var was previously unset, which is why no `snapshotUrl` was emitted on REST despite the SnapshotStore being wired up.
+- `docker compose -f docker-compose.prod.yml build api` then `up -d api` — only `marketplace-api` recreated; `caddy`, `web`, `redis`, `postgres` untouched and stayed up.
+- Smoke tests from the server: `https://api.teno-store.com/livez` → 200; `GET /v1/products?q=iphone&limit=2` returns `snapshotUrl: https://teno-store.com/s/<token>`, `snapshotCreatedAt`, `snapshotExpiresAt`; `GET /v1/snapshots/<token>` echoes the frozen kind=`search` payload; `GET /v1/products/{id}` also emits the trio with kind=`product`. All five containers healthy at end of deploy.
+- Code committed in `e9443c0` on `main` along with SPEC §8.4 / `.env.example` / `packages/web/README.md` doc updates.
+
 ## 2026-05-09 — sync local working tree to `vps-eu`, rebuild api+web
 
 - Ran `pnpm typecheck` (clean) and `pnpm test` (451 passed, 1 skipped) on the operator laptop.
