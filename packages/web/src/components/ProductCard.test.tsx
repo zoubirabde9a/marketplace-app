@@ -56,13 +56,25 @@ describe("ProductCard", () => {
     expect(img!.getAttribute("alt")).toBe("Test Widget 9000");
   });
 
-  it("renders a placeholder SVG (no <img>) when there is no hero image URL", () => {
+  it("renders a brand-initial placeholder (no <img>) when there is no hero image URL", () => {
     const { container } = render(
-      <ProductCard hit={baseHit({ heroImageUrl: null, heroImage: null })} />,
+      <ProductCard hit={baseHit({ heroImageUrl: null, heroImage: null, brand: "Acme" })} />,
     );
     expect(container.querySelector("img")).toBeNull();
-    // The placeholder SVG remains (an inline icon).
-    expect(container.querySelector("svg")).not.toBeNull();
+    // Placeholder shows the brand's first letter so the catalog grid is
+    // visually differentiable when no images are seeded.
+    expect(container.textContent).toContain("A");
+  });
+
+  it("falls back to the title's first letter when no brand", () => {
+    const { container } = render(
+      <ProductCard
+        hit={baseHit({ heroImageUrl: null, heroImage: null, brand: undefined, title: { role: "untrusted_content", origin: "s", value: "Z-Widget" } })}
+      />,
+    );
+    // First letter of title 'Z'
+    const placeholder = container.querySelector('[aria-hidden="true"] span');
+    expect(placeholder?.textContent).toBe("Z");
   });
 
   it("shows an out-of-stock indicator when inStock is false", () => {

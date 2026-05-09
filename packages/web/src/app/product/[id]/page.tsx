@@ -214,7 +214,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
       <Breadcrumbs title={p.title.value} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-6">
-        <Gallery images={p.images} alt={p.title.value} />
+        <Gallery images={p.images} alt={p.title.value} brand={p.brand} />
 
         <div className="space-y-6">
           <div>

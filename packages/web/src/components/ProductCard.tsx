@@ -24,12 +24,16 @@ export function ProductCard({ hit }: { hit: SearchHit }) {
             className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-bg-elev via-bg-soft to-bg">
-            <svg className="w-10 h-10 text-ink-mute opacity-40" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden>
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="9" cy="9" r="1.5" />
-              <path d="m21 15-5-5L5 21" />
-            </svg>
+          <div
+            className="w-full h-full flex items-center justify-center bg-gradient-to-br from-bg-elev via-bg-soft to-bg"
+            aria-hidden
+          >
+            {/* Brand initial as visual differentiator when the seller hasn't
+                supplied an image — beats a wall of identical placeholder
+                icons for customers browsing the grid. */}
+            <span className="text-3xl font-semibold tracking-tight text-ink-mute select-none">
+              {(hit.brand ?? hit.title.value).trim().charAt(0).toUpperCase() || "·"}
+            </span>
           </div>
         )}
         <div className="absolute top-2 right-2 flex gap-1.5">

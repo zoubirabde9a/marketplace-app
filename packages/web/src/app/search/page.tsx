@@ -220,9 +220,10 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
         ) : (
           <EmptyState
             title="No products matched"
-            hint="Try a broader query or remove a filter chip above."
+            hint="Try a broader query, enable fuzzy matching, or remove a filter chip above."
             q={input.q}
             hasFilters
+            fuzzyAlreadyOn={input.fuzzy}
           />
         )
       ) : (

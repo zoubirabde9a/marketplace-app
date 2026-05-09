@@ -5,7 +5,7 @@ import clsx from "clsx";
 
 interface Img { id: string; url: string; altText?: string }
 
-export function Gallery({ images, alt }: { images: Img[]; alt: string }) {
+export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; brand?: string }) {
   const [idx, setIdx] = useState(0);
   const [open, setOpen] = useState(false);
   const active = images[idx];
@@ -29,13 +29,12 @@ export function Gallery({ images, alt }: { images: Img[]; alt: string }) {
   }, [open, images.length]);
 
   if (!images.length) {
+    const initial = (brand ?? alt).trim().charAt(0).toUpperCase() || "·";
     return (
       <div className="aspect-square rounded-2xl border border-line-soft bg-gradient-to-br from-bg-elev via-bg-soft to-bg flex flex-col items-center justify-center gap-3 text-ink-mute">
-        <svg className="w-16 h-16 opacity-40" fill="none" stroke="currentColor" strokeWidth={1.2} viewBox="0 0 24 24" aria-hidden>
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <circle cx="9" cy="9" r="1.5" />
-          <path d="m21 15-5-5L5 21" />
-        </svg>
+        <span aria-hidden className="text-7xl font-semibold tracking-tight text-ink-mute select-none opacity-50">
+          {initial}
+        </span>
         <span className="text-xs">No photos provided by the seller</span>
       </div>
     );

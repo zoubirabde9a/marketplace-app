@@ -6,15 +6,22 @@ export function EmptyState({
   q,
   hasFilters,
   showSellCta,
+  fuzzyAlreadyOn,
 }: {
   title: string;
   hint: string;
   q?: string;
   hasFilters?: boolean;
   showSellCta?: boolean;
+  /** When the current search already used fuzzy=true, hide the "Try fuzzy match" CTA. */
+  fuzzyAlreadyOn?: boolean;
 }) {
   const showReset = Boolean(q) || Boolean(hasFilters);
   const resetLabel = q ? "Clear search" : "Clear filters";
+  // When the visitor searched for something with no results, offer a fuzzy
+  // retry — the underlying API's text matcher misses non-ASCII queries
+  // (e.g. "téléphone" returns 0 even though "phone" returns 2 with fuzzy).
+  const showFuzzyCta = Boolean(q) && !fuzzyAlreadyOn;
   return (
     <div className="rounded-2xl border border-dashed border-line bg-bg-soft/50 px-8 py-16 text-center">
       <div className="mx-auto w-12 h-12 rounded-xl bg-bg-elev border border-line-soft flex items-center justify-center text-ink-soft mb-4">
@@ -27,16 +34,26 @@ export function EmptyState({
           query: <span className="text-ink-soft">{q}</span>
         </p>
       )}
-      {showReset && (
-        <Link href="/search" className="inline-flex mt-6 px-4 h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition">
-          {resetLabel}
-        </Link>
-      )}
-      {showSellCta && (
-        <Link href="/seller" className="inline-flex mt-6 px-4 h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition">
-          Sell on Teno Store →
-        </Link>
-      )}
+      <div className="mt-6 flex flex-wrap gap-2 justify-center">
+        {showFuzzyCta && (
+          <Link
+            href={`/search?q=${encodeURIComponent(q!)}&fuzzy=true`}
+            className="inline-flex px-4 h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition"
+          >
+            Try fuzzy match
+          </Link>
+        )}
+        {showReset && (
+          <Link href="/search" className="inline-flex px-4 h-9 items-center rounded-md bg-bg-elev border border-line text-ink-soft text-sm hover:border-accent/40 hover:text-ink transition">
+            {resetLabel}
+          </Link>
+        )}
+        {showSellCta && (
+          <Link href="/seller" className="inline-flex px-4 h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition">
+            Sell on Teno Store →
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
