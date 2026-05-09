@@ -130,7 +130,11 @@ export async function getProduct(id: string): Promise<ProductDetail | null> {
   try {
     return await request<ProductDetail>(`/v1/products/${encodeURIComponent(id)}`);
   } catch (e) {
-    if ((e as ApiError).status === 404) return null;
+    // 404 is "no such product"; 400/422 is "malformed product id" — both are
+    // user-equivalent to a missing page. Returning null lets the caller route
+    // through notFound() so the response is a real 404 instead of a 5xx soft-404.
+    const status = (e as ApiError).status;
+    if (status === 404 || status === 400 || status === 422) return null;
     throw e;
   }
 }
