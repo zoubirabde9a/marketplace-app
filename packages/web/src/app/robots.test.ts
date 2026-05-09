@@ -9,7 +9,7 @@ describe("robots()", () => {
     const wildcard = rules.find((r) => r.userAgent === "*");
     expect(wildcard).toBeDefined();
     expect(wildcard?.disallow).toContain("/api/");
-    expect(wildcard?.allow).toEqual(expect.arrayContaining(["/", "/search", "/product/"]));
+    expect(wildcard?.allow).toEqual(expect.arrayContaining(["/", "/search", "/product/", "/about"]));
   });
 
   it("explicitly allows current AI crawler user-agents (training + retrieval)", () => {
@@ -24,7 +24,7 @@ describe("robots()", () => {
     for (const ua of aiAgents) {
       const rule = rules.find((r) => r.userAgent === ua);
       expect(rule, `expected a rule for ${ua}`).toBeDefined();
-      expect(rule?.allow).toEqual(expect.arrayContaining(["/", "/search", "/product/"]));
+      expect(rule?.allow).toEqual(expect.arrayContaining(["/", "/search", "/product/", "/about"]));
     }
   });
 

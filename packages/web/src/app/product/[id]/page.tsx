@@ -194,8 +194,15 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     ],
   };
 
+  // Tag the article subtree with the content language so screen readers
+  // pronounce French titles correctly even though <html lang="en"> at the
+  // root. Currency-based heuristic mirrors the og:locale logic above.
+  const contentLang = currency === "DZD" ? "fr" : undefined;
+  // Also tag in the JSON-LD so search/AI agents have the same signal.
+  if (contentLang) productJsonLd.inLanguage = contentLang;
+
   return (
-    <div className="pt-8">
+    <div className="pt-8" lang={contentLang}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(productJsonLd) }}
@@ -300,11 +307,12 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">Variants</h2>
               <div className="rounded-2xl border border-line-soft overflow-hidden">
                 <table className="w-full text-sm">
+                  <caption className="sr-only">Product variants — SKU, price, and stock status</caption>
                   <thead className="bg-bg-elev text-ink-soft text-xs uppercase tracking-wider">
                     <tr>
-                      <th className="text-left px-4 py-2 font-medium">SKU</th>
-                      <th className="text-right px-4 py-2 font-medium">Price</th>
-                      <th className="text-right px-4 py-2 font-medium">Stock</th>
+                      <th scope="col" className="text-left px-4 py-2 font-medium">SKU</th>
+                      <th scope="col" className="text-right px-4 py-2 font-medium">Price</th>
+                      <th scope="col" className="text-right px-4 py-2 font-medium">Stock</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -33,7 +33,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: ["/", "/search", "/product/", "/seller"],
+        allow: ["/", "/search", "/product/", "/seller", "/about"],
         // /api/ is internal; /login is the auth ceremony page; /seller/ subpaths
         // (dashboard/contact/products) are auth-required and have no SEO value;
         // /s/ are private snapshot links that are public-token addressed.
@@ -41,7 +41,7 @@ export default function robots(): MetadataRoute.Robots {
       },
       ...AI_USER_AGENTS.map((ua) => ({
         userAgent: ua,
-        allow: ["/", "/search", "/product/", "/seller"],
+        allow: ["/", "/search", "/product/", "/seller", "/about"],
         disallow: ["/api/", "/login", "/seller/", "/s/"],
       })),
     ],

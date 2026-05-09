@@ -55,37 +55,37 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
 
   if (!snap) {
     return (
-      <main className="max-w-3xl mx-auto p-6">
+      <article className="max-w-3xl mx-auto p-6">
         <h1 className="text-2xl font-semibold mb-2">Snapshot not found</h1>
         <p className="text-ink-soft">This link is invalid.</p>
         <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
-      </main>
+      </article>
     );
   }
 
   if ("unauthorized" in snap) {
     return (
-      <main className="max-w-3xl mx-auto p-6">
+      <article className="max-w-3xl mx-auto p-6">
         <h1 className="text-2xl font-semibold mb-2">Snapshot access denied</h1>
         <p className="text-ink-soft">
           This snapshot exists but isn’t accessible from this link. The token
           may have been revoked or wasn’t included in the URL.
         </p>
         <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
-      </main>
+      </article>
     );
   }
 
   if ("expired" in snap) {
     return (
-      <main className="max-w-3xl mx-auto p-6">
+      <article className="max-w-3xl mx-auto p-6">
         <h1 className="text-2xl font-semibold mb-2">Snapshot expired</h1>
         <p className="text-ink-soft mb-4">
           Agent result snapshots are kept for 24 hours and then deleted. Ask the agent to run the
           request again to get a fresh snapshot.
         </p>
         <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
-      </main>
+      </article>
     );
   }
 
@@ -93,7 +93,7 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
   const remaining = formatRemaining(snap.expiresAt);
 
   return (
-    <main className="max-w-5xl mx-auto p-6">
+    <article className="max-w-5xl mx-auto p-6">
       <header className="mb-6 border-b border-line-soft pb-4">
         <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold">
           Agent {snap.kind} snapshot
@@ -108,7 +108,7 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
       {snap.kind === "product" && <ProductSnapshot output={snap.output} />}
       {snap.kind === "compare" && <RawSnapshot output={snap.output} />}
       {snap.kind === "recommend" && <RawSnapshot output={snap.output} />}
-    </main>
+    </article>
   );
 }
 
@@ -178,15 +178,26 @@ function ProductSnapshot({ output }: { output: unknown }) {
       {p.description ? <p className="mt-3 whitespace-pre-wrap text-ink-soft">{plain(p.description)}</p> : null}
       {p.variants?.length ? (
         <table className="mt-4 text-sm w-full">
+          <caption className="sr-only">Product variants — SKU, price, and stock status</caption>
           <thead className="text-left text-ink-mute text-xs uppercase tracking-wider">
-            <tr><th className="py-2">SKU</th><th>Price</th><th>Stock</th></tr>
+            <tr>
+              <th scope="col" className="py-2">SKU</th>
+              <th scope="col">Price</th>
+              <th scope="col">Stock</th>
+            </tr>
           </thead>
           <tbody>
             {p.variants.map((v) => (
               <tr key={v.id} className="border-t border-line-soft">
                 <td className="py-2 font-mono text-xs text-ink-soft">{v.sku}</td>
                 <td>{(Number(v.priceMinor) / 100).toFixed(2)} {v.currency}</td>
-                <td>{v.inStock ? <span className="text-ok text-xs">● in stock</span> : <span className="text-ink-mute text-xs">○ out</span>}</td>
+                <td>
+                  {v.inStock ? (
+                    <span className="text-ok text-xs"><span aria-hidden>●</span> in stock</span>
+                  ) : (
+                    <span className="text-ink-mute text-xs"><span aria-hidden>○</span> out</span>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
