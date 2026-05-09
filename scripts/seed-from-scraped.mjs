@@ -51,6 +51,37 @@ function parsePriceToMinor(priceText) {
   return `${digits}00`;
 }
 
+// Brands commonly listed on Algerian marketplaces. Order matters — longer
+// names first so "OnePlus" wins over a hypothetical "One". Match is
+// case-insensitive against word-boundary occurrences in the title.
+const KNOWN_BRANDS = [
+  "OnePlus", "iPhone", "Apple", "Samsung", "Xiaomi", "Huawei", "Honor",
+  "Vivo", "Oppo", "Realme", "Google Pixel", "Google", "Sony", "Lenovo",
+  "Dell", "HP", "Asus", "Acer", "MSI", "Logitech", "Jabra", "DJI",
+  "Insta360", "Baseus", "Anker", "JBL", "Bose", "Pitaka", "Nokia",
+  "Redmi", "POCO", "Microsoft",
+];
+
+// Some brand spellings on the marketplace map to a canonical brand name.
+const BRAND_CANONICAL = {
+  iPhone: "Apple",
+  Redmi: "Xiaomi",
+  POCO: "Xiaomi",
+  "Google Pixel": "Google",
+};
+
+function inferBrand(title) {
+  if (!title) return null;
+  const lower = title.toLowerCase();
+  for (const brand of KNOWN_BRANDS) {
+    const re = new RegExp(`\\b${brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    if (re.test(lower) || lower.includes(brand.toLowerCase())) {
+      return BRAND_CANONICAL[brand] ?? brand;
+    }
+  }
+  return null;
+}
+
 function pickImages(item) {
   const out = [];
   for (const url of item.images ?? []) {
@@ -94,9 +125,11 @@ async function main() {
       continue;
     }
     const sku = `scraped-${slug(title, 24)}-${i}`;
+    const brand = inferBrand(title);
     const body = {
       sellerId: SELLER_ID,
       title: title.slice(0, 300),
+      ...(brand ? { brand } : {}),
       ...(it.description ? { description: String(it.description).slice(0, 5000) } : {}),
       attributes: {
         source: "ouedkniss-public-listing",
