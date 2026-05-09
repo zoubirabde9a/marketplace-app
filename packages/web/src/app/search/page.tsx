@@ -181,7 +181,12 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock";
       const seller = hit.sellerDisplayName
-        ? { "@type": "Organization", name: hit.sellerDisplayName, identifier: hit.sellerId }
+        ? {
+            "@type": "Organization",
+            name: hit.sellerDisplayName,
+            identifier: hit.sellerId,
+            url: `${SITE_URL}/search?sellerId=${encodeURIComponent(hit.sellerId)}`,
+          }
         : undefined;
       const lowPrice = minorToMajor(hit.priceFromMinor);
       const highPrice = minorToMajor(hit.priceToMinor);

@@ -118,6 +118,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   "@type": "Organization",
                   name: p.sellerDisplayName,
                   identifier: p.sellerId,
+                  url: `${SITE_URL}/search?sellerId=${encodeURIComponent(p.sellerId)}`,
                 },
               }
             : {}),
@@ -141,6 +142,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   "@type": "Organization",
                   name: p.sellerDisplayName,
                   identifier: p.sellerId,
+                  url: `${SITE_URL}/search?sellerId=${encodeURIComponent(p.sellerId)}`,
                 },
               }
             : {}),
