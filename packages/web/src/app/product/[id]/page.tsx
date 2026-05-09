@@ -48,15 +48,22 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     openGraph: {
       title,
       description: desc,
-      images,
+      // When there's a seller hero image, surface it. When there isn't,
+      // OMIT the field entirely so Next.js's file-based opengraph-image.tsx
+      // convention can fill it in. Setting `images: undefined` explicitly
+      // suppresses the convention.
+      ...(images ? { images } : {}),
       url: canonical,
       locale: ogLocale,
     },
     twitter: {
-      card: p.heroImageUrl ? "summary_large_image" : "summary",
+      // Always summary_large_image — either the hero or the dynamic card
+      // fills the slot. Omit twitter.images when no hero so the file-based
+      // convention (which generates twitter:image alongside og:image) applies.
+      card: "summary_large_image",
       title,
       description: desc,
-      images: p.heroImageUrl ? [p.heroImageUrl] : undefined,
+      ...(p.heroImageUrl ? { images: [p.heroImageUrl] } : {}),
     },
   };
 }

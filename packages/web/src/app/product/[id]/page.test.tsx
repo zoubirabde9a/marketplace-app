@@ -166,14 +166,17 @@ describe("ProductPage generateMetadata", () => {
     expect((m.twitter as { card?: string } | null)?.card).toBe("summary_large_image");
   });
 
-  it("falls back to summary card and product title alt when there is no hero image", async () => {
+  it("omits openGraph.images and twitter.images when there's no hero (lets opengraph-image.tsx fill in)", async () => {
     const product = baseProduct({ heroImageUrl: null, images: [] });
     vi.mocked(getProduct).mockResolvedValueOnce(product);
 
     const m = await generateMetadata({ params: Promise.resolve({ id: "p-123" }) });
 
+    // Both should be undefined so Next's file-based convention can supply them.
     expect(m.openGraph?.images).toBeUndefined();
-    expect((m.twitter as { card?: string } | null)?.card).toBe("summary");
+    expect((m.twitter as { images?: unknown } | null)?.images).toBeUndefined();
+    // Card stays summary_large_image — the dynamic /opengraph-image fills it.
+    expect((m.twitter as { card?: string } | null)?.card).toBe("summary_large_image");
   });
 
   it("sets og:locale=fr_DZ for DZD-priced products and en_US otherwise", async () => {
