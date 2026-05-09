@@ -7,8 +7,10 @@
 
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/sellerSession";
-import { getMyActivity } from "@/lib/api";
+import { getMyActivity, searchProducts } from "@/lib/api";
+import type { SearchHit } from "@/lib/api";
 import { AgentActivity } from "@/components/AgentActivity";
+import { ProductGrid } from "@/components/ProductGrid";
 import { jsonLdString } from "@/lib/jsonld";
 
 export const dynamic = "force-dynamic";
@@ -29,10 +31,18 @@ export default async function Home() {
     return <AgentActivity data={activity} />;
   }
 
-  return <SignedOutLanding />;
+  let recent: SearchHit[] = [];
+  try {
+    const r = await searchProducts({ sort: "newest", limit: 8 });
+    recent = r.data ?? [];
+  } catch {
+    // API hiccup — landing still renders without the recent strip.
+  }
+
+  return <SignedOutLanding recent={recent} />;
 }
 
-function SignedOutLanding() {
+function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
   // Emit WebSite + Organization in a single @graph payload so Google can
   // resolve "Teno Store" as a knowledge-graph entity AND wire up SearchAction
   // sitelinks search box from one document.
@@ -107,6 +117,15 @@ function SignedOutLanding() {
           <Card title="Trust signals" body="Counterfeit risk, stock state, and seller-supplied content tagged as untrusted by default." />
         </div>
       </div>
+      {recent.length > 0 && (
+        <section className="mt-8" aria-labelledby="recent-heading">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 id="recent-heading" className="text-xl font-semibold tracking-tight">Recently posted</h2>
+            <Link href="/search" className="text-sm text-ink-soft hover:text-ink transition">See all →</Link>
+          </div>
+          <ProductGrid hits={recent} />
+        </section>
+      )}
     </section>
   );
 }

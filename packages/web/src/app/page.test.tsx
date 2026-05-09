@@ -8,6 +8,11 @@ vi.mock("@/lib/sellerSession", () => ({
 // Activity API isn't called in the signed-out branch, but keep the import safe.
 vi.mock("@/lib/api", () => ({
   getMyActivity: vi.fn(),
+  searchProducts: vi.fn(async () => ({
+    data: [],
+    pagination: { cursor: null, totalEstimate: 0 },
+    facets: { brands: [], currencies: [], sellers: [], categories: [] },
+  })),
 }));
 
 import Home from "./page";
