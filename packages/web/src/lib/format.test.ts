@@ -1,0 +1,110 @@
+import { describe, expect, it } from "vitest";
+import {
+  formatPrice,
+  formatPriceRange,
+  formatRating,
+  formatRelativeTime,
+  minorToMajor,
+} from "./format";
+
+describe("minorToMajor", () => {
+  it("divides by 100 for two-decimal currencies", () => {
+    expect(minorToMajor("1999", "USD")).toBe(19.99);
+    expect(minorToMajor("28000000", "DZD")).toBe(280_000);
+  });
+
+  it("does not divide for zero-decimal currencies", () => {
+    expect(minorToMajor("1999", "JPY")).toBe(1999);
+    expect(minorToMajor("500", "KRW")).toBe(500);
+  });
+
+  it("returns null for null/undefined and unparseable input", () => {
+    expect(minorToMajor(null, "USD")).toBeNull();
+    expect(minorToMajor(undefined, "USD")).toBeNull();
+    expect(minorToMajor("not-a-number", "USD")).toBeNull();
+  });
+
+  it("accepts bigint and number inputs", () => {
+    expect(minorToMajor(1999n, "USD")).toBe(19.99);
+    expect(minorToMajor(1999, "USD")).toBe(19.99);
+  });
+});
+
+describe("formatPrice", () => {
+  it("returns em-dash for null/missing inputs", () => {
+    expect(formatPrice(null, "USD")).toBe("—");
+    expect(formatPrice("100", null)).toBe("—");
+    expect(formatPrice(undefined, "USD")).toBe("—");
+  });
+
+  it("formats whole-number USD without trailing zeros", () => {
+    expect(formatPrice("1000", "USD")).toMatch(/^\$10$|^US\$10$/);
+  });
+
+  it("formats fractional USD with two decimals", () => {
+    expect(formatPrice("1999", "USD")).toMatch(/19\.99/);
+  });
+
+  it("formats DZD without decimals (large round numbers)", () => {
+    // Intl outputs DZD with currency-code formatting; assert the major-unit
+    // value appears in the result.
+    const out = formatPrice("28000000", "DZD");
+    expect(out).toMatch(/280[\s,.]?000/);
+  });
+});
+
+describe("formatPriceRange", () => {
+  it("returns single price when from === to", () => {
+    expect(formatPriceRange("1999", "1999", "USD")).toMatch(/19\.99/);
+  });
+
+  it("returns a range when from !== to", () => {
+    const out = formatPriceRange("1000", "2000", "USD");
+    expect(out).toContain("–");
+  });
+
+  it("falls back to single side when one is missing", () => {
+    expect(formatPriceRange("1000", null, "USD")).toMatch(/10/);
+    expect(formatPriceRange(null, "2000", "USD")).toMatch(/20/);
+  });
+});
+
+describe("formatRelativeTime", () => {
+  const fixedNow = new Date("2026-05-09T12:00:00Z");
+
+  it("returns null for missing or invalid input", () => {
+    expect(formatRelativeTime(null, fixedNow)).toBeNull();
+    expect(formatRelativeTime(undefined, fixedNow)).toBeNull();
+    expect(formatRelativeTime("not-a-date", fixedNow)).toBeNull();
+  });
+
+  it("returns 'just now' for sub-minute and future timestamps", () => {
+    const future = new Date(fixedNow.getTime() + 60_000).toISOString();
+    expect(formatRelativeTime(future, fixedNow)).toBe("just now");
+    const recent = new Date(fixedNow.getTime() - 30_000).toISOString();
+    expect(formatRelativeTime(recent, fixedNow)).toBe("just now");
+  });
+
+  it("scales to minutes, hours, days, weeks, months, years", () => {
+    const t = (offsetMs: number) => new Date(fixedNow.getTime() - offsetMs).toISOString();
+    expect(formatRelativeTime(t(2 * 60_000), fixedNow)).toBe("2 minutes ago");
+    expect(formatRelativeTime(t(60_000), fixedNow)).toBe("1 minute ago");
+    expect(formatRelativeTime(t(3 * 3_600_000), fixedNow)).toBe("3 hours ago");
+    expect(formatRelativeTime(t(2 * 86_400_000), fixedNow)).toBe("2 days ago");
+    expect(formatRelativeTime(t(2 * 7 * 86_400_000), fixedNow)).toBe("2 weeks ago");
+    expect(formatRelativeTime(t(60 * 86_400_000), fixedNow)).toBe("2 months ago");
+    expect(formatRelativeTime(t(2 * 365 * 86_400_000), fixedNow)).toBe("2 years ago");
+  });
+});
+
+describe("formatRating", () => {
+  it("returns 'No reviews yet' when rating is null/undefined", () => {
+    expect(formatRating(null)).toBe("No reviews yet");
+    expect(formatRating(undefined)).toBe("No reviews yet");
+  });
+
+  it("renders rating with one decimal and optional count", () => {
+    expect(formatRating(4)).toBe("4.0 ★");
+    expect(formatRating(4.567, 1234)).toBe("4.6 ★ (1,234)");
+  });
+});
