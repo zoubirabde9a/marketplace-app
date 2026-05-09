@@ -2,17 +2,17 @@ import { describe, expect, it } from "vitest";
 import { parseSearchParams, toggleArrayParam, withParam } from "./url";
 
 describe("parseSearchParams", () => {
-  it("returns an empty object for empty input", () => {
-    expect(parseSearchParams({})).toEqual({});
+  it("defaults to newest sort when there's no query and no explicit sort", () => {
+    expect(parseSearchParams({})).toEqual({ sort: "newest" });
   });
 
-  it("extracts the text query", () => {
+  it("does not default to newest when a query is present (relevance applies)", () => {
     expect(parseSearchParams({ q: "phone" })).toEqual({ q: "phone" });
   });
 
   it("treats category and sellerId as multi-valued", () => {
-    expect(parseSearchParams({ category: ["a", "b"] })).toEqual({ category: ["a", "b"] });
-    expect(parseSearchParams({ sellerId: "abc" })).toEqual({ sellerId: ["abc"] });
+    expect(parseSearchParams({ category: ["a", "b"] })).toEqual({ category: ["a", "b"], sort: "newest" });
+    expect(parseSearchParams({ sellerId: "abc" })).toEqual({ sellerId: ["abc"], sort: "newest" });
   });
 
   it("coerces numeric params (minRating, limit) to numbers", () => {

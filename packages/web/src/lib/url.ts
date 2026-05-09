@@ -28,6 +28,11 @@ export function parseSearchParams(sp: Raw): SearchInput {
   const cursor = one(sp.cursor); if (cursor) out.cursor = cursor;
   const limit = one(sp.limit); if (limit) out.limit = Number(limit);
   const sort = one(sp.sort) as SearchInput["sort"]; if (sort) out.sort = sort;
+  // Default to "newest" for a free browse (no query, no explicit sort).
+  // Relevance only meaningfully ranks against a query; without one, freshness
+  // is what buyers actually care about, and it nudges Google's ItemList JSON-LD
+  // toward dated, easily-crawlable pages.
+  if (!out.sort && !out.q) out.sort = "newest";
   const attrs: Record<string, string> = {};
   for (const [k, v] of Object.entries(sp)) {
     if (!k.startsWith("attr.")) continue;
