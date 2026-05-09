@@ -51,6 +51,24 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   } else if (brand) {
     title = `${brand} products`;
     description = `Browse ${brand} products on Teno Store.`;
+  } else if (sellerId && !isMultiValuedSeller) {
+    // Single-seller landing — resolve the display name so the title and
+    // description carry the seller's brand instead of a generic "Browse..."
+    // string. Falls back gracefully when the API is unreachable.
+    let sellerName: string | null = null;
+    try {
+      const r = await searchProducts({ sellerId: [sellerId], limit: 1 });
+      sellerName =
+        r.facets?.sellers?.find((s) => s.value === sellerId)?.displayName ??
+        r.data[0]?.sellerDisplayName ??
+        null;
+    } catch {
+      // ignore
+    }
+    title = sellerName ? `${sellerName} on Teno Store` : "Storefront on Teno Store";
+    description = sellerName
+      ? `Browse listings from ${sellerName} on Teno Store.`
+      : "Browse listings from this seller on Teno Store.";
   } else {
     title = "Browse the marketplace";
     description = "Browse the marketplace catalog.";
