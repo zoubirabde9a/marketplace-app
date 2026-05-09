@@ -16,7 +16,9 @@
 //   CATEGORY=informatique PAGES=2 node scripts/scrape-ouedkniss.mjs
 //
 // Env knobs:
-//   MAX_AGE_DAYS=3        skip listings posted more than N days ago (0 = no filter)
+//   MAX_AGE_DAYS=3        skip listings posted more than N days ago (0 = no filter).
+//                         When > 0, listings with no parseable posting date are
+//                         also skipped — we can't certify their age.
 //   BATCH_SIZE=10         process listings in batches of N, pausing BATCH_PAUSE_MS between
 //   BATCH_PAUSE_MS=8000   pause between batches (gives rate limits a breather)
 //
@@ -34,10 +36,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(HERE, "..", "data");
 
 const CATEGORY = process.env.CATEGORY ?? "telephone";
-const PAGES = Number(process.env.PAGES ?? 3);
+const PAGES = Number(process.env.PAGES ?? 10);
 const PER_PAGE_DELAY_MS = Number(process.env.DELAY_MS ?? 4000); // be a polite scraper
 const LISTING_DELAY_MS = Number(process.env.LISTING_DELAY_MS ?? 2500);
-const MAX_LISTINGS = Number(process.env.MAX_LISTINGS ?? 30);
+const MAX_LISTINGS = Number(process.env.MAX_LISTINGS ?? 200);
 const MAX_AGE_DAYS = Number(process.env.MAX_AGE_DAYS ?? 3);
 const BATCH_SIZE = Math.max(1, Number(process.env.BATCH_SIZE ?? 10));
 const BATCH_PAUSE_MS = Number(process.env.BATCH_PAUSE_MS ?? 8000);
@@ -164,7 +166,10 @@ async function main() {
           };
         });
         const postedAt = parsePostedAt(data.structuredData, data.timeAttrs, data.relativeText);
-        if (MAX_AGE_DAYS > 0 && postedAt && ageDays(postedAt) > MAX_AGE_DAYS) {
+        if (MAX_AGE_DAYS > 0 && !postedAt) {
+          tooOld++;
+          console.log(`    skipped (no parseable posting date — cannot verify ≤ ${MAX_AGE_DAYS}d)`);
+        } else if (MAX_AGE_DAYS > 0 && ageDays(postedAt) > MAX_AGE_DAYS) {
           tooOld++;
           console.log(`    skipped (posted ${ageDays(postedAt).toFixed(1)}d ago, > ${MAX_AGE_DAYS}d)`);
         } else {

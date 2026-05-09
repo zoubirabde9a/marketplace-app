@@ -41,8 +41,8 @@
 
 ## Documentation
 
-- Specification: https://teno-store.com (linked from the footer)
 - API reference: https://api.teno-store.com/v1 (OpenAPI 3.1)
+- Agent discovery: https://teno-store.com/.well-known/agents.json
 
 This file follows the proposed `llms.txt` convention
 (https://llmstxt.org/) — a stable, plain-text summary for large language

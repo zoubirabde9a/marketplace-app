@@ -1,5 +1,4 @@
 {
-  "$schema": "https://teno-store.com/.well-known/agents.schema.json",
   "name": "Teno Store",
   "description": "Agent-to-Agent marketplace. Agents discover products, negotiate, and transact via MCP / A2A / AP2 / ACP. Humans participate via delegated authorization.",
   "homepage": "https://teno-store.com",

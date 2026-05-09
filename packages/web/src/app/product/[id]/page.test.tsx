@@ -163,7 +163,7 @@ describe("ProductPage generateMetadata", () => {
       height: 600,
       alt: "Test Widget hero shot",
     });
-    expect(m.twitter?.card).toBe("summary_large_image");
+    expect((m.twitter as { card?: string } | null)?.card).toBe("summary_large_image");
   });
 
   it("falls back to summary card and product title alt when there is no hero image", async () => {
@@ -173,6 +173,6 @@ describe("ProductPage generateMetadata", () => {
     const m = await generateMetadata({ params: Promise.resolve({ id: "p-123" }) });
 
     expect(m.openGraph?.images).toBeUndefined();
-    expect(m.twitter?.card).toBe("summary");
+    expect((m.twitter as { card?: string } | null)?.card).toBe("summary");
   });
 });

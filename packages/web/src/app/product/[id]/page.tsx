@@ -358,12 +358,12 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
 function Breadcrumbs({ title }: { title: string }) {
   return (
-    <nav className="text-xs text-ink-mute flex items-center gap-2">
+    <nav aria-label="Breadcrumb" className="text-xs text-ink-mute flex items-center gap-2">
       <Link href="/" className="hover:text-ink-soft">Home</Link>
-      <span>/</span>
+      <span aria-hidden>/</span>
       <Link href="/search" className="hover:text-ink-soft">Catalog</Link>
-      <span>/</span>
-      <span className="text-ink-soft truncate max-w-[40ch]">{title}</span>
+      <span aria-hidden>/</span>
+      <span aria-current="page" className="text-ink-soft truncate max-w-[40ch]">{title}</span>
     </nav>
   );
 }

@@ -48,4 +48,11 @@ describe("search page generateMetadata", () => {
     const m = await M({ q: "café & cream" });
     expect(m.alternates?.canonical).toBe("/search?q=caf%C3%A9%20%26%20cream");
   });
+
+  it("?q=phone&brand=Acme → both indexable individually, together noindex with canonical pinned to q", async () => {
+    const m = await M({ q: "phone", brand: "Acme" });
+    expect(m.alternates?.canonical).toBe("/search?q=phone");
+    expect(m.robots).toEqual({ index: false, follow: true });
+    expect(m.title).toBe("Search: phone");
+  });
 });
