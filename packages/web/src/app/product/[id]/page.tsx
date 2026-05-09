@@ -263,7 +263,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     WhatsApp
                   </a>
                 )}
-                {p.sellerWebsite && (
+                {p.sellerWebsite && !/^https?:\/\/(www\.)?example\.(com|org|dz|net)\b/i.test(p.sellerWebsite) && (
                   <a
                     href={p.sellerWebsite}
                     target="_blank"
