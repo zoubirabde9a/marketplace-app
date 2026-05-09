@@ -52,6 +52,8 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
           src={active!.url}
           alt={active!.altText ?? alt}
           decoding="async"
+          loading="eager"
+          fetchPriority="high"
           className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
         />
         <span className="absolute bottom-3 right-3 px-2 py-1 rounded-md text-[11px] font-mono bg-bg/80 text-ink-soft border border-line-soft opacity-0 group-hover:opacity-100 transition">
