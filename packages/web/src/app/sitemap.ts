@@ -23,8 +23,14 @@ interface SitemapProduct {
   lastModified: Date;
 }
 
-async function fetchAllProducts(): Promise<SitemapProduct[]> {
+interface SitemapHarvest {
+  products: SitemapProduct[];
+  brands: string[];
+}
+
+async function fetchAllProducts(): Promise<SitemapHarvest> {
   const products: SitemapProduct[] = [];
+  const brands: string[] = [];
   let cursor: string | null = null;
   // Cap pagination so a misbehaving API can't cause an unbounded sitemap build.
   const MAX_PAGES = 50;
@@ -45,7 +51,11 @@ async function fetchAllProducts(): Promise<SitemapProduct[]> {
       break;
     }
     if (!res.ok) break;
-    let body: { data?: SitemapProductHit[]; pagination?: { cursor: string | null } };
+    let body: {
+      data?: SitemapProductHit[];
+      pagination?: { cursor: string | null };
+      facets?: { brands?: Array<{ value: string; count: number }> };
+    };
     try {
       body = await res.json();
     } catch {
@@ -57,11 +67,17 @@ async function fetchAllProducts(): Promise<SitemapProduct[]> {
       const lastModified = ts ? new Date(ts) : new Date();
       products.push({ productId: hit.productId, lastModified });
     }
+    // Brand facets are global (not per-page), so capture from the first page only.
+    if (page === 0 && body.facets?.brands) {
+      for (const b of body.facets.brands) {
+        if (b.value && b.count > 0 && !brands.includes(b.value)) brands.push(b.value);
+      }
+    }
     cursor = body.pagination?.cursor ?? null;
     if (!cursor) break;
   }
 
-  return products;
+  return { products, brands };
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -95,18 +111,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   let productEntries: MetadataRoute.Sitemap = [];
+  let brandEntries: MetadataRoute.Sitemap = [];
   try {
-    const products = await fetchAllProducts();
+    const { products, brands } = await fetchAllProducts();
     productEntries = products.map((p) => ({
       url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
       lastModified: Number.isFinite(p.lastModified.getTime()) ? p.lastModified : now,
       changeFrequency: "daily",
       priority: 0.7,
     }));
+    // Brand-only landing pages (/search?brand=Apple) are indexable per
+    // search/page.tsx's canonical logic — give Google a direct seed for each.
+    brandEntries = brands.map((b) => ({
+      url: `${SITE_URL}/search?brand=${encodeURIComponent(b)}`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.6,
+    }));
   } catch {
     // API unreachable — fall back to static-only sitemap.
     productEntries = [];
+    brandEntries = [];
   }
 
-  return [...staticEntries, ...productEntries];
+  return [...staticEntries, ...brandEntries, ...productEntries];
 }
