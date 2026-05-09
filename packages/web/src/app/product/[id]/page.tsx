@@ -253,7 +253,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 )}
                 {p.sellerWhatsapp && (
                   <a
-                    href={`https://wa.me/${p.sellerWhatsapp.replace(/[^0-9]/g, "")}`}
+                    href={`https://wa.me/${p.sellerWhatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Bonjour / Hi! Interested in your "${p.title.value}" on Teno Store: ${SITE_URL}/product/${p.productId}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Message ${p.sellerDisplayName ?? "seller"} on WhatsApp (opens in new tab)`}

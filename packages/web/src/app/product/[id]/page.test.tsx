@@ -70,7 +70,11 @@ describe("ProductPage", () => {
     expect(phone).not.toBeNull();
     const wa = container.querySelector('a[href^="https://wa.me/"]');
     expect(wa).not.toBeNull();
-    expect(wa!.getAttribute("href")).toBe("https://wa.me/15559876543");
+    // WhatsApp link starts with the phone-only wa.me URL and carries a
+    // pre-filled text= referencing the product (helpful SOP context for
+    // sellers receiving the inbound).
+    expect(wa!.getAttribute("href")).toMatch(/^https:\/\/wa\.me\/15559876543\?text=/);
+    expect(decodeURIComponent(wa!.getAttribute("href")!)).toContain("Test Widget 9000");
     const site = container.querySelector('a[href="https://acme.example.com"]');
     expect(site).not.toBeNull();
   });
