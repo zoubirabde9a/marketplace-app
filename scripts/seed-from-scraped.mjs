@@ -55,16 +55,19 @@ function parsePriceToMinor(priceText) {
 // names first so "OnePlus" wins over a hypothetical "One". Match is
 // case-insensitive against word-boundary occurrences in the title.
 const KNOWN_BRANDS = [
-  "OnePlus", "iPhone", "Apple", "Samsung", "Xiaomi", "Huawei", "Honor",
-  "Vivo", "Oppo", "Realme", "Google Pixel", "Google", "Sony", "Lenovo",
-  "Dell", "HP", "Asus", "Acer", "MSI", "Logitech", "Jabra", "DJI",
-  "Insta360", "Baseus", "Anker", "JBL", "Bose", "Pitaka", "Nokia",
-  "Redmi", "POCO", "Microsoft",
+  "OnePlus", "One plus", "iPhone", "I phone", "Apple", "Samsung", "Galaxy",
+  "Xiaomi", "Huawei", "Honor", "Vivo", "Oppo", "Realme", "Google Pixel",
+  "Google", "Sony", "Lenovo", "Dell", "HP", "Asus", "Acer", "MSI",
+  "Logitech", "Jabra", "DJI", "Insta360", "Baseus", "Anker", "JBL", "Bose",
+  "Pitaka", "Nokia", "Redmi", "POCO", "Microsoft",
 ];
 
 // Some brand spellings on the marketplace map to a canonical brand name.
 const BRAND_CANONICAL = {
   iPhone: "Apple",
+  "I phone": "Apple",
+  Galaxy: "Samsung",
+  "One plus": "OnePlus",
   Redmi: "Xiaomi",
   POCO: "Xiaomi",
   "Google Pixel": "Google",
