@@ -46,7 +46,7 @@ export function ProductCard({ hit }: { hit: SearchHit }) {
         </div>
       </div>
       <div className="p-4 flex flex-col gap-2 flex-1">
-        <h2 className="text-sm font-medium text-ink line-clamp-2 leading-snug untrusted">
+        <h2 dir="auto" className="text-sm font-medium text-ink line-clamp-2 leading-snug untrusted">
           {hit.title.value}
         </h2>
         {(() => {

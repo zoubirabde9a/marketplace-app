@@ -229,7 +229,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               {p.brand && <span className="text-xs uppercase tracking-widest text-ink-mute font-medium">{p.brand}</span>}
               <CounterfeitBadge risk={p.counterfeitRisk} />
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight leading-tight untrusted">{p.title.value}</h1>
+            <h1 dir="auto" className="text-3xl font-semibold tracking-tight leading-tight untrusted">{p.title.value}</h1>
             <div className="mt-3 text-sm text-ink-soft">
               Sold by{" "}
               <Link
@@ -303,7 +303,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           {p.description && (
             <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-5">
               <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-2">Description</h2>
-              <p className="text-sm leading-relaxed text-ink-soft whitespace-pre-line untrusted">
+              <p dir="auto" className="text-sm leading-relaxed text-ink-soft whitespace-pre-line untrusted">
                 {p.description.value}
               </p>
             </div>
