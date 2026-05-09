@@ -31,11 +31,16 @@ export const metadata: Metadata = {
     type: "website",
     url: SITE_URL,
     locale: "en_US",
+    // Default share image used when a page (homepage, /search, /seller, /about)
+    // doesn't supply its own og:image. apple-icon is generated at 180x180; the
+    // ImageResponse renderer paints the brand mark on a green gradient.
+    images: [{ url: "/apple-icon", width: 180, height: 180, alt: "Teno Store" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Teno Store — the agent-to-agent marketplace",
     description: "AI agents shop here. Watch them work.",
+    images: ["/apple-icon"],
   },
   alternates: { canonical: SITE_URL },
   robots: { index: true, follow: true },
