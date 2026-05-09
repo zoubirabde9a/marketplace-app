@@ -39,6 +39,11 @@ export const metadata: Metadata = {
   },
   alternates: { canonical: SITE_URL },
   robots: { index: true, follow: true },
+  // Prevent iOS Safari and Chrome from auto-detecting numeric text (DZD
+  // prices, productIds, dates) and turning them into tel:/email/address
+  // links. The product page emits explicit <a href="tel:..."> chips for
+  // real seller phone numbers, so opt out of the heuristic everywhere.
+  formatDetection: { telephone: false, email: false, address: false },
 };
 
 export const viewport: Viewport = {
