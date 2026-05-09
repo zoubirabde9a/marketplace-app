@@ -1,4 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+// Next 15 streams the response head before notFound() can set a 404 status,
+// so this UI is currently served with HTTP 200 — a soft-404 in Google's eyes.
+// Until that's resolved upstream, a hard noindex keeps crawlers from indexing
+// the placeholder page.
+export const metadata: Metadata = {
+  title: "Product not found",
+  robots: { index: false, follow: true },
+};
 
 export default function ProductNotFound() {
   return (
