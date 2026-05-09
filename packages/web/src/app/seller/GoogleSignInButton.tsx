@@ -92,16 +92,27 @@ export function GoogleSignInButton({
       });
     };
 
+    const onError = () => {
+      if (cancelled) return;
+      setError(
+        "Couldn’t load Google Sign-In. This usually means the network is blocking accounts.google.com — try a different network or disable a script blocker.",
+      );
+    };
+
     const existing = document.querySelector(`script[src="${SCRIPT_SRC}"]`) as HTMLScriptElement | null;
     if (existing) {
       if (window.google) onLoad();
-      else existing.addEventListener("load", onLoad);
+      else {
+        existing.addEventListener("load", onLoad);
+        existing.addEventListener("error", onError);
+      }
     } else {
       const s = document.createElement("script");
       s.src = SCRIPT_SRC;
       s.async = true;
       s.defer = true;
       s.addEventListener("load", onLoad);
+      s.addEventListener("error", onError);
       document.head.appendChild(s);
     }
     return () => {

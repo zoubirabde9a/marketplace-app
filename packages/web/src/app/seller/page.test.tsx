@@ -36,7 +36,15 @@ describe("SellerLandingPage (signed-out)", () => {
     const { getCurrentUser } = await import("@/lib/sellerSession");
     vi.mocked(getCurrentUser).mockResolvedValueOnce({
       jwt: "j",
-      user: { id: "u1", email: "x@y.z", displayName: "Test", picture: null },
+      user: {
+        id: "u1",
+        email: "x@y.z",
+        emailVerified: true,
+        displayName: "Test",
+        picture: null,
+        status: "active",
+        createdAt: "2026-05-09T00:00:00Z",
+      },
     });
     await expect(SellerLandingPage()).rejects.toThrowError("REDIRECT:/seller/dashboard");
   });

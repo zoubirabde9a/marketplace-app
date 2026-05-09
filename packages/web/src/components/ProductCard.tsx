@@ -20,6 +20,7 @@ export function ProductCard({ hit }: { hit: SearchHit }) {
             src={hit.heroImageUrl}
             alt={hit.heroImage?.altText ?? hit.title.value}
             loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
           />
         ) : (

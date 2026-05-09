@@ -52,6 +52,7 @@ export function Gallery({ images, alt }: { images: Img[]; alt: string }) {
         <img
           src={active!.url}
           alt={active!.altText ?? alt}
+          decoding="async"
           className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
         />
         <span className="absolute bottom-3 right-3 px-2 py-1 rounded-md text-[11px] font-mono bg-bg/80 text-ink-soft border border-line-soft opacity-0 group-hover:opacity-100 transition">
@@ -72,7 +73,7 @@ export function Gallery({ images, alt }: { images: Img[]; alt: string }) {
               )}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt={img.altText ?? `${alt} thumbnail ${i + 1}`} className="w-full h-full object-cover" />
+              <img src={img.url} alt={img.altText ?? `${alt} thumbnail ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -110,6 +111,7 @@ export function Gallery({ images, alt }: { images: Img[]; alt: string }) {
           <img
             src={active!.url}
             alt={active!.altText ?? alt}
+            decoding="async"
             className="max-w-full max-h-full object-contain rounded-lg"
             onClick={(e) => e.stopPropagation()}
           />
