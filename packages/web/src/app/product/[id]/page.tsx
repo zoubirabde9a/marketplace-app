@@ -284,11 +284,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     Website
                   </a>
                 )}
-                <ShareButton title={p.title.value} />
+                <ShareButton title={p.title.value} url={`${SITE_URL}/product/${encodeURIComponent(p.productId)}`} />
               </address>
             )}
             {!(p.sellerPhone || p.sellerWhatsapp || p.sellerWebsite) && (
-              <div className="mt-3"><ShareButton title={p.title.value} /></div>
+              <div className="mt-3"><ShareButton title={p.title.value} url={`${SITE_URL}/product/${encodeURIComponent(p.productId)}`} /></div>
             )}
           </div>
 

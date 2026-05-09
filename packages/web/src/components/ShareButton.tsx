@@ -2,11 +2,14 @@
 
 import { useState } from "react";
 
-export function ShareButton({ title }: { title: string }) {
+export function ShareButton({ title, url: urlProp }: { title: string; url?: string }) {
   const [state, setState] = useState<"idle" | "copied">("idle");
 
   async function onClick() {
-    const url = typeof window !== "undefined" ? window.location.href : "";
+    // Prefer the canonical URL from the parent (no tracking params, no
+    // analytics fragments). Fall back to the current location for callers
+    // that haven't passed one.
+    const url = urlProp ?? (typeof window !== "undefined" ? window.location.href : "");
     if (typeof navigator !== "undefined" && "share" in navigator) {
       try {
         await navigator.share({ title, url });
