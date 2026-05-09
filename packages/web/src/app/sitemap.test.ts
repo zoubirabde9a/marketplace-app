@@ -63,6 +63,35 @@ describe("sitemap()", () => {
     expect(urls.some((u) => u.includes("/product/"))).toBe(false);
   });
 
+  it("emits one sitemap entry per active brand and per active seller", async () => {
+    fetchMock.mockResolvedValueOnce(
+      okResponse({
+        data: [{ productId: "p1" }],
+        pagination: { cursor: null },
+        facets: {
+          brands: [
+            { value: "Apple", count: 5 },
+            { value: "Samsung", count: 3 },
+            // Zero-count brands shouldn't be emitted.
+            { value: "Ghost", count: 0 },
+          ],
+          sellers: [
+            { sellerId: "s-1", displayName: "Smart Phone DZ", count: 7 },
+            { sellerId: "s-2", displayName: "TechStore", count: 2 },
+          ],
+        },
+      }),
+    );
+
+    const entries = await sitemap();
+    const urls = entries.map((e) => e.url);
+    expect(urls.some((u) => u.endsWith("/search?brand=Apple"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/search?brand=Samsung"))).toBe(true);
+    expect(urls.some((u) => u.includes("brand=Ghost"))).toBe(false);
+    expect(urls.some((u) => u.endsWith("/search?sellerId=s-1"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/search?sellerId=s-2"))).toBe(true);
+  });
+
   it("falls back to static entries when the API responds non-OK", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: false,
