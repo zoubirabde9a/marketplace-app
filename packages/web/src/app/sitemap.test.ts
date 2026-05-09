@@ -78,6 +78,7 @@ describe("sitemap()", () => {
     expect(urls.some((u) => u.endsWith("/"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/search"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/seller"))).toBe(true);
-    expect(urls.length).toBe(3);
+    expect(urls.some((u) => u.endsWith("/about"))).toBe(true);
+    expect(urls.length).toBe(4);
   });
 });

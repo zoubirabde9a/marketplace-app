@@ -62,6 +62,9 @@ const PUBLIC_MATCHERS: ReadonlyArray<(method: string, path: string) => boolean> 
   (m, p) => /^\/v1\/cart(\/.*)?$/.test(p),
   (m, p) => m === "POST" && /^\/v1\/checkout\/.+$/.test(p),
   (m, p) => m === "GET" && /^\/v1\/orders\/[^/]+$/.test(p),
+  // Snapshots are public-token addressed: the unguessable id IS the credential.
+  // The route handler validates the id format and 410s on miss/expiry.
+  (m, p) => m === "GET" && /^\/v1\/snapshots\/[^/]+$/.test(p),
   (m, p) => m === "POST" && p === "/v1/auth/google",
   (m, p) => m === "POST" && p === "/v1/auth/exchange-link",
 ];

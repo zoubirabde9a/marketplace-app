@@ -23,10 +23,13 @@ type Snapshot = {
   expiresAt: number;
 };
 
-async function fetchSnapshot(id: string): Promise<Snapshot | { expired: true } | null> {
+async function fetchSnapshot(
+  id: string,
+): Promise<Snapshot | { expired: true } | { unauthorized: true } | null> {
   const res = await fetch(`${API_URL}/v1/snapshots/${encodeURIComponent(id)}`, { cache: "no-store" });
   if (res.status === 410) return { expired: true };
   if (res.status === 404) return null;
+  if (res.status === 401 || res.status === 403) return { unauthorized: true };
   if (!res.ok) return null;
   return (await res.json()) as Snapshot;
 }
@@ -55,6 +58,19 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
       <main className="max-w-3xl mx-auto p-6">
         <h1 className="text-2xl font-semibold mb-2">Snapshot not found</h1>
         <p className="text-ink-soft">This link is invalid.</p>
+        <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
+      </main>
+    );
+  }
+
+  if ("unauthorized" in snap) {
+    return (
+      <main className="max-w-3xl mx-auto p-6">
+        <h1 className="text-2xl font-semibold mb-2">Snapshot access denied</h1>
+        <p className="text-ink-soft">
+          This snapshot exists but isn’t accessible from this link. The token
+          may have been revoked or wasn’t included in the URL.
+        </p>
         <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
       </main>
     );

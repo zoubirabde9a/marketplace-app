@@ -112,6 +112,21 @@ describe("SnapshotPage", () => {
     expect(container.textContent).toMatch(/not found/i);
   });
 
+  it("renders the access-denied view when API returns 401", async () => {
+    mockFetch(() => new Response("", { status: 401 }));
+    const tree = await SnapshotPage({ params: Promise.resolve({ id: "auth" }) });
+    const { container } = render(tree);
+    expect(container.textContent).toMatch(/access denied/i);
+    expect(container.textContent).not.toMatch(/not found/i);
+  });
+
+  it("renders the access-denied view when API returns 403", async () => {
+    mockFetch(() => new Response("", { status: 403 }));
+    const tree = await SnapshotPage({ params: Promise.resolve({ id: "forbidden" }) });
+    const { container } = render(tree);
+    expect(container.textContent).toMatch(/access denied/i);
+  });
+
   it("renders raw JSON for compare and recommend kinds", async () => {
     mockFetch(() =>
       jsonResponse({

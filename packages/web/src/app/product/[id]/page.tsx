@@ -34,6 +34,13 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       ]
     : undefined;
   const canonical = `/product/${encodeURIComponent(p.productId)}`;
+  // Currency-based locale heuristic: DZD-priced listings come from Algerian
+  // sellers whose titles/descriptions are predominantly French. Until the
+  // API ships an explicit per-listing language tag, this is the best signal
+  // available for og:locale (used by Facebook, LinkedIn, and indexers that
+  // honor it). Defaults to en_US (matches the layout) for everything else.
+  const productCurrency = p.variants[0]?.currency;
+  const ogLocale = productCurrency === "DZD" ? "fr_DZ" : "en_US";
   return {
     title,
     description: desc,
@@ -43,6 +50,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       description: desc,
       images,
       url: canonical,
+      locale: ogLocale,
     },
     twitter: {
       card: p.heroImageUrl ? "summary_large_image" : "summary",

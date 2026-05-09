@@ -16,7 +16,12 @@
     },
     "rest": {
       "openapi": "https://api.teno-store.com/v1/openapi.json",
-      "base": "https://api.teno-store.com/v1"
+      "openapi_auth": "oauth2.1+pkce+dpop",
+      "base": "https://api.teno-store.com/v1",
+      "public_endpoints": [
+        "GET /v1/products",
+        "GET /v1/products/{id}"
+      ]
     },
     "ap2": {
       "version": "0.2.0",

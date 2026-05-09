@@ -175,4 +175,18 @@ describe("ProductPage generateMetadata", () => {
     expect(m.openGraph?.images).toBeUndefined();
     expect((m.twitter as { card?: string } | null)?.card).toBe("summary");
   });
+
+  it("sets og:locale=fr_DZ for DZD-priced products and en_US otherwise", async () => {
+    const dzdProduct = baseProduct({
+      variants: [{ id: "v1", sku: "SKU-1", priceMinor: "100000", currency: "DZD", inStock: true }],
+    });
+    vi.mocked(getProduct).mockResolvedValueOnce(dzdProduct);
+    const dzd = await generateMetadata({ params: Promise.resolve({ id: "p-123" }) });
+    expect(dzd.openGraph?.locale).toBe("fr_DZ");
+
+    const usdProduct = baseProduct();
+    vi.mocked(getProduct).mockResolvedValueOnce(usdProduct);
+    const usd = await generateMetadata({ params: Promise.resolve({ id: "p-456" }) });
+    expect(usd.openGraph?.locale).toBe("en_US");
+  });
 });
