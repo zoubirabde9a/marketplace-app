@@ -83,7 +83,8 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
       req.url === "/v1/auth/exchange-link" ||
       /^\/v1\/products\/[^/]+\/media(\/[^/]+)?(\?|$)/.test(req.url),
   });
-  await registerProductRoutes(app, opts.productReader);
+  const snapshotStore = opts.snapshotStore ?? new catalog.MemorySnapshotStore();
+  await registerProductRoutes(app, opts.productReader, snapshotStore);
   await registerSellerRoutes(app, opts.repos.sellers);
   await registerProductWriteRoutes(app, { sellers: opts.repos.sellers, products: opts.repos.products });
   await registerCartRoutes(app, opts.repos.carts);
@@ -93,9 +94,7 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
     await registerAuthRoutes(app, { ...opts.authRouteDeps, users: opts.repos.users });
   }
   await registerMeRoutes(app, { users: opts.repos.users });
-  await registerSnapshotRoutes(app, {
-    store: opts.snapshotStore ?? new catalog.MemorySnapshotStore(),
-  });
+  await registerSnapshotRoutes(app, { store: snapshotStore });
 
   return app;
 }

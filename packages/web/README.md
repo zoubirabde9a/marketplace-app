@@ -14,6 +14,8 @@ All seller-supplied content is rendered with a small dot marker (`.untrusted`) a
 
 The MCP `catalog.search` and `catalog.get_product` tools include a `webUrl` field whenever the env var `MARKETPLACE_WEB_BASE_URL` is set. The agent passes that URL back to the human as a clickable link.
 
+The same env gates the `snapshotUrl` field returned alongside catalog reads — both on the MCP tools (`catalog.search`, `catalog.get_product`, `catalog.compare`, `catalog.recommend`) and on the REST endpoints `GET /v1/products` and `GET /v1/products/{id}`. Each response carries `snapshotUrl`, `snapshotCreatedAt`, `snapshotExpiresAt`; the snapshot itself is served at `/s/{id}` and expires after 24 hours (spec §8.4).
+
 ## Running
 
 ```bash

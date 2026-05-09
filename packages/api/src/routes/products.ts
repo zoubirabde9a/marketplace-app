@@ -211,7 +211,48 @@ function productViewUrl(base: string, productId: string): string {
   return `${base}/v1/products/${productId}`;
 }
 
-export async function registerProductRoutes(app: FastifyInstance, reader: ProductReader): Promise<void> {
+// Web origin for human-facing snapshot links — same env var the MCP server uses
+// so REST and MCP responses produce identical /s/{id} URLs.
+function webBase(): string | null {
+  const v = process.env.MARKETPLACE_WEB_BASE_URL;
+  return v ? v.replace(/\/$/, "") : null;
+}
+
+function snapshotWebUrl(id: string): string | undefined {
+  const base = webBase();
+  return base ? `${base}/s/${id}` : undefined;
+}
+
+async function captureRestSnapshot(
+  store: catalog.SnapshotStore | undefined,
+  kind: catalog.SnapshotKind,
+  agentId: string,
+  input: unknown,
+  output: unknown,
+): Promise<{ snapshotUrl: string; snapshotCreatedAt: number; snapshotExpiresAt: number } | undefined> {
+  if (!store) return undefined;
+  const url = snapshotWebUrl("placeholder");
+  if (!url) return undefined;
+  const id = catalog.newSnapshotId();
+  const createdAt = Date.now();
+  const expiresAt = createdAt + catalog.SNAPSHOT_TTL_MS;
+  await store.put({
+    id,
+    kind,
+    input,
+    output,
+    ...(agentId !== "anonymous" ? { agentId } : {}),
+    createdAt,
+    expiresAt,
+  });
+  return { snapshotUrl: snapshotWebUrl(id)!, snapshotCreatedAt: createdAt, snapshotExpiresAt: expiresAt };
+}
+
+export async function registerProductRoutes(
+  app: FastifyInstance,
+  reader: ProductReader,
+  snapshots?: catalog.SnapshotStore,
+): Promise<void> {
   app.get("/v1/products", async (req) => {
     const agentId = req.principal?.agentId ?? "anonymous";
     const params = SearchQueryParamsSchema.parse(req.query);
@@ -238,7 +279,7 @@ export async function registerProductRoutes(app: FastifyInstance, reader: Produc
     };
     const r = await reader.search(query, { agentId });
     const base = resolveBaseUrl(req as unknown as { protocol: string; hostname: string; headers: Record<string, unknown> });
-    return {
+    const body = {
       data: r.hits.map((h) => ({
         productId: h.productId,
         viewUrl: productViewUrl(base, h.productId),
@@ -275,6 +316,8 @@ export async function registerProductRoutes(app: FastifyInstance, reader: Produc
         })),
       },
     };
+    const snap = await captureRestSnapshot(snapshots, "search", agentId, { query, limit: params.limit, sort: params.sort, cursor: params.cursor }, body);
+    return snap ? { ...body, ...snap } : body;
   });
 
   app.get<{ Params: { id: string } }>("/v1/products/:id", async (req) => {
@@ -282,7 +325,9 @@ export async function registerProductRoutes(app: FastifyInstance, reader: Produc
     const p = await reader.getProduct(req.params.id, { agentId });
     if (!p) throw new NotFoundError("product", req.params.id);
     const base = resolveBaseUrl(req as unknown as { protocol: string; hostname: string; headers: Record<string, unknown> });
-    return { ...projectDetail(p), viewUrl: productViewUrl(base, p.productId) };
+    const body = { ...projectDetail(p), viewUrl: productViewUrl(base, p.productId) };
+    const snap = await captureRestSnapshot(snapshots, "product", agentId, { productId: req.params.id }, body);
+    return snap ? { ...body, ...snap } : body;
   });
 
   app.get("/v1/products/_batch", async (req) => {
