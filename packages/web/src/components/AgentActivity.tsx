@@ -10,6 +10,10 @@ const STATUS_STYLE: Record<string, string> = {
   denied: "text-warn bg-warn/10 border-warn/30",
   error: "text-bad bg-bad/10 border-bad/30",
 };
+// Neutral fallback for unrecognized status values — better than rendering an
+// unknown status as 'ok' (success-green) when it might actually be a new
+// failure mode. Operators eyeballing the feed should notice unknowns.
+const STATUS_STYLE_UNKNOWN = "text-ink-mute bg-bg-elev border-line-soft";
 
 function relTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -82,11 +86,11 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
           ) : (
             <ul className="divide-y divide-line-soft">
               {data.recentActions.map((a) => {
-                const stylesKey = a.status in STATUS_STYLE ? a.status : "ok";
+                const styleClass = STATUS_STYLE[a.status] ?? STATUS_STYLE_UNKNOWN;
                 return (
                   <li key={a.id} className="py-3 flex items-start gap-3">
                     <span
-                      className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md border font-medium ${STATUS_STYLE[stylesKey]}`}
+                      className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-md border font-medium ${styleClass}`}
                       title={a.status}
                     >
                       {a.status}
