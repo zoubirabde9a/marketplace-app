@@ -78,6 +78,12 @@ export async function registerAudit(app: FastifyInstance, deps: AuditDeps): Prom
     const principal = req.principal;
     if (!principal) return; // anonymous — nothing to record
 
+    // Synthetic user principals (browser session auth) carry agentId
+    // "user:<uuid>". They have no agent/passport row in the DB, so the
+    // record would fail FK checks and get swallowed — short-circuit to
+    // avoid the futile roundtrip and the error-log noise.
+    if (principal.agentId.startsWith("user:")) return;
+
     const path = pathOnly(req.url);
     if (SKIP_PATH_PREFIXES.some((p) => path.startsWith(p))) return;
 

@@ -2,15 +2,19 @@ import type { FastifyInstance } from "fastify";
 
 export async function registerWellKnown(app: FastifyInstance): Promise<void> {
   app.get("/.well-known/agent-card.json", async () => ({
-    name: "Agent-to-Agent Marketplace",
-    description: "API-first marketplace for AI agents (MCP, A2A, AP2, ACP).",
+    name: "Teno Store",
+    description:
+      "Teno Store — agent-to-agent marketplace. API-first commerce for AI agents via MCP, A2A, AP2. Humans participate via delegated authorization.",
     // Fall back to the local API origin so agent-discovery works in dev without
     // an external domain. Production deployments must set PUBLIC_BASE_URL.
     url: process.env.PUBLIC_BASE_URL ?? `http://${process.env.HOST ?? "127.0.0.1"}:${process.env.PORT ?? "3100"}`,
+    // Capabilities here mirror the human-readable agents.json on the apex.
+    // ACP is intentionally omitted — not currently implemented; if it gets
+    // added later, list it in BOTH this file and packages/web/public/.well-known/agents.json.
     capabilities: {
       mcp: { transport: "streamable-http", endpoint: "/mcp" },
       a2a: { endpoint: "/a2a" },
-      acp: { endpoint: "/acp" },
+      ap2: { version: "0.2.0", mandates: "supported" },
     },
     auth: {
       oauth2: {
