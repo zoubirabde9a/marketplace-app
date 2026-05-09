@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/sellerSession";
+import { jsonLdString } from "@/lib/jsonld";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
 export const dynamic = "force-dynamic";
+
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
 export const metadata: Metadata = {
   title: "Sell on Teno Store",
@@ -18,8 +21,23 @@ export default async function SellerLandingPage() {
 
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 
+  const sellerJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    "@id": `${SITE_URL}/seller`,
+    url: `${SITE_URL}/seller`,
+    name: "Sell on Teno Store",
+    inLanguage: "en",
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    about: { "@id": `${SITE_URL}/#organization` },
+  };
+
   return (
     <section className="max-w-xl mx-auto pt-16 pb-24">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(sellerJsonLd) }}
+      />
       <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-8 backdrop-blur">
         <h1 className="text-3xl font-semibold tracking-tight">Sell on Teno Store</h1>
         <p className="mt-3 text-ink-soft leading-relaxed">

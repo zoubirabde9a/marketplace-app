@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { render, cleanup } from "@testing-library/react";
+import React from "react";
 
 vi.mock("@/lib/sellerSession", () => ({
   getCurrentUser: vi.fn(async () => null),
@@ -21,9 +22,21 @@ describe("SellerLandingPage (signed-out)", () => {
     expect(metadata.alternates?.canonical).toBe("/seller");
   });
 
+  it("emits WebPage JSON-LD cross-referencing the homepage WebSite + Organization", async () => {
+    const tree = await SellerLandingPage();
+    const { container } = render(tree as React.ReactElement);
+    const ld = container.querySelector('script[type="application/ld+json"]');
+    expect(ld).not.toBeNull();
+    const payload = JSON.parse(ld!.innerHTML);
+    expect(payload["@type"]).toBe("WebPage");
+    expect(payload.name).toBe("Sell on Teno Store");
+    expect(payload.isPartOf?.["@id"]).toMatch(/#website$/);
+    expect(payload.about?.["@id"]).toMatch(/#organization$/);
+  });
+
   it("renders the value-prop bullets explaining what selling looks like", async () => {
     const tree = await SellerLandingPage();
-    const { container } = render(tree);
+    const { container } = render(tree as React.ReactElement);
     const text = container.textContent ?? "";
     // Three bullets from iteration 47, asserted on substantive substrings so
     // copy can evolve without breaking the test entirely.

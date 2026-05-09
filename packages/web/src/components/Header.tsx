@@ -12,7 +12,16 @@ export function Header() {
           <span className="font-semibold tracking-tight hidden sm:inline">Teno Store</span>
         </Link>
         <div className="flex-1 max-w-2xl">
-          <Suspense fallback={<div className="h-10 rounded-xl bg-bg-soft/80 border border-line" />}>
+          <Suspense
+            fallback={
+              <div
+                className="h-10 rounded-xl bg-bg-soft/80 border border-line"
+                role="status"
+                aria-busy="true"
+                aria-label="Loading search"
+              />
+            }
+          >
             <SearchBar />
           </Suspense>
         </div>
@@ -20,7 +29,14 @@ export function Header() {
           <Link href="/search" className="hidden sm:inline-flex px-3 py-1.5 rounded-md hover:text-ink hover:bg-bg-elev transition">Browse</Link>
           <Suspense
             fallback={
-              <span className="px-3 py-1.5 text-sm text-ink-mute">…</span>
+              <span
+                className="px-3 py-1.5 text-sm text-ink-mute"
+                role="status"
+                aria-busy="true"
+                aria-label="Loading user menu"
+              >
+                <span aria-hidden>…</span>
+              </span>
             }
           >
             <HeaderUserMenu />
