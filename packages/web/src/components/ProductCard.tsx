@@ -3,7 +3,7 @@ import type { SearchHit } from "@/lib/api";
 import { formatPrice, formatPriceRange, formatRating, formatRelativeTime } from "@/lib/format";
 import { CounterfeitBadge } from "./CounterfeitBadge";
 
-export function ProductCard({ hit }: { hit: SearchHit }) {
+export function ProductCard({ hit, eager = false }: { hit: SearchHit; eager?: boolean }) {
   const priceLabel = hit.priceMinor
     ? formatPrice(hit.priceMinor, hit.currency)
     : formatPriceRange(hit.priceFromMinor ?? null, hit.priceToMinor ?? null, hit.currency);
@@ -19,7 +19,8 @@ export function ProductCard({ hit }: { hit: SearchHit }) {
           <img
             src={hit.heroImageUrl}
             alt={hit.heroImage?.altText ?? hit.title.value}
-            loading="lazy"
+            loading={eager ? "eager" : "lazy"}
+            fetchPriority={eager ? "high" : "auto"}
             decoding="async"
             className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
           />
