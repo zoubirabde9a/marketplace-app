@@ -77,11 +77,23 @@ export default async function LoginPage({
 
       <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
         {GOOGLE_CLIENT_ID ? (
-          <GoogleSignInButton
-            clientId={GOOGLE_CLIENT_ID}
-            apiPath="/api/auth/session"
-            nextHref={next}
-          />
+          <>
+            <GoogleSignInButton
+              clientId={GOOGLE_CLIENT_ID}
+              apiPath="/api/auth/session"
+              nextHref={next}
+            />
+            <noscript>
+              <p className="mt-3 text-sm text-warn">
+                Sign-in requires JavaScript. Public catalog browsing works without
+                it — try{" "}
+                <a href="/search" className="text-accent hover:underline">
+                  /search
+                </a>
+                .
+              </p>
+            </noscript>
+          </>
         ) : (
           <p className="text-sm text-bad" role="alert">
             Sign-in is misconfigured. Please reach out to the operator.

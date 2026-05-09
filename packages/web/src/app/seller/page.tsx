@@ -47,6 +47,15 @@ export default async function SellerLandingPage() {
         {clientId ? (
           <div className="mt-6">
             <GoogleSignInButton clientId={clientId} />
+            <noscript>
+              <p className="mt-3 text-sm text-warn">
+                Sign-in requires JavaScript. Enable JavaScript or contact us at
+                <a href="mailto:mahlledz@gmail.com" className="text-accent hover:underline ml-1">
+                  mahlledz@gmail.com
+                </a>{" "}
+                to onboard manually.
+              </p>
+            </noscript>
           </div>
         ) : (
           <div className="mt-6 rounded-xl border border-warn/40 bg-warn/10 p-4 text-sm text-warn">

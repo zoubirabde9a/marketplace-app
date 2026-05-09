@@ -103,8 +103,14 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-xs text-ink-soft">{relTime(a.occurredAt)}</div>
-                      <div className="text-[10px] text-ink-mute font-mono">
+                      <time
+                        dateTime={a.occurredAt}
+                        title={a.occurredAt}
+                        className="text-xs text-ink-soft"
+                      >
+                        {relTime(a.occurredAt)}
+                      </time>
+                      <div className="text-[10px] text-ink-mute font-mono" aria-label={`Latency ${a.latencyMs} milliseconds`}>
                         {a.latencyMs}ms
                       </div>
                     </div>
