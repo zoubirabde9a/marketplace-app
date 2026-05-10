@@ -26,6 +26,41 @@ const AI_USER_AGENTS = [
   "Meta-ExternalAgent",
   // Common Crawl (used by many model trainers)
   "CCBot",
+  // Apple — powers Siri, Spotlight and Apple Intelligence retrieval
+  "Applebot",
+  "Applebot-Extended",
+  // Amazon — Alexa Answers and broader Amazon LLM retrieval
+  "Amazonbot",
+  // ByteDance / TikTok search
+  "Bytespider",
+  // Diffbot (used by Anthropic + many other LLM training corpora)
+  "Diffbot",
+  // Cohere
+  "cohere-ai",
+  "cohere-training-data-crawler",
+  // You.com
+  "YouBot",
+  // Mistral / Le Chat retrieval
+  "MistralAI-User",
+  // DuckDuckGo's AI assist crawler (above and beyond DuckDuckBot search)
+  "DuckAssistBot",
+];
+
+// Social-share scrapers — these aren't AI crawlers, they're the bots that
+// fetch a URL the moment someone pastes it into a chat / post to render
+// the link preview. Already allowed by the wildcard rule, but spelling
+// them out explicitly avoids any future Disallow regression catching them
+// in the crossfire.
+const SOCIAL_SHARE_USER_AGENTS = [
+  "facebookexternalhit",
+  "Facebot",
+  "Twitterbot",
+  "LinkedInBot",
+  "Slackbot",
+  "Discordbot",
+  "WhatsApp",
+  "TelegramBot",
+  "Pinterestbot",
 ];
 
 export default function robots(): MetadataRoute.Robots {
@@ -39,7 +74,7 @@ export default function robots(): MetadataRoute.Robots {
         // /s/ are private snapshot links that are public-token addressed.
         disallow: ["/api/", "/login", "/seller/", "/s/"],
       },
-      ...AI_USER_AGENTS.map((ua) => ({
+      ...[...AI_USER_AGENTS, ...SOCIAL_SHARE_USER_AGENTS].map((ua) => ({
         userAgent: ua,
         allow: ["/", "/search", "/product/", "/seller", "/about"],
         disallow: ["/api/", "/login", "/seller/", "/s/"],
