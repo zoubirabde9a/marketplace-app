@@ -54,7 +54,13 @@ export const metadata: Metadata = {
     // requirement (≥1200×675) and produced a tiny corner-of-card preview
     // on every X/Twitter share.
   },
-  alternates: { canonical: SITE_URL },
+  alternates: {
+    canonical: SITE_URL,
+    // Atom feed of the 50 most-recent listings. Feed readers, RSS-aware
+    // search engines (Bing/Yandex), and AI crawlers (ChatGPT, Perplexity,
+    // Claude search) auto-discover via <link rel=alternate type=...>.
+    types: { "application/atom+xml": [{ url: "/feed.xml", title: "Teno Store — Recent listings" }] },
+  },
   robots: { index: true, follow: true },
   // Prevent iOS Safari and Chrome from auto-detecting numeric text (DZD
   // prices, productIds, dates) and turning them into tel:/email/address
