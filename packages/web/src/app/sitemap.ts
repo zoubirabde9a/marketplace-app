@@ -220,7 +220,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticEntries: MetadataRoute.Sitemap = [
     {
-      url: `${SITE_URL}/`,
+      // No trailing slash — match what the home page actually emits as
+      // canonical. Layout sets canonical to SITE_URL (no slash), so the
+      // sitemap entry must match or we send Google two slightly-different
+      // URLs to dedupe.
+      url: SITE_URL,
       lastModified: now,
       changeFrequency: "daily",
       priority: 1.0,

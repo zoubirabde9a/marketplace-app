@@ -33,7 +33,8 @@ describe("sitemap()", () => {
 
     const entries = await sitemap();
     const urls = entries.map((e) => e.url);
-    expect(urls.some((u) => u.endsWith("/"))).toBe(true);
+    // Home URL is bare SITE_URL (no trailing slash) — see sitemap.ts.
+    expect(urls.some((u) => /https?:\/\/[^/]+$/.test(u))).toBe(true);
     expect(urls.some((u) => u.endsWith("/search"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/product/abc"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/product/def"))).toBe(true);
@@ -60,7 +61,8 @@ describe("sitemap()", () => {
     const entries = await sitemap();
     expect(entries.length).toBeGreaterThanOrEqual(2);
     const urls = entries.map((e) => e.url);
-    expect(urls.some((u) => u.endsWith("/"))).toBe(true);
+    // Home URL is bare SITE_URL (no trailing slash) — see sitemap.ts.
+    expect(urls.some((u) => /https?:\/\/[^/]+$/.test(u))).toBe(true);
     expect(urls.some((u) => u.endsWith("/search"))).toBe(true);
     // No product URLs in fallback
     expect(urls.some((u) => u.includes("/product/"))).toBe(false);
@@ -107,7 +109,8 @@ describe("sitemap()", () => {
     const entries = await sitemap();
     const urls = entries.map((e) => e.url);
     expect(urls.some((u) => u.includes("/product/"))).toBe(false);
-    expect(urls.some((u) => u.endsWith("/"))).toBe(true);
+    // Home URL is bare SITE_URL (no trailing slash) — see sitemap.ts.
+    expect(urls.some((u) => /https?:\/\/[^/]+$/.test(u))).toBe(true);
     expect(urls.some((u) => u.endsWith("/search"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/seller"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/about"))).toBe(true);
