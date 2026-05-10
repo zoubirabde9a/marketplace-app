@@ -16,11 +16,13 @@ interface SitemapProductHit {
   productId: string;
   postedAt?: string | null;
   updatedAt?: string | null;
+  heroImageUrl?: string | null;
 }
 
 interface SitemapProduct {
   productId: string;
   lastModified: Date;
+  heroImageUrl?: string;
 }
 
 interface SitemapHarvest {
@@ -70,7 +72,11 @@ async function fetchAllProducts(): Promise<SitemapHarvest> {
       if (!hit?.productId) continue;
       const ts = hit.updatedAt ?? hit.postedAt ?? null;
       const lastModified = ts ? new Date(ts) : new Date();
-      products.push({ productId: hit.productId, lastModified });
+      products.push({
+        productId: hit.productId,
+        lastModified,
+        ...(hit.heroImageUrl ? { heroImageUrl: hit.heroImageUrl } : {}),
+      });
     }
     // Brand facets are global (not per-page), so capture from the first page only.
     if (page === 0) {
@@ -129,6 +135,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: Number.isFinite(p.lastModified.getTime()) ? p.lastModified : now,
       changeFrequency: "daily",
       priority: 0.7,
+      // Surface the hero image to Google Image Search via the
+      // sitemap-image extension. With ~3k+ catalog rows, image search
+      // is a non-trivial discovery surface that costs nothing to expose.
+      ...(p.heroImageUrl ? { images: [p.heroImageUrl] } : {}),
     }));
     // Brand-only landing pages (/search?brand=Apple) are indexable per
     // search/page.tsx's canonical logic — give Google a direct seed for each.
