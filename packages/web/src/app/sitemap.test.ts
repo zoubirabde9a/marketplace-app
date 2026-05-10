@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import sitemap from "./sitemap";
+import sitemap, { __resetSitemapCacheForTests } from "./sitemap";
 
 const okResponse = (body: unknown): Response =>
   ({
@@ -15,6 +15,9 @@ describe("sitemap()", () => {
   beforeEach(() => {
     fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
+    // Module-level harvest cache (added to dodge a Next 15 ISR
+    // misbehaviour — see sitemap.ts) persists across tests; clear it.
+    __resetSitemapCacheForTests();
   });
   afterEach(() => {
     vi.unstubAllGlobals();

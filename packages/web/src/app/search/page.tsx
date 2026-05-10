@@ -87,18 +87,23 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     }
   }
   const fmtCount = totalCount != null ? totalCount.toLocaleString() : null;
+  // English noun pluralisation hook so we don't ship "1 listings matching ..."
+  // — broken grammar reads as low-quality content to search-engine quality
+  // signals AND to the human readers of SERP snippets. French side is
+  // covered in SliceIntro/below.
+  const listingWord = totalCount === 1 ? "listing" : "listings";
 
   let title: string;
   let description: string;
   if (q) {
     title = `Search: ${q}`;
     description = fmtCount
-      ? `${fmtCount} listings matching “${q}” on Teno Store — phones, computing and more from Algerian sellers, prices in DZD.`
+      ? `${fmtCount} ${listingWord} matching “${q}” on Teno Store — phones, computing and more from Algerian sellers, prices in DZD.`
       : `Marketplace results matching “${q}” on Teno Store.`;
   } else if (brand) {
     title = `${brand} products`;
     description = fmtCount
-      ? `Browse ${fmtCount} ${brand} listings from Algerian sellers on Teno Store. Filter by category, price or seller. Prices in DZD.`
+      ? `Browse ${fmtCount} ${brand} ${listingWord} from Algerian sellers on Teno Store. Filter by category, price or seller. Prices in DZD.`
       : `Browse ${brand} products on Teno Store.`;
   } else if (category && !isMultiValuedCategory) {
     const human = category.replace(/[-_]/g, " ");
@@ -107,7 +112,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     // and burns SERP characters. Bare humanised slug only.
     title = `${human.charAt(0).toUpperCase()}${human.slice(1)}`;
     description = fmtCount
-      ? `${fmtCount} ${human} listings from Algerian sellers on Teno Store. Annonces actualisées en temps réel, prix en DZD.`
+      ? `${fmtCount} ${human} ${listingWord} from Algerian sellers on Teno Store. Annonces actualisées en temps réel, prix en DZD.`
       : `Browse ${human} listings on Teno Store.`;
   } else if (sellerId && !isMultiValuedSeller) {
     // Same suffix-duplication concern as the category branch — layout
@@ -116,8 +121,8 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     title = sellerName ?? "Storefront";
     description = fmtCount
       ? sellerName
-        ? `All ${fmtCount} listings from ${sellerName} on Teno Store, refreshed continuously.`
-        : `All ${fmtCount} listings from this seller on Teno Store, refreshed continuously.`
+        ? `All ${fmtCount} ${listingWord} from ${sellerName} on Teno Store, refreshed continuously.`
+        : `All ${fmtCount} ${listingWord} from this seller on Teno Store, refreshed continuously.`
       : sellerName
         ? `Browse listings from ${sellerName} on Teno Store.`
         : "Browse listings from this seller on Teno Store.";
@@ -499,21 +504,29 @@ function SliceIntro({
 }) {
   const isFr = contentLang === "fr";
   const fmt = total.toLocaleString();
+  // Pluralisation: "1 listings matching" reads broken in SERP snippets.
+  // French uses singular nouns at 0 and 1 (annonce/produit/listing),
+  // plural otherwise.
+  const isOne = total === 1;
+  const enListing = isOne ? "listing" : "listings";
+  const frAnnonce = isOne ? "annonce" : "annonces";
+  const frProduit = isOne ? "produit" : "produits";
+  const frListing = isOne ? "listing" : "listings";
   // Bilingual: lead with the audience-matching language, follow with a
   // shorter English sentence so search engines that don't honor the
   // <div lang> wrap still see English keywords.
   const fr = (() => {
-    if (q) return `Plus de ${fmt} annonces correspondant à « ${q} » en provenance de vendeurs algériens. Prix en DZD, mises à jour en continu.`;
-    if (sellerName) return `Toutes les annonces de ${sellerName}. ${fmt} produits, prix en DZD, actualisés en temps réel.`;
-    if (brand) return `Annonces ${brand} en Algérie · ${fmt} listings de vendeurs algériens. Filtrez par catégorie, prix ou vendeur. Prix en DZD.`;
-    if (category) return `Découvrez ${fmt} annonces de ${category.toLowerCase()} en Algérie. Filtrez par marque, prix ou vendeur. Annonces actualisées en temps réel, prix en DZD.`;
+    if (q) return `${isOne ? "1 annonce correspondant" : `Plus de ${fmt} annonces correspondant`} à « ${q} » en provenance de vendeurs algériens. Prix en DZD, mises à jour en continu.`;
+    if (sellerName) return `Toutes les ${frAnnonce} de ${sellerName}. ${fmt} ${frProduit}, prix en DZD, actualisés en temps réel.`;
+    if (brand) return `Annonces ${brand} en Algérie · ${fmt} ${frListing} de vendeurs algériens. Filtrez par catégorie, prix ou vendeur. Prix en DZD.`;
+    if (category) return `Découvrez ${fmt} ${frAnnonce} de ${category.toLowerCase()} en Algérie. Filtrez par marque, prix ou vendeur. ${isOne ? "Annonce actualisée" : "Annonces actualisées"} en temps réel, prix en DZD.`;
     return null;
   })();
   const en = (() => {
-    if (q) return `${fmt} listings matching “${q}” from Algerian sellers, refreshed continuously. Prices in DZD.`;
-    if (sellerName) return `All ${fmt} listings from ${sellerName}, refreshed continuously.`;
-    if (brand) return `Browse ${fmt} ${brand} listings from Algerian sellers, priced in DZD.`;
-    if (category) return `Browse ${fmt} ${category.toLowerCase()} listings from Algerian sellers, priced in DZD.`;
+    if (q) return `${fmt} ${enListing} matching “${q}” from Algerian sellers, refreshed continuously. Prices in DZD.`;
+    if (sellerName) return `All ${fmt} ${enListing} from ${sellerName}, refreshed continuously.`;
+    if (brand) return `Browse ${fmt} ${brand} ${enListing} from Algerian sellers, priced in DZD.`;
+    if (category) return `Browse ${fmt} ${category.toLowerCase()} ${enListing} from Algerian sellers, priced in DZD.`;
     return null;
   })();
   if (!fr && !en) return null;
@@ -530,17 +543,22 @@ function SliceIntro({
 
 function BareCatalogIntro({ total, contentLang }: { total: number; contentLang?: string }) {
   const fmt = total.toLocaleString();
+  const isOne = total === 1;
+  const enListing = isOne ? "listing" : "listings";
+  const frAnnonce = isOne ? "annonce" : "annonces";
+  const frListing = isOne ? "listing" : "listings";
+  const frActualised = isOne ? "actualisé" : "actualisés";
   return (
     <div className="-mt-3 mb-5 text-sm text-ink-soft leading-relaxed max-w-3xl">
       {contentLang === "fr" ? (
         <p lang="fr">
-          Découvrez {fmt} annonces de vendeurs algériens — téléphones, informatique,
+          Découvrez {fmt} {frAnnonce} de vendeurs algériens — téléphones, informatique,
           électroménager, mode, véhicules et plus. Filtrez par marque, prix, vendeur
-          ou catégorie. Prix en DZD, listings actualisés en temps réel.
+          ou catégorie. Prix en DZD, {frListing} {frActualised} en temps réel.
         </p>
       ) : (
         <p>
-          Browse {fmt} live listings from Algerian sellers — phones, computing,
+          Browse {fmt} live {enListing} from Algerian sellers — phones, computing,
           home appliances, fashion, vehicles and more. Filter by brand, price,
           seller, or category. Prices in DZD, refreshed continuously.
         </p>

@@ -17,22 +17,39 @@ interface SellerFacet {
   displayName?: string | null;
   count: number;
 }
+interface FooterFacets {
+  categories: Facet[];
+  brands: Facet[];
+  sellers: SellerFacet[];
+}
 
-// Server component rendering three browse blocks in the site footer
-// (categories, brands, sellers). Each block links every page to every
-// indexable single-key landing — without these the URLs are sitemap-only
-// islands and Google's PageRank can't flow into them. Fetched once with a
-// 10-min Next data-cache TTL so layout stays effectively static.
-export async function CategoryFooter() {
-  let categories: Facet[] = [];
-  let brands: Facet[] = [];
-  let sellers: SellerFacet[] = [];
-  try {
-    const res = await fetch(`${API_URL}/v1/products?limit=1`, {
-      headers: { accept: "application/json" },
-      next: { revalidate: 600 },
-    });
-    if (res.ok) {
+// Module-level in-memory cache. The original `next: { revalidate: 600 }`
+// hint on the fetch was apparently being ignored: production logs (iter-29)
+// showed the CategoryFooter API call hitting /v1/products?limit=1 multiple
+// times per second, helping push marketplace-api's healthcheck into a
+// 34-failure streak (api went unhealthy / 502). The same cache pattern that
+// fixed sitemap.ts works here too — sidesteps Next's caching layer entirely.
+// 10-min TTL: facets change at most every few minutes (catalog seed loop),
+// crawler/user reuse within a 10-min window doesn't go stale.
+const FOOTER_TTL_MS = 10 * 60 * 1000;
+let footerCache: { data: FooterFacets; ts: number } | null = null;
+let footerInFlight: Promise<FooterFacets> | null = null;
+
+async function getFooterFacets(): Promise<FooterFacets> {
+  const now = Date.now();
+  if (footerCache && now - footerCache.ts < FOOTER_TTL_MS) {
+    return footerCache.data;
+  }
+  if (footerInFlight) return footerInFlight;
+  footerInFlight = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/v1/products?limit=1`, {
+        headers: { accept: "application/json" },
+        // cache:"no-store" so each rebuild sees fresh facets; the module
+        // cache around this is what actually rate-limits the API.
+        cache: "no-store",
+      });
+      if (!res.ok) return { categories: [], brands: [], sellers: [] };
       const body = (await res.json()) as {
         facets?: {
           categories?: Facet[];
@@ -40,27 +57,42 @@ export async function CategoryFooter() {
           sellers?: SellerFacet[];
         };
       };
-      categories = (body.facets?.categories ?? [])
-        .filter((c) => c.value && c.count > 0)
-        // Surface the most populated 18 — keeps the footer compact and lets
-        // Google's PageRank flow concentrate on the slugs that actually have
-        // inventory rather than long-tail singletons.
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 18);
-      brands = (body.facets?.brands ?? [])
-        .filter((b) => b.value && b.count > 0)
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 16);
-      sellers = (body.facets?.sellers ?? [])
-        .filter((s) => (s.sellerId ?? s.value) && s.count > 0)
-        .sort((a, b) => b.count - a.count);
+      const data: FooterFacets = {
+        categories: (body.facets?.categories ?? [])
+          .filter((c) => c.value && c.count > 0)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 18),
+        brands: (body.facets?.brands ?? [])
+          .filter((b) => b.value && b.count > 0)
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 16),
+        sellers: (body.facets?.sellers ?? [])
+          .filter((s) => (s.sellerId ?? s.value) && s.count > 0)
+          .sort((a, b) => b.count - a.count),
+      };
+      // Only cache a non-empty payload — same iter-16/iter-29 lesson: don't
+      // lock in a broken empty response just because the API hiccuped.
+      if (data.categories.length > 0 || data.brands.length > 0 || data.sellers.length > 0) {
+        footerCache = { data, ts: Date.now() };
+      }
+      return data;
+    } catch (err) {
+      console.error("[CategoryFooter] facet fetch failed:", err);
+      return { categories: [], brands: [], sellers: [] };
+    } finally {
+      footerInFlight = null;
     }
-  } catch {
-    // API hiccup — render nothing rather than break every page. The plain
-    // navigation block below this still gives Google reachable internal
-    // links to /search, /seller, /about.
-  }
+  })();
+  return footerInFlight;
+}
 
+// Server component rendering three browse blocks in the site footer
+// (categories, brands, sellers). Each block links every page to every
+// indexable single-key landing — without these the URLs are sitemap-only
+// islands and Google's PageRank can't flow into them. Fetched once with a
+// 10-min Next data-cache TTL so layout stays effectively static.
+export async function CategoryFooter() {
+  const { categories, brands, sellers } = await getFooterFacets();
   if (categories.length === 0 && brands.length === 0 && sellers.length === 0) return null;
 
   return (
