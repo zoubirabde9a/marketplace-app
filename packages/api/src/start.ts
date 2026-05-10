@@ -81,6 +81,26 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Hard guard: DEV_BYPASS=1 lets any caller mint a synthetic agent principal
+  // just by passing an X-Mp-Agent-Id header (see middleware/auth.ts) — i.e. any
+  // unauthenticated caller can create sellers/products owned by any agentId.
+  // Make turning that on deliberately ugly everywhere by requiring a second
+  // env var as an explicit acknowledgement. Local dev sets both; prod must
+  // not set either unless the operator has weighed the trade-off.
+  const devBypass = process.env.DEV_BYPASS === "1";
+  const ackInsecure = process.env.I_UNDERSTAND_DEV_BYPASS_IS_INSECURE === "1";
+  if (devBypass && !ackInsecure) {
+    // eslint-disable-next-line no-console
+    console.error(
+      "Refusing to start: DEV_BYPASS=1 disables agent-passport auth and lets " +
+        "any caller act as any agentId with no credentials. If you really want " +
+        "this (local dev, or a one-off operational task), also set " +
+        "I_UNDERSTAND_DEV_BYPASS_IS_INSECURE=1. Otherwise set DEV_BYPASS=0 and " +
+        "use a real user session or agent passport.",
+    );
+    process.exit(1);
+  }
+
   const { db, close } = createDb({ url: databaseUrl });
   const repos = createRepos(db);
   const keys = loadKeys();
@@ -103,7 +123,7 @@ async function main(): Promise<void> {
       jtiSeen: (jti, expiresAtMs) => repos.jti.seen(jti, expiresAtMs),
       audience,
       now: () => Date.now(),
-      devBypass: process.env.DEV_BYPASS === "1",
+      devBypass,
     },
     productReader,
     repos,

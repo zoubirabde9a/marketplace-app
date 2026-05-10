@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — vps-eu · db · rolled back accidental seller "Tor-Store" + locked down DEV_BYPASS
+
+- An assistant-driven session created a seller named "Tor-Store" (`org_id 019e1322-f22b-7f5b-a6fe-99ae4de74711`, `seller_profiles.id 019e1322-f22b-7ad1-ab3f-7963e99ca53a`) by sending `X-Mp-Agent-Id: agt_dev` to `POST /v1/sellers`. This worked because `DEV_BYPASS=1` in `/opt/marketplace/.env` lets any caller act as any agentId with no credentials — see `packages/api/src/middleware/auth.ts:166`. Rolled back via `DELETE FROM identity.organizations WHERE id = '019e1322-...'` (cascades to `seller.seller_profiles`); confirmed 0 rows remain.
+- Code: added a boot-time guard in `packages/api/src/start.ts` that refuses to start the API when `DEV_BYPASS=1` unless `I_UNDERSTAND_DEV_BYPASS_IS_INSECURE=1` is also set. Makes the bypass impossible to enable by accident.
+- **Not yet deployed.** Deploying as-is will refuse to start the prod API container (prod has `DEV_BYPASS=1` and not the ack flag). Operator decision needed: (a) flip `DEV_BYPASS=0` and accept the scraper loop breaks until it's wired to a real agent passport (per CLAUDE.md `scripts/run-loop.sh` depends on the bypass), or (b) set `I_UNDERSTAND_DEV_BYPASS_IS_INSECURE=1` on prod as a temporary acknowledgement while the scraper auth is fixed.
+
 ## 2026-05-10 — vps-eu · web · agent-onboarding empty state rewritten for non-technical users
 
 - `packages/web/src/components/AgentActivity.tsx`: previous version was a wall of curl + JWT + DPoP that only a developer could parse. Rewritten as plain-language click-through: lead path "Use with Claude Desktop" (3 numbered steps with a download link, MCP URL in a copy-to-clipboard widget, example natural-language prompt); secondary path "Use with another AI app" (same MCP URL + copy button); all curl/JWT/DPoP material moved behind a collapsed "For developers" `<details>`.
