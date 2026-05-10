@@ -6,7 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
-## 2026-05-10 — vps-eu · web · onboarding copy on signed-in home page
+## 2026-05-10 — vps-eu · web · agent-onboarding empty state rewritten for non-technical users
+
+- `packages/web/src/components/AgentActivity.tsx`: previous version was a wall of curl + JWT + DPoP that only a developer could parse. Rewritten as plain-language click-through: lead path "Use with Claude Desktop" (3 numbered steps with a download link, MCP URL in a copy-to-clipboard widget, example natural-language prompt); secondary path "Use with another AI app" (same MCP URL + copy button); all curl/JWT/DPoP material moved behind a collapsed "For developers" `<details>`.
+- `packages/web/src/components/CopyButton.tsx`: new client component, mirrors the ShareButton.tsx pattern (navigator.clipboard with window.prompt fallback). Emits "Copied" for 2s after click.
+- Deployed via `tar | ssh` + `docker compose build web && up -d web`. Verified: `/livez` 200, `https://teno-store.com/` 200, web container restarted cleanly.
+- Commit `66e9880`.
+
+## 2026-05-10 — vps-eu · web · onboarding copy on signed-in home page (superseded)
 
 - `packages/web/src/components/AgentActivity.tsx`: the empty-state on the signed-in dashboard previously promised "Connect an agent below to start watching its activity" with no actual instructions — users were left to guess. Replaced with a real onboarding guide: Option A points an MCP-compatible client at `https://api.teno-store.com/mcp`, Option B is a copy-pasteable `curl POST /v1/auth/passports` with all required fields (agentId, scopes, spendCaps, ttlSeconds, cnfJwk). Links to `/.well-known/agents.json` for the full protocol surface. Split the empty-state into two cases so users who already have an agent linked but no activity yet still see the original "Nothing here yet" copy, not the connect guide.
 - Deployed via `tar | ssh` + `docker compose -f docker-compose.prod.yml build web && up -d web`. Verified: `/livez` 200, `https://teno-store.com/` 200, web container restarted cleanly. New copy renders only for signed-in users (component is gated on session); confirmed unauthenticated home still excludes it.
