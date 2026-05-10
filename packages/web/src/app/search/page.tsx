@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { searchProducts } from "@/lib/api";
 import { parseSearchParams } from "@/lib/url";
 import { ActiveFilters } from "@/components/ActiveFilters";
@@ -170,13 +171,19 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
     if (ids.length !== 1) return undefined;
     return sellerDisplayNames[ids[0]];
   })();
+  const singleCategory = (input.category ?? []).length === 1 ? input.category![0] : undefined;
+  const humanCategory = singleCategory
+    ? singleCategory.replace(/[-_]/g, " ").replace(/^./, (c) => c.toUpperCase())
+    : undefined;
   const itemListName = input.q
     ? `Marketplace search: ${input.q}`
     : itemListSellerName
       ? `Products from ${itemListSellerName}`
       : input.brand
         ? `${input.brand} products`
-        : "Marketplace catalog";
+        : humanCategory
+          ? `${humanCategory} on Teno Store`
+          : "Marketplace catalog";
   const itemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -252,12 +259,49 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
   const contentLang = dzdHits > 0 && dzdHits >= result.data.length / 2 ? "fr" : undefined;
   if (contentLang) (itemListJsonLd as Record<string, unknown>).inLanguage = contentLang;
 
+  // Breadcrumbs both as visible nav and as JSON-LD. Three-segment trail —
+  // Home › Catalog › <slice label>. The slice label tracks whichever
+  // single-key landing the user is on (q, brand, single-seller, single
+  // category); for the bare /search root we omit the third segment so
+  // we don't emit a trail that points at itself.
+  const sliceLabel = input.q
+    ? `“${input.q}”`
+    : itemListSellerName
+      ? itemListSellerName
+      : input.brand
+        ? input.brand
+        : humanCategory ?? null;
+  const sliceUrl = canonicalSlicePath(input);
+  const breadcrumbJsonLd = sliceLabel
+    ? {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
+          { "@type": "ListItem", position: 2, name: "Catalog", item: `${SITE_URL}/search` },
+          {
+            "@type": "ListItem",
+            position: 3,
+            name: sliceLabel,
+            item: `${SITE_URL}${sliceUrl}`,
+          },
+        ],
+      }
+    : null;
+
   return (
     <div lang={contentLang}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(itemListJsonLd) }}
       />
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
+        />
+      )}
+      {sliceLabel && <SearchBreadcrumbs label={sliceLabel} />}
       <ResultsHeader
         q={input.q}
         total={result.pagination.totalEstimate}
@@ -268,6 +312,7 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
           return sellerDisplayNames[ids[0]];
         })()}
         brand={input.brand}
+        category={humanCategory}
       />
       <ActiveFilters sp={sp} sellerDisplayNames={sellerDisplayNames} />
       {result.data.length === 0 ? (
@@ -309,12 +354,14 @@ function ResultsHeader({
   resultCount,
   sellerName,
   brand,
+  category,
 }: {
   q?: string;
   total: number;
   resultCount?: number;
   sellerName?: string;
   brand?: string;
+  category?: string;
 }) {
   return (
     <div className="mb-6">
@@ -325,6 +372,8 @@ function ResultsHeader({
           <>Products from <span className="text-accent">{sellerName}</span></>
         ) : brand ? (
           <><span className="text-accent">{brand}</span> products</>
+        ) : category ? (
+          <><span className="text-accent">{category}</span> on Teno Store</>
         ) : (
           "Browse the catalog"
         )}
@@ -335,6 +384,28 @@ function ResultsHeader({
       </p>
     </div>
   );
+}
+
+function SearchBreadcrumbs({ label }: { label: string }) {
+  return (
+    <nav aria-label="Breadcrumb" className="text-xs text-ink-mute flex items-center gap-2 mb-3">
+      <Link href="/" className="hover:text-ink-soft">Home</Link>
+      <span aria-hidden>/</span>
+      <Link href="/search" className="hover:text-ink-soft">Catalog</Link>
+      <span aria-hidden>/</span>
+      <span aria-current="page" className="text-ink-soft truncate max-w-[40ch]">{label}</span>
+    </nav>
+  );
+}
+
+function canonicalSlicePath(input: ReturnType<typeof parseSearchParams>): string {
+  if (input.q) return `/search?q=${encodeURIComponent(input.q)}`;
+  const sellerIds = (input.sellerId ?? []).filter(Boolean);
+  if (sellerIds.length === 1) return `/search?sellerId=${encodeURIComponent(sellerIds[0])}`;
+  if (input.brand) return `/search?brand=${encodeURIComponent(input.brand)}`;
+  const cats = (input.category ?? []).filter(Boolean);
+  if (cats.length === 1) return `/search?category=${encodeURIComponent(cats[0])}`;
+  return "/search";
 }
 
 function ApiErrorBanner({ message }: { message: string }) {
