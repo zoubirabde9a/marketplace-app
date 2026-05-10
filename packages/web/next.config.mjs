@@ -64,6 +64,14 @@ const nextConfig = {
       // they want either way.
       { source: "/sitemap_index.xml", destination: "/sitemap.xml", permanent: true },
       { source: "/sitemap-index.xml", destination: "/sitemap.xml", permanent: true },
+      // Legacy index file probes. Apache/nginx classic-CMS conventions
+      // expose /index.html for the homepage; some directory listings,
+      // copy-paste docs, and a few crawler implementations still hit
+      // these. 404 is a quality-signal hit; redirect to canonical home.
+      { source: "/index.html", destination: "/", permanent: true },
+      { source: "/index", destination: "/", permanent: true },
+      { source: "/index.htm", destination: "/", permanent: true },
+      { source: "/home", destination: "/", permanent: true },
       // NOTE: previously had Title-case → lowercase redirects here for
       // /Search, /Product/:id, /About, /Seller. They caused an infinite
       // redirect loop in production: Next.js's `redirects()` path matcher
