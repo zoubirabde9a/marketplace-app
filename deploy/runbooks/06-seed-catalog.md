@@ -74,20 +74,54 @@ All scraping code and its full documentation (env knobs, legal posture, end-to-e
 pnpm add -D playwright
 pnpm exec playwright install chromium
 
-# Default: 3 pages of c/telephone, max 30 listings, ~4s per page, polite.
+# Default: target N=30 listings of c/telephone, ~4s per page, polite.
 node scraper/scrape-ouedkniss.mjs
 
-# Or another category:
-CATEGORY=informatique PAGES=2 node scraper/scrape-ouedkniss.mjs
+# Or pick another category and a higher count:
+CATEGORY=informatique N=50 node scraper/scrape-ouedkniss.mjs
 
 # Output goes to data/ouedkniss-<category>-<timestamp>.json.
+```
 
-# Then seed under one of your synthetic sellers (Path A creates them):
+Then load the dump into the catalog. There are two seeder modes — pick based on where you are:
+
+### B.1 — API mode (operator laptop → live API)
+
+Same auth requirements as Path A — needs either `DEV_BYPASS=1` on the server
+or a `SESSION_JWT`. Use this when you want the API's request validation in the
+loop:
+
+```bash
+# After enabling DEV_BYPASS (Path A step 2) or with SESSION_JWT in env:
 SELLER_ID=<uuid> MARKETPLACE_BASE=https://api.teno-store.com \
   node scraper/seed-from-scraped.mjs data/ouedkniss-telephone-<timestamp>.json
 ```
 
-The seller identity is always yours; only the product descriptions are inspired by public listings. See [`scraper/README.md`](../../scraper/README.md) for the full reference.
+### B.2 — Direct-DB mode (recommended on `vps-eu`)
+
+The seeder also has a direct-Postgres path that skips Caddy and the API auth
+gate entirely. It's the simplest thing to run on `vps-eu` itself: no
+`DEV_BYPASS` toggling, no JWT plumbing, no rolling restarts.
+
+```bash
+# Copy the JSON dump to the server first (rsync / scp). Then SSH in:
+ssh vps-eu
+cd /opt/marketplace
+
+# Easiest: use the api container — DATABASE_URL is already in its env.
+# (mount or cp the JSON into the container, then:)
+docker compose -f docker-compose.prod.yml exec api \
+  pnpm -F @marketplace/db db:seed-from-scraped /tmp/ouedkniss-telephone-<ts>.json
+```
+
+If `SELLER_ID` isn't set the seeder picks the oldest existing seller — handy
+right after Path A. Pass `SELLER_ID=<uuid>` to override, or `DRY_RUN=1` to
+preview without writing.
+
+The seller identity attached to each product is always one of yours; only the
+public product data (title, image URLs, price text) is reused. See
+[`scraper/README.md`](../../scraper/README.md) for the full reference, including
+which env knobs each seeder honours.
 
 ---
 
