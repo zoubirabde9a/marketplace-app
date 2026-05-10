@@ -44,25 +44,48 @@ function fmtPrice(minor: string | undefined, currency: string | undefined): stri
   return `${major} ${currency}`;
 }
 
-export async function GET(_req: NextRequest) {
-  let hits: FeedHit[] = [];
-  let updated = new Date().toISOString();
-  try {
-    // Sort by newest is the default behaviour we already configured for the
-    // home page recent strip (see lib/url.ts). Same sort here keeps the feed
-    // intuitive: newest first.
-    const res = await fetch(`${API_URL}/v1/products?sort=newest&limit=50`, {
-      headers: { accept: "application/json" },
-      cache: "no-store",
-    });
-    if (res.ok) {
+// Module-level harvest cache. Same pattern as sitemap.ts and CategoryFooter
+// — Next 15's ISR was being defeated on these routes by cache:"no-store"
+// inside (iter-16/iter-29 lessons), so each /feed.xml hit was reaching
+// the API. 5-min TTL matches the route's revalidate; in-flight dedup
+// prevents thundering herd at TTL expiry.
+const FEED_TTL_MS = 5 * 60 * 1000;
+let feedCache: { hits: FeedHit[]; ts: number } | null = null;
+let feedInFlight: Promise<FeedHit[]> | null = null;
+
+async function getFeedHits(): Promise<FeedHit[]> {
+  const now = Date.now();
+  if (feedCache && now - feedCache.ts < FEED_TTL_MS) return feedCache.hits;
+  if (feedInFlight) return feedInFlight;
+  feedInFlight = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/v1/products?sort=newest&limit=50`, {
+        headers: { accept: "application/json" },
+        cache: "no-store",
+      });
+      if (!res.ok) return [];
       const body = (await res.json()) as { data?: FeedHit[] };
-      hits = body.data ?? [];
-      if (hits.length > 0 && hits[0].postedAt) updated = hits[0].postedAt;
+      const hits = body.data ?? [];
+      // Don't cache empty payloads — same iter-16/iter-29 lesson, refuse to
+      // lock a transient API hiccup in for the full TTL.
+      if (hits.length > 0) {
+        feedCache = { hits, ts: Date.now() };
+      }
+      return hits;
+    } catch (err) {
+      console.error("[feed.xml] harvest failed:", err);
+      return [];
+    } finally {
+      feedInFlight = null;
     }
-  } catch (err) {
-    console.error("[feed.xml] harvest failed:", err);
-  }
+  })();
+  return feedInFlight;
+}
+
+export async function GET(_req: NextRequest) {
+  const hits = await getFeedHits();
+  const updated =
+    hits.length > 0 && hits[0].postedAt ? hits[0].postedAt : new Date().toISOString();
 
   const entries = hits
     .filter((h) => h.productId && h.title?.value)
