@@ -25,6 +25,11 @@ const nextConfig = {
       { source: "/favicon.ico", destination: "/icon.svg", permanent: true },
       { source: "/apple-touch-icon.png", destination: "/apple-icon", permanent: true },
       { source: "/apple-touch-icon-precomposed.png", destination: "/apple-icon", permanent: true },
+      // PWA manifest legacy paths. Next 15 emits its manifest at the
+      // modern .webmanifest extension; PWA installers and some crawlers
+      // (Lighthouse, Edge "Install app") still probe the older paths.
+      { source: "/manifest.json", destination: "/manifest.webmanifest", permanent: true },
+      { source: "/site.webmanifest", destination: "/manifest.webmanifest", permanent: true },
     ];
   },
 };
