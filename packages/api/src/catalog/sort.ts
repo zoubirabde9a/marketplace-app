@@ -31,7 +31,19 @@ export function keyOf(p: StoredProduct, sort: Sort, ctx: FilterContext): SortKey
   if (sort === "price_asc" || sort === "price_desc") {
     return { v: displayVariant(p, ctx)?.priceMinor ?? 0n, isBig: true };
   }
-  if (sort === "newest") return { v: p.createdAt, isBig: false };
+  if (sort === "newest") {
+    // Prefer the seller's original posting date (sourcePostedAt, ISO 8601)
+    // when present — that's what buyers mean by "newest". Ingestion time
+    // (createdAt) only reflects when the seed pipeline reached this row,
+    // and the scraper walks Ouedkniss pages in arbitrary order across
+    // runs, so a freshly-posted listing can land after an old one.
+    const posted = p.attributes?.sourcePostedAt;
+    if (posted) {
+      const t = Date.parse(posted);
+      if (Number.isFinite(t)) return { v: t, isBig: false };
+    }
+    return { v: p.createdAt, isBig: false };
+  }
   if (sort === "rating") return { v: p.rating ?? 0, isBig: false };
   return { v: relevanceScore(p, ctx), isBig: false };
 }
