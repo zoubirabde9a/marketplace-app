@@ -202,19 +202,15 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
             Browse the catalog
           </Link>
         </div>
-        <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-          <Card title="Deep-linked searches" body="When your agent narrows a search, you get a URL that mirrors the same filters and results." />
-          <Card title="Full product detail" body="Photos, variants, prices, attributes, and seller info — exactly what the agent saw." />
-          <Card title="Trust signals" body="Counterfeit risk, stock state, and seller-supplied content tagged as untrusted by default." />
-        </div>
       </div>
-      {/* Substantive topical content between the agentic-commerce hero and
-          the recent strip. The hero is English narrative — without this
-          block, Google's strongest on-page signals (first H1/H2 + early
-          paragraphs) carry zero French / catalog-keyword density, and the
-          home page is our highest-authority URL. The block is bilingual
-          (French primary, since most content is DZD-priced) and
-          cross-links to the most-populated category landings. */}
+      {/* Topical content sits IMMEDIATELY after the hero's H1+buttons, BEFORE
+          the agent-narrative Card grid. Iter probe found Google's primary
+          on-page signals (first H1, first H2, first paragraph) were carrying
+          three English agent-pitch H2s before any Algerian-marketplace /
+          French content surfaced. With this order: hero (H1) → topical
+          block (catalog H2 + French paragraph + category chips) → agent
+          cards (H2s) → recent strip. The catalog signal now reaches
+          crawlers before the agent narrative. */}
       <section className="mt-12 max-w-4xl mx-auto" aria-labelledby="catalog-heading">
         <h2 id="catalog-heading" className="text-2xl font-semibold tracking-tight mb-3">
           Marketplace algérien · annonces actualisées en temps réel
@@ -253,6 +249,14 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
             </li>
           ))}
         </ul>
+      </section>
+      <section className="mt-16 max-w-4xl mx-auto" aria-labelledby="agent-heading">
+        <h2 id="agent-heading" className="sr-only">How the agent observer works</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
+          <Card title="Deep-linked searches" body="When your agent narrows a search, you get a URL that mirrors the same filters and results." />
+          <Card title="Full product detail" body="Photos, variants, prices, attributes, and seller info — exactly what the agent saw." />
+          <Card title="Trust signals" body="Counterfeit risk, stock state, and seller-supplied content tagged as untrusted by default." />
+        </div>
       </section>
       {recent.length > 0 && (
         <section className="mt-12" aria-labelledby="recent-heading">
