@@ -13,6 +13,7 @@ import { registerCheckoutRoutes } from "./routes/checkout.js";
 import { registerOrderRoutes } from "./routes/orders.js";
 import { registerMeRoutes } from "./routes/me.js";
 import { registerSnapshotRoutes } from "./routes/snapshots.js";
+import { registerSearchStatsRoutes } from "./routes/search-stats.js";
 import { catalog } from "@marketplace/domain";
 import type { Repos } from "./repos/index.js";
 
@@ -95,6 +96,7 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
   }
   await registerMeRoutes(app, { users: opts.repos.users });
   await registerSnapshotRoutes(app, { store: snapshotStore });
+  await registerSearchStatsRoutes(app, { searchLog: opts.repos.searchLog });
 
   return app;
 }

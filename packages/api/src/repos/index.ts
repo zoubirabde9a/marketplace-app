@@ -15,6 +15,12 @@ import type { ProductRepo } from "./product.js";
 import type { CartRepo } from "./cart.js";
 import type { OrderRepo } from "./order.js";
 import type { SearchLogSink } from "../routes/products.js";
+import type { SearchStats } from "@marketplace/db";
+
+/** Full search-log repo: write side (record) + read side (getStats). */
+export interface SearchLogRepo extends SearchLogSink {
+  getStats: (opts?: { windowHours?: number }) => Promise<SearchStats>;
+}
 
 /** Bundle of all aggregate repositories, passed through the server graph. */
 export interface Repos {
@@ -24,5 +30,5 @@ export interface Repos {
   carts: CartRepo;
   orders: OrderRepo;
   /** Optional. Drives the audit.search_queries log; absent in unit tests. */
-  searchLog?: SearchLogSink;
+  searchLog?: SearchLogRepo;
 }

@@ -11,6 +11,7 @@ import { makeOrderRepo } from "./order.js";
 import { makeIdempotencyStore } from "./idempotency.js";
 import { makeJtiStore } from "./jti.js";
 import { makeSearchLogRepo } from "./search-log.js";
+export type { SearchStats, SearchLogEntry, SearchLogRepo } from "./search-log.js";
 
 export {
   makeUserRepo,
