@@ -11,9 +11,13 @@ describe("AboutPage", () => {
 
   it("emits AboutPage JSON-LD that cross-references the homepage WebSite + Organization", () => {
     const { container } = render(AboutPage());
-    const ld = container.querySelector('script[type="application/ld+json"]');
-    expect(ld).not.toBeNull();
-    const payload = JSON.parse(ld!.innerHTML);
+    // Page now ships TWO ld+json blocks (BreadcrumbList + AboutPage).
+    // Find the AboutPage one specifically.
+    const scripts = Array.from(container.querySelectorAll('script[type="application/ld+json"]'));
+    const payload = scripts
+      .map((s) => JSON.parse(s.innerHTML))
+      .find((d) => d["@type"] === "AboutPage")!;
+    expect(payload).toBeDefined();
     expect(payload["@type"]).toBe("AboutPage");
     expect(payload.name).toBe("About Teno Store");
     expect(payload.inLanguage).toBe("en");

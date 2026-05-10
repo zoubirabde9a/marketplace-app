@@ -25,9 +25,12 @@ describe("SellerLandingPage (signed-out)", () => {
   it("emits WebPage JSON-LD cross-referencing the homepage WebSite + Organization", async () => {
     const tree = await SellerLandingPage();
     const { container } = render(tree as React.ReactElement);
-    const ld = container.querySelector('script[type="application/ld+json"]');
-    expect(ld).not.toBeNull();
-    const payload = JSON.parse(ld!.innerHTML);
+    // Page ships TWO ld+json blocks (BreadcrumbList + WebPage). Find WebPage.
+    const scripts = Array.from(container.querySelectorAll('script[type="application/ld+json"]'));
+    const payload = scripts
+      .map((s) => JSON.parse(s.innerHTML))
+      .find((d) => d["@type"] === "WebPage")!;
+    expect(payload).toBeDefined();
     expect(payload["@type"]).toBe("WebPage");
     expect(payload.name).toBe("Sell on Teno Store");
     expect(payload.isPartOf?.["@id"]).toMatch(/#website$/);
