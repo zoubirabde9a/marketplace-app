@@ -9,13 +9,29 @@ const API_URL = (
   "http://127.0.0.1:3100"
 ).replace(/\/$/, "");
 
-// Cache the sitemap render for 5 minutes. The scrape-and-seed loop adds new
-// products continuously, but Googlebot polls /sitemap.xml every few hours,
-// so 5-min freshness is more than the freshness Google can act on, and it
-// drops sitemap TTFB from ~2s to ~50ms (Cloudflare cf-cache-status flips
-// DYNAMIC -> HIT once warmed). `dynamic` is left as the Next default so
-// revalidate actually applies.
+// Production probe (iter-29) showed every /sitemap.xml hit was rebuilding
+// from scratch — 85-125s per request, Googlebot timeout territory. Next's
+// route-level `revalidate` was being defeated by `cache: "no-store"` on
+// the harvest fetches (which we can't drop — the iter-16 regression locked
+// an empty payload in the Next data cache when we tried). Using a plain
+// module-level in-memory cache around the harvest sidesteps Next's
+// caching layer entirely: harvest runs once per TTL, every other request
+// returns the cached payload synchronously.
+//
+// Single web container = single cache. 30-min TTL is well inside Googlebot's
+// crawl cadence (hourly at most) and the catalog grows ~50/iter.
 export const revalidate = 300;
+const HARVEST_TTL_MS = 30 * 60 * 1000;
+let cachedHarvest: { data: SitemapHarvest; ts: number } | null = null;
+let inFlight: Promise<SitemapHarvest> | null = null;
+
+// Test hook — vitest's beforeEach can call this to clear the module-level
+// cache between cases. Production never calls it; the cache is bypassed
+// purely by TTL.
+export function __resetSitemapCacheForTests(): void {
+  cachedHarvest = null;
+  inFlight = null;
+}
 
 interface SitemapProductHit {
   productId: string;
@@ -38,13 +54,55 @@ interface SitemapHarvest {
 }
 
 async function fetchAllProducts(): Promise<SitemapHarvest> {
+  // Serve cached harvest if still fresh.
+  const now = Date.now();
+  if (cachedHarvest && now - cachedHarvest.ts < HARVEST_TTL_MS) {
+    return cachedHarvest.data;
+  }
+  // Coalesce concurrent rebuilds — without this, every Googlebot connection
+  // that races past the TTL boundary kicks off its own 60-90s harvest in
+  // parallel and they all fight the API.
+  if (inFlight) return inFlight;
+  inFlight = (async () => {
+    try {
+      const data = await fetchAllProductsUncached();
+      // Refuse to cache an obviously-broken harvest. iter-16 + iter-29 both
+      // showed empty product lists (API cold at container start, transient
+      // network blip) getting locked into the cache for the full TTL,
+      // shrinking the live sitemap to 4 static entries. Steady-state
+      // catalog has thousands; if we got zero, retry on next request
+      // rather than serve a broken sitemap for 30 minutes.
+      if (data.products.length === 0) {
+        console.error(
+          "[sitemap] harvest returned 0 products — not caching, will retry next request",
+        );
+        return data;
+      }
+      cachedHarvest = { data, ts: Date.now() };
+      return data;
+    } finally {
+      inFlight = null;
+    }
+  })();
+  return inFlight;
+}
+
+async function fetchAllProductsUncached(): Promise<SitemapHarvest> {
   const products: SitemapProduct[] = [];
   const brands: string[] = [];
   const sellerIds: string[] = [];
   const categories: string[] = [];
   let cursor: string | null = null;
   // Cap pagination so a misbehaving API can't cause an unbounded sitemap build.
-  const MAX_PAGES = 50;
+  // Headroom for catalog growth. Probed 2026-05-10: catalog total=13,342
+  // products; the previous 50 × 100 = 5,000 cap was leaving ~8,300 of them
+  // out of /sitemap.xml entirely — Googlebot wouldn't discover them.
+  // The API silently caps `limit` at 100 (limit=200 returns empty) so we
+  // can't shrink round-trips; instead bump MAX_PAGES so the harvest can
+  // walk the full catalog. With the module-level harvest cache (30-min
+  // TTL) the slow cold rebuild only hits once per half-hour; warm hits
+  // stay in the ~70ms range.
+  const MAX_PAGES = 200;
   const LIMIT = 100;
 
   for (let page = 0; page < MAX_PAGES; page++) {
