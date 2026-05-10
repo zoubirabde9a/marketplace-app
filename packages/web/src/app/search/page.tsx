@@ -96,12 +96,18 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       : `Browse ${brand} products on Teno Store.`;
   } else if (category && !isMultiValuedCategory) {
     const human = category.replace(/[-_]/g, " ");
-    title = `${human.charAt(0).toUpperCase()}${human.slice(1)} on Teno Store`;
+    // Layout template appends " · Teno Store"; saying "<X> on Teno Store"
+    // here would render as "<X> on Teno Store · Teno Store" — redundant
+    // and burns SERP characters. Bare humanised slug only.
+    title = `${human.charAt(0).toUpperCase()}${human.slice(1)}`;
     description = fmtCount
       ? `${fmtCount} ${human} listings from Algerian sellers on Teno Store. Annonces actualisées en temps réel, prix en DZD.`
       : `Browse ${human} listings on Teno Store.`;
   } else if (sellerId && !isMultiValuedSeller) {
-    title = sellerName ? `${sellerName} on Teno Store` : "Storefront on Teno Store";
+    // Same suffix-duplication concern as the category branch — layout
+    // appends " · Teno Store", so "{Seller} on Teno Store" would render
+    // as "{Seller} on Teno Store · Teno Store".
+    title = sellerName ?? "Storefront";
     description = fmtCount
       ? sellerName
         ? `All ${fmtCount} listings from ${sellerName} on Teno Store, refreshed continuously.`
