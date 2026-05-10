@@ -18,7 +18,22 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { id } = await params;
   const p = await getProduct(id).catch(() => null);
   if (!p) notFound();
-  const title = p.title.value;
+  const fullTitle = p.title.value;
+  // Sellers routinely paste 100+ char titles full of spec strings:
+  // "SAMSUNG GALAXY TAB A11 4G LTE - 4GB - 64GB - 8.7" LED WXGA - WI-FI - BLUETOOTH - 8 MPXL - 5100MAH - GRIS SM-X135G"
+  // Google truncates SERP titles at ~55-65 chars; everything past the
+  // truncation point is wasted. Trim for <title> only — the visible H1
+  // and JSON-LD `name` still carry the full string for users / structured
+  // data. Break at the last space before the limit so we don't leave a
+  // dangling word, then append an ellipsis if we actually trimmed.
+  const TITLE_BUDGET = 60;
+  const title = (() => {
+    const t = fullTitle.trim();
+    if (t.length <= TITLE_BUDGET) return t;
+    const cut = t.slice(0, TITLE_BUDGET);
+    const space = cut.lastIndexOf(" ");
+    return (space > 30 ? cut.slice(0, space) : cut).replace(/[\s\p{P}\p{S}]+$/u, "") + "…";
+  })();
   // Meta descriptions render as a single line in search/social previews, so
   // collapse whitespace and trim leading decorative symbols (✅, ✔️, ⭐, …)
   // that scraped seller copy tends to lead with — those break the snippet.
@@ -38,7 +53,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
           url: p.heroImageUrl,
           ...(heroImage?.width ? { width: heroImage.width } : {}),
           ...(heroImage?.height ? { height: heroImage.height } : {}),
-          ...(heroImage?.altText ? { alt: heroImage.altText } : { alt: title }),
+          ...(heroImage?.altText ? { alt: heroImage.altText } : { alt: fullTitle }),
         },
       ]
     : undefined;
@@ -99,7 +114,10 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       },
     },
     openGraph: {
-      title,
+      // Use the full title here — Facebook / X / Discord cards have a
+      // 88-char title slot, much more generous than Google SERP, so trimming
+      // for OG would lose detail unnecessarily.
+      title: fullTitle,
       description: desc,
       // When there's a seller hero image, surface it. When there isn't,
       // OMIT the field entirely so Next.js's file-based opengraph-image.tsx
@@ -121,7 +139,8 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       // fills the slot. Omit twitter.images when no hero so the file-based
       // convention (which generates twitter:image alongside og:image) applies.
       card: "summary_large_image",
-      title,
+      // X allows ~70-char titles in summary_large_image; full title is fine.
+      title: fullTitle,
       description: desc,
       ...(p.heroImageUrl ? { images: [p.heroImageUrl] } : {}),
     },
