@@ -329,15 +329,30 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
   // than an opaque list. Bare /search collapses to a generic Catalog page.
   const collectionUrl = `${SITE_URL}${canonicalSlicePath(input)}`;
   const collectionName = itemListName;
+  // Pull the live count and pluralise — same pattern as the meta
+  // description (iter-17). CollectionPage's description goes into Google's
+  // structured-data graph, so making it a precise, count-bearing sentence
+  // matches what we ship to the SERP.
+  const collTotal = result.pagination.totalEstimate;
+  const collFmtCount = collTotal != null ? collTotal.toLocaleString() : null;
+  const collListing = collTotal === 1 ? "listing" : "listings";
   const collectionDescription = input.q
-    ? `Marketplace results matching “${input.q}”.`
+    ? collFmtCount
+      ? `${collFmtCount} ${collListing} matching “${input.q}” on Teno Store from Algerian sellers.`
+      : `Marketplace results matching “${input.q}”.`
     : itemListSellerName
-      ? `Listings from ${itemListSellerName} on Teno Store.`
+      ? collFmtCount
+        ? `${collFmtCount} ${collListing} from ${itemListSellerName} on Teno Store.`
+        : `Listings from ${itemListSellerName} on Teno Store.`
       : input.brand
-        ? `Browse ${input.brand} products on Teno Store.`
+        ? collFmtCount
+          ? `${collFmtCount} ${input.brand} ${collListing} from Algerian sellers on Teno Store.`
+          : `Browse ${input.brand} products on Teno Store.`
         : humanCategory
-          ? `Browse ${humanCategory.toLowerCase()} listings on Teno Store.`
-          : "Browse the Teno Store catalog.";
+          ? collFmtCount
+            ? `${collFmtCount} ${humanCategory.toLowerCase()} ${collListing} from Algerian sellers on Teno Store.`
+            : `Browse ${humanCategory.toLowerCase()} listings on Teno Store.`
+          : "Browse the Teno Store catalog of Algerian listings.";
   const collectionPageJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
