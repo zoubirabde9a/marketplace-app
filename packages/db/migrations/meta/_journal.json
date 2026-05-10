@@ -43,6 +43,13 @@
       "when": 1778977200000,
       "tag": "0005_search_query_log",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1778977800000,
+      "tag": "0006_numeric_token_split",
+      "breakpoints": true
     }
   ]
 }
