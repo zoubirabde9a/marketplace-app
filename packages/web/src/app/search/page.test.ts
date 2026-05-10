@@ -1,5 +1,29 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generateMetadata } from "./page";
+import { __resetSearchCacheForTests } from "@/lib/searchCache";
+
+// Stub the slice-metadata fetch to return a positive count so the
+// generateMetadata robots logic doesn't trip the new "noindex on zero
+// hits" rule (added to keep empty /search?q=garbage URLs out of Google's
+// index — see search/page.tsx). Tests here are about the canonical /
+// robots logic, not the count plumbing, so a successful response with
+// 1 hit is the right fixture.
+beforeEach(() => {
+  __resetSearchCacheForTests();
+  vi.stubGlobal("fetch", vi.fn(async () =>
+    new Response(
+      JSON.stringify({
+        data: [{ productId: "p1", title: { value: "x", role: "untrusted_content", origin: "x" }, sellerDisplayName: "Acme Sellers Ltd" }],
+        pagination: { totalEstimate: 42 },
+        facets: { sellers: [{ value: "abc", displayName: "Acme Sellers Ltd", count: 42 }] },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    ),
+  ));
+});
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const M = (sp: Record<string, string | string[] | undefined>) =>
   generateMetadata({ searchParams: Promise.resolve(sp) });

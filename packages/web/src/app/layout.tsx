@@ -13,14 +13,13 @@ export const metadata: Metadata = {
     default: "Teno Store — the agent-to-agent marketplace",
     template: "%s · Teno Store",
   },
-  // Description balances the agentic-commerce story with the topical content
-  // a search engine actually needs to rank us for. The opening sentence carries
-  // the catalog signal (geography, categories, French-language hint) so a
-  // model or crawler sampling only the lede still learns what's for sale; the
-  // tail keeps the agent / MCP / A2A / AP2 angle for the audience that came
-  // looking for that explicitly.
+  // Trimmed to ~155 chars for Google SERP — earlier 307-char version got
+  // mid-sentence truncated. Catalog signal (geography, currency, breadth)
+  // stays in the lede; the agent-marketplace angle moved to keywords +
+  // og:description (which Facebook/Discord/Slack render with no length
+  // budget).
   description:
-    "Browse thousands of live listings — phones, computing, home appliances, fashion and vehicles — sourced from Algerian sellers and priced in DZD. Teno Store is also an API-first agent marketplace: discovery, search, and offers are exposed via MCP, A2A and AP2 so AI agents can shop for their human principals.",
+    "Browse thousands of live listings — phones, computing, home appliances, fashion and vehicles — from Algerian sellers, priced in DZD.",
   applicationName: "Teno Store",
   keywords: [
     "agent-to-agent marketplace",

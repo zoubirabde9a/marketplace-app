@@ -128,11 +128,11 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
         : "Browse listings from this seller on Teno Store.";
   } else {
     title = "Browse the marketplace";
-    // Bare /search is the catalog hub URL. Surface what the catalog actually
-    // contains so SERP snippet and AI-search summarisation have something
-    // topical to anchor on, instead of "Browse the marketplace catalog."
+    // ~150 chars for Google SERP. Earlier 181-char version got
+    // truncated near the end. Catalog signal in the lede; "filter by
+    // category/brand/seller" cut since it doesn't add ranking value.
     description =
-      "Browse thousands of live listings on Teno Store — phones, computing, home appliances, fashion and vehicles from Algerian sellers, priced in DZD. Filter by category, brand or seller.";
+      "Browse thousands of listings — phones, computing, home appliances, fashion and vehicles from Algerian sellers, priced in DZD.";
   }
 
   return {
