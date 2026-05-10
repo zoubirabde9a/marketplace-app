@@ -341,6 +341,16 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
         brand={input.brand}
         category={humanCategory}
       />
+      {sliceLabel && (
+        <SliceIntro
+          total={result.pagination.totalEstimate}
+          sellerName={itemListSellerName}
+          brand={input.brand}
+          category={humanCategory}
+          q={input.q}
+          contentLang={contentLang}
+        />
+      )}
       <ActiveFilters sp={sp} sellerDisplayNames={sellerDisplayNames} />
       {result.data.length === 0 ? (
         Object.keys(input).length === 0 ? (
@@ -409,6 +419,57 @@ function ResultsHeader({
         {total.toLocaleString()} match{total === 1 ? "" : "es"}
         {resultCount != null && total > resultCount ? ` · showing ${resultCount}` : ""}
       </p>
+    </div>
+  );
+}
+
+// Substantive intro paragraph below the H1 on every slice landing —
+// q-only, brand-only, single-seller, single-category. Adds topical
+// keyword density (in French where the result set is predominantly
+// DZD) and a real sentence of text Google can use as a snippet
+// candidate beyond the generic meta description. ~80-120 chars.
+function SliceIntro({
+  total,
+  sellerName,
+  brand,
+  category,
+  q,
+  contentLang,
+}: {
+  total: number;
+  sellerName?: string;
+  brand?: string;
+  category?: string;
+  q?: string;
+  contentLang?: string;
+}) {
+  const isFr = contentLang === "fr";
+  const fmt = total.toLocaleString();
+  // Bilingual: lead with the audience-matching language, follow with a
+  // shorter English sentence so search engines that don't honor the
+  // <div lang> wrap still see English keywords.
+  const fr = (() => {
+    if (q) return `Plus de ${fmt} annonces correspondant à « ${q} » en provenance de vendeurs algériens. Prix en DZD, mises à jour en continu.`;
+    if (sellerName) return `Toutes les annonces de ${sellerName}. ${fmt} produits, prix en DZD, actualisés en temps réel.`;
+    if (brand) return `Annonces ${brand} en Algérie · ${fmt} listings de vendeurs algériens. Filtrez par catégorie, prix ou vendeur. Prix en DZD.`;
+    if (category) return `Découvrez ${fmt} annonces de ${category.toLowerCase()} en Algérie. Filtrez par marque, prix ou vendeur. Annonces actualisées en temps réel, prix en DZD.`;
+    return null;
+  })();
+  const en = (() => {
+    if (q) return `${fmt} listings matching “${q}” from Algerian sellers, refreshed continuously. Prices in DZD.`;
+    if (sellerName) return `All ${fmt} listings from ${sellerName}, refreshed continuously.`;
+    if (brand) return `Browse ${fmt} ${brand} listings from Algerian sellers, priced in DZD.`;
+    if (category) return `Browse ${fmt} ${category.toLowerCase()} listings from Algerian sellers, priced in DZD.`;
+    return null;
+  })();
+  if (!fr && !en) return null;
+  return (
+    <div className="-mt-3 mb-5 text-sm text-ink-soft leading-relaxed max-w-3xl">
+      {isFr ? (
+        <p lang="fr">{fr}</p>
+      ) : (
+        <p>{en}</p>
+      )}
     </div>
   );
 }
