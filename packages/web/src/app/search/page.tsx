@@ -364,6 +364,32 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
     mainEntity: itemListJsonLd,
   };
   if (contentLang) collectionPageJsonLd.inLanguage = contentLang;
+  // CollectionPage `about` clarifies the entity the page is "about". For
+  // seller / brand / category landings this is what Google's
+  // entity-graph wants to see — a typed reference distinct from the
+  // ItemList of products. Without it the page is structurally an
+  // anonymous list-of-products; with it Google can wire the page back
+  // to the Organization / Brand / Thing it represents.
+  if (input.q) {
+    collectionPageJsonLd.about = { "@type": "Thing", name: input.q };
+  } else if (itemListSellerName) {
+    const sellerIds = (input.sellerId ?? []).filter(Boolean);
+    collectionPageJsonLd.about = {
+      "@type": "Organization",
+      name: itemListSellerName,
+      identifier: sellerIds[0],
+      url: collectionUrl,
+      areaServed: { "@type": "Country", name: "Algeria" },
+    };
+  } else if (input.brand) {
+    collectionPageJsonLd.about = { "@type": "Brand", name: input.brand };
+  } else if (humanCategory) {
+    collectionPageJsonLd.about = {
+      "@type": "ProductGroup",
+      name: humanCategory,
+      productGroupID: input.category?.[0],
+    };
+  }
 
   // Breadcrumbs both as visible nav and as JSON-LD. Three-segment trail —
   // Home › Catalog › <slice label>. The slice label tracks whichever
