@@ -95,6 +95,18 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        {/* Hero images live on Ouedkniss CDN (cdn7/cdn8/cdn9.ouedkniss.com).
+            Preconnect lets the browser run TLS + TCP handshakes in parallel
+            with the HTML parse, so by the time the <img> hits the network
+            the connection is warm — measurable LCP win on product pages
+            where the hero is the largest contentful paint element.
+            dns-prefetch on the bare host catches any CDN we missed. */}
+        <link rel="preconnect" href="https://cdn7.ouedkniss.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://cdn8.ouedkniss.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://cdn9.ouedkniss.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://ouedkniss.com" />
+      </head>
       <body className="min-h-screen antialiased">
         <a
           href="#main"
