@@ -82,10 +82,34 @@ async function getFeedHits(): Promise<FeedHit[]> {
   return feedInFlight;
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   const hits = await getFeedHits();
   const updated =
     hits.length > 0 && hits[0].postedAt ? hits[0].postedAt : new Date().toISOString();
+  // Last-Modified in RFC 7231 IMF-fixdate format (the only format the spec
+  // permits). Lets RSS/Atom readers do conditional GET — they send
+  // If-Modified-Since and we return 304 when the feed hasn't changed,
+  // saving bandwidth and signalling freshness more reliably than the
+  // 5-min cache-control window.
+  const updatedDate = new Date(updated);
+  const lastModified = Number.isFinite(updatedDate.getTime())
+    ? updatedDate.toUTCString()
+    : new Date().toUTCString();
+  // 304 Not Modified path. Per RFC 7232 we MUST compare the If-Modified-Since
+  // value to Last-Modified at second granularity (date.toUTCString() rounds
+  // to seconds), so we just compare the strings — feed readers always send
+  // back the exact value we gave them.
+  const ifMod = req.headers.get("if-modified-since");
+  if (ifMod && ifMod === lastModified) {
+    return new Response(null, {
+      status: 304,
+      headers: {
+        "last-modified": lastModified,
+        "cache-control":
+          "public, max-age=300, s-maxage=300, stale-while-revalidate=600",
+      },
+    });
+  }
 
   const entries = hits
     .filter((h) => h.productId && h.title?.value)
@@ -137,6 +161,7 @@ ${entries}
       // minutes (catalog seed loop pace), and feed readers/agents poll on
       // their own cadence (15min-1h typical).
       "cache-control": "public, max-age=300, s-maxage=300, stale-while-revalidate=600",
+      "last-modified": lastModified,
     },
   });
 }
