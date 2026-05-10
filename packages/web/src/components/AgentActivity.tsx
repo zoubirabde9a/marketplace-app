@@ -4,6 +4,9 @@
 
 import Link from "next/link";
 import type { MyActivityResponse } from "@/lib/api";
+import { CopyButton } from "./CopyButton";
+
+const MCP_URL = "https://api.teno-store.com/mcp";
 
 const STATUS_STYLE: Record<string, string> = {
   ok: "text-ok bg-ok/10 border-ok/30",
@@ -148,41 +151,98 @@ function NoActivityYet() {
 
 function ConnectAgentEmptyState() {
   return (
-    <div className="text-sm text-ink-soft space-y-4">
+    <div className="text-sm text-ink-soft space-y-6">
       <div>
-        <h3 className="text-ink font-medium mb-1">How to connect an agent</h3>
+        <h3 className="text-ink font-medium text-base mb-1">Set up your shopping agent</h3>
         <p className="text-ink-mute">
-          Teno Store is agent-first: an AI agent shops on your behalf, you watch the
-          activity here. To get started, you grant the agent an{" "}
-          <strong className="text-ink-soft">Agent Passport</strong> — a delegated,
-          scoped, time-limited token bound to the agent&apos;s own keypair.
+          Teno Store is shopped by AI agents on your behalf. You watch what they do here.
+          You&apos;ll need an AI app that can connect to outside services — most popular is{" "}
+          <strong className="text-ink-soft">Claude Desktop</strong>. Pick one below.
         </p>
       </div>
 
-      <div>
-        <h4 className="text-ink-soft font-medium mb-1">
-          Option A · MCP-compatible client (Claude Desktop, etc.)
-        </h4>
-        <p className="text-ink-mute mb-2">
-          Add a new MCP server pointing at the endpoint below. The client handles
-          OAuth + DPoP automatically; approve the consent screen and the agent
-          shows up here.
+      {/* Primary path: Claude Desktop */}
+      <div className="rounded-xl border border-line-soft bg-bg-elev/40 p-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <h4 className="text-ink font-medium">Use with Claude Desktop</h4>
+            <p className="text-xs text-ink-mute mt-0.5">Recommended · free · 5 minutes</p>
+          </div>
+          <a
+            href="https://claude.ai/download"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs hover:border-accent/40 transition shrink-0"
+          >
+            Download Claude →
+          </a>
+        </div>
+
+        <ol className="space-y-3 text-ink-soft">
+          <li className="flex gap-3">
+            <span className="shrink-0 w-6 h-6 rounded-full bg-bg-soft border border-line-soft text-xs font-medium flex items-center justify-center text-ink-mute">1</span>
+            <span>
+              Install <strong className="text-ink">Claude Desktop</strong> (link above) and sign in.
+            </span>
+          </li>
+          <li className="flex gap-3">
+            <span className="shrink-0 w-6 h-6 rounded-full bg-bg-soft border border-line-soft text-xs font-medium flex items-center justify-center text-ink-mute">2</span>
+            <span>
+              In Claude Desktop, open <strong className="text-ink">Settings → Connectors → Add custom connector</strong>{" "}
+              and paste this address:
+            </span>
+          </li>
+          <li className="ml-9 flex items-center gap-2">
+            <code className="flex-1 font-mono text-xs bg-bg/60 border border-line-soft rounded-md px-3 py-2 text-ink truncate">
+              {MCP_URL}
+            </code>
+            <CopyButton value={MCP_URL} label="Copy" copiedLabel="Copied" />
+          </li>
+          <li className="flex gap-3">
+            <span className="shrink-0 w-6 h-6 rounded-full bg-bg-soft border border-line-soft text-xs font-medium flex items-center justify-center text-ink-mute">3</span>
+            <span>
+              Claude will pop up a sign-in window for Teno Store and ask you to approve.
+              Click <strong className="text-ink">Allow</strong>. That&apos;s it — your agent is connected.
+            </span>
+          </li>
+        </ol>
+
+        <p className="mt-4 text-xs text-ink-mute">
+          Now ask Claude things like <em>&quot;Find me a Samsung phone under 50,000 DZD&quot;</em> or{" "}
+          <em>&quot;What&apos;s the cheapest iPhone available?&quot;</em>. Every search and click will show up
+          on this page in real time.
         </p>
-        <pre className="text-xs bg-bg-elev/80 border border-line-soft rounded-lg p-3 overflow-x-auto font-mono text-ink">
-          https://api.teno-store.com/mcp
-        </pre>
       </div>
 
-      <div>
-        <h4 className="text-ink-soft font-medium mb-1">
-          Option B · Custom agent or script
-        </h4>
-        <p className="text-ink-mute mb-2">
-          Have your agent generate a DPoP keypair, then mint a passport against
-          your account (you must be signed in — this call uses your session
-          cookie):
+      {/* Secondary path: any other MCP-compatible app */}
+      <div className="rounded-xl border border-line-soft bg-bg-elev/40 p-4">
+        <h4 className="text-ink font-medium mb-1">Use with another AI app</h4>
+        <p className="text-ink-mute text-xs mb-3">
+          Any app that supports the Model Context Protocol (MCP) works the same way —
+          ChatGPT desktop, Cursor, Zed, custom assistants. Add this as a new MCP server:
         </p>
-        <pre className="text-xs bg-bg-elev/80 border border-line-soft rounded-lg p-3 overflow-x-auto font-mono text-ink whitespace-pre">
+        <div className="flex items-center gap-2">
+          <code className="flex-1 font-mono text-xs bg-bg/60 border border-line-soft rounded-md px-3 py-2 text-ink truncate">
+            {MCP_URL}
+          </code>
+          <CopyButton value={MCP_URL} label="Copy" copiedLabel="Copied" />
+        </div>
+      </div>
+
+      {/* Hidden until needed */}
+      <details className="group">
+        <summary className="cursor-pointer text-xs text-ink-mute hover:text-ink-soft list-none flex items-center gap-1.5">
+          <span className="transition group-open:rotate-90">▸</span>
+          For developers · build your own agent
+        </summary>
+        <div className="mt-3 pl-4 space-y-3 text-xs text-ink-mute">
+          <p>
+            The full protocol surface (REST / MCP / A2A / AP2) is documented at{" "}
+            <a href="/.well-known/agents.json" className="text-accent hover:underline">
+              /.well-known/agents.json
+            </a>. To mint an Agent Passport directly:
+          </p>
+          <pre className="bg-bg/60 border border-line-soft rounded-lg p-3 overflow-x-auto font-mono text-ink whitespace-pre">
 {`curl -X POST https://api.teno-store.com/v1/auth/passports \\
   -H "content-type: application/json" \\
   --cookie "session=<your-session-jwt>" \\
@@ -193,27 +253,15 @@ function ConnectAgentEmptyState() {
     "ttlSeconds": 86400,
     "cnfJwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "..." }
   }'`}
-        </pre>
-        <p className="text-ink-mute mt-2">
-          The response is a Passport JWT bound to your agent&apos;s key. The agent
-          sends it as <code className="font-mono">Authorization: DPoP &lt;jwt&gt;</code>{" "}
-          (with a fresh DPoP proof per request) on calls to{" "}
-          <code className="font-mono">/v1/...</code>, <code className="font-mono">/mcp</code>,
-          or <code className="font-mono">/a2a</code>.
-        </p>
-      </div>
-
-      <p className="text-ink-mute">
-        Full protocol surface (REST / MCP / A2A / AP2):{" "}
-        <a
-          href="/.well-known/agents.json"
-          className="text-accent hover:underline"
-        >
-          /.well-known/agents.json
-        </a>
-        . Once the agent makes its first call, you&apos;ll see every step — tool,
-        scope, latency, status — in this feed.
-      </p>
+          </pre>
+          <p>
+            Returns a DPoP-bound Passport JWT. Send it as{" "}
+            <code className="font-mono">Authorization: DPoP &lt;jwt&gt;</code> on calls to{" "}
+            <code className="font-mono">/v1/...</code>, <code className="font-mono">/mcp</code>, or{" "}
+            <code className="font-mono">/a2a</code>.
+          </p>
+        </div>
+      </details>
     </div>
   );
 }
