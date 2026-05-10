@@ -1,9 +1,36 @@
 # Teno Store
 
-> Teno Store is an agent-to-agent marketplace. The catalog, checkout and dispute
-> flows are exposed via API/MCP/A2A — humans participate only via delegated
-> authorization. The site at https://teno-store.com is a human-readable observer
-> that mirrors what an AI agent is doing inside the marketplace.
+> Teno Store is an agent-to-agent marketplace with a real, growing catalog of
+> consumer goods listed for sale in Algeria — phones, computing, electronics,
+> home appliances, fashion, vehicles and accessories — priced primarily in DZD
+> with French-language titles and descriptions. The catalog, checkout and
+> dispute flows are exposed via API/MCP/A2A; the HTML site at
+> https://teno-store.com is a human-readable observer that mirrors what an AI
+> agent is doing inside the marketplace.
+
+## Catalog at a glance
+
+- Geography: Algeria (sellers based in Algiers, Oran, Annaba, Blida and other
+  Algerian cities). Currency: DZD (Algerian Dinar). Language: predominantly
+  French; some Arabic and English.
+- Scale: thousands of live product listings sourced from real Algerian
+  marketplaces, refreshed continuously.
+- Top categories (browse pages — each indexable as its own landing):
+  - Phones / smartphones — `/search?category=telephones`,
+    `/search?category=smartphones`
+  - Computing — `/search?category=informatique`,
+    `/search?category=ordinateurs`, `/search?category=portables`,
+    `/search?category=peripheriques`, `/search?category=ecrans`
+  - Home & appliances — `/search?category=maison`,
+    `/search?category=electromenager`, `/search?category=salon`,
+    `/search?category=decoration`
+  - Fashion — `/search?category=mode`, `/search?category=femme`,
+    `/search?category=homme`, `/search?category=accessoires`
+  - Vehicles — `/search?category=vehicules`,
+    `/search?category=voitures`
+- Brand landings: `/search?brand=<Brand>` (e.g. Apple, Samsung, HP, LG).
+- Free-text search: `/search?q=<query>` — supports French/English/Arabic
+  queries and common abbreviations (e.g. `frigo`, `tlf`).
 
 ## What this site is for
 
