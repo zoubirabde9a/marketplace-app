@@ -113,7 +113,17 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function ProductPage({ params }: { params: Promise<Params> }) {
   const { id } = await params;
-  const p = await getProduct(id);
+  // getProduct throws an ApiError on any non-2xx, including 404. Without
+  // this catch the 404 propagates to error.tsx → HTTP 200 in the response,
+  // and Google flags those as soft-404s. Catch any 404 specifically and
+  // route through notFound() so Next emits a real 404 status; rethrow
+  // anything else (5xx, network) so the error boundary still surfaces
+  // genuine outages.
+  const p = await getProduct(id).catch((err: unknown) => {
+    const status = (err as { status?: number } | null)?.status;
+    if (status === 404) return null;
+    throw err;
+  });
   if (!p) notFound();
 
   const variants = [...p.variants].sort((a, b) => Number(a.priceMinor) - Number(b.priceMinor));

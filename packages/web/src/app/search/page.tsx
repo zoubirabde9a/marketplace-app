@@ -53,38 +53,62 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const isMultiValuedSeller =
     definedKeys.length === 1 && Array.isArray(sellerIdParam) && sellerIdParam.length > 1;
 
+  // Resolve the slice's seller name + total count once for reuse in title and
+  // description. The count adds a real number to SERP snippets ("1,486 Samsung
+  // listings…" instead of "Browse Samsung products…") which historically lifts
+  // CTR meaningfully. Cheap because Next dedups the request-scoped fetch with
+  // the page render — same parsed input later reuses the same data.
+  let sellerName: string | null = null;
+  let totalCount: number | null = null;
+  if (q || brand || (category && !isMultiValuedCategory) || (sellerId && !isMultiValuedSeller)) {
+    try {
+      const r = await searchProducts({
+        ...(q ? { q } : {}),
+        ...(brand ? { brand } : {}),
+        ...(category && !isMultiValuedCategory ? { category: [category] } : {}),
+        ...(sellerId && !isMultiValuedSeller ? { sellerId: [sellerId] } : {}),
+        limit: 1,
+      });
+      totalCount = r.pagination?.totalEstimate ?? null;
+      if (sellerId && !isMultiValuedSeller) {
+        sellerName =
+          r.facets?.sellers?.find((s) => s.value === sellerId)?.displayName ??
+          r.data[0]?.sellerDisplayName ??
+          null;
+      }
+    } catch {
+      // ignore — fall back to count-less variants below
+    }
+  }
+  const fmtCount = totalCount != null ? totalCount.toLocaleString() : null;
+
   let title: string;
   let description: string;
   if (q) {
     title = `Search: ${q}`;
-    description = `Marketplace results matching "${q}".`;
+    description = fmtCount
+      ? `${fmtCount} listings matching “${q}” on Teno Store — phones, computing and more from Algerian sellers, prices in DZD.`
+      : `Marketplace results matching “${q}” on Teno Store.`;
   } else if (brand) {
     title = `${brand} products`;
-    description = `Browse ${brand} products on Teno Store.`;
+    description = fmtCount
+      ? `Browse ${fmtCount} ${brand} listings from Algerian sellers on Teno Store. Filter by category, price or seller. Prices in DZD.`
+      : `Browse ${brand} products on Teno Store.`;
   } else if (category && !isMultiValuedCategory) {
-    // Category-only landing — humanise the slug for the title and description
-    // so the SERP snippet reads naturally instead of "telephones products".
     const human = category.replace(/[-_]/g, " ");
     title = `${human.charAt(0).toUpperCase()}${human.slice(1)} on Teno Store`;
-    description = `Browse ${human} listings on Teno Store.`;
+    description = fmtCount
+      ? `${fmtCount} ${human} listings from Algerian sellers on Teno Store. Annonces actualisées en temps réel, prix en DZD.`
+      : `Browse ${human} listings on Teno Store.`;
   } else if (sellerId && !isMultiValuedSeller) {
-    // Single-seller landing — resolve the display name so the title and
-    // description carry the seller's brand instead of a generic "Browse..."
-    // string. Falls back gracefully when the API is unreachable.
-    let sellerName: string | null = null;
-    try {
-      const r = await searchProducts({ sellerId: [sellerId], limit: 1 });
-      sellerName =
-        r.facets?.sellers?.find((s) => s.value === sellerId)?.displayName ??
-        r.data[0]?.sellerDisplayName ??
-        null;
-    } catch {
-      // ignore
-    }
     title = sellerName ? `${sellerName} on Teno Store` : "Storefront on Teno Store";
-    description = sellerName
-      ? `Browse listings from ${sellerName} on Teno Store.`
-      : "Browse listings from this seller on Teno Store.";
+    description = fmtCount
+      ? sellerName
+        ? `All ${fmtCount} listings from ${sellerName} on Teno Store, refreshed continuously.`
+        : `All ${fmtCount} listings from this seller on Teno Store, refreshed continuously.`
+      : sellerName
+        ? `Browse listings from ${sellerName} on Teno Store.`
+        : "Browse listings from this seller on Teno Store.";
   } else {
     title = "Browse the marketplace";
     description = "Browse the marketplace catalog.";
