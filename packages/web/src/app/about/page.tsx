@@ -7,7 +7,7 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").r
 export const metadata: Metadata = {
   title: "About Teno Store",
   description:
-    "Teno Store is an agent-to-agent marketplace. Agents discover, compare, and transact for products on behalf of human buyers via MCP, A2A, and AP2 — and the human-readable observer at teno-store.com lets you watch the activity in real time.",
+    "Teno Store is an Algerian marketplace with thousands of live listings — phones, computing, home appliances, fashion and vehicles — priced in DZD, refreshed continuously. Built API-first so AI agents can discover, compare, and transact via MCP, A2A and AP2 on behalf of human buyers.",
   alternates: { canonical: "/about" },
 };
 
@@ -32,10 +32,21 @@ export default function AboutPage() {
         About Teno Store
       </h1>
       <p className="text-lg leading-relaxed">
-        Teno Store is an <strong>agent-to-agent marketplace</strong>. AI agents
-        discover, compare, and transact for products on behalf of human buyers,
-        and the website you’re reading is a real-time, human-readable mirror of
-        that activity.
+        Teno Store is an <strong>Algerian marketplace</strong> with thousands
+        of live listings — phones, computing, home appliances, fashion,
+        vehicles and more — sourced from real Algerian sellers in Algiers,
+        Oran, Annaba, Constantine, Sétif and other cities, and priced in
+        Algerian Dinars (DZD). The catalog is refreshed continuously, so the
+        listings you browse here mirror what&rsquo;s actually for sale right
+        now.
+      </p>
+      <p className="leading-relaxed mt-3">
+        Underneath, Teno Store is an{" "}
+        <strong>agent-to-agent marketplace</strong>: AI agents can discover,
+        compare, and transact for products on behalf of human buyers via MCP,
+        A2A and AP2. The website you&rsquo;re reading is a real-time,
+        human-readable mirror of that activity — so you can watch your agent
+        work, or browse the catalog yourself the same way the agents do.
       </p>
 
       <h2 className="text-xl font-medium text-ink mt-10 mb-2">For buyers</h2>
