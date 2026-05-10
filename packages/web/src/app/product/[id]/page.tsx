@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProduct, searchProducts, type SearchHit } from "@/lib/api";
+import { getProduct, type SearchHit } from "@/lib/api";
+import { searchProductsCached } from "@/lib/searchCache";
 import { formatPrice, formatPriceRange, formatRelativeTime } from "@/lib/format";
 import { Gallery } from "@/components/Gallery";
 import { CounterfeitBadge } from "@/components/CounterfeitBadge";
@@ -141,10 +142,14 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // API hiccup.
   let relatedHits: SearchHit[] = [];
   try {
-    const sellerSlice = await searchProducts({ sellerId: [p.sellerId], limit: 9, sort: "newest" });
+    // searchProductsCached: same (sellerId, sort:newest) tuple is hit by
+    // EVERY product render from that seller. Smart Phone DZ has 4,800+
+    // products → 4,800 identical fetches per crawl wave without this
+    // cache. iter-29 API overload mitigation.
+    const sellerSlice = await searchProductsCached({ sellerId: [p.sellerId], limit: 9, sort: "newest" });
     relatedHits = sellerSlice.data.filter((h) => h.productId !== p.productId).slice(0, 8);
     if (relatedHits.length < 4 && p.categoryIds[0]) {
-      const catSlice = await searchProducts({ category: [p.categoryIds[0]], limit: 12, sort: "newest" });
+      const catSlice = await searchProductsCached({ category: [p.categoryIds[0]], limit: 12, sort: "newest" });
       const seen = new Set([p.productId, ...relatedHits.map((h) => h.productId)]);
       for (const h of catSlice.data) {
         if (relatedHits.length >= 8) break;

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { searchProducts } from "@/lib/api";
+import { searchProductsCached } from "@/lib/searchCache";
 import { parseSearchParams } from "@/lib/url";
 import { ActiveFilters } from "@/components/ActiveFilters";
 // (ProductGridSkeleton removed with the Suspense boundary below — see comment.)
@@ -62,7 +63,12 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   let totalCount: number | null = null;
   if (q || brand || (category && !isMultiValuedCategory) || (sellerId && !isMultiValuedSeller)) {
     try {
-      const r = await searchProducts({
+      // searchProductsCached: this fetch fires on EVERY slice render to
+      // enrich the count-bearing meta description (iter-17). With many
+      // crawlers sharing the same handful of slice queries, a 5-min cache
+      // converts thousands of identical hits into one. Mitigation for the
+      // iter-29 API overload incident.
+      const r = await searchProductsCached({
         ...(q ? { q } : {}),
         ...(brand ? { brand } : {}),
         ...(category && !isMultiValuedCategory ? { category: [category] } : {}),
