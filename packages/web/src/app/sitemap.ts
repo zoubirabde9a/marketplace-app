@@ -54,17 +54,25 @@ async function fetchAllProducts(): Promise<SitemapHarvest> {
     const url = `${API_URL}/v1/products?${params.toString()}`;
     let res: Response;
     try {
-      // Use Next's data-cache with the same 5-min TTL the route revalidates at,
-      // so the harvest cooperates with route-level ISR. cache:"no-store"
-      // (the previous setting) opted every API page out of caching, which in
-      // turn marked the whole sitemap route dynamic and defeated the
-      // route-level `revalidate = 300` — sitemap stayed at 2s/render and
-      // Cloudflare reported cf-cache-status=DYNAMIC.
+      // cache:"no-store" so each ISR rebuild sees the latest catalog state.
+      // Route-level `revalidate = 300` is what actually caches the rendered
+      // sitemap response for 5 min; the per-fetch policy here only controls
+      // what happens during a rebuild. Earlier we tried next:{revalidate:300}
+      // here too — it caused production sitemap to silently shrink to 4
+      // static entries (~722 bytes), losing all 4,000 product/brand/seller/
+      // category URLs. Likely a stale empty payload getting locked into the
+      // data cache after one bad cold render. no-store sidesteps that
+      // entirely: the rebuild fetches fresh, the rendered output is what
+      // gets cached.
       res = await fetch(url, {
         headers: { accept: "application/json" },
-        next: { revalidate: 300 },
+        cache: "no-store",
       });
-    } catch {
+    } catch (err) {
+      // Surface to server logs so a future rebuild failure isn't silent.
+      // Outer catch in sitemap() turned this into the empty-sitemap
+      // regression we just fixed.
+      console.error("[sitemap] harvest fetch failed:", err);
       break;
     }
     if (!res.ok) break;
@@ -182,8 +190,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.7,
     }));
-  } catch {
-    // API unreachable — fall back to static-only sitemap.
+  } catch (err) {
+    // API unreachable — fall back to static-only sitemap. Log so we see it
+    // in container logs; this exact catch silently swallowed an error in
+    // iter-11 → iter-15 and shrank the prod sitemap to 4 static entries.
+    console.error("[sitemap] product/facet harvest failed:", err);
     productEntries = [];
     brandEntries = [];
     sellerEntries = [];
