@@ -7,7 +7,7 @@ Two paths are available, in increasing order of legal cleanliness:
 | Path | Source | Real personal data? | Notes |
 |---|---|---|---|
 | **A. Synthetic Algerian-style** (default) | Hand-curated in `scripts/seed-algerian.mjs` | No — placeholder `+213 555 00 XX XX` numbers | Safe to run today. ~17 products, 5 sellers. |
-| **B. Scraped from Ouedkniss** (advanced) | `scripts/scrape-ouedkniss.mjs` (Playwright) | No (script does NOT scrape phones) | Pulls real titles + prices + images, marries them to synthetic sellers from Path A. |
+| **B. Scraped from Ouedkniss** (advanced) | `scraper/scrape-ouedkniss.mjs` (Playwright) | No (script does NOT scrape phones) | Pulls real titles + prices + images, marries them to synthetic sellers from Path A. |
 
 Path A is the default. Path B requires Playwright on the operator's machine and is bounded to ≤30 listings per run.
 
@@ -67,23 +67,27 @@ curl -s https://teno-store.com/sitemap.xml | grep -c '<url>'
 
 Use this **only** to enrich the catalog with realistic product titles + prices + photos. The script does NOT scrape seller phone numbers — those are gated behind a click on Ouedkniss, and copying them would clearly violate Algerian Law 18-07 and Ouedkniss's ToS.
 
+All scraping code and its full documentation (env knobs, legal posture, end-to-end flow) live in **[`scraper/`](../../scraper/README.md)**. Quick version:
+
 ```bash
 # On the operator's machine (NOT vps-eu):
 pnpm add -D playwright
 pnpm exec playwright install chromium
 
 # Default: 3 pages of c/telephone, max 30 listings, ~4s per page, polite.
-node scripts/scrape-ouedkniss.mjs
+node scraper/scrape-ouedkniss.mjs
 
 # Or another category:
-CATEGORY=informatique PAGES=2 node scripts/scrape-ouedkniss.mjs
+CATEGORY=informatique PAGES=2 node scraper/scrape-ouedkniss.mjs
 
 # Output goes to data/ouedkniss-<category>-<timestamp>.json.
+
+# Then seed under one of your synthetic sellers (Path A creates them):
+SELLER_ID=<uuid> MARKETPLACE_BASE=https://api.teno-store.com \
+  node scraper/seed-from-scraped.mjs data/ouedkniss-telephone-<timestamp>.json
 ```
 
-Marrying the scraped JSON to the seeder (TODO):
-- Write `scripts/seed-from-scraped.mjs` that reads the JSON, picks one of the synthetic sellers (NOT a real Ouedkniss seller), creates products under that seller using the scraped title / price / image URLs.
-- This keeps the legal posture clean: the seller identity is yours; only the product descriptions are inspired by public listings.
+The seller identity is always yours; only the product descriptions are inspired by public listings. See [`scraper/README.md`](../../scraper/README.md) for the full reference.
 
 ---
 
