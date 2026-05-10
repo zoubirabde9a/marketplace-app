@@ -444,6 +444,25 @@ export function makeProductReader(repo: {
   getProductsByIds: (ids: string[]) => Promise<Array<StoredProduct | null>>;
   searchIds?: (q: string, limit?: number) => Promise<Array<{ id: string; score: number }>>;
 }): ProductReader {
+  // Browse-path TTL cache. Empty-query browse pulls every product+variant+
+  // media row, hydrates them, JS-filters/sorts/computes facets — order of
+  // ~700 row reads on prod just to render a 10-listing page. Caching the
+  // hydrated result for 30 seconds drops cached browses to microseconds.
+  // The window is short enough that the 1-min scrape loop only ever delays
+  // a new listing's appearance by ≤30s, which is the same freshness budget
+  // the operator is OK with elsewhere (snapshot TTLs, etc.).
+  // Concurrent expired-cache hits may both fire loadAll once; the second one
+  // overwrites — harmless. Promises are deliberately not deduped; the extra
+  // call is cheaper than the lock bookkeeping at our scale.
+  const BROWSE_TTL_MS = 30_000;
+  let browseCache: { value: { products: StoredProduct[]; sellers: Map<string, StoredSeller> }; expiresAt: number } | null = null;
+  async function loadAllCached() {
+    const now = Date.now();
+    if (browseCache && browseCache.expiresAt > now) return browseCache.value;
+    const fresh = await repo.loadAll();
+    browseCache = { value: fresh, expiresAt: now + BROWSE_TTL_MS };
+    return fresh;
+  }
   function projectOne(p: StoredProduct, sellers: Map<string, StoredSeller>) {
     const seller = sellers.get(p.sellerId);
     return {
@@ -489,10 +508,10 @@ export function makeProductReader(repo: {
         const candidates = productsResult.filter((p): p is StoredProduct => p !== null);
         return searchProducts(candidates, sellers, query, scoreMap);
       }
-      // Browse path (no query): unchanged. loadAll for facet completeness
-      // — empty-query callers want to see the whole catalog's facet space,
-      // not a SQL-shortlisted subset.
-      const { products, sellers } = await repo.loadAll();
+      // Browse path (no query): loadAll with a 30s TTL cache (see top of
+      // makeProductReader). Empty-query callers want to see the whole
+      // catalog's facet space, not a SQL-shortlisted subset.
+      const { products, sellers } = await loadAllCached();
       return searchProducts(products, sellers, query);
     },
     async getProduct(id) {
