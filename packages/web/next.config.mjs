@@ -30,6 +30,18 @@ const nextConfig = {
       // (Lighthouse, Edge "Install app") still probe the older paths.
       { source: "/manifest.json", destination: "/manifest.webmanifest", permanent: true },
       { source: "/site.webmanifest", destination: "/manifest.webmanifest", permanent: true },
+      // Title-case URL variants. Probed live: /Search, /Product/<id>,
+      // /About all returned 404. External links, copy-pastes, and the
+      // occasional mobile keyboard auto-capitalisation hit these. Pattern
+      // covers the most common typo (Initial-cap); all-caps and mixed-case
+      // are out of scope for this static-redirect approach (middleware
+      // would catch all but cost runtime on every request).
+      { source: "/Search", destination: "/search", permanent: true },
+      { source: "/Search/:path*", destination: "/search/:path*", permanent: true },
+      { source: "/Product/:id", destination: "/product/:id", permanent: true },
+      { source: "/About", destination: "/about", permanent: true },
+      { source: "/Seller", destination: "/seller", permanent: true },
+      { source: "/Seller/:path*", destination: "/seller/:path*", permanent: true },
     ];
   },
 };
