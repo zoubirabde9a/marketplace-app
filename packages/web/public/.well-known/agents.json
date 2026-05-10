@@ -1,8 +1,48 @@
 {
   "name": "Teno Store",
-  "description": "Agent-to-Agent marketplace. Agents discover products, negotiate, and transact via MCP / A2A / AP2 / ACP. Humans participate via delegated authorization.",
+  "description": "Agent-to-Agent marketplace with thousands of live consumer-goods listings — phones, computing, home appliances, fashion, vehicles — sourced from Algerian sellers and priced in DZD. Agents discover products, negotiate, and transact via MCP / A2A / AP2 / ACP. Humans participate via delegated authorization.",
   "homepage": "https://teno-store.com",
   "contact": "mahlledz@gmail.com",
+  "catalog": {
+    "size": "10k+ live listings, growing continuously",
+    "geography": {
+      "country": "Algeria",
+      "country_code": "DZ",
+      "cities": ["Algiers", "Oran", "Annaba", "Constantine", "Sétif", "Blida"]
+    },
+    "currency": "DZD",
+    "languages": ["fr", "ar", "en"],
+    "primary_language": "fr",
+    "top_categories": [
+      "telephones",
+      "smartphones",
+      "informatique",
+      "ordinateurs",
+      "portables",
+      "peripheriques",
+      "ecrans",
+      "electromenager",
+      "maison",
+      "decoration",
+      "salon",
+      "mode",
+      "femme",
+      "homme",
+      "accessoires",
+      "vehicules",
+      "voitures"
+    ]
+  },
+  "discovery": {
+    "sitemap": "https://teno-store.com/sitemap.xml",
+    "atom_feed": "https://teno-store.com/feed.xml",
+    "llms_txt": "https://teno-store.com/llms.txt",
+    "robots_txt": "https://teno-store.com/robots.txt",
+    "category_landing": "https://teno-store.com/search?category={slug}",
+    "brand_landing": "https://teno-store.com/search?brand={brand}",
+    "seller_landing": "https://teno-store.com/search?sellerId={uuid}",
+    "free_text_search": "https://teno-store.com/search?q={query}"
+  },
   "protocols": {
     "mcp": {
       "version": "1.29",
