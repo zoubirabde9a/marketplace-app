@@ -49,17 +49,74 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
   // The "Recently posted" strip is the freshest content on the site; surface
   // it to search engines so the home page contributes to topical-freshness
   // ranking signals beyond the marketing hero.
+  // Each ListItem nests a full Product (image, brand, price/currency/
+  // availability, seller) instead of a bare {url, name} pair. Mirrors the
+  // /search slice ItemList shape so the home page contributes the same
+  // rich-result-eligible payload to Google's structured-data graph as
+  // the slice landings do — and the home page has the highest PageRank.
+  const minorToMajor = (minor: string | undefined) => {
+    if (!minor) return undefined;
+    const n = Number(minor);
+    if (!Number.isFinite(n)) return undefined;
+    return (n / 100).toFixed(2);
+  };
   const recentItemList = recent.length > 0 ? {
     "@type": "ItemList",
     "@id": `${SITE_URL}/#recent`,
     name: "Recently posted on Teno Store",
     numberOfItems: recent.length,
-    itemListElement: recent.map((hit, idx) => ({
-      "@type": "ListItem",
-      position: idx + 1,
-      url: `${SITE_URL}/product/${encodeURIComponent(hit.productId)}`,
-      name: hit.title?.value,
-    })),
+    itemListElement: recent.map((hit, idx) => {
+      const productUrl = `${SITE_URL}/product/${encodeURIComponent(hit.productId)}`;
+      const product: Record<string, unknown> = {
+        "@type": "Product",
+        "@id": productUrl,
+        name: hit.title?.value,
+        url: productUrl,
+        productID: hit.productId,
+      };
+      if (hit.heroImageUrl) product.image = [hit.heroImageUrl];
+      if (hit.brand) product.brand = { "@type": "Brand", name: hit.brand };
+      const availability = hit.inStock
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock";
+      const seller = hit.sellerDisplayName
+        ? {
+            "@type": "Organization",
+            name: hit.sellerDisplayName,
+            identifier: hit.sellerId,
+            url: `${SITE_URL}/search?sellerId=${encodeURIComponent(hit.sellerId)}`,
+          }
+        : undefined;
+      const flatPrice = minorToMajor(hit.priceMinor);
+      const lowPrice = minorToMajor(hit.priceFromMinor);
+      const highPrice = minorToMajor(hit.priceToMinor);
+      if (lowPrice && highPrice && hit.currency && (hit.variantCount ?? 0) > 1) {
+        product.offers = {
+          "@type": "AggregateOffer",
+          offerCount: hit.variantCount,
+          lowPrice,
+          highPrice,
+          priceCurrency: hit.currency,
+          availability,
+          url: productUrl,
+          ...(seller ? { seller } : {}),
+        };
+      } else if ((flatPrice ?? lowPrice) && hit.currency) {
+        product.offers = {
+          "@type": "Offer",
+          price: flatPrice ?? lowPrice,
+          priceCurrency: hit.currency,
+          availability,
+          url: productUrl,
+          ...(seller ? { seller } : {}),
+        };
+      }
+      return {
+        "@type": "ListItem",
+        position: idx + 1,
+        item: product,
+      };
+    }),
   } : null;
 
   const websiteJsonLd = {
