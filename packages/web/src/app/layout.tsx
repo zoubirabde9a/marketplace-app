@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { CategoryFooter } from "@/components/CategoryFooter";
@@ -81,12 +82,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         <main id="main" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-24">{children}</main>
         <footer className="border-t border-line-soft mt-16">
-          {/* CategoryFooter is a server component; it renders the most-populated
-              category slugs as direct /search?category=<slug> links so every
-              page in the site internally links to every indexable category
-              landing. Big PageRank-flow win for those landings vs. before, when
-              category pages were islands reachable only from facet UI. */}
-          <CategoryFooter />
+          {/* CategoryFooter is async (fetches /v1/products?limit=1 facets).
+              Without an explicit Suspense, Next 15 makes it an implicit
+              streaming boundary AND lets it race the page-level main fetch.
+              Since the footer fetch is data-cached (revalidate 600s) it
+              resolves first and streams ahead of the page's H1 + product
+              list — which trashes source order for non-JS crawlers reading
+              the raw HTML response. Marking the footer as the deferrable
+              boundary (fallback=null, so nothing renders during streaming)
+              lets main flush in source order; the footer chips fill in
+              just before </body>. */}
+          <Suspense fallback={null}>
+            <CategoryFooter />
+          </Suspense>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-ink-mute flex flex-col sm:flex-row items-center justify-between gap-3">
             <nav aria-label="Footer" className="flex items-center gap-5">
               <Link href="/search" className="hover:text-ink transition">Browse</Link>

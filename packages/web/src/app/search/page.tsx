@@ -1,10 +1,9 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { searchProducts } from "@/lib/api";
 import { parseSearchParams } from "@/lib/url";
 import { ActiveFilters } from "@/components/ActiveFilters";
-import { ProductGridSkeleton } from "@/components/ProductGrid";
+// (ProductGridSkeleton removed with the Suspense boundary below — see comment.)
 import { EmptyState } from "@/components/EmptyState";
 import { InfiniteResults } from "@/components/InfiniteResults";
 import { jsonLdString } from "@/lib/jsonld";
@@ -106,18 +105,17 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const sp = await searchParams;
   const input = parseSearchParams(sp);
 
+  // No Suspense boundary here. With the API on the same docker network the
+  // search fetch lands in ~50 ms and React's streaming SSR otherwise flushes
+  // the layout footer (CategoryFooter chips) BEFORE the resolved main content,
+  // because the footer is synchronous and Results is async. Crawlers read
+  // the response top-down: with the boundary, footer chips landed ~17 KB
+  // earlier in the byte stream than the H1 and product list, dragging
+  // snippet selection toward footer text. Awaiting Results inline preserves
+  // source order for negligible TTFB cost.
   return (
     <div className="pt-8">
-      <Suspense
-        fallback={
-          <>
-            <div className="skeleton h-8 w-1/3 mb-6" />
-            <ProductGridSkeleton />
-          </>
-        }
-      >
-        <Results input={input} sp={sp} />
-      </Suspense>
+      <Results input={input} sp={sp} />
     </div>
   );
 }
