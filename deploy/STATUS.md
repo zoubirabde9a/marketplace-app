@@ -50,6 +50,7 @@ Everything in `/deploy/` is a fresh-eyes-friendly source of truth. Quick links:
 - [`runbooks/05-deploy-app.md`](./runbooks/05-deploy-app.md) → first-time bring-up of the marketplace stack
 - [`runbooks/06-seed-catalog.md`](./runbooks/06-seed-catalog.md) → populate the catalog (Algerian-style)
 - [`runbooks/07-deploy-changes.md`](./runbooks/07-deploy-changes.md) → ship a code change to vps-eu
+- [`runbooks/08-cloudflare-intermittent-slowness.md`](./runbooks/08-cloudflare-intermittent-slowness.md) → diagnose & fix the "site sometimes hangs ~7.7s" Cloudflare-edge pattern (open as of 2026-05-09)
 - [`runbooks/99-disaster-recovery.md`](./runbooks/99-disaster-recovery.md) → recovery from server loss / DB corruption / Let's Encrypt lockout / hijack / lost key
 
 ## Scripts at the repo root

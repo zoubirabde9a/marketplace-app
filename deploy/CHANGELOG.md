@@ -6,6 +6,30 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-09 — second cause for `teno-store.com` intermittency: client-ISP route to CF (runbook 08)
+
+- While debugging a "product page is very slow" report (`/product/019e0e58-…`), found that every connection from the operator's laptop to one of the two Cloudflare anycast v4 IPs returned for `teno-store.com` (`172.67.185.97`) was timing out, while the other (`104.21.84.29`) worked in ~200 ms.
+- `tracert` from laptop: path to `172.67.185.97` dies at hop 8 inside Algerie Telecom (`41.110.38.3` → blackhole). Path to `104.21.84.29` traces cleanly to Cloudflare in ~100 ms. Same path from `vps-eu` (different ASN) hits both IPs fine.
+- Conclusion: **second, distinct, root cause** — Algerie Telecom (AS36947) has intermittent broken routes to **multiple Cloudflare anycast blocks**, and which block is broken **shifts over hours** (earlier in the session `172.67.0.0/16` was unreachable; two hours later `172.67/16` recovered but `188.114.96.0/20` went broken instead). DNS for `teno-store.com` rotates which CF IPs it returns; whichever block the OS draws decides whether the connection succeeds. This is **client-ISP-side, neither Cloudflare nor origin can fix it.**
+- Confirmed by temporarily flipping the apex DNS record to grey-cloud — site loads fine because DNS then returns the origin IP directly, bypassing the broken AT→CF path. Reverted to orange immediately afterwards.
+- **Decision: stay orange (proxied).** Accept the intermittency for affected users until the AT route self-heals or they fix it. No firewall, no Caddyfile, no DNS change today.
+- Did not file a netcup ticket for the earlier-discovered ~10 % SYN-loss issue (cause A). Both causes documented; netcup ticket draft retained in runbook 08 for if/when we want to act on it.
+- Updated `deploy/runbooks/08-cloudflare-intermittent-slowness.md` to clearly separate the two causes (netcup-side SYN drops vs client-ISP CF anycast route), with a table for quick triage.
+
+---
+
+## 2026-05-09 — diagnose intermittent ~7.7 s `teno-store.com` hangs (runbook 08)
+
+- Reproduced from operator laptop: a small fraction of requests (~5–25 %) take ~7.71 s; rest are ~200 ms. Same ratio also affects raw SSH (port 22) to `vps-eu`, which means it's not Caddy/HTTP and not Cloudflare.
+- Verified on `vps-eu`: `TcpExtListenDrops=0`, `TcpExtTCPBacklogDrop=0`, conntrack 251/262144, NIC RX errors 0, fail2ban only has `sshd` jail (no CF range banned), `ufw` has no rate-limit, all containers healthy, app responds <10 ms from inside the box. The dropped SYNs never reach the host kernel.
+- **Root cause: TCP SYN loss between netcup's network and the VPS, port-agnostic.** Action item is a netcup support ticket; the box itself is fine.
+- The Cloudflare-edge "7.7 s" pattern is a derived symptom: CF's 5 s connect_timeout + retry on a dropped SYN ≈ 7.7 s wall clock at the user.
+- Recorded full diagnosis in `deploy/runbooks/08-cloudflare-intermittent-slowness.md` (rewrote — earlier draft hypothesised fail2ban / IPv6, both ruled out).
+- Added `scripts/probe-cf.mjs` (uses `https.request` with fresh connections per request so it actually samples across CF edge IPs) and `CLAUDE.md` at repo root that explicitly authorizes `ssh vps-eu '<cmd>'` for diagnostic work — this gap is what made the first pass of the diagnosis miss the fact that `ssh vps-eu` is the normal way to operate, and waste a turn asking the operator instead.
+- Tcpdump installed on `vps-eu` (`apt-get install tcpdump`) — was missing.
+
+---
+
 ## 2026-05-09 — ship `snapshotUrl` on REST catalog reads to `vps-eu`
 
 - Targeted deploy: `scp` of just `packages/api/src/routes/products.ts` and `packages/api/src/server.ts` to `/opt/marketplace/` (deliberate two-file copy instead of the full `tar | ssh` flow that hit the `.env` overwrite incident in the previous entry).
