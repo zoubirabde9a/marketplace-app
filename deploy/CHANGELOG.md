@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — vps-eu · scraper-loop · catalog cap raised to 280k + automatic disk-hygiene timers
+
+- **Root-cause of the earlier 124 GB disk fill:** Docker build cache (was 128 GB / 659 layers). Driven by `marketplace-api`'s monolithic Dockerfile — the main layer is `COPY /app /app` weighing 699 MB (entire monorepo, deps + dist), so each `docker compose build api` produces a fresh ~700 MB layer that barely shares with the previous one. With nothing pruning it, dozens of rebuilds → 100+ GB. Verified by re-checking 2h after the manual prune: cache had already grown back to 18 GB / 112 layers from normal deploys.
+- **Catalog cap raised** from 14,200 → 280,000 (~20x) in `/etc/systemd/system/marketplace-scrape-loop.service`. With the loop adding ~5-30 products/minute net of dedup, the catalog will grow continuously (no pruning yet) for ~6 days before the cap kicks in. Postgres tables at 280k products are still small (~1 GB total products + media), well within the host's 230 GB free.
+- **New systemd timer: `marketplace-docker-prune.timer`** — daily, runs `docker builder prune -af --filter until=72h`. Keeps the last 72h of build cache hot (so deploys stay fast on incremental rebuilds) and discards everything older. Worst-case loss = 72h of cache. Enabled.
+- **New systemd timer: `marketplace-data-rotate.timer`** — daily, runs `find /opt/marketplace/data -maxdepth 1 -name 'ouedkniss-*.json' -mtime +7 -delete`. Caps scrape-JSON growth (~250 MB/day uncapped) at 7 days of dumps. Enabled.
+- **Future-proofing note (not done now):** the long-term fix is splitting the api Dockerfile into separate deps + source layers, so `pnpm install` cache survives a source change. That'd cut rebuild churn from 700 MB → ~50 MB per rebuild and keep cache size bounded even without the daily prune. Worth doing when someone touches the Dockerfile next.
+- Both new timers verified active: `systemctl list-timers marketplace-*` shows all three (scrape-loop, docker-prune, data-rotate). No restart of running containers needed.
+
 ## 2026-05-10 — vps-eu · scraper-loop · fixed inverted prune SQL (catalog was frozen) + CRLF deploy footgun
 
 - The `--max-products` prune CTE in `scraper/run-loop.sh` had `ORDER BY created_at ASC OFFSET 14200` — that *keeps* the 14,200 oldest and *deletes* everything newer. Inverted from the intent stated in the operator's earlier changelog entry ("deletes oldest products"). The catalog had been frozen since 2026-05-10 18:38 UTC: every cycle seeded N fresh listings then immediately pruned those same N, net catalog change always 0. Discovered by querying `max(created_at)` and noticing it hadn't moved in ~3h despite hundreds of `seeded=N` reports in metrics.jsonl. One-character fix: `ASC` → `DESC` (so OFFSET skips the newest 14,200 and returns the older overflow to delete). Verified within one cycle: `min(created_at)` jumped from 2026-05-08 17:31 → 2026-05-09 20:05; `max(created_at)` jumped from 2026-05-10 18:38 → 2026-05-10 21:18; count stayed at 14,200.

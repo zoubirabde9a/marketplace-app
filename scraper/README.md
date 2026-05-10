@@ -42,10 +42,19 @@ ssh vps-eu /opt/marketplace/scripts/status.sh --errors
    listings (page-progression state in `data/run-loop-state.json`). Captures
    title, description, price, images, posted date, city + wilaya — never
    seller phone or contact info.
-3. **Seed** every listing whose `url` is *not* in the skip-list, by POSTing to
-   the live API. Each becomes a product under the configured seller.
-4. **Verify** by reading `/v1/products?limit=1` and reporting the
-   before/after totals plus a structured JSONL metric.
+3. **Seed** every listing whose `url` is *not* in the skip-list, by writing
+   directly to Postgres via the direct-DB seeder
+   (`packages/db/dist/seed-from-scraped.js` baked into the api image). Each
+   becomes a product under the configured seller. The HTTP-mode seeder
+   (`scraper/seed-from-scraped.mjs`) still exists but is no longer used by
+   the loop — see *Auth posture* below.
+4. **Prune** the seller's catalog down to `--max-products` by deleting the
+   oldest products (`created_at ASC`). Cascades wipe `catalog.media`,
+   `catalog.product_variants`, and inventory rows. Steady-state holds the
+   catalog at exactly the cap.
+5. **Verify** by reading `/v1/products?limit=1` and reporting the
+   before/after totals (taken before the prune) plus a structured JSONL
+   metric.
 
 The orchestration is a single bash script (`run-loop.sh`) with retries, a
 flock lock, structured logging, and an exit code per failure mode. A systemd
@@ -58,7 +67,7 @@ timer fires it once a minute.
 | File | Purpose |
 |---|---|
 | [`scrape-ouedkniss.mjs`](./scrape-ouedkniss.mjs) | GraphQL scraper. Walks `START_PAGE..START_PAGE+PAGES-1` of the category index via `api.ouedkniss.com/graphql`. Captures public listing fields (title, description, images, price, refreshedAt, city, region/wilaya). Writes `data/ouedkniss-<category>-<ts>.json` with `lastPageScraped`/`hasMorePages` so callers can advance. |
-| [`seed-from-scraped.mjs`](./seed-from-scraped.mjs) | Reads a scrape JSON and POSTs each listing to `/v1/products` under `SELLER_ID`. Honours `SKIP_URLS_FILE` for dedup. Drops `source`/`sourceCategory` from attributes (only `sourceUrl` and `sourcePostedAt` are written, plus `city`/`wilaya` when scraped). |
+| [`seed-from-scraped.mjs`](./seed-from-scraped.mjs) | **Legacy HTTP-mode seeder.** Reads a scrape JSON and POSTs each listing to `/v1/products` under `SELLER_ID`. The live loop no longer uses this — `run-loop.sh` invokes `packages/db/src/seed-from-scraped.ts` (compiled to `packages/db/dist/seed-from-scraped.js` in the api image) which writes directly to Postgres. This file is kept for ad-hoc invocation against a local API or for re-enabling HTTP-mode if the auth path is ever re-opened. |
 | [`run-loop.sh`](./run-loop.sh) | One-shot orchestrator: refresh skip-urls → scrape → seed → verify → log → emit metric. Has retries, flock, page-progression state, distinct exit codes. **This is what cron / systemd actually invokes.** |
 | [`status.sh`](./status.sh) | Operator tool: prints timer state, last N runs, aggregate stats, page-progression state, recent errors. Read-only. |
 | [`README.md`](./README.md) | This file. |
@@ -133,7 +142,7 @@ ssh vps-eu cat /opt/marketplace/data/logs/metrics.jsonl
 Each line is a JSON object with at minimum:
 `ts, run_id, seller_id, category, start_page, last_page, has_more,
 next_start_page, before, after, delta, seeded, dup_skipped,
-invalid_skipped, scrape_listings, skip_urls_count`.
+invalid_skipped, pruned, max_products, scrape_listings, skip_urls_count`.
 
 For a deep dive into a specific run, the per-run log has every line of
 scraper + seeder output:
@@ -175,7 +184,8 @@ CLI args on `run-loop.sh` override env, env overrides defaults.
 | `--category` / `CATEGORY` | `telephones` | Ouedkniss category slug |
 | `--pages` / `PAGES` | `2` | Pages walked per iteration |
 | `--max-listings` / `MAX_LISTINGS` | `50` | Hard cap on listings seeded per iteration |
-| `--base` / `MARKETPLACE_BASE` | `http://api:3100` | Where seeder POSTs |
+| `--max-products` / `MAX_PRODUCTS` | (unset; 14200 in prod systemd unit) | After seeding, delete oldest products until the seller's catalog count ≤ N. Refused if < 100. Omit to disable pruning. |
+| `--base` / `MARKETPLACE_BASE` | `http://api:3100` | (Legacy HTTP-mode seeder only — direct-DB seeder bypasses this.) |
 | `--start-page` | (state file) | Override the next page to scrape |
 | `--reset-state` | `false` | Force `next_start_page=1` for this seller+category |
 | `--state-file` | `data/run-loop-state.json` | Override the state file path |
@@ -213,17 +223,29 @@ Seeder-only env (read by `seed-from-scraped.mjs`):
 
 ## Auth posture
 
-Production currently runs with `DEV_BYPASS=1` set in `/opt/marketplace/.env`,
-so the seeder doesn't need a session token or DPoP-bound passport. This was
-an explicit operator decision (logged in `deploy/CHANGELOG.md` 2026-05-10) to
-avoid juggling per-iteration auth.
+**As of 2026-05-10:** `DEV_BYPASS=0` in production. The HTTP write path on
+`/v1/products` requires DPoP-bound auth and rejects unauthenticated callers
+with `401 dpop_token_required`.
 
-**Security implication**: anyone who can reach `https://api.teno-store.com`
-can `POST /v1/products` and act as any principal via arbitrary `x-mp-*`
-headers. To revert: set `DEV_BYPASS=0` in `.env`, run
-`docker compose -f docker-compose.prod.yml up -d api` (NOT `restart` — that
-doesn't re-read `.env`), then either pass `SESSION_JWT=...` to the seeder or
-issue an agent passport.
+The scrape-and-seed loop is unaffected because `run-loop.sh` no longer goes
+through HTTP. It runs the **direct-DB seeder**
+(`packages/db/src/seed-from-scraped.ts`, compiled to
+`packages/db/dist/seed-from-scraped.js` and shipped inside the
+`marketplace-api:local` image) and writes straight to Postgres. The seeder
+container builds `DATABASE_URL` inline from `POSTGRES_PASSWORD` because
+docker-compose constructs it at service-up time and it isn't a standalone
+var in `.env`. The data dir is mounted read-only at `/data` inside that
+container.
+
+The legacy HTTP-mode seeder (`scraper/seed-from-scraped.mjs`) still exists
+for local dev or for re-enabling HTTP mode if auth is ever re-opened. It
+needs either `DEV_BYPASS=1` on the target or a `SESSION_JWT=...` in env.
+
+**History:** `DEV_BYPASS=1` was on for a while as an operator convenience
+while the loop only had an HTTP-mode seeder. An assistant exploited the
+bypass to create an unauthorized seller, which forced the bypass-closure
+work (direct-DB seeder + `DEV_BYPASS=0`). Full timeline in
+`deploy/CHANGELOG.md` 2026-05-10.
 
 ---
 
@@ -250,6 +272,15 @@ The loop progressively walks pages and wraps when Ouedkniss says
 ssh vps-eu /opt/marketplace/scripts/run-loop.sh \
   --seller-id <UUID> --reset-state
 ```
+
+### Change the catalog cap
+
+The cap is hard-coded in the systemd unit (`--max-products 14200`). To change
+it, edit `/etc/systemd/system/marketplace-scrape-loop.service`, run
+`sudo systemctl daemon-reload`, and the next timer fire picks it up. To
+disable pruning entirely (let the catalog grow unbounded), drop the
+`--max-products` line. The script refuses any value < 100 to prevent typos
+nuking the catalog.
 
 ### Try a single page slice
 
@@ -279,6 +310,13 @@ ssh vps-eu '
 The systemd timer keeps firing during deploy; the lockfile prevents the
 in-flight iteration from overlapping with a freshly-deployed one.
 
+**CRLF gotcha when deploying from Windows:** `scp` from a Windows working
+tree can upload `run-loop.sh` with CRLF line endings, which makes
+`#!/usr/bin/env bash` fail with `env: 'bash\r': No such file or directory`
+and every systemd-fired cycle exits 127 silently. After scp, run
+`sudo sed -i 's/\r$//' /opt/marketplace/scripts/run-loop.sh` on the server,
+or set `git config core.autocrlf input` on the working copy beforehand.
+
 ### Clean up old scrape JSONs
 
 `data/ouedkniss-<category>-<ts>.json` accumulates one file per iteration (~1
@@ -305,7 +343,9 @@ Suggest setting up `logrotate` if/when retention becomes a concern.
 | Service exits 5 (seed failed) repeatedly | API down, `DEV_BYPASS=0` after a deploy, schema validation reject | Per-run log shows the 4xx/5xx body verbatim |
 | `marketplace-api not running` (exit 3) | Operator deploy left the container with a Docker-prefixed name (`<id>_marketplace-api`) | `docker rename <id>_marketplace-api marketplace-api`; consider a clean `docker compose -f docker-compose.prod.yml up -d api` |
 | Iteration hits 141 (SIGPIPE) | Was a bug pre-2026-05-10 with `ls -t … \| head -1` against a large data dir; replaced with `sed -n '1p'`. Should not recur. | If it does, check what new pipe was introduced. |
-| `delta=0` every run despite `seeded=N>0` | API's `pagination.totalEstimate` is approximate / lazy. Real DB count is correct. | Use `psql -c "SELECT count(*) FROM catalog.products WHERE seller_id='…'"` for an exact number. |
+| `delta=0` every run with `seeded=N pruned=N` | **Expected steady state.** The catalog cap (`--max-products`) deletes exactly as many oldest products as the seed step adds. Catalog count is held flat. To grow the catalog, raise the cap or remove the flag. |
+| `delta=0` with `seeded>0 pruned=0` | API's `pagination.totalEstimate` is approximate / lazy. Real DB count is correct. | Use `psql -c "SELECT count(*) FROM catalog.products WHERE seller_id='…'"` for an exact number. |
+| Catalog count not decreasing on prune (e.g. `min(created_at)` stuck) | Prune SQL inverted (a regression of the 2026-05-10 ASC/DESC bug). | The CTE in `run-loop.sh` should `ORDER BY created_at DESC OFFSET <cap>` so OFFSET skips the newest N and returns the older overflow to delete. Sanity-check: oldest product's `created_at` should advance every iteration. |
 
 ---
 
@@ -332,20 +372,24 @@ Suggest setting up `logrotate` if/when retention becomes a concern.
 │       │     -e START_PAGE=N -e PAGES=2 …               │
 │       │     scrape-ouedkniss.mjs ──→ data/ouedkniss-*.json
 │       │                                                │
-│       ├── docker run node:22-alpine \                  │
-│       │     -e SKIP_URLS_FILE=/work/data/skip_urls.txt │
-│       │     -e SELLER_ID=… -e MARKETPLACE_BASE=…       │
-│       │     seed-from-scraped.mjs                      │
-│       │              │                                 │
-│       │              ▼                                 │
-│       │       marketplace-api  (POST /v1/products …)   │
-│       │              │                                 │
-│       │              ▼                                 │
-│       │       marketplace-postgres (catalog.products)  │
-│       │                                                │
-│       └── update run-loop-state.json (next_start_page) │
-│           append metrics.jsonl                         │
-│           write per-run run-<RUN_ID>.log               │
+│       ├── docker run marketplace-api:local \            │
+│       │     -v /opt/marketplace/data:/data:ro \         │
+│       │     -e SKIP_URLS_FILE=/data/skip_urls.txt \     │
+│       │     -e SELLER_ID=… -e DATABASE_URL=… \          │
+│       │     node packages/db/dist/seed-from-scraped.js  │
+│       │              │  (direct-DB INSERT, no HTTP)     │
+│       │              ▼                                  │
+│       │       marketplace-postgres (catalog.products)   │
+│       │                                                 │
+│       ├── docker exec marketplace-postgres psql \       │
+│       │     DELETE FROM catalog.products …              │
+│       │     ORDER BY created_at DESC OFFSET <cap>       │
+│       │              ▼                                  │
+│       │       marketplace-postgres (cap enforced)       │
+│       │                                                 │
+│       └── update run-loop-state.json (next_start_page)  │
+│           append metrics.jsonl                          │
+│           write per-run run-<RUN_ID>.log                │
 └────────────────────────────────────────────────────────┘
 ```
 

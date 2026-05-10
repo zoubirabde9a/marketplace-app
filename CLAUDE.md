@@ -34,13 +34,15 @@ node scripts/probe-cf.mjs --count 100
 
 The pipeline `scripts/scrape-ouedkniss.mjs` → `scripts/seed-from-scraped.mjs` is the standing way to grow the live catalog with real-world phone listings. It runs on `vps-eu` itself (this Windows machine can't always reach `api.teno-store.com` — see runbook 08), inside ad-hoc `node:22-alpine` containers attached to the `marketplace_default` docker network.
 
-**Auth posture (as of 2026-05-10): `DEV_BYPASS=1` is on by default in production.** The seeder relies on that flag — it does not currently send DPoP. Reverting `DEV_BYPASS=0` will break the loop. See `deploy/CHANGELOG.md` 2026-05-10 for the security tradeoff.
+**Auth posture (as of 2026-05-10):** `DEV_BYPASS=0` in production. The seeder no longer goes through the HTTP API; `run-loop.sh` invokes the direct-DB sibling (`packages/db/dist/seed-from-scraped.js`, built into the api image) which writes straight to Postgres. This means the loop is independent of any auth state on `/v1/products`. See `deploy/CHANGELOG.md` 2026-05-10 for the bypass-closure history.
+
+**Catalog cap (as of 2026-05-10):** the loop holds the seller's catalog at a fixed size. `--max-products 14200` is wired into the systemd service: each iteration seeds N fresh listings, then deletes the N oldest (by `created_at`) so the count stays at 14,200. Cascades clean up `catalog.media`, `catalog.product_variants`, and inventory rows. Image bytes are not stored locally — `catalog.media.url` holds the original Ouedkniss CDN URL — so pruning a product is a pure DB-row operation. Steady-state metric line shows `seeded=N pruned=N delta=0`.
 
 **Operational env values** for the loop are in `.env.example` (committed) and on `vps-eu:/opt/marketplace/.env` (live). The relevant block:
 
-- `MARKETPLACE_BASE=http://api:3100` — seeder target. Use the docker-network alias when running on the box; use `https://api.teno-store.com` only from a laptop.
-- `SELLER_ID=019e08a4-97cd-7d98-afd7-670878dc51c2` — Smart Phone DZ. Get other UUIDs from `GET /v1/sellers`.
+- `SELLER_ID=019e08a4-97cd-7d98-afd7-670878dc51c2` — Smart Phone DZ. Get other UUIDs by querying `catalog.products` directly (the API path requires auth now).
 - `CATEGORY`, `PAGES`, `PAGE_SIZE`, `MAX_LISTINGS`, `MAX_AGE_DAYS`, `BATCH_PAUSE_MS` — scraper knobs (exact env names the scripts read).
+- `POSTGRES_PASSWORD` — used by `run-loop.sh` to construct `DATABASE_URL` for the direct-DB seeder. Compose builds `DATABASE_URL` at service-up time but it isn't a standalone var in `.env`, so the run-loop builds it inline.
 
 These are NOT consumed by `docker-compose.prod.yml` (api/web/postgres/redis don't need them); they're sourced into the ad-hoc node containers at run time.
 
@@ -54,14 +56,16 @@ ssh vps-eu /opt/marketplace/scripts/run-loop.sh \
 Source: `scraper/run-loop.sh` in the repo, deployed to `/opt/marketplace/scripts/run-loop.sh`. Run `--help` for the full option list. It orchestrates the underlying `scripts/scrape-ouedkniss.mjs` + `scripts/seed-from-scraped.mjs` mjs scripts in `node:22-alpine` containers on the `marketplace_default` network — no node runtime needed on the host.
 
 Output:
-- A single `OK pages=X..Y next=Z before=… after=… delta=… seeded=… dup=… invalid=… log=…` line on stdout (parseable for cron summaries). `pages` is the slice of Ouedkniss pages walked this run; `next` is what the next run will start from.
+- A single `OK pages=X..Y next=Z before=… after=… delta=… seeded=… dup=… invalid=… pruned=… log=…` line on stdout (parseable for cron summaries). `pages` is the slice of Ouedkniss pages walked this run; `next` is what the next run will start from. `pruned` is the number deleted by the cap step (typically equals `seeded`).
 - Per-run human log: `/opt/marketplace/data/logs/run-YYYY-MM-DDTHH-MM-SSZ.log`.
-- Append-only structured metrics: `/opt/marketplace/data/logs/metrics.jsonl` (one JSON object per run, including `start_page`, `last_page`, `has_more`, `next_start_page`).
+- Append-only structured metrics: `/opt/marketplace/data/logs/metrics.jsonl` (one JSON object per run, including `start_page`, `last_page`, `has_more`, `next_start_page`, `pruned`, `max_products`).
 - Page-progress state: `/opt/marketplace/data/run-loop-state.json` keyed by `<seller>-<category>` with `{next_start_page: N}`. Each successful run advances by `PAGES`; on `hasMorePages=false` the script wraps to 1 (full category re-walked from the top).
 - Exit codes: 0 success, 2 bad args, 3 prereq missing, 4 scrape failed all retries, 5 seed failed all retries, 6 skip-urls refresh failed, 7 lock held (concurrent run).
 - A flock-based lock (`run-loop.lock`) prevents concurrent runs.
 
-Useful flags: `--reset-state` to re-walk from page 1, `--start-page N` to override one run, `--state-file PATH` to point at a different state file (e.g. for parallel runs).
+Useful flags: `--reset-state` to re-walk from page 1, `--start-page N` to override one run, `--state-file PATH` to point at a different state file (e.g. for parallel runs), `--max-products N` to set a different catalog cap (or omit to disable pruning entirely; the script refuses values < 100 to prevent typos nuking the catalog).
+
+**Cross-platform deploy footgun:** when scp-ing `run-loop.sh` from this Windows box, line endings can come out as CRLF and break `#!/usr/bin/env bash`. After upload, run `sed -i 's/\r$//' /opt/marketplace/scripts/run-loop.sh` on the server, or set `git config core.autocrlf input` on the working copy. Documented at `deploy/CHANGELOG.md` 2026-05-10.
 
 If you ever need to invoke the underlying steps directly (debugging), see the source comments at the top of `scraper/run-loop.sh` — the script's docstring lists every option and the legacy 3-step pipeline it replaces.
 
