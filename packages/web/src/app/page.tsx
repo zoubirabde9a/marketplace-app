@@ -46,6 +46,22 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
   // Emit WebSite + Organization in a single @graph payload so Google can
   // resolve "Teno Store" as a knowledge-graph entity AND wire up SearchAction
   // sitelinks search box from one document.
+  // The "Recently posted" strip is the freshest content on the site; surface
+  // it to search engines so the home page contributes to topical-freshness
+  // ranking signals beyond the marketing hero.
+  const recentItemList = recent.length > 0 ? {
+    "@type": "ItemList",
+    "@id": `${SITE_URL}/#recent`,
+    name: "Recently posted on Teno Store",
+    numberOfItems: recent.length,
+    itemListElement: recent.map((hit, idx) => ({
+      "@type": "ListItem",
+      position: idx + 1,
+      url: `${SITE_URL}/product/${encodeURIComponent(hit.productId)}`,
+      name: hit.title?.value,
+    })),
+  } : null;
+
   const websiteJsonLd = {
     "@context": "https://schema.org",
     "@graph": [
@@ -77,6 +93,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           url: `${SITE_URL}/icon.svg`,
         },
       },
+      ...(recentItemList ? [recentItemList] : []),
     ],
   };
 

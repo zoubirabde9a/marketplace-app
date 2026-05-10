@@ -259,6 +259,32 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
   const contentLang = dzdHits > 0 && dzdHits >= result.data.length / 2 ? "fr" : undefined;
   if (contentLang) (itemListJsonLd as Record<string, unknown>).inLanguage = contentLang;
 
+  // Wrap the ItemList in a CollectionPage so Google sees this as a curated
+  // catalog landing (q-only, brand-only, seller-only, category-only) rather
+  // than an opaque list. Bare /search collapses to a generic Catalog page.
+  const collectionUrl = `${SITE_URL}${canonicalSlicePath(input)}`;
+  const collectionName = itemListName;
+  const collectionDescription = input.q
+    ? `Marketplace results matching “${input.q}”.`
+    : itemListSellerName
+      ? `Listings from ${itemListSellerName} on Teno Store.`
+      : input.brand
+        ? `Browse ${input.brand} products on Teno Store.`
+        : humanCategory
+          ? `Browse ${humanCategory.toLowerCase()} listings on Teno Store.`
+          : "Browse the Teno Store catalog.";
+  const collectionPageJsonLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": collectionUrl,
+    url: collectionUrl,
+    name: collectionName,
+    description: collectionDescription,
+    isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/#website` },
+    mainEntity: itemListJsonLd,
+  };
+  if (contentLang) collectionPageJsonLd.inLanguage = contentLang;
+
   // Breadcrumbs both as visible nav and as JSON-LD. Three-segment trail —
   // Home › Catalog › <slice label>. The slice label tracks whichever
   // single-key landing the user is on (q, brand, single-seller, single
@@ -291,9 +317,12 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
 
   return (
     <div lang={contentLang}>
+      {/* CollectionPage embeds the ItemList via mainEntity, so we only
+          emit one block here — emitting both would create a duplicate
+          ItemList in Google's structured-data view. */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLdString(itemListJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdString(collectionPageJsonLd) }}
       />
       {breadcrumbJsonLd && (
         <script
