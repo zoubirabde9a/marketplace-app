@@ -32,6 +32,9 @@
 #   --category SLUG          Ouedkniss category (default: telephones)
 #   --pages N                index pages to walk (default: 2)
 #   --max-listings N         hard cap on listings seeded per run (default: 50)
+#   --max-products N         after seeding, prune oldest products for this
+#                            seller until count <= N (cascades media+variants).
+#                            Omit to disable pruning.
 #   --base URL               api base for the seeder (default: http://api:3100)
 #   --skip-urls-file PATH    override path to skip-urls dump
 #                            (default: /opt/marketplace/data/skip_urls.txt)
@@ -84,6 +87,7 @@ SELLER_ID_ARG=""
 CATEGORY_ARG=""
 PAGES_ARG=""
 MAX_LISTINGS_ARG=""
+MAX_PRODUCTS_ARG=""
 BASE_ARG=""
 SKIP_URLS_FILE="$DATA_DIR/skip_urls.txt"
 START_PAGE_ARG=""
@@ -106,6 +110,7 @@ while [[ $# -gt 0 ]]; do
     --category)          CATEGORY_ARG="$2"; shift 2 ;;
     --pages)             PAGES_ARG="$2"; shift 2 ;;
     --max-listings)      MAX_LISTINGS_ARG="$2"; shift 2 ;;
+    --max-products)      MAX_PRODUCTS_ARG="$2"; shift 2 ;;
     --base)              BASE_ARG="$2"; shift 2 ;;
     --skip-urls-file)    SKIP_URLS_FILE="$2"; shift 2 ;;
     --start-page)        START_PAGE_ARG="$2"; shift 2 ;;
@@ -129,7 +134,17 @@ SELLER_ID="${SELLER_ID_ARG:-${SELLER_ID:-}}"
 CATEGORY="${CATEGORY_ARG:-${CATEGORY:-telephones}}"
 PAGES="${PAGES_ARG:-${PAGES:-2}}"
 MAX_LISTINGS="${MAX_LISTINGS_ARG:-${MAX_LISTINGS:-50}}"
+MAX_PRODUCTS="${MAX_PRODUCTS_ARG:-${MAX_PRODUCTS:-}}"
 BASE="${BASE_ARG:-${MARKETPLACE_BASE:-http://api:3100}}"
+
+# Sanity-check the cap: must be a positive integer >= 100. A typo like
+# --max-products 0 or 5 would nuke the catalog; refuse loudly instead.
+if [[ -n "$MAX_PRODUCTS" ]]; then
+  if ! [[ "$MAX_PRODUCTS" =~ ^[0-9]+$ ]] || (( MAX_PRODUCTS < 100 )); then
+    echo "fatal: --max-products must be an integer >= 100 (got '$MAX_PRODUCTS')" >&2
+    exit 2
+  fi
+fi
 
 if [[ -z "$SELLER_ID" ]]; then
   echo "fatal: --seller-id (or SELLER_ID env) is required" >&2
@@ -359,12 +374,27 @@ if [[ -z "$BEFORE" ]]; then
 fi
 
 run_seed() {
+  # Direct-DB seeder via the api image. Bypasses the HTTP auth surface
+  # entirely (no DEV_BYPASS, no session JWT, no DPoP) — writes go through
+  # the same db repos the API uses, so resulting rows are indistinguishable
+  # from API-created products. See packages/db/src/seed-from-scraped.ts.
+  # DATABASE_URL is built from POSTGRES_PASSWORD in $ENV_FILE (compose
+  # constructs it the same way for the api service); we don't ship a
+  # standalone DATABASE_URL var. Data dir is mounted read-only so the
+  # seeder can read both the scrape JSON and the skip-urls file.
+  local pg_password
+  pg_password="$(grep -E '^POSTGRES_PASSWORD=' "$ENV_FILE" | head -1 | cut -d= -f2-)"
+  if [[ -z "$pg_password" ]]; then
+    log error "POSTGRES_PASSWORD not found in $ENV_FILE — cannot build DATABASE_URL"
+    return 1
+  fi
   docker run --rm --network "$NETWORK" \
-    -v "$COMPOSE_DIR:/work" -w /work \
-    --env-file "$ENV_FILE" \
-    -e "MARKETPLACE_BASE=$BASE" -e "SELLER_ID=$SELLER_ID" \
-    -e "SKIP_URLS_FILE=/work/${SKIP_URLS_FILE#$COMPOSE_DIR/}" \
-    "$NODE_IMAGE" node scripts/seed-from-scraped.mjs "${SCRAPE_FILE#$COMPOSE_DIR/}" >>"$LOG_FILE" 2>&1
+    -v "$COMPOSE_DIR/data:/data:ro" \
+    -e "DATABASE_URL=postgres://marketplace:${pg_password}@postgres:5432/marketplace" \
+    -e "SELLER_ID=$SELLER_ID" \
+    -e "SKIP_URLS_FILE=/data/${SKIP_URLS_FILE#$COMPOSE_DIR/data/}" \
+    marketplace-api:local \
+    node packages/db/dist/seed-from-scraped.js "/data/${SCRAPE_FILE#$COMPOSE_DIR/data/}" >>"$LOG_FILE" 2>&1
 }
 
 if ! with_retries "$SEED_RETRIES" "seed" run_seed; then
@@ -389,7 +419,7 @@ fi
 #
 # Non-blocking: failures are warned, never break the run. The seed itself
 # is the source of truth — IndexNow is best-effort acceleration.
-NEW_URLS=$(grep -oE '^  [0-9a-f-]{36} — ' "$LOG_FILE" | awk '{print $1}' | sort -u)
+NEW_URLS=$(grep -oE '"  [0-9a-f-]{36} — ' "$LOG_FILE" | awk '{print $2}' | sort -u || true)
 NEW_URL_COUNT=$(echo -n "$NEW_URLS" | grep -c "^" || true)
 if [[ "$NEW_URL_COUNT" -gt 0 ]]; then
   if echo "$NEW_URLS" | sed 's|^|https://teno-store.com/product/|' \
@@ -413,23 +443,55 @@ else
   DELTA=""
 fi
 
+# ─── step 3.6: prune oldest products to cap ──────────────────────────────
+# Keeps the catalog at a steady size: after seeding, count this seller's
+# products and delete the oldest (created_at ASC) until count <= MAX_PRODUCTS.
+# Cascades wipe catalog.media + catalog.product_variants + inventory_levels
+# automatically (via the FK onDelete: cascade in the schema). Images live
+# as URL refs only — there is no local image bytes to clean up.
+PRUNED=0
+if [[ -n "$MAX_PRODUCTS" ]]; then
+  PRUNE_OUT="$(docker exec "$PG_CONTAINER" psql -U marketplace -d marketplace -At -v ON_ERROR_STOP=1 -c "
+    WITH excess AS (
+      SELECT id FROM catalog.products
+      WHERE seller_id='$SELLER_ID'
+      ORDER BY created_at ASC, id ASC
+      OFFSET $MAX_PRODUCTS
+    ),
+    deleted AS (
+      DELETE FROM catalog.products
+      WHERE id IN (SELECT id FROM excess)
+      RETURNING 1
+    )
+    SELECT count(*) FROM deleted;
+  " 2>>"$LOG_FILE" || echo "")"
+  if [[ "$PRUNE_OUT" =~ ^[0-9]+$ ]]; then
+    PRUNED="$PRUNE_OUT"
+    log info "prune: deleted $PRUNED products older than rank $MAX_PRODUCTS (cap=$MAX_PRODUCTS)"
+  else
+    log warn "prune: delete query returned no count — assuming 0. See log for psql error."
+  fi
+else
+  log info "prune: disabled (no --max-products)"
+fi
+
 # ─── step 4: report ──────────────────────────────────────────────────────
-log info "result before=$BEFORE after=$AFTER delta=$DELTA seeded=$SEEDED dup_skipped=$DUPS invalid_skipped=$SKIPPED scrape_listings=$SCRAPE_LISTINGS pages=$START_PAGE..$LAST_PAGE has_more=$HAS_MORE"
+log info "result before=$BEFORE after=$AFTER delta=$DELTA seeded=$SEEDED dup_skipped=$DUPS invalid_skipped=$SKIPPED pruned=$PRUNED cap=${MAX_PRODUCTS:-none} scrape_listings=$SCRAPE_LISTINGS pages=$START_PAGE..$LAST_PAGE has_more=$HAS_MORE"
 
 # Structured metric line — append-only JSONL for ad-hoc analysis.
 # `before`/`after`/`delta` become JSON null when the api was unreachable
 # (instead of silently logging 0, which used to produce bogus deltas).
-printf '{"ts":"%s","run_id":"%s","seller_id":"%s","category":"%s","start_page":%s,"last_page":%s,"has_more":%s,"next_start_page":%s,"before":%s,"after":%s,"delta":%s,"seeded":%s,"dup_skipped":%s,"invalid_skipped":%s,"scrape_listings":%s,"skip_urls_count":%s}\n' \
+printf '{"ts":"%s","run_id":"%s","seller_id":"%s","category":"%s","start_page":%s,"last_page":%s,"has_more":%s,"next_start_page":%s,"before":%s,"after":%s,"delta":%s,"seeded":%s,"dup_skipped":%s,"invalid_skipped":%s,"pruned":%s,"max_products":%s,"scrape_listings":%s,"skip_urls_count":%s}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$RUN_ID" "$SELLER_ID" "$CATEGORY" \
   "$START_PAGE" "$LAST_PAGE" "$HAS_MORE" "$NEXT_START_PAGE" \
   "${BEFORE:-null}" "${AFTER:-null}" "${DELTA:-null}" \
-  "$SEEDED" "$DUPS" "$SKIPPED" "$SCRAPE_LISTINGS" "$SKIP_COUNT" \
+  "$SEEDED" "$DUPS" "$SKIPPED" "$PRUNED" "${MAX_PRODUCTS:-null}" "$SCRAPE_LISTINGS" "$SKIP_COUNT" \
   >> "$METRICS_FILE"
 
 # Brief, parseable single-line summary on stdout for cron-style invocations.
 # `?` substitutes for unmeasured before/after/delta so they stand out at a glance.
 if (( QUIET == 0 )); then
-  printf 'OK  pages=%s..%s next=%s before=%s after=%s delta=%s seeded=%s dup=%s invalid=%s log=%s\n' \
+  printf 'OK  pages=%s..%s next=%s before=%s after=%s delta=%s seeded=%s dup=%s invalid=%s pruned=%s log=%s\n' \
     "$START_PAGE" "$LAST_PAGE" "$NEXT_START_PAGE" \
-    "${BEFORE:-?}" "${AFTER:-?}" "${DELTA:-?}" "$SEEDED" "$DUPS" "$SKIPPED" "$LOG_FILE"
+    "${BEFORE:-?}" "${AFTER:-?}" "${DELTA:-?}" "$SEEDED" "$DUPS" "$SKIPPED" "$PRUNED" "$LOG_FILE"
 fi

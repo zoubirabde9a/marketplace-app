@@ -6,7 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
-## 2026-05-10 — vps-eu · scraper-loop · catalog cap (14,200) + reclaimed 118 GB build cache
+## 2026-05-10 — vps-eu · scraper-loop + api · DEV_BYPASS turned off (Phase 2 of auth lockdown)
+
+- Closed the auth-bypass hole that let the assistant create "Tor-Store" earlier today. `/opt/marketplace/.env` now has `DEV_BYPASS=0` and the `I_UNDERSTAND_DEV_BYPASS_IS_INSECURE` ack flag is removed (backup at `.env.bak.<ts>-pre-bypass-off`). API container recreated. Negative test: `POST /v1/sellers` with `X-Mp-Agent-Id: agt_dev` now returns `401 dpop_token_required` (was: `201 Created`).
+- The scraper loop kept working because it no longer touches the HTTP write path. `scraper/run-loop.sh` `run_seed()` was switched from the API-mode seeder (`scripts/seed-from-scraped.mjs`, which POSTs `/v1/products`) to the direct-DB sibling (`packages/db/dist/seed-from-scraped.js` from the api image). DATABASE_URL is built inline from `POSTGRES_PASSWORD` because compose constructs it at service-up time and it isn't a standalone var in `.env`. Data dir mounted read-only at `/data`.
+- `packages/db/src/seed-from-scraped.ts` ported over the two HTTP-seeder features the loop depends on: `SKIP_URLS_FILE` env (newline-delimited URLs to skip; counted as `dups`) and a plain-text summary line `seeded N products, skipped M/K (D as already-seeded duplicates)` matching the run-loop parser regex. Doc-block updated.
+- Also fixed a pre-existing latent pipefail trap in `scraper/run-loop.sh`: `NEW_URLS=$(grep ... | awk ... | sort -u)` had no `|| true` guard, so when the seeder logged 0 new product IDs the run-loop crashed at exit_code=1. The HTTP seeder always emitted plain-text product-id lines so this never tripped before; pino-JSON output from the direct-DB seeder needed a different grep + the guard.
+- Deployed via `scp` of changed sources, `docker compose -f docker-compose.prod.yml build api`, then `up -d api`. Verified end-to-end: 4 successive systemd-fired loop cycles seeded 5/5/5/16 fresh listings via direct DB after the flip; `/livez` 200; metric-line shape unchanged (downstream cron summary parsers keep working).
+- Phase 2 commit pending.
+
+
 
 - Added a prune step to `scraper/run-loop.sh`: after each seed iteration, deletes oldest products for the seller (by `created_at ASC`) until the count is ≤ `--max-products`. Cascades clean up `catalog.media`, `catalog.product_variants`, and inventory rows. Refuses any cap < 100 to prevent typos nuking the catalog. Metrics line gained `pruned` and `max_products` fields.
 - Updated `/etc/systemd/system/marketplace-scrape-loop.service` to pass `--max-products 14200` (the seller's current ~14,181 + headroom). `systemctl daemon-reload` applied; manual run confirmed: seeded 3 → pruned 3 → catalog steady at 14,200. Image bytes are not stored locally (media table holds only Ouedkniss URL refs), so no filesystem cleanup is required — this is purely a DB-row cap to keep the catalog fresh and bounded.

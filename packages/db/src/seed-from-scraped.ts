@@ -22,6 +22,11 @@
 //                         aborts with a hint to run scripts/seed-algerian.mjs
 //                         (or `pnpm -F @marketplace/db db:seed`) first.
 //   COUNTRY_CODE          default DZ — used for `shipsTo` when the dump has none.
+//   SKIP_URLS_FILE        optional path to a newline-delimited file of source
+//                         URLs already seeded. Listings with a matching `url`
+//                         are skipped before insert and counted as `dups`.
+//                         The scrape→seed loop populates this from Postgres
+//                         before each run so re-scraped items don't double-seed.
 //   DRY_RUN=1             parse and print, don't write anything.
 //
 // The scraped seller's identity is NEVER copied — only public product data
@@ -133,6 +138,27 @@ async function main(): Promise<void> {
   const requestedSellerId = process.env.SELLER_ID;
   const shipsToDefault = [process.env.COUNTRY_CODE ?? "DZ"];
 
+  // Optional newline-delimited file of source URLs already seeded for this
+  // seller. The scrape→seed loop populates it from Postgres before each run
+  // so that re-scraped listings are skipped instead of re-inserted.
+  // Counted as `dups` (vs. `skipped` for invalid rows) so the run-loop
+  // metrics line tracks de-dup activity separately from quality drops.
+  const skipUrlsFile = process.env.SKIP_URLS_FILE;
+  const skipUrls = new Set<string>();
+  if (skipUrlsFile) {
+    try {
+      const skipRaw = await readFile(skipUrlsFile, "utf8");
+      for (const line of skipRaw.split(/\r?\n/)) {
+        const u = line.trim();
+        if (u) skipUrls.add(u);
+      }
+      log.info(`skip-urls: ${skipUrls.size} entries loaded from ${skipUrlsFile}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.warn(`skip-urls: could not read ${skipUrlsFile} (${msg}); continuing without dedup`);
+    }
+  }
+
   const raw = await readFile(inputPath, "utf8");
   const dump = JSON.parse(raw) as ScrapedDump;
   const items = dump.items ?? [];
@@ -174,8 +200,14 @@ async function main(): Promise<void> {
 
   let ok = 0;
   let skipped = 0;
+  let dups = 0;
   for (let i = 0; i < items.length; i++) {
     const it = items[i]!;
+    const sourceUrl = (it.url ?? "").trim();
+    if (sourceUrl && skipUrls.has(sourceUrl)) {
+      dups++;
+      continue;
+    }
     const title = (it.title ?? "").trim();
     const priceMinor = parsePriceToMinor(it.priceText);
     if (!title || priceMinor === undefined) {
@@ -223,8 +255,14 @@ async function main(): Promise<void> {
   }
 
   await close();
-  log.info(`done: seeded ${ok}, skipped ${skipped}/${items.length}`);
-  if (skipped > 0 && ok === 0) process.exit(1);
+  // Plain-text summary on stdout (separate from pino JSON) so the
+  // run-loop.sh shell parser can grep this exact shape — same line
+  // shape the legacy HTTP seeder emitted.
+  console.log(
+    `seeded ${ok} products, skipped ${skipped}/${items.length} (${dups} as already-seeded duplicates)`,
+  );
+  log.info(`done: seeded ${ok}, skipped ${skipped}/${items.length}, dups ${dups}`);
+  if (ok === 0 && skipped > 0 && dups === 0) process.exit(1);
 }
 
 main().catch((err) => {
