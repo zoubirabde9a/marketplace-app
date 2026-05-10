@@ -248,10 +248,30 @@ async function captureRestSnapshot(
   return { snapshotUrl: snapshotWebUrl(id)!, snapshotCreatedAt: createdAt, snapshotExpiresAt: expiresAt };
 }
 
+/** Best-effort language tag for the search log. Cheap regex; refine from logs later. */
+function detectLang(q: string): string | undefined {
+  if (q.length === 0) return undefined;
+  if (/[؀-ۿ]/.test(q)) return "ar"; // Arabic block
+  if (/[àâäéèêëîïôöùûüçÀÂÄÉÈÊËÎÏÔÖÙÛÜÇ]/.test(q)) return "fr";
+  return undefined; // unknown — could be French sans accents, English, transliteration, etc.
+}
+
+export interface SearchLogSink {
+  record: (entry: {
+    queryRaw: string;
+    queryNormalized: string;
+    nResults: number;
+    latencyMs: number;
+    hasFilters: boolean;
+    langGuess?: string;
+  }) => Promise<void>;
+}
+
 export async function registerProductRoutes(
   app: FastifyInstance,
   reader: ProductReader,
   snapshots?: catalog.SnapshotStore,
+  searchLog?: SearchLogSink,
 ): Promise<void> {
   app.get("/v1/products", async (req) => {
     const agentId = req.principal?.agentId ?? "anonymous";
@@ -277,7 +297,40 @@ export async function registerProductRoutes(
       ...(params.fuzzy !== undefined ? { fuzzy: params.fuzzy } : {}),
       embeddingsMode: "hybrid",
     };
+    const t0 = Date.now();
     const r = await reader.search(query, { agentId });
+    const latencyMs = Date.now() - t0;
+
+    // Fire-and-forget search log. We log only when the user typed a query
+    // string (q non-empty) — that's the data that drives synonym mining and
+    // zero-result alerts. Empty browse traffic is uninteresting and noisy.
+    // Errors are logged at warn but never bubble up — search must not break
+    // on a logging failure.
+    const rawQ = (params.q ?? "").trim();
+    if (searchLog && rawQ.length > 0) {
+      const hasFilters =
+        params.brand !== undefined ||
+        (params.sellerId && params.sellerId.length > 0) ||
+        (params.category && params.category.length > 0) ||
+        params.priceMin !== undefined ||
+        params.priceMax !== undefined ||
+        params.currency !== undefined ||
+        params.shipsTo !== undefined ||
+        params.minRating !== undefined ||
+        (attributes && Object.keys(attributes).length > 0);
+      const entry = {
+        queryRaw: rawQ,
+        queryNormalized: rawQ.toLowerCase(),
+        nResults: r.totalEstimate,
+        latencyMs,
+        hasFilters: !!hasFilters,
+        ...(detectLang(rawQ) ? { langGuess: detectLang(rawQ)! } : {}),
+      };
+      void searchLog.record(entry).catch((err) => {
+        req.log.warn({ err, query: rawQ }, "search_log_write_failed");
+      });
+    }
+
     const base = resolveBaseUrl(req as unknown as { protocol: string; hostname: string; headers: Record<string, unknown> });
     const body = {
       data: r.hits.map((h) => ({

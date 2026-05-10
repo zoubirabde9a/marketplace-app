@@ -84,7 +84,7 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
       /^\/v1\/products\/[^/]+\/media(\/[^/]+)?(\?|$)/.test(req.url),
   });
   const snapshotStore = opts.snapshotStore ?? new catalog.MemorySnapshotStore();
-  await registerProductRoutes(app, opts.productReader, snapshotStore);
+  await registerProductRoutes(app, opts.productReader, snapshotStore, opts.repos.searchLog);
   await registerSellerRoutes(app, opts.repos.sellers);
   await registerProductWriteRoutes(app, { sellers: opts.repos.sellers, products: opts.repos.products });
   await registerCartRoutes(app, opts.repos.carts);

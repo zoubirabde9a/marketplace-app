@@ -10,6 +10,7 @@ import { makeCartRepo } from "./cart.js";
 import { makeOrderRepo } from "./order.js";
 import { makeIdempotencyStore } from "./idempotency.js";
 import { makeJtiStore } from "./jti.js";
+import { makeSearchLogRepo } from "./search-log.js";
 
 export {
   makeUserRepo,
@@ -19,6 +20,7 @@ export {
   makeOrderRepo,
   makeIdempotencyStore,
   makeJtiStore,
+  makeSearchLogRepo,
 };
 
 export function createRepos(db: DbClient) {
@@ -30,6 +32,7 @@ export function createRepos(db: DbClient) {
     orders: makeOrderRepo(db),
     idempotency: makeIdempotencyStore(db),
     jti: makeJtiStore(db),
+    searchLog: makeSearchLogRepo(db),
   };
 }
 

@@ -7,12 +7,14 @@ export type { SellerRepo, SellerRecord } from "./seller.js";
 export type { ProductRepo, ProductRecord, ProductView, VariantRecord, MediaRecord } from "./product.js";
 export type { CartRepo, CartRecord } from "./cart.js";
 export type { OrderRepo, OrderRecord } from "./order.js";
+export type { SearchLogSink } from "../routes/products.js";
 
 import type { UserRepo } from "./user.js";
 import type { SellerRepo } from "./seller.js";
 import type { ProductRepo } from "./product.js";
 import type { CartRepo } from "./cart.js";
 import type { OrderRepo } from "./order.js";
+import type { SearchLogSink } from "../routes/products.js";
 
 /** Bundle of all aggregate repositories, passed through the server graph. */
 export interface Repos {
@@ -21,4 +23,6 @@ export interface Repos {
   products: ProductRepo;
   carts: CartRepo;
   orders: OrderRepo;
+  /** Optional. Drives the audit.search_queries log; absent in unit tests. */
+  searchLog?: SearchLogSink;
 }

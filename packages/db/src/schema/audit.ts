@@ -1,7 +1,7 @@
 // Schema: audit — append-only events with hash chaining, mandate vault, agent actions,
 // reputation. Spec §4.11, §3.5, §7a.
 
-import { boolean, integer, jsonb, pgSchema, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+import { bigserial, boolean, index, integer, jsonb, pgSchema, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { createdAt, idCol, uuidv7 } from "./_common.js";
 import { agents, agentPassports } from "./identity.js";
 
@@ -144,3 +144,27 @@ export const dpopJtis = auditSchema.table("dpop_jtis", {
   expiresAt: timestamp("expires_at", { withTimezone: true, mode: "date" }).notNull(),
   createdAt,
 });
+
+// Append-only search query log. Drives synonym mining, zero-result alerts, and
+// "is search getting worse" SLOs. Stores only the query content + outcome —
+// no session/IP/agent identifiers, so it doesn't widen the PII surface.
+export const searchQueries = auditSchema.table(
+  "search_queries",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+    queryRaw: text("query_raw").notNull(),
+    queryNormalized: text("query_normalized").notNull(),
+    langGuess: varchar("lang_guess", { length: 4 }), // fr|ar|en|null
+    nResults: integer("n_results").notNull(),
+    latencyMs: integer("latency_ms").notNull(),
+    hasFilters: boolean("has_filters").notNull().default(false),
+    createdAt,
+  },
+  (t) => ({
+    // Hot path 1: list zero-result queries (synonym candidates) over a time window.
+    zeroResultsIdx: index("search_queries_zero_results_idx").on(t.nResults, t.occurredAt),
+    // Hot path 2: scan recent queries for trends / dashboards.
+    occurredIdx: index("search_queries_occurred_idx").on(t.occurredAt),
+  }),
+);
