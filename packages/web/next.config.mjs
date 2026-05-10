@@ -57,6 +57,13 @@ const nextConfig = {
       // as the canonical location, but plenty of scanners and operators
       // still probe the bare /security.txt path.
       { source: "/security.txt", destination: "/.well-known/security.txt", permanent: true },
+      // Legacy sitemap-index variants. Some older crawlers probe these
+      // names instead of /sitemap.xml. We don't actually emit a sitemap
+      // INDEX (one file with <14k URLs covers everything well under the
+      // spec's 50k-per-file limit), but the canonical sitemap is what
+      // they want either way.
+      { source: "/sitemap_index.xml", destination: "/sitemap.xml", permanent: true },
+      { source: "/sitemap-index.xml", destination: "/sitemap.xml", permanent: true },
       // NOTE: previously had Title-case → lowercase redirects here for
       // /Search, /Product/:id, /About, /Seller. They caused an infinite
       // redirect loop in production: Next.js's `redirects()` path matcher
