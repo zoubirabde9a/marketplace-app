@@ -158,6 +158,14 @@ export function makeProductRepo(db: DbClient) {
   // score ≥0.5 (iphn→iPhone 0.6, samsng→Samsung 0.71, sams→Samsung 0.5).
   // Tighter than the pg_trgm default (0.6) is still needed for 4-char typos.
   // The lexical score is weighted ×4 so FTS hits always outrank typo matches.
+  //
+  // Freshness decay: final score is multiplied by exp(-age_days / 90). A
+  // 90-day-old listing scores ×0.37, 30-day ×0.71, 1-day ×0.99 — enough to
+  // break ties between equally-relevant listings without inverting the
+  // lexical-vs-typo ordering. 60% of our catalog is scraped from Ouedkniss
+  // and age is the strongest signal we have for "is this listing still real".
+  // We use created_at (ingestion time); attributes.sourcePostedAt is a
+  // future refinement once the seed pipeline reliably populates it.
   async function searchIds(q: string, limit = 200): Promise<Array<{ id: string; score: number }>> {
     const trimmed = q.trim();
     if (trimmed.length === 0) return [];
@@ -168,11 +176,14 @@ export function makeProductRepo(db: DbClient) {
       )
       SELECT p."id" AS id,
              (
-               COALESCE(ts_rank_cd(p."search_text", (SELECT tsq FROM q)), 0)::float8 * 4.0
-               + GREATEST(
-                   word_similarity((SELECT qtxt FROM q), public.f_unaccent(p."title_sanitized")),
-                   word_similarity((SELECT qtxt FROM q), public.f_unaccent(COALESCE(p."brand", '')))
-                 )::float8
+               (
+                 COALESCE(ts_rank_cd(p."search_text", (SELECT tsq FROM q)), 0)::float8 * 4.0
+                 + GREATEST(
+                     word_similarity((SELECT qtxt FROM q), public.f_unaccent(p."title_sanitized")),
+                     word_similarity((SELECT qtxt FROM q), public.f_unaccent(COALESCE(p."brand", '')))
+                   )::float8
+               )
+               * exp(-EXTRACT(EPOCH FROM (NOW() - p."created_at")) / 86400.0 / 90.0)::float8
              ) AS score
       FROM "catalog"."products" p
       WHERE p."search_text" @@ (SELECT tsq FROM q)
