@@ -53,15 +53,52 @@ interface SitemapHarvest {
   categories: string[];
 }
 
+// SWR (stale-while-revalidate) window: serve stale-but-cached harvest
+// up to STALE_MAX_MS past the fresh window, while a background refresh
+// runs. iter probe found two of three /sitemap.xml hits timing out at
+// 30s during a cold rebuild — Googlebot would back off. With SWR the
+// requesters never block on rebuild after the very first warm-up:
+// fresh < 30 min → return cached
+// 30 min < age < 4 h → return cached, kick off async refresh
+// > 4 h or no cache → block on rebuild (rare, only at container start
+//   or after a long idle).
+const STALE_MAX_MS = 4 * 60 * 60 * 1000;
+
 async function fetchAllProducts(): Promise<SitemapHarvest> {
-  // Serve cached harvest if still fresh.
   const now = Date.now();
-  if (cachedHarvest && now - cachedHarvest.ts < HARVEST_TTL_MS) {
-    return cachedHarvest.data;
+  if (cachedHarvest) {
+    const age = now - cachedHarvest.ts;
+    if (age < HARVEST_TTL_MS) {
+      // Fresh — serve cache.
+      return cachedHarvest.data;
+    }
+    if (age < STALE_MAX_MS) {
+      // Stale-but-acceptable — serve cache AND kick off background refresh.
+      // Don't await it; the current request returns immediately. Subsequent
+      // requests during the in-flight rebuild also see the cached value.
+      if (!inFlight) {
+        inFlight = (async () => {
+          try {
+            const data = await fetchAllProductsUncached();
+            if (data.products.length > 0) {
+              cachedHarvest = { data, ts: Date.now() };
+            } else {
+              console.error("[sitemap] background refresh returned 0 products — keeping stale");
+            }
+            return data;
+          } catch (err) {
+            console.error("[sitemap] background refresh failed:", err);
+            return cachedHarvest!.data;
+          } finally {
+            inFlight = null;
+          }
+        })();
+      }
+      return cachedHarvest.data;
+    }
   }
-  // Coalesce concurrent rebuilds — without this, every Googlebot connection
-  // that races past the TTL boundary kicks off its own 60-90s harvest in
-  // parallel and they all fight the API.
+  // No cache, or too stale to serve — block on rebuild. Coalesce
+  // concurrent callers so we don't fan out to N parallel harvests.
   if (inFlight) return inFlight;
   inFlight = (async () => {
     try {
