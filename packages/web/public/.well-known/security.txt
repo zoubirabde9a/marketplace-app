@@ -1,0 +1,9 @@
+# RFC 9116 security disclosure file. Lets researchers, security
+# scanners and bug-bounty platforms find the right contact for any
+# vulnerability they discover in teno-store.com or api.teno-store.com.
+
+Contact: mailto:mahlledz@gmail.com
+Expires: 2027-05-10T00:00:00.000Z
+Preferred-Languages: en, fr
+Canonical: https://teno-store.com/.well-known/security.txt
+Policy: https://teno-store.com/about

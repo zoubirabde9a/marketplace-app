@@ -35,8 +35,8 @@ const nextConfig = {
         ],
       },
       {
-        // /.well-known/agents.json — same rationale.
-        source: "/.well-known/:file(agents.json)",
+        // /.well-known/agents.json + security.txt — same rationale.
+        source: "/.well-known/:file(agents.json|security.txt)",
         headers: [
           { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },
         ],
@@ -53,6 +53,10 @@ const nextConfig = {
       // (Lighthouse, Edge "Install app") still probe the older paths.
       { source: "/manifest.json", destination: "/manifest.webmanifest", permanent: true },
       { source: "/site.webmanifest", destination: "/manifest.webmanifest", permanent: true },
+      // Legacy security.txt path. RFC 9116 defines /.well-known/security.txt
+      // as the canonical location, but plenty of scanners and operators
+      // still probe the bare /security.txt path.
+      { source: "/security.txt", destination: "/.well-known/security.txt", permanent: true },
       // NOTE: previously had Title-case → lowercase redirects here for
       // /Search, /Product/:id, /About, /Seller. They caused an infinite
       // redirect loop in production: Next.js's `redirects()` path matcher
