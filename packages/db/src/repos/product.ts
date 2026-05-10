@@ -163,21 +163,21 @@ export function makeProductRepo(db: DbClient) {
     if (trimmed.length === 0) return [];
     const rows = await db.execute<{ id: string; score: number }>(sql`
       WITH q AS (
-        SELECT websearch_to_tsquery('simple', ${trimmed}) AS tsq,
-               ${trimmed}::text AS qtxt
+        SELECT websearch_to_tsquery('simple', public.f_unaccent(${trimmed})) AS tsq,
+               public.f_unaccent(${trimmed})::text AS qtxt
       )
       SELECT p."id" AS id,
              (
                COALESCE(ts_rank_cd(p."search_text", (SELECT tsq FROM q)), 0)::float8 * 4.0
                + GREATEST(
-                   word_similarity((SELECT qtxt FROM q), p."title_sanitized"),
-                   word_similarity((SELECT qtxt FROM q), COALESCE(p."brand", ''))
+                   word_similarity((SELECT qtxt FROM q), public.f_unaccent(p."title_sanitized")),
+                   word_similarity((SELECT qtxt FROM q), public.f_unaccent(COALESCE(p."brand", '')))
                  )::float8
              ) AS score
       FROM "catalog"."products" p
       WHERE p."search_text" @@ (SELECT tsq FROM q)
-         OR word_similarity((SELECT qtxt FROM q), p."title_sanitized") >= 0.5
-         OR word_similarity((SELECT qtxt FROM q), COALESCE(p."brand", '')) >= 0.5
+         OR word_similarity((SELECT qtxt FROM q), public.f_unaccent(p."title_sanitized")) >= 0.5
+         OR word_similarity((SELECT qtxt FROM q), public.f_unaccent(COALESCE(p."brand", ''))) >= 0.5
       ORDER BY score DESC, p."id" ASC
       LIMIT ${limit}
     `);
