@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import "./globals.css";
 import { Header } from "@/components/Header";
+import { CategoryFooter } from "@/components/CategoryFooter";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
@@ -70,6 +71,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Header />
         <main id="main" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-24">{children}</main>
         <footer className="border-t border-line-soft mt-16">
+          {/* CategoryFooter is a server component; it renders the most-populated
+              category slugs as direct /search?category=<slug> links so every
+              page in the site internally links to every indexable category
+              landing. Big PageRank-flow win for those landings vs. before, when
+              category pages were islands reachable only from facet UI. */}
+          <CategoryFooter />
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-ink-mute flex flex-col sm:flex-row items-center justify-between gap-3">
             <nav aria-label="Footer" className="flex items-center gap-5">
               <Link href="/search" className="hover:text-ink transition">Browse</Link>
