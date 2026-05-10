@@ -49,7 +49,7 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
           </h2>
           {agentCount === 0 ? (
             <p className="text-sm text-ink-soft">
-              Connect an agent below to start watching its activity.
+              No agent linked yet. See <em>How to connect an agent</em> on the right.
             </p>
           ) : (
             <ul className="space-y-2">
@@ -82,7 +82,7 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
             </span>
           </header>
           {actionCount === 0 ? (
-            <ConnectAgentEmptyState />
+            agentCount === 0 ? <ConnectAgentEmptyState /> : <NoActivityYet />
           ) : (
             <ul className="divide-y divide-line-soft">
               {data.recentActions.map((a) => {
@@ -135,12 +135,84 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
   );
 }
 
-function ConnectAgentEmptyState() {
+function NoActivityYet() {
   return (
     <div className="text-sm text-ink-soft space-y-2">
       <p>Nothing here yet.</p>
       <p className="text-ink-mute">
         Once your agent searches or browses on Teno Store, you&apos;ll see every step it took right here.
+      </p>
+    </div>
+  );
+}
+
+function ConnectAgentEmptyState() {
+  return (
+    <div className="text-sm text-ink-soft space-y-4">
+      <div>
+        <h3 className="text-ink font-medium mb-1">How to connect an agent</h3>
+        <p className="text-ink-mute">
+          Teno Store is agent-first: an AI agent shops on your behalf, you watch the
+          activity here. To get started, you grant the agent an{" "}
+          <strong className="text-ink-soft">Agent Passport</strong> — a delegated,
+          scoped, time-limited token bound to the agent&apos;s own keypair.
+        </p>
+      </div>
+
+      <div>
+        <h4 className="text-ink-soft font-medium mb-1">
+          Option A · MCP-compatible client (Claude Desktop, etc.)
+        </h4>
+        <p className="text-ink-mute mb-2">
+          Add a new MCP server pointing at the endpoint below. The client handles
+          OAuth + DPoP automatically; approve the consent screen and the agent
+          shows up here.
+        </p>
+        <pre className="text-xs bg-bg-elev/80 border border-line-soft rounded-lg p-3 overflow-x-auto font-mono text-ink">
+          https://api.teno-store.com/mcp
+        </pre>
+      </div>
+
+      <div>
+        <h4 className="text-ink-soft font-medium mb-1">
+          Option B · Custom agent or script
+        </h4>
+        <p className="text-ink-mute mb-2">
+          Have your agent generate a DPoP keypair, then mint a passport against
+          your account (you must be signed in — this call uses your session
+          cookie):
+        </p>
+        <pre className="text-xs bg-bg-elev/80 border border-line-soft rounded-lg p-3 overflow-x-auto font-mono text-ink whitespace-pre">
+{`curl -X POST https://api.teno-store.com/v1/auth/passports \\
+  -H "content-type: application/json" \\
+  --cookie "session=<your-session-jwt>" \\
+  -d '{
+    "agentId": "my-shopper",
+    "scopes": ["catalog:read", "cart:write", "checkout:write"],
+    "spendCaps": { "currency": "DZD", "perDayMinor": "5000000" },
+    "ttlSeconds": 86400,
+    "cnfJwk": { "kty": "EC", "crv": "P-256", "x": "...", "y": "..." }
+  }'`}
+        </pre>
+        <p className="text-ink-mute mt-2">
+          The response is a Passport JWT bound to your agent&apos;s key. The agent
+          sends it as <code className="font-mono">Authorization: DPoP &lt;jwt&gt;</code>{" "}
+          (with a fresh DPoP proof per request) on calls to{" "}
+          <code className="font-mono">/v1/...</code>, <code className="font-mono">/mcp</code>,
+          or <code className="font-mono">/a2a</code>.
+        </p>
+      </div>
+
+      <p className="text-ink-mute">
+        Full protocol surface (REST / MCP / A2A / AP2):{" "}
+        <a
+          href="/.well-known/agents.json"
+          className="text-accent hover:underline"
+        >
+          /.well-known/agents.json
+        </a>
+        . Once the agent makes its first call, you&apos;ll see every step — tool,
+        scope, latency, status — in this feed.
       </p>
     </div>
   );
