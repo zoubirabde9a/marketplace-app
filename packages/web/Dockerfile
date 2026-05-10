@@ -12,9 +12,23 @@ WORKDIR /app
 
 RUN corepack enable
 
-# Copy lockfile + workspace metadata first for cache-friendly installs.
+# Cache-friendly install: copy only manifests (root + every workspace
+# package.json) before running install. pnpm needs every workspace
+# package.json to resolve `workspace:*` cross-refs, but does NOT need
+# source. As long as no manifest changes, the install layer survives any
+# source edit. See the api Dockerfile at the repo root for the same
+# pattern and the rationale (Docker build cache was ballooning by ~700 MB
+# per rebuild before this split).
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
-COPY packages ./packages
+COPY packages/a2a-server/package.json   packages/a2a-server/
+COPY packages/agent-sim/package.json    packages/agent-sim/
+COPY packages/api/package.json          packages/api/
+COPY packages/db/package.json           packages/db/
+COPY packages/domain/package.json       packages/domain/
+COPY packages/mcp-server/package.json   packages/mcp-server/
+COPY packages/shared/package.json       packages/shared/
+COPY packages/test-utils/package.json   packages/test-utils/
+COPY packages/web/package.json          packages/web/
 
 # --no-frozen-lockfile because the workspace catalog block (pnpm-workspace.yaml)
 # uses `catalog:` references in some package.json files, and the container's
@@ -24,6 +38,9 @@ COPY packages ./packages
 # silently bump a transitive on a fresh layer; the install set is small and
 # we re-build images on every deploy anyway, so drift can't accumulate.
 RUN pnpm install --no-frozen-lockfile
+
+# Source comes after install so this layer changes per commit but is small.
+COPY packages ./packages
 
 # NEXT_PUBLIC_* vars are inlined at build time, not runtime. Setting them in
 # docker-compose's environment: section has no effect on the Next.js bundle.

@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — vps-eu · build · split Dockerfiles: install layer survives source edits
+
+- The api + web Dockerfiles previously did `COPY packages ./packages` *before* `pnpm install`, so any source edit cache-busted the install layer and produced a fresh ~700 MB node_modules layer per rebuild. That's the structural cause of the 128 GB build cache that filled the disk earlier today.
+- Fixed by copying only manifests (`pnpm-lock.yaml`, root + every `packages/*/package.json`) before install, then running `pnpm install`, then copying `packages/` source. Same pattern in both `Dockerfile` (api) and `packages/web/Dockerfile`. Source edits now produce a small source-only layer; install + node_modules layers are reused as long as no manifest changes.
+- Deployed and verified: `docker compose -f docker-compose.prod.yml build api` succeeded under the new shape (1m53s clean build, image `marketplace-api:local` exported successfully). New image is built but the running api container has not been recreated — runtime behavior is identical, so deferred to the next natural deploy.
+- Combined with the 72h-rolling `marketplace-docker-prune.timer` from the earlier entry, this should keep build cache bounded indefinitely. Expected steady state: each rebuild adds tens-of-MB of source/dist layer churn, which the daily prune wipes after 72h.
+
 ## 2026-05-10 — vps-eu · scraper-loop · catalog cap raised to 280k + automatic disk-hygiene timers
 
 - **Root-cause of the earlier 124 GB disk fill:** Docker build cache (was 128 GB / 659 layers). Driven by `marketplace-api`'s monolithic Dockerfile — the main layer is `COPY /app /app` weighing 699 MB (entire monorepo, deps + dist), so each `docker compose build api` produces a fresh ~700 MB layer that barely shares with the previous one. With nothing pruning it, dozens of rebuilds → 100+ GB. Verified by re-checking 2h after the manual prune: cache had already grown back to 18 GB / 112 layers from normal deploys.

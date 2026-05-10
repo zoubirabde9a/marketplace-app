@@ -7,11 +7,28 @@ WORKDIR /app
 # Use the pnpm version pinned in package.json's packageManager field.
 RUN corepack enable
 
-# Copy lockfile + workspace metadata first for cache-friendly installs.
+# Cache-friendly install: copy only manifests (root + every workspace
+# package.json) before running install. pnpm needs every workspace
+# package.json to resolve `workspace:*` cross-refs, but does NOT need
+# source. As long as no manifest changes, the install layer survives any
+# source edit — which keeps the Docker build cache from ballooning by a
+# fresh ~700 MB on every rebuild (the prior shape copied `packages/`
+# before install, so any code edit cache-busted node_modules).
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
-COPY packages ./packages
+COPY packages/a2a-server/package.json   packages/a2a-server/
+COPY packages/agent-sim/package.json    packages/agent-sim/
+COPY packages/api/package.json          packages/api/
+COPY packages/db/package.json           packages/db/
+COPY packages/domain/package.json       packages/domain/
+COPY packages/mcp-server/package.json   packages/mcp-server/
+COPY packages/shared/package.json       packages/shared/
+COPY packages/test-utils/package.json   packages/test-utils/
+COPY packages/web/package.json          packages/web/
 
 RUN pnpm install --frozen-lockfile
+
+# Source comes after install so this layer changes per commit but is small.
+COPY packages ./packages
 # Explicit dependency-order build. We can't rely on `pnpm --filter ...` topology
 # because @marketplace/domain has a package.json dep on @marketplace/db (but
 # the code doesn't actually import db), which makes pnpm see a cycle and pick
