@@ -227,8 +227,17 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
     }),
   };
 
+  // When the visible result set is predominantly DZD-priced, the listings
+  // are almost certainly French. <html lang="en"> at the layout root would
+  // otherwise tell French-language search engines "ignore this page" — wrap
+  // the article subtree with the right BCP-47 tag and mirror it into the
+  // ItemList JSON-LD via inLanguage. Mirrors the product-page heuristic.
+  const dzdHits = result.data.filter((h) => h.currency === "DZD").length;
+  const contentLang = dzdHits > 0 && dzdHits >= result.data.length / 2 ? "fr" : undefined;
+  if (contentLang) (itemListJsonLd as Record<string, unknown>).inLanguage = contentLang;
+
   return (
-    <>
+    <div lang={contentLang}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(itemListJsonLd) }}
@@ -274,7 +283,7 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
           })()}
         />
       )}
-    </>
+    </div>
   );
 }
 

@@ -173,6 +173,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   if (p.brand) {
     productJsonLd.brand = { "@type": "Brand", name: p.brand };
   }
+  // Surface the primary category to schema.org's `category` field so Google
+  // can place us in its product taxonomy (e.g. browse-card grouping).
+  // categoryIds are slug-style ("telephones", "informatique") — humanise the
+  // first segment for the JSON-LD payload.
+  if (p.categoryIds.length > 0 && p.categoryIds[0]) {
+    productJsonLd.category = p.categoryIds[0].replace(/[-_]/g, " ");
+  }
   // Promote a single variant's SKU to the Product level so Google can match
   // this listing to known catalogs even without scanning the Offer.
   if (variants.length === 1 && variants[0].sku) {
