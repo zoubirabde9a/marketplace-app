@@ -134,8 +134,54 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           <Card title="Trust signals" body="Counterfeit risk, stock state, and seller-supplied content tagged as untrusted by default." />
         </div>
       </div>
+      {/* Substantive topical content between the agentic-commerce hero and
+          the recent strip. The hero is English narrative — without this
+          block, Google's strongest on-page signals (first H1/H2 + early
+          paragraphs) carry zero French / catalog-keyword density, and the
+          home page is our highest-authority URL. The block is bilingual
+          (French primary, since most content is DZD-priced) and
+          cross-links to the most-populated category landings. */}
+      <section className="mt-12 max-w-4xl mx-auto" aria-labelledby="catalog-heading">
+        <h2 id="catalog-heading" className="text-2xl font-semibold tracking-tight mb-3">
+          Marketplace algérien · annonces actualisées en temps réel
+        </h2>
+        <p lang="fr" className="text-ink-soft leading-relaxed mb-3">
+          Découvrez des milliers d&rsquo;annonces de vendeurs algériens — téléphones,
+          informatique, électroménager, mode, véhicules et plus. Prix en dinars (DZD),
+          listings actualisés en continu depuis les principales places de marché du
+          pays. Filtrez par marque, prix, vendeur ou catégorie pour trouver exactement
+          ce que vous cherchez.
+        </p>
+        <p className="text-sm text-ink-mute leading-relaxed">
+          Browse a continuously-refreshed catalog of consumer goods listed for sale
+          in Algeria — phones, computing, home appliances, fashion and vehicles —
+          priced in DZD, sourced from real Algerian sellers. Built API-first so AI
+          agents can shop on a buyer&rsquo;s behalf via MCP, A2A and AP2.
+        </p>
+        <ul className="mt-5 flex flex-wrap gap-2 list-none p-0">
+          {[
+            ["Téléphones", "telephones"],
+            ["Smartphones", "smartphones"],
+            ["Informatique", "informatique"],
+            ["Ordinateurs portables", "portables"],
+            ["Électroménager", "electromenager"],
+            ["Mode", "mode"],
+            ["Maison & Déco", "maison"],
+            ["Véhicules", "vehicules"],
+          ].map(([label, slug]) => (
+            <li key={slug}>
+              <Link
+                href={`/search?category=${encodeURIComponent(slug)}`}
+                className="inline-flex items-center px-3 h-9 rounded-full bg-bg-soft border border-line-soft text-sm text-ink-soft hover:border-accent/40 hover:text-ink transition"
+              >
+                {label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
       {recent.length > 0 && (
-        <section className="mt-8" aria-labelledby="recent-heading">
+        <section className="mt-12" aria-labelledby="recent-heading">
           <div className="flex items-baseline justify-between mb-4">
             <h2 id="recent-heading" className="text-xl font-semibold tracking-tight">Recently posted</h2>
             <Link href="/search" className="text-sm text-ink-soft hover:text-ink transition">See all →</Link>

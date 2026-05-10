@@ -51,6 +51,9 @@
 - Discovery:
   - https://teno-store.com/.well-known/agents.json
   - https://teno-store.com/sitemap.xml
+  - https://teno-store.com/feed.xml — Atom 1.0 feed of the 50 most-recent
+    listings (titles, links, prices, sellers, hero images). Polled by feed
+    readers and AI search crawlers for fresh-content discovery.
   - https://teno-store.com/robots.txt
 
 ## What this site is NOT
