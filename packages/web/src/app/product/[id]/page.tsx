@@ -48,6 +48,34 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // honor it). Defaults to en_US (matches the layout) for everything else.
   const productCurrency = p.variants[0]?.currency;
   const ogLocale = productCurrency === "DZD" ? "fr_DZ" : "en_US";
+  // Open Graph product extension (og.me/Facebook product object): adds
+  // og:type=product, product:price:amount/currency, product:availability,
+  // and product:brand. Pinterest, Discord, Slack and Facebook product
+  // cards parse these for proper price/stock rendering. Next.js Metadata's
+  // typed openGraph doesn't support type:'product', so emit them via
+  // `other` — which detects og:/product: prefixes and renders as
+  // <meta property="..." />, matching the OG spec.
+  const minorVariant = [...p.variants].sort(
+    (a, b) => Number(a.priceMinor) - Number(b.priceMinor),
+  )[0];
+  const ogPriceAmount = minorVariant
+    ? (Number(minorVariant.priceMinor) / 100).toFixed(2)
+    : undefined;
+  const anyInStockMeta = p.variants.some((v) => v.inStock);
+  const ogProductOther: Record<string, string> = {
+    "og:type": "product",
+  };
+  if (ogPriceAmount && minorVariant?.currency) {
+    ogProductOther["product:price:amount"] = ogPriceAmount;
+    ogProductOther["product:price:currency"] = minorVariant.currency;
+    ogProductOther["og:price:amount"] = ogPriceAmount;
+    ogProductOther["og:price:currency"] = minorVariant.currency;
+  }
+  ogProductOther["product:availability"] = anyInStockMeta ? "instock" : "oos";
+  if (p.brand) ogProductOther["product:brand"] = p.brand;
+  if (p.categoryIds.length > 0 && p.categoryIds[0]) {
+    ogProductOther["product:category"] = p.categoryIds[0].replace(/[-_]/g, " ");
+  }
   return {
     title,
     description: desc,
@@ -72,6 +100,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       description: desc,
       ...(p.heroImageUrl ? { images: [p.heroImageUrl] } : {}),
     },
+    other: ogProductOther,
   };
 }
 
