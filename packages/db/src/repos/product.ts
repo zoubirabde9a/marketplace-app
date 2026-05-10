@@ -4,6 +4,7 @@ import { products, productVariants, media } from "../schema/catalog.js";
 import { sellerProfiles } from "../schema/seller.js";
 import type { DbClient } from "../client.js";
 import { isUuid } from "./_uuid.js";
+import { expandForWebsearch } from "../synonyms.js";
 
 export interface StoredVariant {
   id: string;
@@ -169,9 +170,14 @@ export function makeProductRepo(db: DbClient) {
   async function searchIds(q: string, limit = 200): Promise<Array<{ id: string; score: number }>> {
     const trimmed = q.trim();
     if (trimmed.length === 0) return [];
+    // Synonym expansion drives the FTS path: "frigo" → tsquery
+    // 'frigo' | 'refrigerateur'. Trigram fallback keeps the literal user
+    // input (qtxt) — synonyms shouldn't widen the typo-similarity check or
+    // we'll match unrelated rows.
+    const ftsInput = expandForWebsearch(trimmed);
     const rows = await db.execute<{ id: string; score: number }>(sql`
       WITH q AS (
-        SELECT websearch_to_tsquery('simple', public.f_unaccent(${trimmed})) AS tsq,
+        SELECT websearch_to_tsquery('simple', public.f_unaccent(${ftsInput})) AS tsq,
                public.f_unaccent(${trimmed})::text AS qtxt
       )
       SELECT p."id" AS id,

@@ -10,5 +10,6 @@ for h in d["data"]:
     brand = h.get("brand", "-")
     print(f"  {round(score, 3):>7}  |  brand={brand:<15}  |  {title}")
 p = d["pagination"]
-print(f"  total: {p['totalEstimate']}")
+total = p["totalEstimate"]
+print(f"  total: {total}")
 '
