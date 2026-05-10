@@ -148,8 +148,12 @@ export async function GET(req: NextRequest) {
     })
     .join("\n");
 
+  // xml:lang on the feed root — Atom-spec best practice. Most listing
+  // content is French (DZD-priced Algerian inventory); declaring this
+  // helps RSS readers and AI crawlers pick the right language model when
+  // summarising entries.
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<feed xmlns="http://www.w3.org/2005/Atom">
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="fr">
   <title>Teno Store — Recent listings</title>
   <subtitle>The 50 most recently posted listings on Teno Store — phones, computing, home appliances, fashion and vehicles from Algerian sellers, priced in DZD.</subtitle>
   <link rel="alternate" type="text/html" href="${SITE_URL}/"/>
