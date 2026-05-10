@@ -439,6 +439,7 @@ function projectDetail(p: DetailInput) {
  */
 export function makeProductReader(repo: {
   loadAll: () => Promise<{ products: StoredProduct[]; sellers: Map<string, StoredSeller> }>;
+  loadSellers?: () => Promise<Map<string, StoredSeller>>;
   loadOne: (id: string) => Promise<StoredProduct | undefined>;
   getProductsByIds: (ids: string[]) => Promise<Array<StoredProduct | null>>;
   searchIds?: (q: string, limit?: number) => Promise<Array<{ id: string; score: number }>>;
@@ -466,21 +467,32 @@ export function makeProductReader(repo: {
   }
   return {
     async search(query) {
-      const { products, sellers } = await repo.loadAll();
-      // When a free-text query is present and the repo exposes searchIds,
-      // delegate text matching + relevance ranking to Postgres (FTS + pg_trgm,
-      // migration 0003). Filters/sort/facets/cursor stay in the JS pipeline,
-      // operating over the SQL-shortlisted candidates.
       const q = query.query?.trim() ?? "";
-      if (q.length > 0 && repo.searchIds) {
+      // Fast path: when there's a query and the repo can shortlist via SQL
+      // (FTS + pg_trgm, migration 0003), skip loadAll entirely and only
+      // hydrate the candidates we actually need plus the small sellers map.
+      // Cuts per-search DB cost dramatically — for a 290-listing catalog with
+      // a typical query matching <50 candidates, this trades ~700 row reads
+      // (loadAll: products+variants+media) for ~150 (candidates only).
+      if (q.length > 0 && repo.searchIds && repo.loadSellers) {
         const ranked = await repo.searchIds(q);
         if (ranked.length === 0) {
+          const sellers = await repo.loadSellers();
           return searchProducts([], sellers, query, new Map());
         }
+        const ids = ranked.map((r) => r.id);
+        const [productsResult, sellers] = await Promise.all([
+          repo.getProductsByIds(ids),
+          repo.loadSellers(),
+        ]);
         const scoreMap = new Map(ranked.map((r) => [r.id, r.score]));
-        const candidates = products.filter((p) => scoreMap.has(p.productId));
+        const candidates = productsResult.filter((p): p is StoredProduct => p !== null);
         return searchProducts(candidates, sellers, query, scoreMap);
       }
+      // Browse path (no query): unchanged. loadAll for facet completeness
+      // — empty-query callers want to see the whole catalog's facet space,
+      // not a SQL-shortlisted subset.
+      const { products, sellers } = await repo.loadAll();
       return searchProducts(products, sellers, query);
     },
     async getProduct(id) {

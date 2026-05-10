@@ -101,12 +101,32 @@ export function makeProductRepo(db: DbClient) {
   // (which delegates to the in-memory catalog/search.ts) and by listing-style
   // reads. For larger catalogs this would page or join; for the current
   // dev/demo dataset it's a fine simplification.
+  // Sellers map only — used on the search hot path so we don't need to also
+  // pay for products+variants+media when searchIds() has already narrowed
+  // the candidate set in SQL.
+  async function loadSellers(): Promise<Map<string, StoredSeller>> {
+    const sels = await db.select().from(sellerProfiles);
+    const sellerMap = new Map<string, StoredSeller>();
+    for (const s of sels) {
+      sellerMap.set(s.orgId, {
+        sellerId: s.orgId,
+        displayName: s.storeName,
+        ownerAgentId: s.ownerAgentId,
+        ...(s.phone ? { phone: s.phone } : {}),
+        ...(s.whatsapp ? { whatsapp: s.whatsapp } : {}),
+        ...(s.website ? { website: s.website } : {}),
+        createdAt: s.createdAt.getTime(),
+      });
+    }
+    return sellerMap;
+  }
+
   async function loadAll(): Promise<{ products: StoredProduct[]; sellers: Map<string, StoredSeller> }> {
-    const [prods, vars, meds, sels] = await Promise.all([
+    const [prods, vars, meds, sellerMap] = await Promise.all([
       db.select().from(products),
       db.select().from(productVariants),
       db.select().from(media),
-      db.select().from(sellerProfiles),
+      loadSellers(),
     ]);
     const byProdVars = new Map<string, Array<typeof productVariants.$inferSelect>>();
     for (const v of vars) {
@@ -122,18 +142,6 @@ export function makeProductRepo(db: DbClient) {
       byProdMedia.set(m.productId, arr);
     }
     const result = prods.map((p) => shapeProduct(p, byProdVars.get(p.id) ?? [], byProdMedia.get(p.id) ?? []));
-    const sellerMap = new Map<string, StoredSeller>();
-    for (const s of sels) {
-      sellerMap.set(s.orgId, {
-        sellerId: s.orgId,
-        displayName: s.storeName,
-        ownerAgentId: s.ownerAgentId,
-        ...(s.phone ? { phone: s.phone } : {}),
-        ...(s.whatsapp ? { whatsapp: s.whatsapp } : {}),
-        ...(s.website ? { website: s.website } : {}),
-        createdAt: s.createdAt.getTime(),
-      });
-    }
     return { products: result, sellers: sellerMap };
   }
 
@@ -217,6 +225,7 @@ export function makeProductRepo(db: DbClient) {
 
   return {
     loadAll,
+    loadSellers,
     loadOne,
     searchIds,
 
