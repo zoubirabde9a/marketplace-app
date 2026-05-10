@@ -157,7 +157,10 @@ describe("ProductPage generateMetadata", () => {
 
     const m = await generateMetadata({ params: Promise.resolve({ id: "p-123" }) });
 
-    expect(m.title).toBe("Test Widget 9000");
+    // Product titles are emitted as { absolute: ... } so the layout's
+    // " · Teno Store" template doesn't push the title past Google's SERP
+    // 55-65 char truncation budget on long Algerian listing titles.
+    expect(m.title).toEqual({ absolute: "Test Widget 9000" });
     expect(m.alternates?.canonical).toBe("/product/p-123");
     // OG image carries dimensions and alt for fast social previews.
     const ogImg = (m.openGraph?.images as Array<Record<string, unknown>>)[0];

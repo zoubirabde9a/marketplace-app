@@ -78,7 +78,13 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     ogProductOther["product:category"] = p.categoryIds[0].replace(/[-_]/g, " ");
   }
   return {
-    title,
+    // Bypass the layout's "%s · Teno Store" template — that suffix eats 13
+    // chars and Google's SERP truncates at 55-65, so any product title >50
+    // chars (common for our scraped Algerian listings — full spec strings
+    // like "SoundPEATS C30 - ANC -52dB / Hi-Res Audio / 52H Batterie")
+    // would lose its tail. Brand visibility is already covered by the URL,
+    // breadcrumb, JSON-LD seller field, and OG site_name.
+    title: { absolute: title },
     description: desc,
     alternates: { canonical },
     openGraph: {
