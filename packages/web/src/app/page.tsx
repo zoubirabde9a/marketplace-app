@@ -92,6 +92,23 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           "@type": "ImageObject",
           url: `${SITE_URL}/icon.svg`,
         },
+        // Regional entity signals for Google's knowledge graph. The catalog
+        // serves Algerian buyers and sellers exclusively (currency=DZD,
+        // listings sourced from Algerian marketplaces); without these
+        // fields the Organization is locale-anonymous and Google can't
+        // disambiguate "Teno Store" from the German jewelry brand TeNo
+        // (teno.com — see deploy/seo.md).
+        address: {
+          "@type": "PostalAddress",
+          addressCountry: "DZ",
+        },
+        areaServed: {
+          "@type": "Country",
+          name: "Algeria",
+        },
+        currenciesAccepted: "DZD",
+        knowsLanguage: ["fr", "ar", "en"],
+        email: "mahlledz@gmail.com",
       },
       ...(recentItemList ? [recentItemList] : []),
     ],
