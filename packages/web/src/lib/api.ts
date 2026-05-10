@@ -26,7 +26,10 @@ export interface SearchHit {
   sellerDisplayName: string | null;
   categoryIds: string[];
   counterfeitRisk: "low" | "elevated" | "high";
-  relevanceScore: number;
+  // Optional: searchProducts() in lib/api.ts strips this before client
+  // components see it (see comment there); keeping it optional in the
+  // type avoids breaking any test fixture that still sets the field.
+  relevanceScore?: number;
   heroImageUrl: string | null;
   heroImage: { id: string; url: string; contentType: string; altText?: string } | null;
   imageCount?: number;
@@ -126,16 +129,23 @@ export function buildSearchQuery(input: SearchInput): string {
 export async function searchProducts(input: SearchInput): Promise<SearchResponse> {
   const qs = buildSearchQuery(input);
   const r = await request<SearchResponse>(`/v1/products${qs ? `?${qs}` : ""}`);
-  // The API includes a `viewUrl` field on every hit pointing at its own
-  // internal hostname (e.g. http://api:3100/v1/products/<id>). When we hand
-  // SearchHit[] to client components the field is serialised into the RSC
-  // payload — production probe (iter-30) showed 25 occurrences of
-  // `http://api:3100` in the rendered HTML of /search?category=telephones.
-  // Nothing in the UI consumes viewUrl (cards build /product/<id> from the
-  // productId field), so stripping it here removes the leak entirely AND
-  // shrinks the per-page payload.
+  // Strip server-internal / unused fields before SearchHit[] reaches client
+  // components (and the RSC payload that ends up in the rendered HTML):
+  //   - viewUrl: API's internal http://api:3100/v1/products/<id> URL.
+  //     Iter-30 probe found 25 of these leaking into /search HTML.
+  //   - relevanceScore: API's internal ranking signal — not consumed by any
+  //     UI; exposing it lets anyone reverse-engineer search ranking.
+  //   - imageCount: not consumed by any UI; pure dead weight.
+  // ProductCard uses {productId, title, brand, price*, currency, inStock,
+  // sellerId, sellerDisplayName, counterfeitRisk, heroImageUrl, heroImage,
+  // postedAt} — everything else is for our metadata pipeline only.
   if (r?.data) {
-    r.data = r.data.map(({ viewUrl: _viewUrl, ...rest }) => rest as SearchHit);
+    r.data = r.data.map(({
+      viewUrl: _viewUrl,
+      relevanceScore: _relevanceScore,
+      imageCount: _imageCount,
+      ...rest
+    }) => rest as SearchHit);
   }
   return r;
 }
