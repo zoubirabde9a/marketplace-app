@@ -140,7 +140,18 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     description,
     alternates: { canonical },
     robots:
-      hasNonIndexableParam || isMultiFilter || isMultiValuedSeller || isMultiValuedCategory
+      // Noindex when the slice has zero results. Without this, anyone can
+      // construct /search?q=<garbage> or /search?brand=<typo> and we
+      // declare that empty page indexable — Google flags those as
+      // soft-404s and they pollute the index. totalCount === 0 is the
+      // signal we got back from the API; null (fetch failed) keeps the
+      // current behaviour so a transient outage doesn't deindex a
+      // legitimate slice.
+      hasNonIndexableParam ||
+      isMultiFilter ||
+      isMultiValuedSeller ||
+      isMultiValuedCategory ||
+      totalCount === 0
         ? { index: false, follow: true }
         : { index: true, follow: true },
     // Also override openGraph and twitter so social-share scrapers
@@ -148,7 +159,11 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     // instead of inheriting the layout default ("Teno Store — the agent-to-
     // agent marketplace" / "Watch your AI agent..."). Layout's openGraph
     // type/locale/siteName still apply via merge.
-    openGraph: { title, description, url: canonical, type: "website" },
+    // siteName has to be repeated here — Next.js's openGraph merge replaces
+    // child fields entirely instead of merging into the layout default,
+    // so without this every /search share loses the "Teno Store" brand
+    // context that the home and product pages carry.
+    openGraph: { title, description, url: canonical, type: "website", siteName: "Teno Store" },
     twitter: { card: "summary_large_image", title, description },
   };
 }

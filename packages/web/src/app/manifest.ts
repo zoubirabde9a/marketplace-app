@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Teno Store",
     short_name: "Teno",
     description:
-      "Teno Store is an agent-to-agent marketplace. Watch your AI agent shop in real time.",
+      "Teno Store — Algerian marketplace with thousands of live listings (phones, computing, home appliances, fashion, vehicles) priced in DZD, refreshed continuously. Also an agent-to-agent marketplace via MCP/A2A/AP2.",
     start_url: "/",
     display: "standalone",
     background_color: "#0a0a0a",
