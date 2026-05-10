@@ -14,10 +14,15 @@ export const SEARCH_SYNONYMS: Record<string, readonly string[]> = {
   frigo: ["refrigerateur"],
   refrigerateur: ["frigo"],
 
-  // Phones — the abbreviations Algerian users actually type
+  // Phones — the abbreviations Algerian users actually type. "phone" added
+  // 2026-05-10 from search-stats data (7 occurrences in the prod query log
+  // with avg 172 results — but a chunk of those 7 hits were probably lower
+  // than they should have been, since "phone" tokens don't appear in many
+  // FR-titled listings; mapping it to "telephone" recovers them).
   tlf: ["telephone"],
   tel: ["telephone"],
-  telephone: ["tlf"],
+  phone: ["telephone"],
+  telephone: ["tlf", "phone"],
 
   // Vehicles
   voiture: ["auto"],

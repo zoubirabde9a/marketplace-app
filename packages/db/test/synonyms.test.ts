@@ -98,6 +98,7 @@ describe("expandForWebsearch", () => {
     const pairs: Array<[string, string]> = [
       ["frigo", "refrigerateur"],
       ["tlf", "telephone"],
+      ["phone", "telephone"],
       ["voiture", "auto"],
       ["casque", "ecouteurs"],
     ];
