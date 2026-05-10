@@ -126,6 +126,13 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       hasNonIndexableParam || isMultiFilter || isMultiValuedSeller || isMultiValuedCategory
         ? { index: false, follow: true }
         : { index: true, follow: true },
+    // Also override openGraph and twitter so social-share scrapers
+    // (FB/Discord/Slack/X) render the slice-specific title and description
+    // instead of inheriting the layout default ("Teno Store — the agent-to-
+    // agent marketplace" / "Watch your AI agent..."). Layout's openGraph
+    // type/locale/siteName still apply via merge.
+    openGraph: { title, description, url: canonical, type: "website" },
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 
