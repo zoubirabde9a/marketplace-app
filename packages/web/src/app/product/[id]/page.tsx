@@ -198,7 +198,14 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     d.setUTCFullYear(d.getUTCFullYear() + 1);
     return d.toISOString().slice(0, 10);
   })();
-  const itemCondition = "https://schema.org/NewCondition";
+  // Intentionally NOT emitting itemCondition. The scraped Ouedkniss
+  // inventory is a mix of new, used, and refurbished and the API doesn't
+  // expose per-listing condition data — uniformly declaring
+  // NewCondition (the previous default) misrepresents the catalog and
+  // can trip Google's product-data-quality / SEO-spam heuristics.
+  // Omitting the field lets Google's own heuristics infer rather than
+  // ingesting a wrong fact. Add this back per-listing if/when the API
+  // grows a `condition` field.
   const offers =
     variants.length === 1
       ? {
@@ -208,7 +215,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           availability: variants[0].inStock
             ? "https://schema.org/InStock"
             : "https://schema.org/OutOfStock",
-          itemCondition,
           priceValidUntil,
           ...(variants[0].sku ? { sku: variants[0].sku } : {}),
           url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
@@ -233,7 +239,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           availability: anyInStock
             ? "https://schema.org/InStock"
             : "https://schema.org/OutOfStock",
-          itemCondition,
           priceValidUntil,
           url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
           ...(p.sellerDisplayName

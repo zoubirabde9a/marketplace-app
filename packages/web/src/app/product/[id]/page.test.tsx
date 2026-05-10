@@ -134,7 +134,9 @@ describe("ProductPage", () => {
     expect(prod.sku).toBe("SKU-1");
     expect(prod.offers["@type"]).toBe("Offer");
     expect(prod.offers.sku).toBe("SKU-1");
-    expect(prod.offers.itemCondition).toBe("https://schema.org/NewCondition");
+    // itemCondition intentionally omitted (scraped catalog is mixed
+    // new/used; declaring NewCondition uniformly would misrepresent).
+    expect(prod.offers.itemCondition).toBeUndefined();
     expect(prod.offers.priceValidUntil).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 });
