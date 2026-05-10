@@ -14,6 +14,19 @@ const nextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }, { protocol: "http", hostname: "**" }],
   },
+  // Legacy favicon and apple-touch-icon URLs that browsers / RSS readers /
+  // social-share scrapers (FB, Slack, X, iOS Safari) probe regardless of
+  // <link rel=icon>. Without these the requests hit the catch-all 404
+  // handler — minor quality signal, log noise, occasional broken
+  // social-card icons. Permanent redirects to the modern Next-generated
+  // assets that already 200.
+  async redirects() {
+    return [
+      { source: "/favicon.ico", destination: "/icon.svg", permanent: true },
+      { source: "/apple-touch-icon.png", destination: "/apple-icon", permanent: true },
+      { source: "/apple-touch-icon-precomposed.png", destination: "/apple-icon", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;
