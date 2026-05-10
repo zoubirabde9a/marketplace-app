@@ -380,6 +380,29 @@ if [[ -n "$SUMMARY" ]]; then
   DUPS="$(    echo "$SUMMARY" | sed -nE 's/.*\(([0-9]+) as already-seeded.*/\1/p')"
 fi
 
+# ─── step 3.5: push newly-seeded URLs to IndexNow ─────────────────────────
+# The seeder logs each new product as "  <productId> — <title> (DZD <price>)".
+# We extract productIds from this run's log, build /product/<id> URLs, and
+# pipe them into the IndexNow submitter. Bing/Yandex/Seznam/Naver learn
+# about the URL within seconds of the seed; without this hook they had to
+# wait for /sitemap.xml to be re-crawled (hours+).
+#
+# Non-blocking: failures are warned, never break the run. The seed itself
+# is the source of truth — IndexNow is best-effort acceleration.
+NEW_URLS=$(grep -oE '^  [0-9a-f-]{36} — ' "$LOG_FILE" | awk '{print $1}' | sort -u)
+NEW_URL_COUNT=$(echo -n "$NEW_URLS" | grep -c "^" || true)
+if [[ "$NEW_URL_COUNT" -gt 0 ]]; then
+  if echo "$NEW_URLS" | sed 's|^|https://teno-store.com/product/|' \
+    | docker run --rm --network marketplace_default -i \
+        -v /opt/marketplace:/work -w /work \
+        node:22-alpine node scripts/indexnow-submit.mjs --stdin \
+        >> "$LOG_FILE" 2>&1; then
+    log info "indexnow: pushed $NEW_URL_COUNT newly-seeded urls"
+  else
+    log warn "indexnow: push of $NEW_URL_COUNT urls failed (non-fatal — sitemap will catch up)"
+  fi
+fi
+
 AFTER="$(api_total_estimate || true)"
 if [[ -z "$AFTER" ]]; then
   log warn "could not measure 'after' total — api unreachable after seed. Reporting delta=?"
