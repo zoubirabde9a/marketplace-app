@@ -369,7 +369,7 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
         brand={input.brand}
         category={humanCategory}
       />
-      {sliceLabel && (
+      {sliceLabel ? (
         <SliceIntro
           total={result.pagination.totalEstimate}
           sellerName={itemListSellerName}
@@ -378,6 +378,13 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
           q={input.q}
           contentLang={contentLang}
         />
+      ) : (
+        // Bare /search: there's no slice to describe, but it's still our
+        // catalog hub URL. Surface a bilingual intro mirroring the home
+        // page's topical block — without it the page below the H1 is just
+        // "X matches · showing 25" and a product grid, with no prose for
+        // search engines or AI summarisers to anchor on.
+        <BareCatalogIntro total={result.pagination.totalEstimate} contentLang={contentLang} />
       )}
       <ActiveFilters sp={sp} sellerDisplayNames={sellerDisplayNames} />
       {result.data.length === 0 ? (
@@ -497,6 +504,27 @@ function SliceIntro({
         <p lang="fr">{fr}</p>
       ) : (
         <p>{en}</p>
+      )}
+    </div>
+  );
+}
+
+function BareCatalogIntro({ total, contentLang }: { total: number; contentLang?: string }) {
+  const fmt = total.toLocaleString();
+  return (
+    <div className="-mt-3 mb-5 text-sm text-ink-soft leading-relaxed max-w-3xl">
+      {contentLang === "fr" ? (
+        <p lang="fr">
+          Découvrez {fmt} annonces de vendeurs algériens — téléphones, informatique,
+          électroménager, mode, véhicules et plus. Filtrez par marque, prix, vendeur
+          ou catégorie. Prix en DZD, listings actualisés en temps réel.
+        </p>
+      ) : (
+        <p>
+          Browse {fmt} live listings from Algerian sellers — phones, computing,
+          home appliances, fashion, vehicles and more. Filter by brand, price,
+          seller, or category. Prices in DZD, refreshed continuously.
+        </p>
       )}
     </div>
   );
