@@ -6,6 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — IndexNow: pushed full catalog to Bing/Yandex/Seznam/Naver
+
+- Verified via web search that `site:teno-store.com` returns 1 result (apex only) with a stale Arabic snippet from a prior domain owner. Zero product URLs in Google's index. Google Search Console submission is still gated on the operator's Google login.
+- Set up IndexNow as the un-gated alternative: host key `81b0a3ff408a96ef5c0381a78aae7f58` at `packages/web/public/81b0a3ff408a96ef5c0381a78aae7f58.txt`, served at `https://teno-store.com/<key>.txt` (200 OK verified).
+- New `scripts/indexnow-submit.mjs` reads the live `/sitemap.xml`, chunks at 500 URLs/request with a 1s pause (10k single-shot was rejected with 403 — likely a cold-start abuse heuristic), and POSTs to `https://api.indexnow.org/indexnow`. `--stdin` mode accepts URLs on stdin for ad-hoc use (newly-seeded products from the run-loop).
+- One-time bulk push completed: 3,206/3,206 URLs accepted (status 200 across 7 chunks). Bing also feeds DuckDuckGo and ChatGPT search, so this materially improves agent-discovery beyond Google.
+- Updated `deploy/STATUS.md` (catalog ~17 → ~3,200, added discovery section) and `deploy/seo.md` (action checklist + indexing diagnosis).
+
+---
+
 ## 2026-05-10 — vps-eu — search synonym expansion deployed to api
 
 - Shipped `packages/db/src/synonyms.ts` + the matching `searchIds` change to vps-eu via tar | ssh, mirrored `scraper/{run-loop.sh,scrape-ouedkniss.mjs,seed-from-scraped.mjs}` into `/opt/marketplace/scripts/`, rebuilt `marketplace-api` (`docker compose -f docker-compose.prod.yml build api && up -d api`).

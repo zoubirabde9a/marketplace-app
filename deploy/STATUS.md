@@ -1,4 +1,4 @@
-# Teno Store — production status (2026-05-08)
+# Teno Store — production status (2026-05-10)
 
 A snapshot of where the deployment is, what's healthy, what's blocked, and what to do next when you pick this up.
 
@@ -17,9 +17,15 @@ See `servers.md` for the full machine inventory and `dns.md` for DNS records.
 
 ## Catalog
 
-- **Seeded** (verified 2026-05-08): `GET https://api.teno-store.com/v1/products` returns 17 products across 5 sellers — Algerian-style listings in DZD via `scripts/seed-algerian.mjs` (runbook 06). Categories: phones, computing, cars, fashion, home/decor.
-- **Sitemap now lists all products** (verified 2026-05-08): `/sitemap.xml` returns 19 `<loc>` entries — apex, `/search`, and 17 `/product/<id>` URLs. Was previously 2 entries; the `web` container had been rsync'd with newer source but not rebuilt, so the dynamic product-list code wasn't in the running image. Fixed by `docker compose -f docker-compose.prod.yml build web && up -d web` on `vps-eu`.
-- **No duplicate sellers in the source of truth** (verified 2026-05-08 against `vps-eu` Postgres): `identity.organizations` has 5 rows, `seller.seller_profiles` has 5 rows joined 1:1, `catalog.products` has 17 rows referencing those 5 orgs (counts: Smart Phone DZ 4, TechStore Annaba 4, Auto Bazar Oran 3, Mode & Style 3, Maison & Déco 3). An earlier API response that *appeared* to show 10 sellers turned out to be a stale in-memory snapshot served before the Postgres-backed seed; the current API matches the DB exactly.
+- **Live size (2026-05-10): ~3,200 products** sourced from real Ouedkniss listings via the scrape-and-seed loop (`scraper/run-loop.sh`, scheduled). The 17-product seed from 2026-05-08 was a smoke test; the current catalog is real-world data attached to a synthetic Algerian seller (`Smart Phone DZ`).
+- **Sitemap** at `/sitemap.xml` lists every product with a real per-row `<lastmod>` (verified 2026-05-10: 3,068 `<loc>` entries the moment we checked, climbing as the loop runs).
+- **No duplicate sellers in the source of truth** (verified 2026-05-08 against `vps-eu` Postgres): `identity.organizations` and `seller.seller_profiles` are joined 1:1; `catalog.products` references them cleanly. Product-level dedup is handled by the seeder's `SKIP_URLS_FILE` (see `deploy/CHANGELOG.md` 2026-05-10) — repeated scrape runs over the same Ouedkniss listings no longer create content-duplicates.
+
+## Search-engine discovery (2026-05-10)
+
+- **`site:teno-store.com` returns 1 indexed page**: only the apex. **Zero of the ~3,200 product URLs** are in Google's index yet. The cached snippet is stale Arabic content, almost certainly from a prior owner of the domain — it will be replaced once Google recrawls.
+- **IndexNow submission DONE** (2026-05-10): all 3,206 URLs from the sitemap pushed to Bing/Yandex/Seznam/Naver via `scripts/indexnow-submit.mjs`. Host key file at `https://teno-store.com/81b0a3ff408a96ef5c0381a78aae7f58.txt`. Bing also feeds DuckDuckGo and ChatGPT-search.
+- **Google Search Console submission STILL TODO** — gated on the operator's Google login. Without it, Google's crawl rate for an unknown domain is 1–2 pages/month. With it, full coverage of 3k+ URLs in 2–4 weeks. See the four-step checklist below.
 
 ## Gated on you
 
