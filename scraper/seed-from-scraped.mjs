@@ -1,10 +1,10 @@
-// Reads a JSON file produced by `scripts/scrape-ouedkniss.mjs` and posts each
+// Reads a JSON file produced by `scraper/scrape-ouedkniss.mjs` and posts each
 // listing as a product under one of OUR sellers (the synthetic Algerian sellers
-// from `seed-algerian.mjs`). The scraped seller's identity is NEVER copied —
+// from `scripts/seed-algerian.mjs`). The scraped seller's identity is NEVER copied —
 // only public product data (title, image URLs, price text) is reused.
 //
 // Usage:
-//   node scripts/seed-from-scraped.mjs data/ouedkniss-telephone-2026-05-08T...json
+//   node scraper/seed-from-scraped.mjs data/ouedkniss-telephone-2026-05-08T...json
 //
 // Env:
 //   MARKETPLACE_BASE  default http://127.0.0.1:3100
@@ -20,7 +20,7 @@ const SELLER_ID = process.env.SELLER_ID;
 
 const inputPath = process.argv[2];
 if (!inputPath) {
-  console.error("usage: node scripts/seed-from-scraped.mjs <path-to-scraped-json>");
+  console.error("usage: node scraper/seed-from-scraped.mjs <path-to-scraped-json>");
   process.exit(2);
 }
 if (!SELLER_ID) {

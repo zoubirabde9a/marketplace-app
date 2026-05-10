@@ -12,8 +12,8 @@
 //   pnpm exec playwright install chromium
 //
 // Usage:
-//   node scripts/scrape-ouedkniss.mjs            # default: c/telephone, 3 pages
-//   CATEGORY=informatique PAGES=2 node scripts/scrape-ouedkniss.mjs
+//   node scraper/scrape-ouedkniss.mjs            # default: c/telephone, 3 pages
+//   CATEGORY=informatique PAGES=2 node scraper/scrape-ouedkniss.mjs
 //
 // Env knobs:
 //   MAX_AGE_DAYS=3        skip listings posted more than N days ago (0 = no filter).

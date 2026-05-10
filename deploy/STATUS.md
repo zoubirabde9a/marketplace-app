@@ -55,8 +55,8 @@ Everything in `/deploy/` is a fresh-eyes-friendly source of truth. Quick links:
 ## Scripts at the repo root
 
 - `scripts/seed-algerian.mjs` — 5 sellers + 17 products in DZD. Phones are clearly synthetic (`+213 555 00 XX XX`).
-- `scripts/scrape-ouedkniss.mjs` — Playwright-based, bounded, *does not* scrape personal data. Run on operator's laptop.
-- `scripts/seed-from-scraped.mjs` — bridges scraper output to the API under one of your synthetic sellers.
+- `scraper/scrape-ouedkniss.mjs` — Playwright-based, bounded, *does not* scrape personal data. Run on operator's laptop. See [`scraper/README.md`](../scraper/README.md).
+- `scraper/seed-from-scraped.mjs` — bridges scraper output to the API under one of your synthetic sellers.
 
 ## Suggested next 3 actions, in order
 

@@ -6,6 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — relocate scraping code to `scraper/`
+
+- Moved `scripts/scrape-ouedkniss.mjs` → `scraper/scrape-ouedkniss.mjs` and `scripts/seed-from-scraped.mjs` → `scraper/seed-from-scraped.mjs` via `git mv` (history preserved).
+- New `scraper/README.md` consolidates scraping-specific docs: file inventory, legal/privacy posture (Ouedkniss ToS / Algerian Law 18-07 / GDPR), end-to-end usage (scrape → seed under a synthetic seller), and the env-knob reference for both scripts.
+- Updated in-file usage strings in both moved scripts to reflect the new `scraper/...` paths.
+- Trimmed the inline scraper details from `deploy/runbooks/06-seed-catalog.md` Path B; runbook now points at `scraper/README.md` for the full reference and shows the minimal scrape→seed command pair.
+- Updated `deploy/STATUS.md` "Scripts at the repo root" to list the scraper scripts under `scraper/` with a link to the new README.
+- Updated the comment in `scripts/seed-dated-products.mjs` that referenced `scrape-ouedkniss` → `seed-from-scraped` to use the new paths.
+- No code-behaviour change. Production runtime is unaffected (the scraper runs on the operator's laptop, not on `vps-eu`).
+
 ## 2026-05-09 — ship `snapshotUrl` on REST catalog reads to `vps-eu`
 
 - Targeted deploy: `scp` of just `packages/api/src/routes/products.ts` and `packages/api/src/server.ts` to `/opt/marketplace/` (deliberate two-file copy instead of the full `tar | ssh` flow that hit the `.env` overwrite incident in the previous entry).
