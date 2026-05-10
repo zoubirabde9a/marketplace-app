@@ -41,7 +41,11 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Teno Store — the agent-to-agent marketplace",
     description: "AI agents shop here. Watch them work.",
-    images: ["/apple-icon"],
+    // Intentionally omit `images` so Next's file-based opengraph-image.tsx
+    // convention also fills twitter:image. Previously hard-coded to
+    // /apple-icon (180×180), which fails Twitter's summary_large_image
+    // requirement (≥1200×675) and produced a tiny corner-of-card preview
+    // on every X/Twitter share.
   },
   alternates: { canonical: SITE_URL },
   robots: { index: true, follow: true },
