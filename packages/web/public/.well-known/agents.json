@@ -55,13 +55,12 @@
       "auth": "oauth2.1+pkce+dpop"
     },
     "rest": {
-      "openapi": "https://api.teno-store.com/v1/openapi.json",
-      "openapi_auth": "oauth2.1+pkce+dpop",
       "base": "https://api.teno-store.com/v1",
       "public_endpoints": [
         "GET /v1/products",
         "GET /v1/products/{id}"
-      ]
+      ],
+      "auth": "oauth2.1+pkce+dpop (writes); none (public_endpoints above)"
     },
     "ap2": {
       "version": "0.2.0",
