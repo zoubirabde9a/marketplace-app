@@ -130,6 +130,25 @@ PY
 fi
 echo
 
+# ─── 4.5. IndexNow push activity (last 20 runs) ──────────────────────────
+bold "[indexnow push activity — last 20 runs]"
+RECENT_LOGS="$(ls -t "$LOG_DIR"/run-*.log 2>/dev/null | sed -n '1,20p')"
+if [[ -z "$RECENT_LOGS" ]]; then
+  echo "  no run logs"
+else
+  IDN_LINES="$( { grep -h '^\S* \[info\] indexnow:' $RECENT_LOGS 2>/dev/null || true; } | head -20)"
+  IDN_FAIL="$( { grep -hc '^\S* \[warn\] indexnow:' $RECENT_LOGS 2>/dev/null || echo 0; } | awk '{s+=$1} END{print s+0}')"
+  IDN_PUSHED="$(echo "$IDN_LINES" | grep -oE 'pushed [0-9]+' | awk '{s+=$2} END{print s+0}')"
+  IDN_RUNS="$(echo "$IDN_LINES" | wc -l | awk '{print $1}')"
+  echo "  successful pushes: $IDN_RUNS run(s), $IDN_PUSHED url(s) total"
+  echo "  failed pushes:     $IDN_FAIL"
+  if [[ -n "$IDN_LINES" ]]; then
+    echo "  recent:"
+    echo "$IDN_LINES" | tail -5 | sed 's/^/    /'
+  fi
+fi
+echo
+
 # ─── 5. Page-progression state ───────────────────────────────────────────
 bold "[page-progression state]"
 if [[ -s "$STATE_FILE" ]]; then
