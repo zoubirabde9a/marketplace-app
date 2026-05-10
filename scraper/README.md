@@ -1,248 +1,375 @@
 # Scraper
 
-Scripts for pulling real-world product data from Algerian classifieds (currently
-just **Ouedkniss**) and feeding it into the marketplace catalog under one of our
-own synthetic sellers.
+Pulls real-world product data from Algerian classifieds (currently just
+**Ouedkniss**) and feeds it into the marketplace catalog under one of our
+synthetic sellers.
 
-> **Run on the operator's laptop only — never on `vps-eu`.** Playwright pulls down
-> a full Chromium and the scraper is bounded by design (default ≤ 30 listings
-> per run); both are operator-tooling concerns, not production runtime concerns.
->
-> The seeders that consume the scrape *can* run anywhere — see "Two seeding paths"
-> below for the API-vs-direct-DB choice.
+This folder is the **source of truth** for the scrape-and-seed pipeline. The
+files here are mirrored to `/opt/marketplace/scripts/` on `vps-eu`, where
+they're driven by a systemd timer once a minute.
+
+---
+
+## TL;DR — operating the live loop
+
+```bash
+# What is it doing right now?
+ssh vps-eu /opt/marketplace/scripts/status.sh
+
+# Live-tail per-run metrics
+ssh vps-eu /opt/marketplace/scripts/status.sh --tail
+
+# Run one iteration manually (for debugging — not normally needed)
+ssh vps-eu /opt/marketplace/scripts/run-loop.sh --seller-id <UUID>
+
+# Pause everything
+ssh vps-eu sudo systemctl disable --now marketplace-scrape-loop.timer
+
+# Resume
+ssh vps-eu sudo systemctl enable --now marketplace-scrape-loop.timer
+
+# Recent errors only
+ssh vps-eu /opt/marketplace/scripts/status.sh --errors
+```
+
+---
+
+## What it does, end to end
+
+1. **Refresh the dedup skip-list** — dump every `attributes.sourceUrl` we
+   already have for the target seller from Postgres into `data/skip_urls.txt`.
+2. **Scrape** Ouedkniss's GraphQL `search` endpoint for the next slice of
+   listings (page-progression state in `data/run-loop-state.json`). Captures
+   title, description, price, images, posted date, city + wilaya — never
+   seller phone or contact info.
+3. **Seed** every listing whose `url` is *not* in the skip-list, by POSTing to
+   the live API. Each becomes a product under the configured seller.
+4. **Verify** by reading `/v1/products?limit=1` and reporting the
+   before/after totals plus a structured JSONL metric.
+
+The orchestration is a single bash script (`run-loop.sh`) with retries, a
+flock lock, structured logging, and an exit code per failure mode. A systemd
+timer fires it once a minute.
 
 ---
 
 ## Files in this folder
 
-| File | What it does |
+| File | Purpose |
 |---|---|
-| [`scrape-ouedkniss.mjs`](./scrape-ouedkniss.mjs) | Playwright-driven scraper. Walks category index pages until it has **N** candidate listings, fetches each, and extracts title, description, og-images, price text, JSON-LD blobs, and posting date. Writes a JSON dump to `data/ouedkniss-<category>-<timestamp>.json`. **Does NOT scrape seller phone numbers.** |
-| [`seed-from-scraped.mjs`](./seed-from-scraped.mjs) | **API-mode seeder.** Reads a JSON dump from the scraper and POSTs each listing as a product under one of our own synthetic sellers. Goes through the API's auth + validation; needs `DEV_BYPASS=1` or a `SESSION_JWT`. Use this against dev or when you want the API to validate inputs. |
-| _(in `packages/db/src/seed-from-scraped.ts`)_ | **Direct-DB seeder.** Same input, but writes through the `@marketplace/db` repos straight into Postgres. Skips Caddy and the API auth gate — the script you run on the live server. Invoked via `pnpm -F @marketplace/db db:seed-from-scraped <json>`. |
+| [`scrape-ouedkniss.mjs`](./scrape-ouedkniss.mjs) | GraphQL scraper. Walks `START_PAGE..START_PAGE+PAGES-1` of the category index via `api.ouedkniss.com/graphql`. Captures public listing fields (title, description, images, price, refreshedAt, city, region/wilaya). Writes `data/ouedkniss-<category>-<ts>.json` with `lastPageScraped`/`hasMorePages` so callers can advance. |
+| [`seed-from-scraped.mjs`](./seed-from-scraped.mjs) | Reads a scrape JSON and POSTs each listing to `/v1/products` under `SELLER_ID`. Honours `SKIP_URLS_FILE` for dedup. Drops `source`/`sourceCategory` from attributes (only `sourceUrl` and `sourcePostedAt` are written, plus `city`/`wilaya` when scraped). |
+| [`run-loop.sh`](./run-loop.sh) | One-shot orchestrator: refresh skip-urls → scrape → seed → verify → log → emit metric. Has retries, flock, page-progression state, distinct exit codes. **This is what cron / systemd actually invokes.** |
+| [`status.sh`](./status.sh) | Operator tool: prints timer state, last N runs, aggregate stats, page-progression state, recent errors. Read-only. |
+| [`README.md`](./README.md) | This file. |
+
+---
+
+## Where things live in production
+
+| What | Path |
+|---|---|
+| Scripts | `/opt/marketplace/scripts/{scrape-ouedkniss,seed-from-scraped}.mjs`, `run-loop.sh`, `status.sh` |
+| Per-run logs | `/opt/marketplace/data/logs/run-<RUN_ID>.log` |
+| Structured metrics | `/opt/marketplace/data/logs/metrics.jsonl` (one JSON per run) |
+| Skip-URL dump | `/opt/marketplace/data/skip_urls.txt` (regenerated each run) |
+| Page-progression state | `/opt/marketplace/data/run-loop-state.json` |
+| Lockfile | `/opt/marketplace/data/logs/run-loop.lock` (flock-protected) |
+| Scrape JSONs (forensics) | `/opt/marketplace/data/ouedkniss-<category>-<ts>.json` |
+| systemd unit | `/etc/systemd/system/marketplace-scrape-loop.service` |
+| systemd timer | `/etc/systemd/system/marketplace-scrape-loop.timer` |
+| Env (auth + scraper knobs) | `/opt/marketplace/.env` |
+
+---
+
+## How to check status
+
+The fastest path is `status.sh`. From your laptop:
+
+```bash
+ssh vps-eu /opt/marketplace/scripts/status.sh
+```
+
+That prints:
+
+1. **`[timer]`** — is the systemd timer active? When does it next fire?
+2. **`[service — last invocation]`** — last journal line, exit code, result.
+3. **`[recent runs]`** — last N rows of `metrics.jsonl` as a table:
+   ```
+   ts  pages  next  seeded  dup  invalid  before→after  delta
+   ```
+4. **`[aggregate]`** — total runs, total seeded / dup / invalid, idle runs
+   (seeded=0), api total before→after.
+5. **`[page-progression state]`** — what `next_start_page` will be on the
+   next run, per `<seller>-<category>` key.
+6. **`[errors in recent run logs]`** — any `[error]` / `[warn]` /
+   `exit_code=N (N≠0)` line from the last 20 runs.
+
+Flags:
+
+- `-n 30` — show 30 recent runs instead of 10.
+- `--errors` — show only failed (`seeded=0`) runs in the recent-runs table.
+- `--tail` — `tail -F` the `metrics.jsonl` file. Live stream of every run.
+
+For raw systemd / journal access:
+
+```bash
+# Timer state, next fire
+ssh vps-eu sudo systemctl status marketplace-scrape-loop.timer
+
+# Last N service invocations (oneshot, so each run is its own activation)
+ssh vps-eu sudo journalctl -u marketplace-scrape-loop.service -n 50 --no-pager
+
+# Live-follow journal
+ssh vps-eu sudo journalctl -u marketplace-scrape-loop.service -f
+```
+
+For raw structured metrics:
+
+```bash
+ssh vps-eu cat /opt/marketplace/data/logs/metrics.jsonl
+```
+
+Each line is a JSON object with at minimum:
+`ts, run_id, seller_id, category, start_page, last_page, has_more,
+next_start_page, before, after, delta, seeded, dup_skipped,
+invalid_skipped, scrape_listings, skip_urls_count`.
+
+For a deep dive into a specific run, the per-run log has every line of
+scraper + seeder output:
+
+```bash
+ssh vps-eu cat /opt/marketplace/data/logs/run-2026-05-10T13-52-05Z.log
+```
+
+---
+
+## Exit codes
+
+`run-loop.sh` returns the following so cron / systemd / monitoring can react:
+
+| Code | Meaning |
+|---|---|
+| 0 | Success (any non-error outcome — `delta=0` is fine, just means dedup ate the run) |
+| 2 | Bad CLI arguments |
+| 3 | Prereqs missing (docker, api/postgres container, network, env file) |
+| 4 | Scrape failed all retries (transient — Ouedkniss 5xx, rate limit, etc.) |
+| 5 | Seed failed all retries |
+| 6 | Skip-urls Postgres dump failed all retries |
+| 7 | Lockfile held — another instance is running. Not fatal; the next timer fire will have its own try. |
+
+For systemd:
+- `Result=success` + `ExecMainStatus=0` → all good.
+- `Result=exit-code` + `ExecMainStatus=N` (N≠0) → look at the per-run log
+  AND `journalctl -u marketplace-scrape-loop.service -p err`.
+
+---
+
+## Configuration
+
+CLI args on `run-loop.sh` override env, env overrides defaults.
+
+| Arg / env | Default | Meaning |
+|---|---|---|
+| `--seller-id` / `SELLER_ID` | (required) | UUID of the seller new products attach to |
+| `--category` / `CATEGORY` | `telephones` | Ouedkniss category slug |
+| `--pages` / `PAGES` | `2` | Pages walked per iteration |
+| `--max-listings` / `MAX_LISTINGS` | `50` | Hard cap on listings seeded per iteration |
+| `--base` / `MARKETPLACE_BASE` | `http://api:3100` | Where seeder POSTs |
+| `--start-page` | (state file) | Override the next page to scrape |
+| `--reset-state` | `false` | Force `next_start_page=1` for this seller+category |
+| `--state-file` | `data/run-loop-state.json` | Override the state file path |
+| `--no-dedup-refresh` | `false` | Reuse existing `skip_urls.txt`, skip the psql dump |
+| `--reuse-recent-scrape` | `false` | Reuse a scrape file from this UTC minute (cron retry hint) |
+| `--dry-run` | `false` | Scrape only, don't seed |
+| `--scrape-retries` | `3` | |
+| `--seed-retries` | `2` | |
+| `--quiet` | `false` | Suppress the `OK …` summary on stdout (used by systemd) |
+| `--log-dir` | `data/logs` | |
+| `--help` | | Show full usage |
+
+Scraper-only env (read by `scrape-ouedkniss.mjs`, passed via `docker --env-file`):
+
+| Env | Default | Meaning |
+|---|---|---|
+| `START_PAGE` | `1` | First page to scrape |
+| `PAGES` | `1` | Pages walked |
+| `PAGE_SIZE` | `48` | Items per page (max 48 enforced by Ouedkniss) |
+| `MAX_LISTINGS` | `200` | Hard cap |
+| `MAX_AGE_DAYS` | `3` (overridden to `0` by run-loop) | Drop listings older than N days; `0` disables |
+| `BATCH_SIZE` | `10` | Items between log lines |
+| `BATCH_PAUSE_MS` | `4000` | Pause between page requests (politeness) |
+
+Seeder-only env (read by `seed-from-scraped.mjs`):
+
+| Env | Default | Meaning |
+|---|---|---|
+| `MARKETPLACE_BASE` | `http://127.0.0.1:3100` | Base URL for `/v1/products` |
+| `SELLER_ID` | (required) | UUID |
+| `SESSION_JWT` | (none) | Bearer token; only needed if `DEV_BYPASS=0` |
+| `SKIP_URLS_FILE` | (none) | Newline-delimited file of `sourceUrl`s to skip |
+
+---
+
+## Auth posture
+
+Production currently runs with `DEV_BYPASS=1` set in `/opt/marketplace/.env`,
+so the seeder doesn't need a session token or DPoP-bound passport. This was
+an explicit operator decision (logged in `deploy/CHANGELOG.md` 2026-05-10) to
+avoid juggling per-iteration auth.
+
+**Security implication**: anyone who can reach `https://api.teno-store.com`
+can `POST /v1/products` and act as any principal via arbitrary `x-mp-*`
+headers. To revert: set `DEV_BYPASS=0` in `.env`, run
+`docker compose -f docker-compose.prod.yml up -d api` (NOT `restart` — that
+doesn't re-read `.env`), then either pass `SESSION_JWT=...` to the seeder or
+issue an agent passport.
+
+---
+
+## Common operations
+
+### Pause the loop
+
+```bash
+ssh vps-eu sudo systemctl disable --now marketplace-scrape-loop.timer
+```
+
+### Resume
+
+```bash
+ssh vps-eu sudo systemctl enable --now marketplace-scrape-loop.timer
+```
+
+### Re-walk the category from page 1
+
+The loop progressively walks pages and wraps when Ouedkniss says
+`hasMorePages=false`. To force a fresh walk from the top:
+
+```bash
+ssh vps-eu /opt/marketplace/scripts/run-loop.sh \
+  --seller-id <UUID> --reset-state
+```
+
+### Try a single page slice
+
+```bash
+ssh vps-eu /opt/marketplace/scripts/run-loop.sh \
+  --seller-id <UUID> --start-page 100 --pages 4
+```
+
+The state file is still advanced afterwards (next run resumes correctly).
+
+### Update the scripts
+
+Source of truth is this folder. To deploy a change:
+
+```bash
+cd /your/local/checkout/scraper
+scp run-loop.sh status.sh scrape-ouedkniss.mjs seed-from-scraped.mjs \
+  vps-eu:/tmp/
+ssh vps-eu '
+  sudo install -m 0755 /tmp/run-loop.sh   /opt/marketplace/scripts/run-loop.sh
+  sudo install -m 0755 /tmp/status.sh     /opt/marketplace/scripts/status.sh
+  sudo install -m 0644 /tmp/scrape-ouedkniss.mjs   /opt/marketplace/scripts/scrape-ouedkniss.mjs
+  sudo install -m 0644 /tmp/seed-from-scraped.mjs  /opt/marketplace/scripts/seed-from-scraped.mjs
+'
+```
+
+The systemd timer keeps firing during deploy; the lockfile prevents the
+in-flight iteration from overlapping with a freshly-deployed one.
+
+### Clean up old scrape JSONs
+
+`data/ouedkniss-<category>-<ts>.json` accumulates one file per iteration (~1
+per minute) and is kept for forensics. To reclaim space:
+
+```bash
+ssh vps-eu 'sudo find /opt/marketplace/data \
+  -maxdepth 1 -name "ouedkniss-*.json" -mtime +7 -delete'
+```
+
+`metrics.jsonl` and per-run `.log` files do not currently rotate either.
+Suggest setting up `logrotate` if/when retention becomes a concern.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `status.sh` says timer not active | systemd disabled or unit missing | `systemctl status marketplace-scrape-loop.timer`; reinstall unit if missing |
+| Many `seeded=0 dup_skipped=50` runs | Page-1 saturated and state stuck at low `next_start_page` | Check `run-loop-state.json`; the loop should auto-advance — if it doesn't, look for `[error]` lines in recent run logs |
+| `before=N after=0 delta=-N` historical | api container was being recreated mid-run | The hardened `api_total_estimate` (post-2026-05-10) now retries and emits `null`/`?` instead of misleading values |
+| Service exits 4 (scrape failed) repeatedly | Ouedkniss rate-limited or returned 5xx | Check the per-run log for the actual response body; bump `BATCH_PAUSE_MS` if it's a 429 |
+| Service exits 5 (seed failed) repeatedly | API down, `DEV_BYPASS=0` after a deploy, schema validation reject | Per-run log shows the 4xx/5xx body verbatim |
+| `marketplace-api not running` (exit 3) | Operator deploy left the container with a Docker-prefixed name (`<id>_marketplace-api`) | `docker rename <id>_marketplace-api marketplace-api`; consider a clean `docker compose -f docker-compose.prod.yml up -d api` |
+| Iteration hits 141 (SIGPIPE) | Was a bug pre-2026-05-10 with `ls -t … \| head -1` against a large data dir; replaced with `sed -n '1p'`. Should not recur. | If it does, check what new pipe was introduced. |
+| `delta=0` every run despite `seeded=N>0` | API's `pagination.totalEstimate` is approximate / lazy. Real DB count is correct. | Use `psql -c "SELECT count(*) FROM catalog.products WHERE seller_id='…'"` for an exact number. |
+
+---
+
+## Architecture diagram
+
+```
+┌────────────────────────────────────────────────────────┐
+│  vps-eu (host)                                         │
+│                                                        │
+│  systemd timer (every minute, 10s jitter)              │
+│       │                                                │
+│       ▼                                                │
+│  marketplace-scrape-loop.service (oneshot)             │
+│       │                                                │
+│       ▼                                                │
+│  /opt/marketplace/scripts/run-loop.sh                  │
+│       │ ─ flock lock                                   │
+│       │ ─ retries (psql ×2, scrape ×3, seed ×2)        │
+│       │                                                │
+│       ├── docker exec marketplace-postgres psql ──→ skip_urls.txt
+│       │                                                │
+│       ├── docker run node:22-alpine \                  │
+│       │     -v /opt/marketplace:/work \                │
+│       │     -e START_PAGE=N -e PAGES=2 …               │
+│       │     scrape-ouedkniss.mjs ──→ data/ouedkniss-*.json
+│       │                                                │
+│       ├── docker run node:22-alpine \                  │
+│       │     -e SKIP_URLS_FILE=/work/data/skip_urls.txt │
+│       │     -e SELLER_ID=… -e MARKETPLACE_BASE=…       │
+│       │     seed-from-scraped.mjs                      │
+│       │              │                                 │
+│       │              ▼                                 │
+│       │       marketplace-api  (POST /v1/products …)   │
+│       │              │                                 │
+│       │              ▼                                 │
+│       │       marketplace-postgres (catalog.products)  │
+│       │                                                │
+│       └── update run-loop-state.json (next_start_page) │
+│           append metrics.jsonl                         │
+│           write per-run run-<RUN_ID>.log               │
+└────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Legal & privacy posture
 
 Ouedkniss's terms of service prohibit automated harvesting of seller contact
-details. Running these scripts in production against real sellers can violate:
+details. Running this against real sellers can implicate:
 
 - (a) **Ouedkniss ToS**,
-- (b) **Algerian Law 18-07** on the protection of personal data, and
+- (b) **Algerian Law 18-07** on protection of personal data,
 - (c) **GDPR** if any listed seller is in the EU.
 
-The default config is intentionally tiny (`N=30` listings) and the scraper
-**deliberately does not extract phone numbers** — the "Voir le numéro" reveal is
-gated behind a click on Ouedkniss, and copying it at scale crosses from
-research-fair-use into clear ToS / privacy violation territory.
+Mitigations baked into `scrape-ouedkniss.mjs`:
 
-The chosen posture: real product titles, prices, and images are reproducible
-under our own synthetic sellers; **no real personal data of unrelated third
-parties is ever carried**. If we ever want real seller phones, that requires
-explicit consent from each seller, not scraping.
+- The GraphQL query **deliberately omits** `user`, `phone`, `whatsapp`, and
+  any field that ties a listing to a real seller's identity. We capture
+  `cities { id name region { id name } }` for location context only.
+- Scraped listings are reattached to **our** synthetic seller (currently
+  "Smart Phone DZ — Alger Centre"), not to the real Ouedkniss seller.
+- `BATCH_PAUSE_MS` (default 4s when called directly, 2s when called via
+  run-loop's `.env`) keeps request volume polite.
 
----
-
-## End-to-end usage
-
-### 1. Install Playwright (one-off, operator's machine)
-
-```bash
-pnpm add -D playwright
-pnpm exec playwright install chromium
-```
-
-### 2. Scrape
-
-```bash
-# Default: c/telephone, target N=30 listings, 3-day freshness filter.
-node scraper/scrape-ouedkniss.mjs
-
-# Or another category, with a higher target:
-CATEGORY=informatique N=50 node scraper/scrape-ouedkniss.mjs
-
-# Drop the freshness filter if you don't care how old listings are:
-MAX_AGE_DAYS=0 N=20 node scraper/scrape-ouedkniss.mjs
-```
-
-Output goes to `data/ouedkniss-<category>-<timestamp>.json`. The scraper keeps
-walking category index pages and topping up post-filter listings until it has
-`N` items or `MAX_PAGES` is hit (whichever comes first).
-
-### 3. Seed from the scrape — pick a path
-
-You have two ways to load the JSON into the catalog. They are functionally
-equivalent in what ends up in Postgres; they differ in **how** they get there.
-
-#### Two seeding paths
-
-| | **API mode** (`scraper/seed-from-scraped.mjs`) | **Direct-DB mode** (`packages/db/src/seed-from-scraped.ts`) |
-|---|---|---|
-| Talks to | `POST /v1/products` over HTTP | Postgres directly via `@marketplace/db` repos |
-| Needs | API running + `DEV_BYPASS=1` or `SESSION_JWT` | Just `DATABASE_URL` |
-| Validation | Full API request validation (zod schemas, auth, idempotency) | Same DB constraints, **no zod / no auth** |
-| Where it runs | Operator laptop pointed at any base URL | Anywhere with DB reachability — operator laptop OR `vps-eu` |
-| Idempotency | API-side `idempotency-key` (no duplicates on re-run) | None — re-running creates duplicates unless you wipe first |
-| Use when | Hitting an API you don't run (staging, prod with auth on) | Running on the live server, or you want zero API hops |
-
-**Rule of thumb:** if the box you're running the seeder on can `psql` the
-database, prefer direct-DB. It's one fewer thing to authenticate and one fewer
-thing that can return 5xx mid-batch.
-
-#### Path 3a — API mode
-
-First make sure synthetic sellers exist (run `scripts/seed-algerian.mjs` if not),
-then grab a `sellerId` from its log and pass it as `SELLER_ID`:
-
-```bash
-SELLER_ID=<uuid-of-a-synthetic-seller> \
-  MARKETPLACE_BASE=https://api.teno-store.com \
-  node scraper/seed-from-scraped.mjs data/ouedkniss-telephone-<timestamp>.json
-```
-
-If the API requires auth, also set `SESSION_JWT` (or temporarily enable
-`DEV_BYPASS=1` on the server per [runbook 06](../deploy/runbooks/06-seed-catalog.md)).
-
-#### Path 3b — Direct-DB mode (recommended on the live server)
-
-Run from anywhere that can reach the Postgres instance — most commonly
-SSH'ing into `vps-eu` and pointing at the bind-mounted compose Postgres:
-
-```bash
-# On vps-eu (Postgres is exposed on the docker network as `postgres:5432`,
-# but the host can reach it as 127.0.0.1:5432 if you've added a bind, or
-# you can just exec inside the api container which already has DATABASE_URL).
-ssh vps-eu
-cd /opt/marketplace
-
-# Option 1: run inside the api container (DATABASE_URL is already in env)
-docker compose -f docker-compose.prod.yml exec api \
-  pnpm -F @marketplace/db db:seed-from-scraped /tmp/ouedkniss-telephone-<ts>.json
-
-# Option 2: from a workspace checkout on the host, against the docker Postgres
-DATABASE_URL=postgres://marketplace:$POSTGRES_PASSWORD@127.0.0.1:5432/marketplace \
-  pnpm -F @marketplace/db db:seed-from-scraped \
-    /opt/marketplace/data/ouedkniss-telephone-<ts>.json
-```
-
-If `SELLER_ID` is unset, the seeder picks the **oldest existing seller** —
-useful when you've just run `seed-algerian.mjs` and want everything to land
-under the first synthetic seller. Pass `SELLER_ID=<uuid>` to override.
-
-Use `DRY_RUN=1` to see what would be inserted without writing anything.
-
----
-
-## `scrape-ouedkniss.mjs` — env knobs
-
-| Var | Default | Meaning |
-|---|---|---|
-| `CATEGORY` | `telephone` | Ouedkniss category slug (`/c/<category>`) |
-| `N` | `30` | Target post-filter listing count. The scraper paginates until it has N items or `MAX_PAGES` is hit. |
-| `MAX_PAGES` | `20` | Hard cap on category index pages walked, to avoid runaway pagination if the site has fewer than `N` fresh items. |
-| `MAX_AGE_DAYS` | `3` | Skip listings posted more than N days ago (`0` = no filter). When > 0, listings whose posting date can't be parsed are also skipped — we can't certify their age. |
-| `DELAY_MS` | `4000` | Pause between index pages (ms) |
-| `LISTING_DELAY_MS` | `2500` | Pause between individual listing fetches (ms) |
-| `BATCH_SIZE` | `10` | Process listings in batches of N |
-| `BATCH_PAUSE_MS` | `8000` | Pause between batches (ms) — gives rate limits a breather |
-| `MAX_LISTINGS` | _(alias for `N`)_ | Back-compat — read if `N` is unset |
-| `PAGES` | _(alias for `MAX_PAGES`)_ | Back-compat — read if `MAX_PAGES` is unset |
-
-The scraper uses the user-agent
-`teno-store-research/1.0 (+https://teno-store.com/about)` and locale `fr-FR`,
-runs Chromium headless, and sets `waitUntil: networkidle` on category pages
-(Ouedkniss is a Vue SPA).
-
-### Output JSON shape
-
-```jsonc
-{
-  "category": "telephone",
-  "targetCount": 30,         // value of N at scrape time
-  "pagesWalked": 4,          // index pages actually fetched
-  "count": 30,               // post-filter listings written
-  "items": [
-    {
-      "url": "https://www.ouedkniss.com/annonce/...",
-      "scrapedAt": "2026-05-10T08:00:00.000Z",
-      "postedAt":  "2026-05-09T14:23:00.000Z",  // null if unparseable
-      "title": "iPhone 15 Pro 256GB ...",
-      "description": "...",
-      "images": ["https://...jpg", ...],
-      "priceText": "180 000 DA",
-      "structuredData": [{ ...JSON-LD blobs from the page... }],
-      "timeAttrs": ["2026-05-09T14:23:00+01:00"],
-      "relativeText": "Publiée il y a 1 jour"
-    }
-  ]
-}
-```
-
----
-
-## `seed-from-scraped.mjs` — env knobs (API mode)
-
-| Var | Default | Meaning |
-|---|---|---|
-| `MARKETPLACE_BASE` | `http://127.0.0.1:3100` | API base URL |
-| `SESSION_JWT` | _(unset)_ | Optional Bearer token for authenticated runs |
-| `SELLER_ID` | **required** | UUID of the synthetic seller these products attach to |
-
----
-
-## `db:seed-from-scraped` — env knobs (direct-DB mode)
-
-| Var | Default | Meaning |
-|---|---|---|
-| `DATABASE_URL` | **required** | Postgres connection string |
-| `SELLER_ID` | _(oldest seller)_ | UUID of an existing org / seller to attach products to. If unset the script picks the oldest seller; if there are none, it aborts with a hint to run `db:seed` first. |
-| `COUNTRY_CODE` | `DZ` | Used for `shipsTo` when the dump has no value of its own |
-| `DRY_RUN` | _(unset)_ | When `1`, parse and print what would be written, but don't touch the DB |
-
----
-
-## Behaviour notes (both seeders)
-
-- Brand is inferred from the title via a known-brand list with canonical
-  remappings (e.g. `Redmi`/`POCO` → `Xiaomi`, `iPhone`/`Galaxy` → `Apple`/`Samsung`).
-- Prices are parsed from text like `"150 000 DA"` / `"1.250.000 DZD"` and
-  emitted as `priceMinor` (santeem, i.e. DZD × 100).
-- Each product carries a `source: "ouedkniss-public-listing"` attribute plus
-  `sourceUrl`, `sourceCategory`, and (when present) `sourcePostedAt` for
-  traceability.
-- Up to 5 image URLs per listing are forwarded as `media` entries.
-- Listings missing either a title or a parseable price are skipped (logged
-  but counted as `skipped`, not `failed`).
-
----
-
-## Adding a new scraper
-
-The current architecture pins the scraper to Ouedkniss specifically, but the
-seeders are source-agnostic — they only care about the JSON dump shape (see
-"Output JSON shape" above). To add a second source (e.g. Jumia DZ):
-
-1. Write a new `scrape-<source>.mjs` that emits the same JSON shape
-   (`{ category, count, items: [{ url, title, description, images, priceText,
-   postedAt, ... }] }`). Reuse `parsePostedAt`/`ageDays` from
-   `scrape-ouedkniss.mjs` if the date semantics match.
-2. Both seeders will Just Work on the dump, since they key off `title`,
-   `priceText`, `images`, `description`, and the optional `postedAt`/`url`
-   fields. The `sourceCategory` attribute on the resulting product will reflect
-   whatever `category` the dump declares.
-3. Update this README's "Files in this folder" table and add a row to the
-   posture section listing that source's ToS / privacy considerations.
-
----
-
-## Related documentation
-
-- **[`deploy/runbooks/06-seed-catalog.md`](../deploy/runbooks/06-seed-catalog.md)** —
-  full runbook for populating the production catalog. Path A is synthetic-only
-  (`scripts/seed-algerian.mjs`); Path B uses the scripts in this folder.
-- **[`deploy/CHANGELOG.md`](../deploy/CHANGELOG.md)** — see the 2026-05-08 entry
-  for the original rationale behind the scraper's design (privacy posture,
-  bounded defaults, no phone scraping).
-- **[`deploy/STATUS.md`](../deploy/STATUS.md)** — current state of the
-  production catalog and what was last seeded.
+`scraper/scrape-ouedkniss.mjs:13–17` documents this posture inline; if the
+field set ever needs to grow (e.g. to capture `phone` for some legitimate
+reason), the legal review must happen first.

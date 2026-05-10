@@ -181,9 +181,36 @@ docker image inspect "$NODE_IMAGE" >/dev/null 2>&1 || {
 }
 
 # ─── helpers ─────────────────────────────────────────────────────────────
+# Returns the api's totalEstimate, retrying briefly if the api container
+# is in the middle of being recreated (e.g. by a `docker compose up -d api`
+# deploy that overlaps our run). Prints empty string + non-zero exit when
+# unreachable after retries — callers must handle that to avoid bogus
+# deltas like the historical `after=0 delta=-N`.
 api_total_estimate() {
-  docker exec "$API_CONTAINER" wget -qO- "http://127.0.0.1:3100/v1/products?limit=1" \
-    | python3 -c 'import sys,json; print(json.load(sys.stdin)["pagination"]["totalEstimate"])'
+  local attempt=1 backoff=2 max=5 out
+  while (( attempt <= max )); do
+    out="$(docker exec "$API_CONTAINER" wget -qO- --timeout=10 "http://127.0.0.1:3100/v1/products?limit=1" 2>/dev/null \
+      | python3 -c '
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    n = d.get("pagination", {}).get("totalEstimate")
+    if n is not None:
+        print(int(n))
+except Exception:
+    pass
+' 2>/dev/null)"
+    if [[ -n "$out" ]]; then
+      echo "$out"
+      return 0
+    fi
+    log warn "api_total_estimate attempt $attempt: api unreachable; retry in ${backoff}s"
+    sleep "$backoff"
+    attempt=$(( attempt + 1 ))
+    backoff=$(( backoff * 2 ))
+  done
+  echo ""
+  return 1
 }
 
 with_retries() {
@@ -275,7 +302,7 @@ fi
 SCRAPE_FILE=""
 if (( REUSE_RECENT == 1 )); then
   NOW_MIN="$(date -u +%Y-%m-%dT%H-%M)"
-  SCRAPE_FILE="$(ls -t "$DATA_DIR/ouedkniss-${CATEGORY}-${NOW_MIN}"*.json 2>/dev/null | head -1 || true)"
+  SCRAPE_FILE="$(ls -t "$DATA_DIR/ouedkniss-${CATEGORY}-${NOW_MIN}"*.json 2>/dev/null | sed -n '1p' || true)"
   if [[ -n "$SCRAPE_FILE" ]]; then
     log info "scrape: reusing $SCRAPE_FILE"
   else
@@ -296,7 +323,7 @@ if [[ -z "$SCRAPE_FILE" ]]; then
   if ! with_retries "$SCRAPE_RETRIES" "scrape" run_scrape; then
     exit 4
   fi
-  SCRAPE_FILE="$(ls -t "$DATA_DIR/ouedkniss-${CATEGORY}-"*.json | head -1)"
+  SCRAPE_FILE="$(ls -t "$DATA_DIR/ouedkniss-${CATEGORY}-"*.json | sed -n '1p')"
   log info "scrape: wrote $SCRAPE_FILE"
 fi
 
@@ -326,7 +353,10 @@ if (( DRY_RUN == 1 )); then
 fi
 
 # ─── step 3: seed ────────────────────────────────────────────────────────
-BEFORE="$(api_total_estimate || echo 0)"
+BEFORE="$(api_total_estimate || true)"
+if [[ -z "$BEFORE" ]]; then
+  log warn "could not measure 'before' total — api unreachable. Continuing seed anyway."
+fi
 
 run_seed() {
   docker run --rm --network "$NETWORK" \
@@ -350,22 +380,33 @@ if [[ -n "$SUMMARY" ]]; then
   DUPS="$(    echo "$SUMMARY" | sed -nE 's/.*\(([0-9]+) as already-seeded.*/\1/p')"
 fi
 
-AFTER="$(api_total_estimate || echo 0)"
-DELTA=$(( AFTER - BEFORE ))
+AFTER="$(api_total_estimate || true)"
+if [[ -z "$AFTER" ]]; then
+  log warn "could not measure 'after' total — api unreachable after seed. Reporting delta=?"
+fi
+if [[ -n "$BEFORE" && -n "$AFTER" ]]; then
+  DELTA=$(( AFTER - BEFORE ))
+else
+  DELTA=""
+fi
 
 # ─── step 4: report ──────────────────────────────────────────────────────
 log info "result before=$BEFORE after=$AFTER delta=$DELTA seeded=$SEEDED dup_skipped=$DUPS invalid_skipped=$SKIPPED scrape_listings=$SCRAPE_LISTINGS pages=$START_PAGE..$LAST_PAGE has_more=$HAS_MORE"
 
 # Structured metric line — append-only JSONL for ad-hoc analysis.
+# `before`/`after`/`delta` become JSON null when the api was unreachable
+# (instead of silently logging 0, which used to produce bogus deltas).
 printf '{"ts":"%s","run_id":"%s","seller_id":"%s","category":"%s","start_page":%s,"last_page":%s,"has_more":%s,"next_start_page":%s,"before":%s,"after":%s,"delta":%s,"seeded":%s,"dup_skipped":%s,"invalid_skipped":%s,"scrape_listings":%s,"skip_urls_count":%s}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$RUN_ID" "$SELLER_ID" "$CATEGORY" \
   "$START_PAGE" "$LAST_PAGE" "$HAS_MORE" "$NEXT_START_PAGE" \
-  "$BEFORE" "$AFTER" "$DELTA" "$SEEDED" "$DUPS" "$SKIPPED" "$SCRAPE_LISTINGS" "$SKIP_COUNT" \
+  "${BEFORE:-null}" "${AFTER:-null}" "${DELTA:-null}" \
+  "$SEEDED" "$DUPS" "$SKIPPED" "$SCRAPE_LISTINGS" "$SKIP_COUNT" \
   >> "$METRICS_FILE"
 
 # Brief, parseable single-line summary on stdout for cron-style invocations.
+# `?` substitutes for unmeasured before/after/delta so they stand out at a glance.
 if (( QUIET == 0 )); then
   printf 'OK  pages=%s..%s next=%s before=%s after=%s delta=%s seeded=%s dup=%s invalid=%s log=%s\n' \
     "$START_PAGE" "$LAST_PAGE" "$NEXT_START_PAGE" \
-    "$BEFORE" "$AFTER" "$DELTA" "$SEEDED" "$DUPS" "$SKIPPED" "$LOG_FILE"
+    "${BEFORE:-?}" "${AFTER:-?}" "${DELTA:-?}" "$SEEDED" "$DUPS" "$SKIPPED" "$LOG_FILE"
 fi

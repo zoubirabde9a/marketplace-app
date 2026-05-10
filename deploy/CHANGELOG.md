@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — scrape-and-seed loop runs autonomously via systemd timer, with status.sh and full README
+
+- The minute-cadence loop is now driven by a **systemd timer on `vps-eu`**, not a Claude session cron. Survives reboots, runs without an open Claude session, observable via `journalctl`, zero token cost per iteration.
+  - `/etc/systemd/system/marketplace-scrape-loop.service` — `Type=oneshot`, runs `/opt/marketplace/scripts/run-loop.sh --seller-id 019e08a4-97cd-7d98-afd7-670878dc51c2 --quiet` as root, sandboxed (`ProtectSystem=strict`, `ReadWritePaths=/opt/marketplace/data`, `PrivateTmp=true`, `NoNewPrivileges=true`), `TimeoutStartSec=240`, `Restart=no` (next timer fire is the retry path; restarting would race the script's flock).
+  - `/etc/systemd/system/marketplace-scrape-loop.timer` — `OnCalendar=*:0/1`, `RandomizedDelaySec=10` (jitter so a fleet of these don't synchronise on the same instant), `Persistent=false` (no replay-storms after downtime).
+  - Verified: timer fired 6 times in 6 minutes after install, all `Result=success ExecMainStatus=0`, catalog grew normally.
+- New operator tool **`scripts/status.sh`** prints, in one shot: timer state + next fire, last service invocation + exit code, last N runs from `metrics.jsonl` as a column-aligned table, aggregate totals (runs / seeded / dup_skipped / invalid_skipped / idle), page-progression state per `<seller>-<category>`, and any `[error]/[warn]/exit_code=N≠0` lines from the last 20 run logs. Flags: `-n N` (default 10), `--errors`, `--tail` (live-follow `metrics.jsonl`).
+- New comprehensive **`scraper/README.md`** covers the full pipeline: TL;DR ops snippets, what the loop does end-to-end, file inventory, prod-paths table, every checking-status path (`status.sh`, `journalctl`, raw `metrics.jsonl`, per-run logs), exit-code table, every CLI/env knob with defaults, auth posture (`DEV_BYPASS=1`), common operations (pause/resume/reset-state/single-page-slice/script-deploy/scrape-JSON cleanup), troubleshooting matrix, ASCII architecture diagram, legal/privacy posture.
+- Cancelled the prior Claude-session cron `c01da86f` so we don't have two parallel triggers. The session-cron approach was useful for getting the loop iterated and hardened in real-time during the build session; once the script was stable, systemd is the right home.
+
+---
+
 ## 2026-05-10 — IndexNow: pushed full catalog to Bing/Yandex/Seznam/Naver
 
 - Verified via web search that `site:teno-store.com` returns 1 result (apex only) with a stale Arabic snippet from a prior domain owner. Zero product URLs in Google's index. Google Search Console submission is still gated on the operator's Google login.
