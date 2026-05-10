@@ -6,11 +6,20 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — vps-eu · scraper-loop · catalog cap (14,200) + reclaimed 118 GB build cache
+
+- Added a prune step to `scraper/run-loop.sh`: after each seed iteration, deletes oldest products for the seller (by `created_at ASC`) until the count is ≤ `--max-products`. Cascades clean up `catalog.media`, `catalog.product_variants`, and inventory rows. Refuses any cap < 100 to prevent typos nuking the catalog. Metrics line gained `pruned` and `max_products` fields.
+- Updated `/etc/systemd/system/marketplace-scrape-loop.service` to pass `--max-products 14200` (the seller's current ~14,181 + headroom). `systemctl daemon-reload` applied; manual run confirmed: seeded 3 → pruned 3 → catalog steady at 14,200. Image bytes are not stored locally (media table holds only Ouedkniss URL refs), so no filesystem cleanup is required — this is purely a DB-row cap to keep the catalog fresh and bounded.
+- Reclaimed 118 GB of disk via `docker builder prune -af` (build cache had grown to 128 GB across 659 layers — accumulated over weeks of api/web image rebuilds). Root partition went from 124 GB used (52%) to 6 GB used (3%). Did not touch images-in-use, named volumes (postgres data is intact), or running containers.
+- Local code change in `scraper/run-loop.sh` is on disk in the repo; not yet committed.
+
 ## 2026-05-10 — vps-eu · db · rolled back accidental seller "Tor-Store" + locked down DEV_BYPASS
 
 - An assistant-driven session created a seller named "Tor-Store" (`org_id 019e1322-f22b-7f5b-a6fe-99ae4de74711`, `seller_profiles.id 019e1322-f22b-7ad1-ab3f-7963e99ca53a`) by sending `X-Mp-Agent-Id: agt_dev` to `POST /v1/sellers`. This worked because `DEV_BYPASS=1` in `/opt/marketplace/.env` lets any caller act as any agentId with no credentials — see `packages/api/src/middleware/auth.ts:166`. Rolled back via `DELETE FROM identity.organizations WHERE id = '019e1322-...'` (cascades to `seller.seller_profiles`); confirmed 0 rows remain.
 - Code: added a boot-time guard in `packages/api/src/start.ts` that refuses to start the API when `DEV_BYPASS=1` unless `I_UNDERSTAND_DEV_BYPASS_IS_INSECURE=1` is also set. Makes the bypass impossible to enable by accident.
-- **Not yet deployed.** Deploying as-is will refuse to start the prod API container (prod has `DEV_BYPASS=1` and not the ack flag). Operator decision needed: (a) flip `DEV_BYPASS=0` and accept the scraper loop breaks until it's wired to a real agent passport (per CLAUDE.md `scripts/run-loop.sh` depends on the bypass), or (b) set `I_UNDERSTAND_DEV_BYPASS_IS_INSECURE=1` on prod as a temporary acknowledgement while the scraper auth is fixed.
+- **Phase 1 deployed (option b).** Operator chose to keep the bypass on with the explicit ack flag while the scraper auth is fixed in a follow-up. `/opt/marketplace/.env` now carries both `DEV_BYPASS=1` and `I_UNDERSTAND_DEV_BYPASS_IS_INSECURE=1` (backup at `.env.bak.<ts>`). `start.ts` uploaded via `scp`, image rebuilt with `docker compose build api`, container recreated with `up -d api`. Verified `/livez` 200, container healthy, request log normal. Negative test (`docker compose run --rm -e I_UNDERSTAND_DEV_BYPASS_IS_INSECURE=0 api node packages/api/dist/start.js`) confirmed the boot guard prints the refusal message and exits.
+- **Phase 2 follow-up (open):** switch `scraper/run-loop.sh` from the API-mode seeder (`scraper/seed-from-scraped.mjs`) to the direct-DB sibling (`packages/db/src/seed-from-scraped.ts`). Once that lands, flip `DEV_BYPASS=0` and remove the ack flag — closes the auth bypass for real.
+- Commit `535a30f`.
 
 ## 2026-05-10 — vps-eu · web · agent-onboarding empty state rewritten for non-technical users
 
