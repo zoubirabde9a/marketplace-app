@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — vps-eu · catalog · "newest" sort now keys on real posting date, not ingestion time
+
+- `packages/api/src/catalog/sort.ts`: when `sort=newest`, comparator now reads `attributes.sourcePostedAt` (ISO 8601 from the seller's Ouedkniss listing) and falls back to `createdAt` when missing. Browsing `/search` defaults to `sort=newest` whenever there's no query, so this is the path users hit by default.
+- Why: the scraper walks Ouedkniss pages in arbitrary order across runs, so ingestion time didn't track real freshness — a freshly-posted listing could land below an old one re-ingested earlier.
+- Deployed via `tar | ssh` + `docker compose -f docker-compose.prod.yml build api && up -d api`. Verified: top 5 of `GET /v1/products?sort=newest` are listings posted within the last ~10 min.
+- Cursor format unchanged (still ms-since-epoch); users mid-scroll at deploy time see a small ordering glitch on next "load more", resolves on reload.
+
+---
+
 ## 2026-05-10 — scrape-and-seed loop runs autonomously via systemd timer, with status.sh and full README
 
 - The minute-cadence loop is now driven by a **systemd timer on `vps-eu`**, not a Claude session cron. Survives reboots, runs without an open Claude session, observable via `journalctl`, zero token cost per iteration.
