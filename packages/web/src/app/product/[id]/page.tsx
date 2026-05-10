@@ -248,7 +248,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 {p.sellerDisplayName?.trim() ? p.sellerDisplayName : "this seller"}
               </Link>
             </div>
-            {(p.sellerPhone || p.sellerWhatsapp || p.sellerWebsite) && (
+            {(p.sellerPhone || p.sellerWhatsapp || p.sellerWebsite) && (() => {
+              // Algerian local-style display: drop +213 country code, prefix
+              // a leading 0 (e.g. +213555000101 → 0555000101). The tel: and
+              // wa.me hrefs keep the international format so dialing still
+              // works from anywhere.
+              const localizeDz = (n: string) => n.replace(/^\+?213/, "0").replace(/[^\d]/g, "");
+              return (
               <address className="mt-3 flex flex-wrap gap-2 not-italic">
                 {p.sellerPhone && (
                   <a
@@ -257,7 +263,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-bg-elev border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                    Call
+                    <span className="font-mono tabular-nums tracking-tight" dir="ltr">{localizeDz(p.sellerPhone)}</span>
                   </a>
                 )}
                 {p.sellerWhatsapp && (
@@ -269,7 +275,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 transition"
                   >
                     <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.2-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.7-.9-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5 4.5 1.7.7 2.4.8 3.3.7.5-.1 1.7-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.3 4.9L2 22l5.3-1.4c1.4.7 2.9 1.1 4.7 1.1 5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg>
-                    WhatsApp
+                    <span className="font-mono tabular-nums tracking-tight" dir="ltr">{localizeDz(p.sellerWhatsapp)}</span>
                   </a>
                 )}
                 {p.sellerWebsite && !/^https?:\/\/(www\.)?example\.(com|org|dz|net)\b/i.test(p.sellerWebsite) && (
@@ -286,7 +292,8 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 )}
                 <ShareButton title={p.title.value} url={`${SITE_URL}/product/${encodeURIComponent(p.productId)}`} />
               </address>
-            )}
+              );
+            })()}
             {!(p.sellerPhone || p.sellerWhatsapp || p.sellerWebsite) && (
               <div className="mt-3"><ShareButton title={p.title.value} url={`${SITE_URL}/product/${encodeURIComponent(p.productId)}`} /></div>
             )}
@@ -355,19 +362,25 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             </section>
           )}
 
-          {Object.keys(p.attributes).length > 0 && (
-            <section>
-              <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">Specifications</h2>
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 rounded-2xl border border-line-soft bg-bg-soft/60 p-5">
-                {Object.entries(p.attributes).map(([k, v]) => (
-                  <div key={k} className="flex items-baseline justify-between gap-3 py-1 border-b border-line-soft last:border-0">
-                    <dt className="text-xs text-ink-mute capitalize">{k.replace(/_/g, " ")}</dt>
-                    <dd className="text-sm text-ink-soft text-right untrusted">{v.value}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          )}
+          {(() => {
+            const visibleAttrs = Object.entries(p.attributes).filter(
+              ([k]) => !k.startsWith("source"),
+            );
+            if (visibleAttrs.length === 0) return null;
+            return (
+              <section>
+                <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">Specifications</h2>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 rounded-2xl border border-line-soft bg-bg-soft/60 p-5">
+                  {visibleAttrs.map(([k, v]) => (
+                    <div key={k} className="flex items-baseline justify-between gap-3 py-1 border-b border-line-soft last:border-0">
+                      <dt className="text-xs text-ink-mute capitalize">{k.replace(/_/g, " ")}</dt>
+                      <dd className="text-sm text-ink-soft text-right untrusted">{v.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+            );
+          })()}
 
           {p.shipsTo.length > 0 && (
             <section className="text-xs text-ink-mute">

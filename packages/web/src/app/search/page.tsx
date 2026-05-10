@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { searchProducts } from "@/lib/api";
 import { parseSearchParams } from "@/lib/url";
 import { ActiveFilters } from "@/components/ActiveFilters";
-import { ProductGrid, ProductGridSkeleton } from "@/components/ProductGrid";
+import { ProductGridSkeleton } from "@/components/ProductGrid";
 import { EmptyState } from "@/components/EmptyState";
-import { Pagination } from "@/components/Pagination";
+import { InfiniteResults } from "@/components/InfiniteResults";
 import { jsonLdString } from "@/lib/jsonld";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
@@ -262,10 +262,17 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
           />
         )
       ) : (
-        <>
-          <ProductGrid hits={result.data} />
-          <Pagination currentParams={params} nextCursor={result.pagination.cursor} resultsLen={result.data.length} />
-        </>
+        <InfiniteResults
+          initialHits={result.data}
+          initialCursor={result.pagination.cursor}
+          baseQuery={(() => {
+            // Drop `cursor` from the inherited params — the client component
+            // appends its own as it walks forward through pages.
+            const q = new URLSearchParams(params.toString());
+            q.delete("cursor");
+            return q.toString();
+          })()}
+        />
       )}
     </>
   );
