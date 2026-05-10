@@ -6,6 +6,21 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — vps-eu · scraper-loop · per-run log rotation added to data-rotate timer
+
+- `data/logs/run-*.log` files accumulate one per scrape iteration (~1,440/day at 1/min cadence). 638 were present after one day. Each is tiny but uncapped growth would eventually matter.
+- Extended `marketplace-data-rotate.service` to delete `run-*.log` files older than 7 days alongside the existing `ouedkniss-*.json` cleanup. Two `ExecStart=` lines now, both running on the same daily timer firing.
+- Verified by `systemctl start marketplace-data-rotate.service` — both exit 0; no files removed yet because none have crossed the 7-day threshold yet (oldest is from today's session). Will start trimming automatically once the rolling window catches up.
+- `metrics.jsonl` (single append-only file, currently 206 KB at ~75 MB/year growth rate) left alone — too small to be worth rotating right now. Revisit if/when it crosses ~50 MB.
+
+## 2026-05-10 — vps-eu · api · wire MCP /mcp transport + admin-token auth path
+
+- `POST /mcp` is now a live streamable-HTTP MCP endpoint on `api.teno-store.com`. Previously the route was declared in `packages/mcp-server/src/transport.ts` but never mounted in `packages/api/src/server.ts`; any request hit the auth middleware's blanket 401 and the MCP TS SDK then crashed parsing our RFC 7807 problem+json body against its RFC 6749 OAuth schema (the `/register` ZodError seen on the operator's laptop).
+- Registered two write-side MCP tools (`seller.create_account`, `product.create_listing`) mirroring `POST /v1/sellers` and `POST /v1/products`. Scopes: `seller:write`, `seller:product:write`. Per-tool validation goes through the same domain layer as the REST routes — no duplicate sanitisation path.
+- Added a shared-secret auth path for /mcp: `X-Mp-Mcp-Token` matching the `MCP_ADMIN_TOKEN` env var promotes an anonymous /mcp request to a synthetic agent principal with the full write scope bundle. This is a deliberate narrow exception to keep `DEV_BYPASS=0` in prod while still letting a trusted operator drive seller/product creation from a Claude Code MCP client. Token lives in `/opt/marketplace/.env` (mode 600, root-owned). Rotate by replacing the value and restarting api.
+- Also: added `/register` + `/oauth/register` stubs returning an RFC 6749-shaped `registration_not_supported` so MCP TS SDK clients don't loop on OAuth Dynamic Client Registration; added `/mcp` to the idempotency middleware exempt list (JSON-RPC carries its own request id).
+- Smoke: created seller `Tor-Store` (`019e13e0-c9cc-73f6-b21b-9a61562e2b35`) and 3 phone listings via MCP tool calls; verified via `GET /v1/sellers/<id>` → `productCount: 3`.
+
 ## 2026-05-10 — vps-eu · build · split Dockerfiles: install layer survives source edits
 
 - The api + web Dockerfiles previously did `COPY packages ./packages` *before* `pnpm install`, so any source edit cache-busted the install layer and produced a fresh ~700 MB node_modules layer per rebuild. That's the structural cause of the 128 GB build cache that filled the disk earlier today.
