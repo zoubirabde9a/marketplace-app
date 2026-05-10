@@ -388,6 +388,7 @@ export function makeProductReader(repo: {
   loadAll: () => Promise<{ products: StoredProduct[]; sellers: Map<string, StoredSeller> }>;
   loadOne: (id: string) => Promise<StoredProduct | undefined>;
   getProductsByIds: (ids: string[]) => Promise<Array<StoredProduct | null>>;
+  searchIds?: (q: string, limit?: number) => Promise<Array<{ id: string; score: number }>>;
 }): ProductReader {
   function projectOne(p: StoredProduct, sellers: Map<string, StoredSeller>) {
     const seller = sellers.get(p.sellerId);
@@ -413,6 +414,20 @@ export function makeProductReader(repo: {
   return {
     async search(query) {
       const { products, sellers } = await repo.loadAll();
+      // When a free-text query is present and the repo exposes searchIds,
+      // delegate text matching + relevance ranking to Postgres (FTS + pg_trgm,
+      // migration 0003). Filters/sort/facets/cursor stay in the JS pipeline,
+      // operating over the SQL-shortlisted candidates.
+      const q = query.query?.trim() ?? "";
+      if (q.length > 0 && repo.searchIds) {
+        const ranked = await repo.searchIds(q);
+        if (ranked.length === 0) {
+          return searchProducts([], sellers, query, new Map());
+        }
+        const scoreMap = new Map(ranked.map((r) => [r.id, r.score]));
+        const candidates = products.filter((p) => scoreMap.has(p.productId));
+        return searchProducts(candidates, sellers, query, scoreMap);
+      }
       return searchProducts(products, sellers, query);
     },
     async getProduct(id) {

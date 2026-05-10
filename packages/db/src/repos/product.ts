@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { uuidv7 } from "@marketplace/shared/ids";
 import { products, productVariants, media } from "../schema/catalog.js";
 import { sellerProfiles } from "../schema/seller.js";
@@ -147,9 +147,48 @@ export function makeProductRepo(db: DbClient) {
     return shapeProduct(prows[0], vrows, mrows);
   }
 
+  // Postgres-backed text search (migration 0003): full-text via tsvector
+  // (websearch_to_tsquery + ts_rank_cd) plus typo / prefix tolerance via
+  // pg_trgm `word_similarity`. Plain `similarity` would compare full strings,
+  // which collapses to ~0 when the title has many extra tokens beyond the
+  // query — `word_similarity` finds the best-matching word inside the title
+  // and is what makes "iphn" → "iPhone …" or "ipho" → "iPhone …" actually hit.
+  // Threshold 0.4 admits one or two edits on short queries; tighter than the
+  // pg_trgm default (0.6) is needed because user typos are short. The lexical
+  // score is weighted ×4 so exact FTS matches always outrank typo matches.
+  async function searchIds(q: string, limit = 200): Promise<Array<{ id: string; score: number }>> {
+    const trimmed = q.trim();
+    if (trimmed.length === 0) return [];
+    const rows = await db.execute<{ id: string; score: number }>(sql`
+      WITH q AS (
+        SELECT websearch_to_tsquery('simple', ${trimmed}) AS tsq,
+               ${trimmed}::text AS qtxt
+      )
+      SELECT p."id" AS id,
+             (
+               COALESCE(ts_rank_cd(p."search_text", (SELECT tsq FROM q)), 0)::float8 * 4.0
+               + GREATEST(
+                   word_similarity((SELECT qtxt FROM q), p."title_sanitized"),
+                   word_similarity((SELECT qtxt FROM q), COALESCE(p."brand", ''))
+                 )::float8
+             ) AS score
+      FROM "catalog"."products" p
+      WHERE p."search_text" @@ (SELECT tsq FROM q)
+         OR word_similarity((SELECT qtxt FROM q), p."title_sanitized") >= 0.4
+         OR word_similarity((SELECT qtxt FROM q), COALESCE(p."brand", '')) >= 0.4
+      ORDER BY score DESC, p."id" ASC
+      LIMIT ${limit}
+    `);
+    return (rows as Array<{ id: string; score: number | string }>).map((r) => ({
+      id: r.id,
+      score: Number(r.score),
+    }));
+  }
+
   return {
     loadAll,
     loadOne,
+    searchIds,
 
     async getOwnerAgentId(productId: string): Promise<string | undefined> {
       if (!isUuid(productId)) return undefined;

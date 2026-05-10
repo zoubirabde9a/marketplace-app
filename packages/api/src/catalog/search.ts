@@ -69,7 +69,7 @@ function projectHit(p: StoredProduct, ctx: FilterContext, sellers: Map<string, S
     sellerId: p.sellerId,
     ...(sellerName !== undefined ? { sellerDisplayName: sellerName } : {}),
     counterfeitRisk: p.counterfeitRisk,
-    relevanceScore: 1,
+    relevanceScore: ctx.textScores?.get(p.productId) ?? 1,
     ...(hero ? { heroImage: hero } : {}),
     imageCount: p.media.length,
     ...(p.categoryIds && p.categoryIds.length > 0 ? { categoryIds: [...p.categoryIds] } : {}),
@@ -81,11 +81,13 @@ export function searchProducts(
   all: StoredProduct[],
   sellers: Map<string, StoredSeller>,
   query: catalog.SearchQuery & { fuzzy?: boolean },
+  textScores?: ReadonlyMap<string, number>,
 ): SearchResult {
   const ctx: FilterContext = {
     q: query.query.trim().toLowerCase(),
     filters: query.filters ?? { includeOutOfStock: false },
     fuzzy: query.fuzzy === true,
+    ...(textScores ? { textScores } : {}),
   };
   const matched = all.filter((p) => passes(p, ctx));
   const sort: Sort = query.sort ?? "relevance";

@@ -15,6 +15,13 @@ export interface FilterContext {
   filters: NonNullable<catalog.SearchQuery["filters"]>;
   /** Opt-in token-fuzzy matching when q is non-empty. */
   fuzzy: boolean;
+  /**
+   * When set, text matching and relevance scoring are delegated to Postgres
+   * (FTS + pg_trgm via repo.searchIds). The presence of a productId in this
+   * map means the row matched the query in SQL; the value is its rank score.
+   * The JS substring/Levenshtein paths are bypassed.
+   */
+  textScores?: ReadonlyMap<string, number>;
 }
 
 function textBlob(p: StoredProduct): string {
@@ -25,6 +32,7 @@ function textBlob(p: StoredProduct): string {
 /** Whether the free-text query matches this product, given fuzzy on/off. */
 export function matchesText(p: StoredProduct, ctx: FilterContext): boolean {
   if (ctx.q.length === 0) return true;
+  if (ctx.textScores) return ctx.textScores.has(p.productId);
   const blob = textBlob(p);
   if (blob.toLowerCase().includes(ctx.q)) return true;
   if (!ctx.fuzzy) return false;

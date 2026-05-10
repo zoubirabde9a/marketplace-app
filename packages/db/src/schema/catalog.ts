@@ -75,6 +75,13 @@ export const products = catalogSchema.table(
   }),
 );
 
+// NOTE: migration 0003 adds a `search_text` tsvector generated column on
+// catalog.products plus GIN indexes (`products_search_text_idx`,
+// `products_title_trgm_idx`, `products_brand_trgm_idx`). They are intentionally
+// not declared here — drizzle-orm has no first-class tsvector + generated-
+// column support that round-trips cleanly. If `pnpm db:generate` proposes
+// dropping any of those, reject the diff. See repos/product.ts → searchIds.
+
 export const productVariants = catalogSchema.table(
   "product_variants",
   {

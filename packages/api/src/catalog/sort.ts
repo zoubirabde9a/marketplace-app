@@ -13,6 +13,7 @@ export type SortKey = { v: bigint; isBig: true } | { v: number; isBig: false };
 
 function relevanceScore(p: StoredProduct, ctx: FilterContext): number {
   if (ctx.q.length === 0) return 0;
+  if (ctx.textScores) return ctx.textScores.get(p.productId) ?? 0;
   const t = p.titleSanitized.toLowerCase();
   const b = (p.brand ?? "").toLowerCase();
   // Substring matches outweigh fuzzy matches; title outweighs brand.
