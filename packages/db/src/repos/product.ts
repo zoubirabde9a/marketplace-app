@@ -153,9 +153,11 @@ export function makeProductRepo(db: DbClient) {
   // which collapses to ~0 when the title has many extra tokens beyond the
   // query — `word_similarity` finds the best-matching word inside the title
   // and is what makes "iphn" → "iPhone …" or "ipho" → "iPhone …" actually hit.
-  // Threshold 0.4 admits one or two edits on short queries; tighter than the
-  // pg_trgm default (0.6) is needed because user typos are short. The lexical
-  // score is weighted ×4 so exact FTS matches always outrank typo matches.
+  // Threshold 0.5 was picked empirically: 0.4 admitted "oppo" → "OPERATEUR"
+  // (both words share __o/_op trigrams, word_similarity ~0.4) but real typos
+  // score ≥0.5 (iphn→iPhone 0.6, samsng→Samsung 0.71, sams→Samsung 0.5).
+  // Tighter than the pg_trgm default (0.6) is still needed for 4-char typos.
+  // The lexical score is weighted ×4 so FTS hits always outrank typo matches.
   async function searchIds(q: string, limit = 200): Promise<Array<{ id: string; score: number }>> {
     const trimmed = q.trim();
     if (trimmed.length === 0) return [];
@@ -174,8 +176,8 @@ export function makeProductRepo(db: DbClient) {
              ) AS score
       FROM "catalog"."products" p
       WHERE p."search_text" @@ (SELECT tsq FROM q)
-         OR word_similarity((SELECT qtxt FROM q), p."title_sanitized") >= 0.4
-         OR word_similarity((SELECT qtxt FROM q), COALESCE(p."brand", '')) >= 0.4
+         OR word_similarity((SELECT qtxt FROM q), p."title_sanitized") >= 0.5
+         OR word_similarity((SELECT qtxt FROM q), COALESCE(p."brand", '')) >= 0.5
       ORDER BY score DESC, p."id" ASC
       LIMIT ${limit}
     `);
