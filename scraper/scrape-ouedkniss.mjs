@@ -1,47 +1,47 @@
-// Scrapes Ouedkniss listing pages with Playwright (Chromium) into a JSON file.
+// Scrapes Ouedkniss listings via their public GraphQL API into a JSON file.
+//
+// REWRITE NOTE (2026-05-09): the previous version drove a headless Chromium and
+// scraped rendered DOM anchors. That stopped working when Ouedkniss became a
+// fully client-rendered SPA — listings are no longer in the initial HTML, and
+// the legacy URL pattern /c/<slug>?page=N now redirects to a numeric category
+// id and renders an empty results page. The 2026-standard approach for
+// SPA/Apollo sites is to call the same GraphQL endpoint the site itself calls.
+// We discovered the operation by capturing XHR traffic from the live site.
 //
 // USE WITH CARE — Ouedkniss's terms of service prohibit automated harvesting
-// of seller contact details. This script is here as a reference; running it
-// in production against real sellers may violate (a) Ouedkniss ToS,
+// of seller contact details. This script only requests public listing fields
+// (title, description, price, refreshedAt, images, category, city). It does
+// NOT request `phone`, `whatsapp`, or `user`-detail fields. Running this in
+// production against real sellers may still implicate (a) Ouedkniss ToS,
 // (b) Algerian Law 18-07 on protection of personal data, and (c) GDPR if any
-// listed seller is in the EU. The default config below is intentionally tiny
-// (3 pages, 30 listings). Do not crank it up without legal sign-off.
+// listed seller is in the EU. The default config below is intentionally small
+// (1 page, 48 listings). Do not crank it up without legal sign-off.
 //
-// Setup (one-off, on the operator's machine — NOT on vps-eu):
-//   pnpm add -D playwright
-//   pnpm exec playwright install chromium
+// Setup: nothing beyond Node 20 (built-in fetch).
 //
 // Usage:
-//   node scraper/scrape-ouedkniss.mjs                   # default: c/telephone, 30 listings
-//   N=50 node scraper/scrape-ouedkniss.mjs              # target 50 post-filter listings
-//   CATEGORY=informatique N=20 node scraper/scrape-ouedkniss.mjs
+//   node scripts/scrape-ouedkniss.mjs                          # default category
+//   CATEGORY=telephones-tablettes PAGES=3 node scripts/scrape-ouedkniss.mjs
 //
 // Env knobs:
-//   N=30                  target post-filter listing count. The scraper walks
-//                         category index pages until it has N candidate URLs
-//                         (or MAX_PAGES is hit), then fetches each. If
-//                         MAX_AGE_DAYS filtering drops some, it walks more
-//                         index pages and tops up — the goal is to return N
-//                         items, not to "try N and see what survives".
-//                         (`MAX_LISTINGS` is honoured as a back-compat alias.)
-//   MAX_PAGES=20          hard cap on category index pages to avoid runaway
-//                         pagination if the site has fewer than N fresh items.
-//   MAX_AGE_DAYS=3        skip listings posted more than N days ago (0 = no filter).
-//                         When > 0, listings with no parseable posting date are
-//                         also skipped — we can't certify their age.
-//   DELAY_MS=4000         pause between index page fetches (be polite).
-//   LISTING_DELAY_MS=2500 pause between individual listing fetches.
-//   BATCH_SIZE=10         process listings in batches of N, pausing BATCH_PAUSE_MS between.
-//   BATCH_PAUSE_MS=8000   pause between batches (gives rate limits a breather).
+//   CATEGORY=<slug>       Ouedkniss category slug (e.g. telephones-tablettes,
+//                         informatique, vehicules, immobilier). Default: telephones-tablettes.
+//                         The legacy slug "telephone" is auto-mapped.
+//   PAGES=1               number of pages to walk (each page = up to PAGE_SIZE items)
+//   PAGE_SIZE=48          items per page (Ouedkniss allows up to 48)
+//   MAX_LISTINGS=200      hard cap across all pages
+//   MAX_AGE_DAYS=3        skip listings refreshed more than N days ago (0 = no filter).
+//                         When > 0, listings with no parseable date are also skipped —
+//                         we can't certify their age.
+//   BATCH_SIZE=10         emit a "batch n/N" log line every N items (the GraphQL API
+//                         already paginates server-side, so batching is purely about
+//                         pacing our own requests + log readability).
+//   BATCH_PAUSE_MS=4000   pause between page requests (rate-limit politeness)
 //
 // Output: data/ouedkniss-<category>-<timestamp>.json
-//   Each item carries `postedAt` (ISO 8601) when the date could be parsed.
+//   Each item carries `postedAt` (ISO 8601) — the Ouedkniss `refreshedAt` field.
 //
-// Feed the JSON into one of:
-//   * scraper/seed-from-scraped.mjs        — POSTs to a running API
-//   * pnpm -F @marketplace/db db:seed-from-scraped <json>
-//                                          — writes directly to Postgres
-//                                            (use this on the live server)
+// Then feed the JSON into scripts/seed-from-scraped.mjs.
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -50,50 +50,54 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(HERE, "..", "data");
 
-const CATEGORY = process.env.CATEGORY ?? "telephone";
-// `N` is the canonical knob; `MAX_LISTINGS` is kept as a back-compat alias.
-const TARGET_COUNT = Number(process.env.N ?? process.env.MAX_LISTINGS ?? 30);
-const MAX_PAGES = Number(process.env.MAX_PAGES ?? process.env.PAGES ?? 20);
-const PER_PAGE_DELAY_MS = Number(process.env.DELAY_MS ?? 4000); // be a polite scraper
-const LISTING_DELAY_MS = Number(process.env.LISTING_DELAY_MS ?? 2500);
+// Legacy slug → current slug map. Keeps old invocations working.
+// Real slugs come from Ouedkniss's listingMenu GraphQL op (verified 2026-05-09):
+// telephones, automobiles_vehicules, immobilier, informatique,
+// electronique_electromenager, vetements_mode, sante_beaute, ...
+// Sub-categories: telephones-smartphones, telephones-tablets, etc.
+const SLUG_ALIASES = {
+  telephone: "telephones",
+  "telephones-tablettes": "telephones",
+  smartphones: "telephones-smartphones",
+  tablettes: "telephones-tablets",
+};
+
+const CATEGORY_RAW = process.env.CATEGORY ?? "telephones";
+const CATEGORY = SLUG_ALIASES[CATEGORY_RAW] ?? CATEGORY_RAW;
+const PAGES = Math.max(1, Number(process.env.PAGES ?? 1));
+const START_PAGE = Math.max(1, Number(process.env.START_PAGE ?? 1));
+const PAGE_SIZE = Math.min(48, Math.max(1, Number(process.env.PAGE_SIZE ?? 48)));
+const MAX_LISTINGS = Number(process.env.MAX_LISTINGS ?? 200);
 const MAX_AGE_DAYS = Number(process.env.MAX_AGE_DAYS ?? 3);
 const BATCH_SIZE = Math.max(1, Number(process.env.BATCH_SIZE ?? 10));
-const BATCH_PAUSE_MS = Number(process.env.BATCH_PAUSE_MS ?? 8000);
+const BATCH_PAUSE_MS = Number(process.env.BATCH_PAUSE_MS ?? 4000);
 
+const GRAPHQL_URL = "https://api.ouedkniss.com/graphql";
 const BASE_URL = "https://www.ouedkniss.com";
 
-// Parse the listing's posting date out of whatever the page exposes:
-// 1) JSON-LD `datePublished` (most reliable), 2) <time datetime="..."> tags,
-// 3) French relative-time text ("il y a 2 jours", "Aujourd'hui", "Hier").
-// Returns an ISO string or null.
-function parsePostedAt(structuredData, timeAttrs, relativeText) {
-  for (const sd of structuredData ?? []) {
-    const candidates = Array.isArray(sd) ? sd : [sd];
-    for (const c of candidates) {
-      const v = c?.datePublished ?? c?.dateCreated ?? c?.uploadDate;
-      if (typeof v === "string") {
-        const d = new Date(v);
-        if (!Number.isNaN(d.getTime())) return d.toISOString();
+// Minimal SearchQuery — only the fields we actually surface in the marketplace.
+// We deliberately omit `user`, `phone`, anything tied to seller identity.
+const SEARCH_QUERY = `query SearchQuery($q: String, $filter: SearchFilterInput) {
+  search(q: $q, filter: $filter) {
+    announcements {
+      data {
+        id
+        title
+        slug
+        refreshedAt
+        description
+        price
+        pricePreview
+        priceUnit
+        defaultMedia(size: MEDIUM) { mediaUrl mimeType }
+        medias(size: SMALL) { mediaUrl mimeType }
+        category { id slug name }
+        cities { id name region { id name } }
       }
+      paginatorInfo { lastPage hasMorePages }
     }
   }
-  for (const t of timeAttrs ?? []) {
-    if (typeof t !== "string" || !t) continue;
-    const d = new Date(t);
-    if (!Number.isNaN(d.getTime())) return d.toISOString();
-  }
-  const txt = (relativeText ?? "").toLowerCase();
-  const now = new Date();
-  if (/aujourd['’]?hui/.test(txt)) return now.toISOString();
-  if (/\bhier\b/.test(txt)) return new Date(now.getTime() - 86400_000).toISOString();
-  const m = txt.match(/il y a\s+(\d+)\s*(minute|heure|jour|semaine|mois)/);
-  if (m) {
-    const n = Number(m[1]);
-    const unitMs = { minute: 60_000, heure: 3600_000, jour: 86400_000, semaine: 7 * 86400_000, mois: 30 * 86400_000 }[m[2]];
-    if (unitMs) return new Date(now.getTime() - n * unitMs).toISOString();
-  }
-  return null;
-}
+}`;
 
 function ageDays(iso) {
   if (!iso) return Infinity;
@@ -102,165 +106,172 @@ function ageDays(iso) {
   return (Date.now() - t) / 86400_000;
 }
 
-async function main() {
-  const playwright = await import("playwright").catch(() => null);
-  if (!playwright) {
-    console.error("playwright not installed. Run:\n  pnpm add -D playwright\n  pnpm exec playwright install chromium");
-    process.exit(2);
+async function searchPage(page, attempt = 1) {
+  const body = {
+    operationName: "SearchQuery",
+    variables: {
+      q: null,
+      filter: {
+        categorySlug: CATEGORY,
+        priceRange: [],
+        regionIds: [],
+        cityIds: [],
+        fields: [],
+        page,
+        count: PAGE_SIZE,
+        orderByField: { field: "REFRESHED_AT" },
+      },
+    },
+    query: SEARCH_QUERY,
+  };
+  try {
+    const res = await fetch(GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "teno-store-research/1.0 (+https://teno-store.com/about)",
+        "accept-language": "fr-FR,fr;q=0.9",
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`graphql ${res.status}: ${await res.text().catch(() => "")}`);
+    const json = await res.json();
+    if (json.errors) throw new Error(`graphql errors: ${JSON.stringify(json.errors).slice(0, 300)}`);
+    return json.data?.search?.announcements ?? { data: [], paginatorInfo: { hasMorePages: false } };
+  } catch (err) {
+    if (attempt < 3) {
+      const backoff = 1500 * attempt;
+      console.log(`  [retry ${attempt}] page ${page} after ${backoff}ms: ${err.message ?? err}`);
+      await new Promise((r) => setTimeout(r, backoff));
+      return searchPage(page, attempt + 1);
+    }
+    throw err;
   }
-  const { chromium } = playwright;
+}
 
+function priceText(item) {
+  // Ouedkniss returns priceUnit as a GraphQL enum string ("UNIT", "MILLION", etc.).
+  // For seeding purposes the seeder only cares about digits, but a human-readable
+  // label is nicer. UNIT means "as-is in DZD"; everything else we leave as-is so
+  // the seeder logs are still informative.
+  const labelFor = (u) => (u === "UNIT" || u == null ? "DA" : `${u}`);
+  if (item.pricePreview != null && item.pricePreview !== "" && item.pricePreview !== "0") {
+    return `${item.pricePreview} ${labelFor(item.priceUnit)}`;
+  }
+  if (item.price != null && Number(item.price) > 0) {
+    return `${item.price} ${labelFor(item.priceUnit)}`;
+  }
+  return null;
+}
+
+function imagesOf(item) {
+  const out = [];
+  if (item.defaultMedia?.mediaUrl) {
+    out.push(item.defaultMedia.mediaUrl);
+  }
+  for (const m of item.medias ?? []) {
+    if (m?.mediaUrl && !out.includes(m.mediaUrl)) out.push(m.mediaUrl);
+  }
+  return out;
+}
+
+async function main() {
   await mkdir(DATA_DIR, { recursive: true });
 
-  const browser = await chromium.launch({ headless: true });
-  const ctx = await browser.newContext({
-    userAgent: "Mozilla/5.0 (X11; Linux x86_64) teno-store-research/1.0 (+https://teno-store.com/about)",
-    locale: "fr-FR",
-  });
-  const page = await ctx.newPage();
+  console.log(`[start] category=${CATEGORY} startPage=${START_PAGE} pages=${PAGES} pageSize=${PAGE_SIZE} maxAgeDays=${MAX_AGE_DAYS}`);
+  if (CATEGORY !== CATEGORY_RAW) console.log(`        (mapped legacy slug "${CATEGORY_RAW}" -> "${CATEGORY}")`);
 
-  const seenUrls = new Set();
-  const pendingUrls = []; // URLs not yet fetched, in collection order
-  let pagesWalked = 0;
-  let pagesEmpty = 0;
   const results = [];
   let tooOld = 0;
-  let listingNo = 0;
+  let undated = 0;
+  let totalSeen = 0;
+  let batchNo = 0;
+  let lastPageScraped = START_PAGE - 1;
+  let hasMorePages = true;
+  const endPage = START_PAGE + PAGES - 1;
 
-  // Walk one category index page and append any new /annonce/ URLs to pendingUrls.
-  // Returns the number of new URLs added.
-  async function collectIndexPage() {
-    pagesWalked++;
-    const url = `${BASE_URL}/c/${CATEGORY}?page=${pagesWalked}`;
-    console.log(`[index ${pagesWalked}/${MAX_PAGES}] ${url}`);
-    await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
-    // Ouedkniss uses Vue + v-cards; listing anchors point at /annonce/...
-    const hrefs = await page.$$eval("a[href*='/annonce/']", (els) => els.map((a) => a.href));
-    let added = 0;
-    for (const h of hrefs) {
-      const u = h.split("?")[0];
-      if (!seenUrls.has(u)) {
-        seenUrls.add(u);
-        pendingUrls.push(u);
-        added++;
-      }
-    }
-    return added;
-  }
-
-  // Visit a single listing URL, extract structured fields, append to results
-  // unless filtered out by MAX_AGE_DAYS.
-  async function fetchListing(url) {
-    listingNo++;
+  for (let page = START_PAGE; page <= endPage; page++) {
+    if (results.length >= MAX_LISTINGS) break;
+    console.log(`[page ${page} of ${START_PAGE}..${endPage}] requesting ${PAGE_SIZE} items...`);
+    let pageResp;
     try {
-      console.log(`  [listing ${listingNo}] ${url}`);
-      await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
-      await page.waitForTimeout(800); // let Vue hydrate
-
-      const data = await page.evaluate(() => {
-        const t = (sel) => document.querySelector(sel)?.textContent?.trim() ?? null;
-        const og = (k) => document.querySelector(`meta[property="og:${k}"]`)?.content ?? null;
-        const sd = Array.from(document.querySelectorAll('script[type="application/ld+json"]'))
-          .map((s) => { try { return JSON.parse(s.textContent ?? "null"); } catch { return null; } })
-          .filter(Boolean);
-        const title = og("title") ?? t("h1");
-        const description = og("description") ?? t("[class*=description]");
-        const images = Array.from(document.querySelectorAll("meta[property='og:image']")).map((m) => m.content);
-        const priceMatch = document.body.textContent?.match(/(\d[\d\s.,]{2,})\s*(DA|DZD)/);
-        // Posting-date signals: <time datetime="..."> attrs, plus any visible
-        // text near "Publiée"/"Mis à jour" labels for relative-time fallback.
-        const timeAttrs = Array.from(document.querySelectorAll("time[datetime]"))
-          .map((el) => el.getAttribute("datetime"))
-          .filter(Boolean);
-        const labelEl = Array.from(document.querySelectorAll("body *"))
-          .find((el) => /publi[ée]e|mis[e]? à jour/i.test(el.textContent ?? ""));
-        const relativeText = labelEl?.textContent?.trim() ?? null;
-        return {
-          title,
-          description,
-          images,
-          priceText: priceMatch?.[0] ?? null,
-          structuredData: sd,
-          timeAttrs,
-          relativeText,
-        };
-      });
-      const postedAt = parsePostedAt(data.structuredData, data.timeAttrs, data.relativeText);
-      if (MAX_AGE_DAYS > 0 && !postedAt) {
-        tooOld++;
-        console.log(`    skipped (no parseable posting date — cannot verify ≤ ${MAX_AGE_DAYS}d)`);
-      } else if (MAX_AGE_DAYS > 0 && ageDays(postedAt) > MAX_AGE_DAYS) {
-        tooOld++;
-        console.log(`    skipped (posted ${ageDays(postedAt).toFixed(1)}d ago, > ${MAX_AGE_DAYS}d)`);
-      } else {
-        results.push({ url, scrapedAt: new Date().toISOString(), postedAt, ...data });
-      }
+      pageResp = await searchPage(page);
     } catch (err) {
-      console.error(`  failed: ${err.message ?? err}`);
+      console.error(`  page ${page} failed: ${err.message ?? err}`);
+      break;
     }
-    await page.waitForTimeout(LISTING_DELAY_MS);
-  }
+    lastPageScraped = page;
+    hasMorePages = !!pageResp.paginatorInfo?.hasMorePages;
+    const items = pageResp.data ?? [];
+    console.log(`  got ${items.length} items, hasMore=${pageResp.paginatorInfo?.hasMorePages}`);
 
-  // Top-up loop: keep walking index pages and fetching listings until either
-  // (a) we have TARGET_COUNT post-filter results, or (b) MAX_PAGES is hit and
-  // we run out of pending URLs. Three consecutive empty index pages also
-  // breaks out — Ouedkniss returned no new listings, so paginating further
-  // is wasted work.
-  while (results.length < TARGET_COUNT) {
-    if (pendingUrls.length === 0) {
-      if (pagesWalked >= MAX_PAGES) break;
-      const added = await collectIndexPage();
-      if (added === 0) {
-        pagesEmpty++;
-        if (pagesEmpty >= 3) break;
-      } else {
-        pagesEmpty = 0;
+    for (const it of items) {
+      if (results.length >= MAX_LISTINGS) break;
+      totalSeen++;
+      const postedAt = it.refreshedAt ? new Date(it.refreshedAt).toISOString() : null;
+      if (MAX_AGE_DAYS > 0 && !postedAt) {
+        undated++;
+        continue;
       }
-      await page.waitForTimeout(PER_PAGE_DELAY_MS);
-      continue;
+      if (MAX_AGE_DAYS > 0 && ageDays(postedAt) > MAX_AGE_DAYS) {
+        tooOld++;
+        continue;
+      }
+
+      const url = it.slug ? `${BASE_URL}/annonce/${it.slug}` : `${BASE_URL}/annonce/${it.id}`;
+      results.push({
+        url,
+        scrapedAt: new Date().toISOString(),
+        postedAt,
+        title: it.title ?? null,
+        description: it.description ?? null,
+        images: imagesOf(it),
+        priceText: priceText(it),
+        category: it.category?.slug ?? null,
+        cityNames: (it.cities ?? []).map((c) => c.name).filter(Boolean),
+        wilayaNames: Array.from(
+          new Set(
+            (it.cities ?? [])
+              .map((c) => c.region?.name)
+              .filter(Boolean),
+          ),
+        ),
+      });
+
+      if (results.length % BATCH_SIZE === 0) {
+        batchNo++;
+        const pct = Math.min(100, Math.round((results.length / MAX_LISTINGS) * 100));
+        console.log(`  [batch ${batchNo}] kept ${results.length} so far (${pct}% of cap)`);
+      }
     }
 
-    const batch = pendingUrls.splice(0, BATCH_SIZE);
-    console.log(`[batch] ${batch.length} listings (have ${results.length}/${TARGET_COUNT})`);
-    for (const url of batch) {
-      await fetchListing(url);
-      if (results.length >= TARGET_COUNT) break;
+    if (!hasMorePages) {
+      console.log("  no more pages");
+      break;
     }
-    if (pendingUrls.length > 0 && results.length < TARGET_COUNT) {
-      console.log(`  batch done, pausing ${BATCH_PAUSE_MS}ms`);
-      await page.waitForTimeout(BATCH_PAUSE_MS);
+    if (page < endPage && results.length < MAX_LISTINGS) {
+      await new Promise((r) => setTimeout(r, BATCH_PAUSE_MS));
     }
-  }
-  console.log(
-    `kept ${results.length}/${TARGET_COUNT}, dropped ${tooOld} (>${MAX_AGE_DAYS}d), walked ${pagesWalked} index page(s)`,
-  );
-  if (results.length < TARGET_COUNT) {
-    console.log(
-      `note: only ${results.length} listings matched the filter — try raising MAX_PAGES, lowering MAX_AGE_DAYS, or picking a busier CATEGORY`,
-    );
   }
 
-  await browser.close();
+  console.log(`\n[done] kept ${results.length}, dropped ${tooOld} as older than ${MAX_AGE_DAYS}d, ${undated} undated, of ${totalSeen} seen`);
 
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const outPath = join(DATA_DIR, `ouedkniss-${CATEGORY}-${stamp}.json`);
   await writeFile(
     outPath,
-    JSON.stringify(
-      {
-        category: CATEGORY,
-        targetCount: TARGET_COUNT,
-        pagesWalked,
-        count: results.length,
-        items: results,
-      },
-      null,
-      2,
-    ),
+    JSON.stringify({
+      category: CATEGORY,
+      pages: PAGES,
+      startPage: START_PAGE,
+      lastPageScraped,
+      hasMorePages,
+      count: results.length,
+      items: results,
+    }, null, 2),
   );
-  console.log(`\nwrote ${outPath} (${results.length} listings)`);
-  console.log("NB: phone numbers are NOT scraped — the 'Voir le numéro' reveal is gated.");
-  console.log("    Doing so would clearly cross from research-fair-use into ToS / privacy violation.");
+  console.log(`wrote ${outPath} (${results.length} listings)`);
+  console.log("NB: phone numbers are NOT requested — the GraphQL query intentionally omits user/seller-contact fields.");
 }
 
 main().catch((e) => {

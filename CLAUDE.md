@@ -30,6 +30,43 @@ After any change to the server, append a one-line entry to [`deploy/CHANGELOG.md
 node scripts/probe-cf.mjs --count 100
 ```
 
+## Scraper / catalog-seeding loop
+
+The pipeline `scripts/scrape-ouedkniss.mjs` → `scripts/seed-from-scraped.mjs` is the standing way to grow the live catalog with real-world phone listings. It runs on `vps-eu` itself (this Windows machine can't always reach `api.teno-store.com` — see runbook 08), inside ad-hoc `node:22-alpine` containers attached to the `marketplace_default` docker network.
+
+**Auth posture (as of 2026-05-10): `DEV_BYPASS=1` is on by default in production.** The seeder relies on that flag — it does not currently send DPoP. Reverting `DEV_BYPASS=0` will break the loop. See `deploy/CHANGELOG.md` 2026-05-10 for the security tradeoff.
+
+**Operational env values** for the loop are in `.env.example` (committed) and on `vps-eu:/opt/marketplace/.env` (live). The relevant block:
+
+- `MARKETPLACE_BASE=http://api:3100` — seeder target. Use the docker-network alias when running on the box; use `https://api.teno-store.com` only from a laptop.
+- `SELLER_ID=019e08a4-97cd-7d98-afd7-670878dc51c2` — Smart Phone DZ. Get other UUIDs from `GET /v1/sellers`.
+- `CATEGORY`, `PAGES`, `PAGE_SIZE`, `MAX_LISTINGS`, `MAX_AGE_DAYS`, `BATCH_PAUSE_MS` — scraper knobs (exact env names the scripts read).
+
+These are NOT consumed by `docker-compose.prod.yml` (api/web/postgres/redis don't need them); they're sourced into the ad-hoc node containers at run time.
+
+**Canonical run** — one script does everything (refresh skip-urls, scrape, seed, verify, log, retry):
+
+```bash
+ssh vps-eu /opt/marketplace/scripts/run-loop.sh \
+  --seller-id 019e08a4-97cd-7d98-afd7-670878dc51c2
+```
+
+Source: `scraper/run-loop.sh` in the repo, deployed to `/opt/marketplace/scripts/run-loop.sh`. Run `--help` for the full option list. It orchestrates the underlying `scripts/scrape-ouedkniss.mjs` + `scripts/seed-from-scraped.mjs` mjs scripts in `node:22-alpine` containers on the `marketplace_default` network — no node runtime needed on the host.
+
+Output:
+- A single `OK pages=X..Y next=Z before=… after=… delta=… seeded=… dup=… invalid=… log=…` line on stdout (parseable for cron summaries). `pages` is the slice of Ouedkniss pages walked this run; `next` is what the next run will start from.
+- Per-run human log: `/opt/marketplace/data/logs/run-YYYY-MM-DDTHH-MM-SSZ.log`.
+- Append-only structured metrics: `/opt/marketplace/data/logs/metrics.jsonl` (one JSON object per run, including `start_page`, `last_page`, `has_more`, `next_start_page`).
+- Page-progress state: `/opt/marketplace/data/run-loop-state.json` keyed by `<seller>-<category>` with `{next_start_page: N}`. Each successful run advances by `PAGES`; on `hasMorePages=false` the script wraps to 1 (full category re-walked from the top).
+- Exit codes: 0 success, 2 bad args, 3 prereq missing, 4 scrape failed all retries, 5 seed failed all retries, 6 skip-urls refresh failed, 7 lock held (concurrent run).
+- A flock-based lock (`run-loop.lock`) prevents concurrent runs.
+
+Useful flags: `--reset-state` to re-walk from page 1, `--start-page N` to override one run, `--state-file PATH` to point at a different state file (e.g. for parallel runs).
+
+If you ever need to invoke the underlying steps directly (debugging), see the source comments at the top of `scraper/run-loop.sh` — the script's docstring lists every option and the legacy 3-step pipeline it replaces.
+
+**Gotcha**: `docker compose restart api` does NOT re-read `.env`; use `docker compose -f docker-compose.prod.yml up -d api` to recreate the container with new env. Documented at `deploy/CHANGELOG.md` 2026-05-10.
+
 ## Where things are
 
 - App code: TypeScript monorepo under `packages/` (see [`ARCHITECTURE.md`](./ARCHITECTURE.md))

@@ -6,6 +6,81 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — scrape-and-seed loop now walks pages progressively (state-tracked)
+
+- Problem: with PAGES=2 fixed at the top of the listings, after ~10 minutes the loop was idle every iteration — page-1 was fully covered and dedup left nothing to seed. Catalog stuck around 290 products despite Ouedkniss having thousands of listings deeper.
+- Fix in two parts:
+  1. `scripts/scrape-ouedkniss.mjs` now reads `START_PAGE` env (default 1). Pages walked are `START_PAGE..START_PAGE+PAGES-1`. The output JSON gains `startPage`, `lastPageScraped`, `hasMorePages` so callers can advance.
+  2. `scripts/run-loop.sh` keeps a per-seller-per-category state file (`/opt/marketplace/data/run-loop-state.json`) with `{next_start_page: N}`. Each successful run advances by `PAGES`; when the scraper reports `hasMorePages=false`, state wraps to 1 (full category re-walked from the top).
+- Also dropped the in-script `MAX_AGE_DAYS=3` filter (now `MAX_AGE_DAYS=0`) so older listings on page 5+ aren't dropped before the seeder sees them.
+- New CLI flags on run-loop: `--start-page N` (override one run, state still advances), `--reset-state` (force `next_start_page=1`), `--state-file PATH`.
+- Stdout summary expanded: `OK pages=X..Y next=Z before=… after=… delta=… seeded=… …`. Metrics JSONL gains `start_page`, `last_page`, `has_more`, `next_start_page`.
+- Verified: first run after deploy went `pages=1..2 next=3 delta=0 dup=48` (page 1 saturated as expected), second run `pages=3..4 next=5 delta=7 dup=43` — actually surfacing fresh listings.
+
+---
+
+## 2026-05-10 — single-script orchestration for the scrape-and-seed loop
+
+- Replaced the multi-line `docker exec psql … && docker run scrape … && docker run seed …` pipeline with one bash script: `scraper/run-loop.sh` in the repo, deployed to `/opt/marketplace/scripts/run-loop.sh`.
+- Production-grade behaviour:
+  - CLI args (`--seller-id`, `--category`, `--pages`, `--max-listings`, `--base`, `--scrape-retries`, `--seed-retries`, `--reuse-recent-scrape`, `--no-dedup-refresh`, `--dry-run`, `--quiet`, `--log-dir`, `--help`).
+  - Prereq checks: docker on PATH, `marketplace-api` and `marketplace-postgres` containers running, `marketplace_default` network present, `/opt/marketplace/.env` and `/opt/marketplace/scripts/` exist. Pulls `node:22-alpine` if missing.
+  - Retries with exponential backoff: skip-urls refresh (×2), scrape (×3), seed (×2). Each step's failure mode has its own exit code (4/5/6).
+  - flock-based lock (`run-loop.lock`) prevents concurrent runs (exit 7).
+  - Per-run human-readable log at `data/logs/run-<RUN_ID>.log`; append-only structured JSONL metrics at `data/logs/metrics.jsonl` (one object per run with before/after/delta/seeded/dup_skipped/invalid_skipped/scrape_listings/skip_urls_count). Trivial to feed a dashboard later.
+  - One-line stdout summary `OK before=… after=… delta=… seeded=… dup=… invalid=… log=…` for cron-style invocations.
+- Cron prompt for the loop is now the trivial one-liner `ssh vps-eu /opt/marketplace/scripts/run-loop.sh --seller-id <UUID>` instead of the prior 50-line composite.
+- `CLAUDE.md` updated to point at the script as the canonical entrypoint.
+
+---
+
+## 2026-05-10 — infinite scroll on `/search`
+
+- Replaced the prev/next pagination control on `/search` with infinite scroll. First page is still rendered server-side (so SEO, JSON-LD `ItemList`, OG tags, and crawler reachability are unchanged). A new client component `InfiniteResults` watches an off-screen sentinel via IntersectionObserver and pulls the next cursor's worth of hits as the user nears the bottom.
+- New JSON endpoint `app/api/search/route.ts` proxies `searchProducts(parseSearchParams(...))` and returns `{ data, cursor }`. Same query parsing as the page, so all active filters carry forward.
+- Removed `components/Pagination.tsx` and its test (no longer used).
+- Build + deploy via the standard `tar | ssh` + `docker compose build web && up -d web` flow on `vps-eu`.
+
+---
+
+## 2026-05-10 — scrape-and-seed loop now de-duplicates on `sourceUrl`
+
+- Problem: running the scrape-and-seed loop every minute produced ~50 new products per iteration that were content-duplicates of the previous iteration (same Ouedkniss listings, same images, just new `productId`s). Catalog inflated 64 → 412 in a few minutes; ~237 of those were duplicates.
+- Why the SKU constraint didn't help: `catalog.products` has `UNIQUE (seller_id, sku)`, but the API auto-generates the product-level `sku` as `prd-<random>`; the seeder's variant SKU lives on `catalog.product_variants` and its uniqueness is `(product_id, sku)` — per-product, not per-seller. So same-seller dups under different generated `prd-*` SKUs slide through.
+- Fix in `scripts/seed-from-scraped.mjs` (and `scraper/seed-from-scraped.mjs` in the repo): added `SKIP_URLS_FILE` env. When set, the seeder reads a newline-delimited file of sourceUrls and skips any incoming listing whose `url` matches. Logs `... (D as already-seeded duplicates)`.
+- Canonical run (now 3 steps — see updated `CLAUDE.md`):
+  1. `docker exec marketplace-postgres psql ... > /opt/marketplace/data/skip_urls.txt` to dump existing sourceUrls for the target seller.
+  2. Run `scripts/scrape-ouedkniss.mjs` as before.
+  3. Run `scripts/seed-from-scraped.mjs` with `SKIP_URLS_FILE=/work/data/skip_urls.txt`.
+- Cleanup of the existing duplicates accumulated this morning: `DELETE FROM catalog.products WHERE id IN (... rn > 1 ...)` partitioned by `attributes->>'sourceUrl'`, keeping the oldest per URL. Two passes (the first patch attempt added another ~36 dups before this `SKIP_URLS_FILE` approach landed); 237 + 36 rows deleted total. ON DELETE CASCADE on the dependent tables (`product_variants`, `media`, `digital_assets`, `product_embeddings`, `product_versions`, `listing_canonical_suggestions`) means a single DELETE on `catalog.products` was sufficient.
+- Verified working: scrape returned 50 listings; with skip-list of 176 existing URLs preloaded, the seeder seeded 2 (genuinely new), skipped 48 as duplicates. Catalog `totalEstimate` went 193 → 195.
+- Also dropped `attributes.source` and `attributes.sourceCategory` from new product writes (operator request — they were noise; only `sourceUrl` and `sourcePostedAt` remain).
+- Also fixed a SKU-too-long edge case discovered along the way: variant SKU was capped at 60 chars including the `scraped-` prefix; backend rejects > 64. Reduced to 56.
+
+---
+
+## 2026-05-10 — show seller phone digits on product page
+
+- `packages/web/src/app/product/[id]/page.tsx`: replaced the generic "Call" / "WhatsApp" chip labels with the actual `sellerPhone` / `sellerWhatsapp` digits in monospace, LTR-forced. Buyers can now see and copy the number without clicking into the click-to-call link.
+- Display format is Algerian-local: `+213` country code is stripped and a leading `0` is added (e.g. `+213555000101` → `0555000101`). The underlying `tel:` and `wa.me/` hrefs keep the international form so dialing still works from outside Algeria.
+- Shipped via the standard `tar | ssh` + `docker compose build web && up -d web` flow on `vps-eu`. Verified on https://teno-store.com/product/019e1117-56fb-714d-977f-a0c7c4a2fa4b.
+- API data shape unchanged (single string per channel). Multi-number support, if needed, would require a backend schema change.
+
+---
+
+## 2026-05-10 — `DEV_BYPASS=1` left on; scrape-and-seed loop end-to-end working
+
+- Operator decision: leave `DEV_BYPASS=1` set on `vps-eu:/opt/marketplace/.env` so the scraper-feeding loop (`scripts/scrape-ouedkniss.mjs` → `scripts/seed-from-scraped.mjs`) can write to `https://api.teno-store.com` without per-iteration auth juggling. Container recreated with `docker compose -f docker-compose.prod.yml up -d api` (NOT `restart` — see gotcha below).
+- **Operational gotcha discovered**: `docker compose restart api` does NOT re-read `.env`; the existing container keeps the env it was created with. After editing `.env`, recreate with `up -d` (or `down api && up -d api`). An earlier attempt today flipped `.env` to `DEV_BYPASS=1`, used `restart`, observed all 50 POSTs return `401 dpop_token_required`, and incorrectly concluded the `DEV_BYPASS` code path had been removed. It hasn't — it's still in `packages/api/src/middleware/auth.ts:167`. The container just hadn't picked up the new env. Updating runbook 06 to make this explicit.
+- End-to-end pipeline verified working with 50-product Ouedkniss scrape:
+  - Scrape: `docker run --rm --network marketplace_default -v /opt/marketplace:/work -w /work -e PAGES=2 -e PAGE_SIZE=48 -e MAX_LISTINGS=50 -e BATCH_PAUSE_MS=2000 node:22-alpine node scripts/scrape-ouedkniss.mjs` → 50 listings to `data/ouedkniss-telephones-2026-05-10T08-49-52-131Z.json`.
+  - Seed: same container shape with `MARKETPLACE_BASE=http://api:3100`, `SELLER_ID=019e08a4-97cd-7d98-afd7-670878dc51c2` (Smart Phone DZ) → seeded 49, skipped 1/50.
+  - Catalog count: 64 → 113 (`GET /v1/products → pagination.totalEstimate`).
+  - Public render verified: `https://teno-store.com/product/019e1117-57ea-7f7c-959b-295f869949ac` returns 200 with the title ("GameSir Nova 2 Lite") and all 5 Ouedkniss CDN image URLs in the HTML; one image fetched directly returned 200 `image/jpeg` 20.6 KB.
+- **Security implication of leaving `DEV_BYPASS=1` on**: anyone who can reach `https://api.teno-store.com` can `POST /v1/products` (and other writeable endpoints) with arbitrary `x-mp-*` headers and act as any principal. Catalog is effectively writeable by anonymous internet until reverted. Mitigations available if abuse appears: revert (`DEV_BYPASS=0` + `up -d api`), front writes with a Cloudflare WAF rule, or move to a real DPoP agent passport.
+
+---
+
 ## 2026-05-10 — relocate scraping code to `scraper/`
 
 - Moved `scripts/scrape-ouedkniss.mjs` → `scraper/scrape-ouedkniss.mjs` and `scripts/seed-from-scraped.mjs` → `scraper/seed-from-scraped.mjs` via `git mv` (history preserved).

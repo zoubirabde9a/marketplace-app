@@ -20,12 +20,21 @@
 //   SESSION_JWT       optional Bearer token for authed prod runs
 //   SELLER_ID         required — UUID of the seller these products attach to.
 //                     Run seed-algerian.mjs first; copy a sellerId from its log.
+//   SKIP_URLS_FILE    optional path to a newline-delimited file of sourceUrls
+//                     to skip. Listings whose `url` matches a line are skipped
+//                     before the POST. Populate it from Postgres before running:
+//                       docker exec marketplace-postgres psql -U marketplace \
+//                         -d marketplace -At -c \
+//                         "SELECT attributes->>'sourceUrl' FROM catalog.products \
+//                          WHERE seller_id='<SELLER_ID>' AND attributes ? 'sourceUrl';" \
+//                         > data/skip_urls.txt
 
 import { readFile } from "node:fs/promises";
 
 const BASE = process.env.MARKETPLACE_BASE ?? "http://127.0.0.1:3100";
 const SESSION_JWT = process.env.SESSION_JWT;
 const SELLER_ID = process.env.SELLER_ID;
+const SKIP_URLS_FILE = process.env.SKIP_URLS_FILE;
 
 const inputPath = process.argv[2];
 if (!inputPath) {
@@ -126,8 +135,23 @@ async function main() {
   console.log(`seller: ${SELLER_ID}`);
   console.log(`input: ${inputPath} (${items.length} listings, category=${dump.category ?? "?"})`);
 
+  let skipUrls = new Set();
+  if (SKIP_URLS_FILE) {
+    try {
+      const txt = await readFile(SKIP_URLS_FILE, "utf8");
+      for (const line of txt.split(/\r?\n/)) {
+        const u = line.trim();
+        if (u) skipUrls.add(u);
+      }
+      console.log(`skip-urls: ${skipUrls.size} entries from ${SKIP_URLS_FILE}`);
+    } catch (e) {
+      console.warn(`skip-urls: failed to read ${SKIP_URLS_FILE}: ${e.message}`);
+    }
+  }
+
   let ok = 0;
   let skipped = 0;
+  let dupSkipped = 0;
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
     const title = (it.title ?? "").trim();
@@ -136,7 +160,16 @@ async function main() {
       skipped++;
       continue;
     }
-    const sku = `scraped-${slug(title, 24)}-${i}`;
+    if (it.url && skipUrls.has(it.url)) {
+      dupSkipped++;
+      continue;
+    }
+    const urlSlug = it.url
+      ? slug(it.url.replace(/^https?:\/\/[^/]+\//, "").replace(/\?.*$/, ""), 56)
+      : "";
+    const sku = urlSlug
+      ? `scraped-${urlSlug}`
+      : `scraped-${slug(title, 24)}-${i}`;
     const brand = inferBrand(title);
     const body = {
       sellerId: SELLER_ID,
@@ -144,10 +177,10 @@ async function main() {
       ...(brand ? { brand } : {}),
       ...(it.description ? { description: String(it.description).slice(0, 5000) } : {}),
       attributes: {
-        source: "ouedkniss-public-listing",
         sourceUrl: it.url ?? "",
-        sourceCategory: dump.category ?? "",
         ...(it.postedAt ? { sourcePostedAt: it.postedAt } : {}),
+        ...(it.cityNames?.length ? { city: it.cityNames.join(", ") } : {}),
+        ...(it.wilayaNames?.length ? { wilaya: it.wilayaNames.join(", ") } : {}),
       },
       categoryIds: dump.category ? [dump.category] : undefined,
       shipsTo: ["DZ"],
@@ -164,7 +197,7 @@ async function main() {
       skipped++;
     }
   }
-  console.log(`\nseeded ${ok} products, skipped ${skipped}/${items.length}`);
+  console.log(`\nseeded ${ok} products, skipped ${skipped}/${items.length} (${dupSkipped} as already-seeded duplicates)`);
 }
 
 main().catch((e) => {
