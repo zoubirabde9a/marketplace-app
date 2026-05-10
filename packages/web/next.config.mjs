@@ -20,6 +20,29 @@ const nextConfig = {
   // handler — minor quality signal, log noise, occasional broken
   // social-card icons. Permanent redirects to the modern Next-generated
   // assets that already 200.
+  async headers() {
+    return [
+      {
+        // Static-y discovery files served from packages/web/public/. They
+        // change once per deploy; Next ships them with max-age=0 by default
+        // which means Cloudflare can never cache, and every AI/RSS/social
+        // crawler hits origin. 1-hour public cache + 24h SWR drops the
+        // origin pressure dramatically; if we deploy a change to one of
+        // these the next deploy invalidates the CDN cache anyway.
+        source: "/:file(robots.txt|llms.txt|81b0a3ff408a96ef5c0381a78aae7f58.txt)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },
+        ],
+      },
+      {
+        // /.well-known/agents.json — same rationale.
+        source: "/.well-known/:file(agents.json)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       { source: "/favicon.ico", destination: "/icon.svg", permanent: true },
