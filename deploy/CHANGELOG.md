@@ -6,7 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
-## 2026-05-10 — vps-eu · scraper-loop + api · DEV_BYPASS turned off (Phase 2 of auth lockdown)
+## 2026-05-10 — vps-eu · scraper-loop · fixed inverted prune SQL (catalog was frozen) + CRLF deploy footgun
+
+- The `--max-products` prune CTE in `scraper/run-loop.sh` had `ORDER BY created_at ASC OFFSET 14200` — that *keeps* the 14,200 oldest and *deletes* everything newer. Inverted from the intent stated in the operator's earlier changelog entry ("deletes oldest products"). The catalog had been frozen since 2026-05-10 18:38 UTC: every cycle seeded N fresh listings then immediately pruned those same N, net catalog change always 0. Discovered by querying `max(created_at)` and noticing it hadn't moved in ~3h despite hundreds of `seeded=N` reports in metrics.jsonl. One-character fix: `ASC` → `DESC` (so OFFSET skips the newest 14,200 and returns the older overflow to delete). Verified within one cycle: `min(created_at)` jumped from 2026-05-08 17:31 → 2026-05-09 20:05; `max(created_at)` jumped from 2026-05-10 18:38 → 2026-05-10 21:18; count stayed at 14,200.
+- **Deploy footgun encountered**: my first scp of the patched `run-loop.sh` from a Windows working tree uploaded with CRLF line endings. The shebang `#!/usr/bin/env bash\r` failed under env (`env: 'bash\r': No such file or directory`), and every systemd-fired cycle from 21:13 → 21:17 UTC (5 in a row) failed with exit 127 before reaching the prune. Fixed in-place with `sed -i 's/\r$//'`. Note for future cross-platform deploys: scp from this Windows box must either use `git config core.autocrlf input` on the working copy OR strip CRs on the server after upload. The repo has `.gitattributes`-less files, so git's CRLF warnings are real.
+- Loop is healthy again — last cycle (21:18:09 UTC) seeded 32, pruned the 32 oldest, catalog rolling forward at the cap.
+
+
 
 - Closed the auth-bypass hole that let the assistant create "Tor-Store" earlier today. `/opt/marketplace/.env` now has `DEV_BYPASS=0` and the `I_UNDERSTAND_DEV_BYPASS_IS_INSECURE` ack flag is removed (backup at `.env.bak.<ts>-pre-bypass-off`). API container recreated. Negative test: `POST /v1/sellers` with `X-Mp-Agent-Id: agt_dev` now returns `401 dpop_token_required` (was: `201 Created`).
 - The scraper loop kept working because it no longer touches the HTTP write path. `scraper/run-loop.sh` `run_seed()` was switched from the API-mode seeder (`scripts/seed-from-scraped.mjs`, which POSTs `/v1/products`) to the direct-DB sibling (`packages/db/dist/seed-from-scraped.js` from the api image). DATABASE_URL is built inline from `POSTGRES_PASSWORD` because compose constructs it at service-up time and it isn't a standalone var in `.env`. Data dir mounted read-only at `/data`.

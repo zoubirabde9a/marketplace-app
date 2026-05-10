@@ -455,7 +455,7 @@ if [[ -n "$MAX_PRODUCTS" ]]; then
     WITH excess AS (
       SELECT id FROM catalog.products
       WHERE seller_id='$SELLER_ID'
-      ORDER BY created_at ASC, id ASC
+      ORDER BY created_at DESC, id DESC
       OFFSET $MAX_PRODUCTS
     ),
     deleted AS (
