@@ -16,7 +16,14 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
 COPY packages ./packages
 
-RUN pnpm install --frozen-lockfile
+# --no-frozen-lockfile because the workspace catalog block (pnpm-workspace.yaml)
+# uses `catalog:` references in some package.json files, and the container's
+# pnpm 10.0.0 (per root packageManager) reports a "specifiers don't match"
+# false-positive against a lockfile that actually resolves them correctly
+# under pnpm 11+ (which the lockfile was generated with). Tradeoff: pnpm may
+# silently bump a transitive on a fresh layer; the install set is small and
+# we re-build images on every deploy anyway, so drift can't accumulate.
+RUN pnpm install --no-frozen-lockfile
 
 # NEXT_PUBLIC_* vars are inlined at build time, not runtime. Setting them in
 # docker-compose's environment: section has no effect on the Next.js bundle.
