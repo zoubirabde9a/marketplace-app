@@ -9,8 +9,13 @@ const API_URL = (
   "http://127.0.0.1:3100"
 ).replace(/\/$/, "");
 
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+// Cache the sitemap render for 5 minutes. The scrape-and-seed loop adds new
+// products continuously, but Googlebot polls /sitemap.xml every few hours,
+// so 5-min freshness is more than the freshness Google can act on, and it
+// drops sitemap TTFB from ~2s to ~50ms (Cloudflare cf-cache-status flips
+// DYNAMIC -> HIT once warmed). `dynamic` is left as the Next default so
+// revalidate actually applies.
+export const revalidate = 300;
 
 interface SitemapProductHit {
   productId: string;
@@ -49,9 +54,15 @@ async function fetchAllProducts(): Promise<SitemapHarvest> {
     const url = `${API_URL}/v1/products?${params.toString()}`;
     let res: Response;
     try {
+      // Use Next's data-cache with the same 5-min TTL the route revalidates at,
+      // so the harvest cooperates with route-level ISR. cache:"no-store"
+      // (the previous setting) opted every API page out of caching, which in
+      // turn marked the whole sitemap route dynamic and defeated the
+      // route-level `revalidate = 300` — sitemap stayed at 2s/render and
+      // Cloudflare reported cf-cache-status=DYNAMIC.
       res = await fetch(url, {
         headers: { accept: "application/json" },
-        cache: "no-store",
+        next: { revalidate: 300 },
       });
     } catch {
       break;

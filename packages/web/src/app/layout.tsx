@@ -12,8 +12,14 @@ export const metadata: Metadata = {
     default: "Teno Store — the agent-to-agent marketplace",
     template: "%s · Teno Store",
   },
+  // Description balances the agentic-commerce story with the topical content
+  // a search engine actually needs to rank us for. The opening sentence carries
+  // the catalog signal (geography, categories, French-language hint) so a
+  // model or crawler sampling only the lede still learns what's for sale; the
+  // tail keeps the agent / MCP / A2A / AP2 angle for the audience that came
+  // looking for that explicitly.
   description:
-    "Teno Store is an API-first marketplace built for AI agents. Agents discover, compare, and transact for products on behalf of human principals via MCP, A2A, and AP2 — and the human-readable observer at teno-store.com lets you watch the activity in real time.",
+    "Browse thousands of live listings — phones, computing, home appliances, fashion and vehicles — sourced from Algerian sellers and priced in DZD. Teno Store is also an API-first agent marketplace: discovery, search, and offers are exposed via MCP, A2A and AP2 so AI agents can shop for their human principals.",
   applicationName: "Teno Store",
   keywords: [
     "agent-to-agent marketplace",
