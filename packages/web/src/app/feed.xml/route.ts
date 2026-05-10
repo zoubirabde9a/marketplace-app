@@ -95,15 +95,23 @@ export async function GET(req: NextRequest) {
   const lastModified = Number.isFinite(updatedDate.getTime())
     ? updatedDate.toUTCString()
     : new Date().toUTCString();
-  // 304 Not Modified path. Per RFC 7232 we MUST compare the If-Modified-Since
-  // value to Last-Modified at second granularity (date.toUTCString() rounds
-  // to seconds), so we just compare the strings — feed readers always send
-  // back the exact value we gave them.
+  // ETag is a stricter freshness fingerprint than Last-Modified — it changes
+  // any time either the newest postedAt OR the entry count moves, so a feed
+  // reader using If-None-Match catches mutations Last-Modified would miss
+  // (e.g. one product replaced by another with an older postedAt). Quoted
+  // per RFC 7232; W/ prefix would make it weak — strict is fine here.
+  const etag = `"feed-${hits.length}-${updatedDate.getTime()}"`;
+  // 304 Not Modified path. Honour either conditional header — feed readers
+  // typically send one or the other but not both. Per RFC 7232 strong-ETag
+  // matches are exact-string comparison; If-Modified-Since is the
+  // toUTCString round-trip we hand them.
+  const ifNoneMatch = req.headers.get("if-none-match");
   const ifMod = req.headers.get("if-modified-since");
-  if (ifMod && ifMod === lastModified) {
+  if ((ifNoneMatch && ifNoneMatch === etag) || (ifMod && ifMod === lastModified)) {
     return new Response(null, {
       status: 304,
       headers: {
+        etag,
         "last-modified": lastModified,
         "cache-control":
           "public, max-age=300, s-maxage=300, stale-while-revalidate=600",
@@ -162,6 +170,7 @@ ${entries}
       // their own cadence (15min-1h typical).
       "cache-control": "public, max-age=300, s-maxage=300, stale-while-revalidate=600",
       "last-modified": lastModified,
+      etag,
     },
   });
 }
