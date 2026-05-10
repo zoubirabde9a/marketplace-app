@@ -56,9 +56,16 @@ export function ProductCard({ hit, eager = false }: { hit: SearchHit; eager?: bo
         </div>
       </div>
       <div className="p-4 flex flex-col gap-2 flex-1">
-        <h2 dir="auto" className="text-sm font-medium text-ink line-clamp-2 leading-snug untrusted">
+        {/* h3, not h2: product cards are nested below a page-level H1 (every
+            page that renders them — home / slice landings / product detail's
+            "More from seller" — has its own H1 already). Bumping these from
+            h2 to h3 keeps heading hierarchy clean for crawlers and screen
+            readers; before this fix a category landing rendered ~25 h2s
+            (footer chip blocks + every product card) which buried the
+            page's actual H1 ("Telephones · Teno Store") in the noise. */}
+        <h3 dir="auto" className="text-sm font-medium text-ink line-clamp-2 leading-snug untrusted">
           {hit.title.value}
-        </h2>
+        </h3>
         {(() => {
           const posted = formatRelativeTime(hit.postedAt ?? null);
           return posted ? (

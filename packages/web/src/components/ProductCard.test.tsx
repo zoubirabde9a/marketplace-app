@@ -32,9 +32,12 @@ describe("ProductCard", () => {
     expect(a?.getAttribute("href")).toBe("/product/p%20with%20space");
   });
 
-  it("renders the title as an h2 with the line-clamp class", () => {
+  it("renders the title as an h3 with the line-clamp class", () => {
+    // Cards live nested under a page-level H1/H2 everywhere they render
+    // (home / slice landings / product detail's "More from seller").
+    // h3 keeps hierarchy clean — see comment in ProductCard.tsx.
     const { container } = render(<ProductCard hit={baseHit()} />);
-    const h = container.querySelector("h2");
+    const h = container.querySelector("h3");
     expect(h?.textContent).toContain("Test Widget 9000");
     expect(h?.className).toMatch(/line-clamp-2/);
   });
