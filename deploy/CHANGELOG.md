@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — vps-eu — search synonym expansion deployed to api
+
+- Shipped `packages/db/src/synonyms.ts` + the matching `searchIds` change to vps-eu via tar | ssh, mirrored `scraper/{run-loop.sh,scrape-ouedkniss.mjs,seed-from-scraped.mjs}` into `/opt/marketplace/scripts/`, rebuilt `marketplace-api` (`docker compose -f docker-compose.prod.yml build api && up -d api`).
+- Verified live: `GET https://api.teno-store.com/v1/products?q=frigo&limit=3` → "Réfrigérateur LG 500L No Frost" (synonym frigo→refrigerateur picked it up). `q=tlf` → 200 hits (tlf→telephone).
+- Why: users type the abbreviations they actually use ("frigo", "tlf"); without the synonym map those queries returned 0 hits despite matching catalog inventory.
+
+---
+
 ## 2026-05-10 — scrape-and-seed loop now walks pages progressively (state-tracked)
 
 - Problem: with PAGES=2 fixed at the top of the listings, after ~10 minutes the loop was idle every iteration — page-1 was fully covered and dedup left nothing to seed. Catalog stuck around 290 products despite Ouedkniss having thousands of listings deeper.
