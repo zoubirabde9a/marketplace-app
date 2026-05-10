@@ -37,11 +37,21 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // Meta descriptions render as a single line in search/social previews, so
   // collapse whitespace and trim leading decorative symbols (✅, ✔️, ⭐, …)
   // that scraped seller copy tends to lead with — those break the snippet.
-  const cleanedDesc = p.description?.value
-    ?.replace(/\s+/g, " ")
-    .replace(/^[\s\p{P}\p{S}]+/u, "")
-    .slice(0, 200)
-    .trim();
+  // Cap at 155: Google SERP truncates ~155-160; the previous 200 cap was
+  // landing mid-sentence cuts on most products. Break at the last word
+  // boundary so we don't slice through a word; append "…" if we trimmed.
+  const DESC_BUDGET = 155;
+  const cleanedDesc = (() => {
+    const raw = p.description?.value
+      ?.replace(/\s+/g, " ")
+      .replace(/^[\s\p{P}\p{S}]+/u, "")
+      .trim();
+    if (!raw) return raw;
+    if (raw.length <= DESC_BUDGET) return raw;
+    const cut = raw.slice(0, DESC_BUDGET);
+    const space = cut.lastIndexOf(" ");
+    return (space > 80 ? cut.slice(0, space) : cut).replace(/[\s\p{P}\p{S}]+$/u, "") + "…";
+  })();
   // Live probe found products that ship a 0-char meta description (seller
   // posted no body text, or the body was nothing but emoji and got
   // stripped by the punctuation-leading regex). Without a description
