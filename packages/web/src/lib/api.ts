@@ -9,7 +9,9 @@ export type Untrusted = { role: "untrusted_content"; origin: string; value: stri
 
 export interface SearchHit {
   productId: string;
-  viewUrl: string;
+  // Stripped from server-side search responses before they reach client
+  // components — see comment in searchProducts() about the viewUrl leak.
+  viewUrl?: string;
   title: Untrusted;
   brand?: string;
   priceMinor?: string;
@@ -123,7 +125,19 @@ export function buildSearchQuery(input: SearchInput): string {
 
 export async function searchProducts(input: SearchInput): Promise<SearchResponse> {
   const qs = buildSearchQuery(input);
-  return request<SearchResponse>(`/v1/products${qs ? `?${qs}` : ""}`);
+  const r = await request<SearchResponse>(`/v1/products${qs ? `?${qs}` : ""}`);
+  // The API includes a `viewUrl` field on every hit pointing at its own
+  // internal hostname (e.g. http://api:3100/v1/products/<id>). When we hand
+  // SearchHit[] to client components the field is serialised into the RSC
+  // payload — production probe (iter-30) showed 25 occurrences of
+  // `http://api:3100` in the rendered HTML of /search?category=telephones.
+  // Nothing in the UI consumes viewUrl (cards build /product/<id> from the
+  // productId field), so stripping it here removes the leak entirely AND
+  // shrinks the per-page payload.
+  if (r?.data) {
+    r.data = r.data.map(({ viewUrl: _viewUrl, ...rest }) => rest as SearchHit);
+  }
+  return r;
 }
 
 export async function getProduct(id: string): Promise<ProductDetail | null> {
