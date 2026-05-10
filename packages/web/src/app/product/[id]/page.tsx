@@ -37,11 +37,33 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // Meta descriptions render as a single line in search/social previews, so
   // collapse whitespace and trim leading decorative symbols (✅, ✔️, ⭐, …)
   // that scraped seller copy tends to lead with — those break the snippet.
-  const desc = p.description?.value
+  const cleanedDesc = p.description?.value
     ?.replace(/\s+/g, " ")
     .replace(/^[\s\p{P}\p{S}]+/u, "")
     .slice(0, 200)
     .trim();
+  // Live probe found products that ship a 0-char meta description (seller
+  // posted no body text, or the body was nothing but emoji and got
+  // stripped by the punctuation-leading regex). Without a description
+  // Google falls back to scraping the page body for a snippet — usually
+  // grabs the breadcrumb and footer chips, which makes for a terrible SERP
+  // preview. Build a structured fallback from the data we already have.
+  const desc = cleanedDesc && cleanedDesc.length > 0
+    ? cleanedDesc
+    : (() => {
+        const parts: string[] = [];
+        parts.push(fullTitle);
+        if (p.brand) parts.push(`brand ${p.brand}`);
+        if (p.sellerDisplayName) parts.push(`from ${p.sellerDisplayName}`);
+        const lowest = [...p.variants].sort(
+          (a, b) => Number(a.priceMinor) - Number(b.priceMinor),
+        )[0];
+        if (lowest) {
+          const price = (Number(lowest.priceMinor) / 100).toLocaleString("fr-DZ");
+          parts.push(`${price} ${lowest.currency}`);
+        }
+        return `${parts.join(" · ")} — listed on Teno Store, the agent-to-agent marketplace for Algerian sellers.`;
+      })();
   // Resolve full hero metadata (width/height/alt) so social previews can size
   // the image without a round-trip and avoid Facebook "image too small" warnings.
   const heroImage = p.heroImageUrl
