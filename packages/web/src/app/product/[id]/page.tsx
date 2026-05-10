@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProduct } from "@/lib/api";
+import { getProduct, searchProducts, type SearchHit } from "@/lib/api";
 import { formatPrice, formatPriceRange, formatRelativeTime } from "@/lib/format";
 import { Gallery } from "@/components/Gallery";
 import { CounterfeitBadge } from "@/components/CounterfeitBadge";
 import { ShareButton } from "@/components/ShareButton";
+import { ProductGrid } from "@/components/ProductGrid";
 import { jsonLdString } from "@/lib/jsonld";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
@@ -125,6 +126,31 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     throw err;
   });
   if (!p) notFound();
+
+  // Pull a small grid of related listings from the same seller for crawl-path
+  // density and human discovery. With ~5,000 products and Googlebot's crawl
+  // budget, every product-to-product link helps the deep catalog get indexed
+  // faster than the sitemap alone can drive. Falls back to first-category
+  // siblings if the seller only has this one listing; renders nothing on
+  // API hiccup.
+  let relatedHits: SearchHit[] = [];
+  try {
+    const sellerSlice = await searchProducts({ sellerId: [p.sellerId], limit: 9, sort: "newest" });
+    relatedHits = sellerSlice.data.filter((h) => h.productId !== p.productId).slice(0, 8);
+    if (relatedHits.length < 4 && p.categoryIds[0]) {
+      const catSlice = await searchProducts({ category: [p.categoryIds[0]], limit: 12, sort: "newest" });
+      const seen = new Set([p.productId, ...relatedHits.map((h) => h.productId)]);
+      for (const h of catSlice.data) {
+        if (relatedHits.length >= 8) break;
+        if (!seen.has(h.productId)) {
+          relatedHits.push(h);
+          seen.add(h.productId);
+        }
+      }
+    }
+  } catch {
+    // ignore — page still renders without the related grid
+  }
 
   const variants = [...p.variants].sort((a, b) => Number(a.priceMinor) - Number(b.priceMinor));
   const inStockVariants = variants.filter((v) => v.inStock);
@@ -450,6 +476,22 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           </div>
         </div>
       </div>
+      {relatedHits.length > 0 && (
+        <section className="mt-16 border-t border-line-soft pt-10" aria-labelledby="related-heading">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 id="related-heading" className="text-xl font-semibold tracking-tight">
+              {p.sellerDisplayName ? `More from ${p.sellerDisplayName}` : "More listings"}
+            </h2>
+            <Link
+              href={`/search?sellerId=${encodeURIComponent(p.sellerId)}`}
+              className="text-sm text-ink-soft hover:text-ink transition"
+            >
+              See all →
+            </Link>
+          </div>
+          <ProductGrid hits={relatedHits} />
+        </section>
+      )}
     </div>
   );
 }
