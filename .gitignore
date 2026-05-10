@@ -27,3 +27,14 @@ yarn-error.log*
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# Scraper output (per-run JSON dumps land here when run-loop.sh runs locally).
+# In prod the canonical path is /opt/marketplace/data on vps-eu.
+/data/
+
+# Windows tempfile leaks: some tooling on this machine writes to literal
+# strings like "C:\Users\...\AppData\Local\Temp\..." instead of expanding
+# $env:TEMP, leaving files at the repo root. Ignore the pattern so they
+# don't keep showing up in `git status`.
+/C[:\357][\200\272]Users*
+/UsersmahllAppDataLocalTemp*
