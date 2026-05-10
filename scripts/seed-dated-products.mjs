@@ -1,6 +1,7 @@
 // Seeds a batch of Algerian-style products with varied posting dates so the
 // "Posted N days ago" UI can be exercised against real DB rows. Mirrors what
-// scrape-ouedkniss → seed-from-scraped would produce, minus the actual scrape.
+// scraper/scrape-ouedkniss → scraper/seed-from-scraped would produce, minus the
+// actual scrape.
 //
 // Usage:
 //   node scripts/seed-dated-products.mjs

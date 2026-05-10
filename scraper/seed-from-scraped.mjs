@@ -1,10 +1,19 @@
-// Reads a JSON file produced by `scripts/scrape-ouedkniss.mjs` and posts each
-// listing as a product under one of OUR sellers (the synthetic Algerian sellers
-// from `seed-algerian.mjs`). The scraped seller's identity is NEVER copied —
-// only public product data (title, image URLs, price text) is reused.
+// API-mode seeder: reads a JSON file produced by `scraper/scrape-ouedkniss.mjs`
+// and POSTs each listing as a product under one of OUR sellers (the synthetic
+// Algerian sellers from `scripts/seed-algerian.mjs`). The scraped seller's
+// identity is NEVER copied — only public product data (title, image URLs,
+// price text) is reused.
+//
+// Goes through the API auth/validation surface, so on a non-local target you
+// need either DEV_BYPASS=1 on the server or a SESSION_JWT in env.
+//
+// If you're on the live server (vps-eu) and want to skip the HTTP hop, prefer
+// the direct-DB sibling instead:
+//   pnpm -F @marketplace/db db:seed-from-scraped <path-to-scraped-json>
+// (its source lives at `packages/db/src/seed-from-scraped.ts`; same JSON shape).
 //
 // Usage:
-//   node scripts/seed-from-scraped.mjs data/ouedkniss-telephone-2026-05-08T...json
+//   node scraper/seed-from-scraped.mjs data/ouedkniss-telephone-2026-05-08T...json
 //
 // Env:
 //   MARKETPLACE_BASE  default http://127.0.0.1:3100
@@ -20,7 +29,7 @@ const SELLER_ID = process.env.SELLER_ID;
 
 const inputPath = process.argv[2];
 if (!inputPath) {
-  console.error("usage: node scripts/seed-from-scraped.mjs <path-to-scraped-json>");
+  console.error("usage: node scraper/seed-from-scraped.mjs <path-to-scraped-json>");
   process.exit(2);
 }
 if (!SELLER_ID) {

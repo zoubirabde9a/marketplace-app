@@ -16,6 +16,7 @@ deploy/.env.*.local
 coverage/
 .nyc_output/
 .vitest-cache/
+node-compile-cache/
 .DS_Store
 *.log
 npm-debug.log*

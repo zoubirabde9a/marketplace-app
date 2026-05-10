@@ -7,7 +7,7 @@ Two paths are available, in increasing order of legal cleanliness:
 | Path | Source | Real personal data? | Notes |
 |---|---|---|---|
 | **A. Synthetic Algerian-style** (default) | Hand-curated in `scripts/seed-algerian.mjs` | No — placeholder `+213 555 00 XX XX` numbers | Safe to run today. ~17 products, 5 sellers. |
-| **B. Scraped from Ouedkniss** (advanced) | `scripts/scrape-ouedkniss.mjs` (Playwright) | No (script does NOT scrape phones) | Pulls real titles + prices + images, marries them to synthetic sellers from Path A. |
+| **B. Scraped from Ouedkniss** (advanced) | `scraper/scrape-ouedkniss.mjs` (Playwright) | No (script does NOT scrape phones) | Pulls real titles + prices + images, marries them to synthetic sellers from Path A. |
 
 Path A is the default. Path B requires Playwright on the operator's machine and is bounded to ≤30 listings per run.
 
@@ -67,23 +67,61 @@ curl -s https://teno-store.com/sitemap.xml | grep -c '<url>'
 
 Use this **only** to enrich the catalog with realistic product titles + prices + photos. The script does NOT scrape seller phone numbers — those are gated behind a click on Ouedkniss, and copying them would clearly violate Algerian Law 18-07 and Ouedkniss's ToS.
 
+All scraping code and its full documentation (env knobs, legal posture, end-to-end flow) live in **[`scraper/`](../../scraper/README.md)**. Quick version:
+
 ```bash
 # On the operator's machine (NOT vps-eu):
 pnpm add -D playwright
 pnpm exec playwright install chromium
 
-# Default: 3 pages of c/telephone, max 30 listings, ~4s per page, polite.
-node scripts/scrape-ouedkniss.mjs
+# Default: target N=30 listings of c/telephone, ~4s per page, polite.
+node scraper/scrape-ouedkniss.mjs
 
-# Or another category:
-CATEGORY=informatique PAGES=2 node scripts/scrape-ouedkniss.mjs
+# Or pick another category and a higher count:
+CATEGORY=informatique N=50 node scraper/scrape-ouedkniss.mjs
 
 # Output goes to data/ouedkniss-<category>-<timestamp>.json.
 ```
 
-Marrying the scraped JSON to the seeder (TODO):
-- Write `scripts/seed-from-scraped.mjs` that reads the JSON, picks one of the synthetic sellers (NOT a real Ouedkniss seller), creates products under that seller using the scraped title / price / image URLs.
-- This keeps the legal posture clean: the seller identity is yours; only the product descriptions are inspired by public listings.
+Then load the dump into the catalog. There are two seeder modes — pick based on where you are:
+
+### B.1 — API mode (operator laptop → live API)
+
+Same auth requirements as Path A — needs either `DEV_BYPASS=1` on the server
+or a `SESSION_JWT`. Use this when you want the API's request validation in the
+loop:
+
+```bash
+# After enabling DEV_BYPASS (Path A step 2) or with SESSION_JWT in env:
+SELLER_ID=<uuid> MARKETPLACE_BASE=https://api.teno-store.com \
+  node scraper/seed-from-scraped.mjs data/ouedkniss-telephone-<timestamp>.json
+```
+
+### B.2 — Direct-DB mode (recommended on `vps-eu`)
+
+The seeder also has a direct-Postgres path that skips Caddy and the API auth
+gate entirely. It's the simplest thing to run on `vps-eu` itself: no
+`DEV_BYPASS` toggling, no JWT plumbing, no rolling restarts.
+
+```bash
+# Copy the JSON dump to the server first (rsync / scp). Then SSH in:
+ssh vps-eu
+cd /opt/marketplace
+
+# Easiest: use the api container — DATABASE_URL is already in its env.
+# (mount or cp the JSON into the container, then:)
+docker compose -f docker-compose.prod.yml exec api \
+  pnpm -F @marketplace/db db:seed-from-scraped /tmp/ouedkniss-telephone-<ts>.json
+```
+
+If `SELLER_ID` isn't set the seeder picks the oldest existing seller — handy
+right after Path A. Pass `SELLER_ID=<uuid>` to override, or `DRY_RUN=1` to
+preview without writing.
+
+The seller identity attached to each product is always one of yours; only the
+public product data (title, image URLs, price text) is reused. See
+[`scraper/README.md`](../../scraper/README.md) for the full reference, including
+which env knobs each seeder honours.
 
 ---
 
