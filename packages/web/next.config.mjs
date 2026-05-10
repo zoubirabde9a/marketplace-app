@@ -30,18 +30,16 @@ const nextConfig = {
       // (Lighthouse, Edge "Install app") still probe the older paths.
       { source: "/manifest.json", destination: "/manifest.webmanifest", permanent: true },
       { source: "/site.webmanifest", destination: "/manifest.webmanifest", permanent: true },
-      // Title-case URL variants. Probed live: /Search, /Product/<id>,
-      // /About all returned 404. External links, copy-pastes, and the
-      // occasional mobile keyboard auto-capitalisation hit these. Pattern
-      // covers the most common typo (Initial-cap); all-caps and mixed-case
-      // are out of scope for this static-redirect approach (middleware
-      // would catch all but cost runtime on every request).
-      { source: "/Search", destination: "/search", permanent: true },
-      { source: "/Search/:path*", destination: "/search/:path*", permanent: true },
-      { source: "/Product/:id", destination: "/product/:id", permanent: true },
-      { source: "/About", destination: "/about", permanent: true },
-      { source: "/Seller", destination: "/seller", permanent: true },
-      { source: "/Seller/:path*", destination: "/seller/:path*", permanent: true },
+      // NOTE: previously had Title-case → lowercase redirects here for
+      // /Search, /Product/:id, /About, /Seller. They caused an infinite
+      // redirect loop in production: Next.js's `redirects()` path matcher
+      // is CASE-INSENSITIVE by default, so `/Product/:id` ALSO matched
+      // `/product/<uuid>` (the canonical lowercase form) and 308'd it to
+      // itself. Every product page broke for ~30 minutes after deploy.
+      // Reverted; uppercase variants will 404 (which Google handles fine
+      // — it's a far better failure mode than infinite redirect loops).
+      // A correct case-redirect implementation needs middleware that
+      // checks `request.nextUrl.pathname !== request.nextUrl.pathname.toLowerCase()`.
     ];
   },
 };
