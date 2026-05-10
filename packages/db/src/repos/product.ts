@@ -175,6 +175,18 @@ export function makeProductRepo(db: DbClient) {
     // input (qtxt) — synonyms shouldn't widen the typo-similarity check or
     // we'll match unrelated rows.
     const ftsInput = expandForWebsearch(trimmed);
+    // Trigram fallback only fires for single-token queries. For multi-token
+    // queries (e.g. "samsung note") word_similarity treats the query as a
+    // phrase and matches the best single word in each title — so any title
+    // with "samsung" leaks in regardless of "note", returning hundreds of
+    // false positives. With FTS-only on multi-token, we trust the user
+    // typed multiple words deliberately and want all of them. Multi-token
+    // typos lose tolerance but they're rare; single-token typos still work.
+    const isSingleToken = !/\s/.test(trimmed);
+    const trgmFallback = isSingleToken
+      ? sql`OR word_similarity((SELECT qtxt FROM q), public.f_normalize_search(p."title_sanitized")) >= 0.5
+            OR word_similarity((SELECT qtxt FROM q), public.f_normalize_search(COALESCE(p."brand", ''))) >= 0.5`
+      : sql``;
     const rows = await db.execute<{ id: string; score: number }>(sql`
       WITH q AS (
         SELECT websearch_to_tsquery('simple', public.f_normalize_search(${ftsInput})) AS tsq,
@@ -193,8 +205,7 @@ export function makeProductRepo(db: DbClient) {
              ) AS score
       FROM "catalog"."products" p
       WHERE p."search_text" @@ (SELECT tsq FROM q)
-         OR word_similarity((SELECT qtxt FROM q), public.f_normalize_search(p."title_sanitized")) >= 0.5
-         OR word_similarity((SELECT qtxt FROM q), public.f_normalize_search(COALESCE(p."brand", ''))) >= 0.5
+         ${trgmFallback}
       ORDER BY score DESC, p."id" ASC
       LIMIT ${limit}
     `);
