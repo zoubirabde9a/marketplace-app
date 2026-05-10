@@ -5,7 +5,9 @@ import { jsonLdString } from "@/lib/jsonld";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
 export const metadata: Metadata = {
-  title: "About Teno Store",
+  // Layout template appends " · Teno Store" — bare "About" avoids the
+  // "About Teno Store · Teno Store" duplication this page used to render.
+  title: "About",
   description:
     "Teno Store is an Algerian marketplace with thousands of live listings — phones, computing, home appliances, fashion and vehicles — priced in DZD, refreshed continuously. Built API-first so AI agents can discover, compare, and transact via MCP, A2A and AP2 on behalf of human buyers.",
   alternates: { canonical: "/about" },

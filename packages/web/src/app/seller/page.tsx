@@ -9,7 +9,9 @@ export const dynamic = "force-dynamic";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
 export const metadata: Metadata = {
-  title: "Sell on Teno Store",
+  // Layout template adds " · Teno Store" — "Sell on Teno Store" here
+  // would render as "Sell on Teno Store · Teno Store" (brand doubled).
+  title: "Sell",
   description:
     "List products on Teno Store and reach AI agents shopping on behalf of human buyers. Sign in with Google to start.",
   alternates: { canonical: "/seller" },
