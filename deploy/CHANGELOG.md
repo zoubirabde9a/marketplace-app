@@ -6,6 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-10 — vps-eu · web · pluralise SEO copy, cache CategoryFooter facets in module memory
+
+- `packages/web/src/app/search/page.tsx`: metadata description and the FR/EN intro copy (`SliceIntro`, `BareCatalogIntro`) now switch noun forms based on `totalCount` (1 vs ≠1). Previously a single-result page shipped "1 listings matching …", which reads as low-quality content to SERP snippets and to humans.
+- `packages/web/src/components/CategoryFooter.tsx`: replaced `next: { revalidate: 600 }` with a module-level in-memory cache (10-min TTL, in-flight singleton, only caches non-empty payloads). The Next data-cache hint was apparently being ignored — iter-29 logs showed `/v1/products?limit=1` hitting multiple times per second from the footer alone, contributing to the api healthcheck failure streak that flipped api unhealthy / 502. Same pattern that fixed sitemap.ts works here.
+- `packages/web/src/app/sitemap.test.ts`: clear the new module cache between tests via `__resetSitemapCacheForTests` (mirrors the existing sitemap.ts harness).
+- Deployed via `tar | ssh` + `docker compose -f docker-compose.prod.yml build api web && up -d api web caddy`. Verified: `/livez` 200, `https://teno-store.com/` 200, sitemap entries 13643, `/search?q=zzznoresult123` renders "0 listings matching".
+- Commits `991ec3e` (web fixes) + `d1acca8` (probe-teno.ps1 helper).
+
+---
+
 ## 2026-05-10 — vps-eu · catalog · "newest" sort now keys on real posting date, not ingestion time
 
 - `packages/api/src/catalog/sort.ts`: when `sort=newest`, comparator now reads `attributes.sourcePostedAt` (ISO 8601 from the seller's Ouedkniss listing) and falls back to `createdAt` when missing. Browsing `/search` defaults to `sort=newest` whenever there's no query, so this is the path users hit by default.
