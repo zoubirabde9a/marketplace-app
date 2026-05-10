@@ -22,20 +22,30 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       ? sellerIdParam[0]
       : ""
     : sellerIdParam ?? "";
+  const categoryParam = sp.category;
+  const category = Array.isArray(categoryParam)
+    ? categoryParam.length === 1
+      ? categoryParam[0]
+      : ""
+    : categoryParam ?? "";
   const definedKeys = Object.keys(sp).filter((k) => sp[k] !== undefined);
-  // Canonicalize. q-only, brand-only, and single-seller slices are worth
-  // indexing as their own pages; everything else (cursor, price ranges,
-  // ratings, multi-filter combinations) collapses back to the bare /search
-  // canonical.
+  // Canonicalize. q-only, brand-only, single-seller, and single-category
+  // slices are worth indexing as their own pages; everything else (cursor,
+  // price ranges, ratings, multi-filter combinations) collapses back to the
+  // bare /search canonical.
   const canonical = q
     ? `/search?q=${encodeURIComponent(q)}`
     : brand && definedKeys.length === 1
       ? `/search?brand=${encodeURIComponent(brand)}`
       : sellerId && definedKeys.length === 1
         ? `/search?sellerId=${encodeURIComponent(sellerId)}`
-        : "/search";
-  const indexableKeys = new Set(["q", "brand", "sellerId"]);
+        : category && definedKeys.length === 1
+          ? `/search?category=${encodeURIComponent(category)}`
+          : "/search";
+  const indexableKeys = new Set(["q", "brand", "sellerId", "category"]);
   const hasNonIndexableParam = definedKeys.some((k) => !indexableKeys.has(k));
+  const isMultiValuedCategory =
+    definedKeys.length === 1 && Array.isArray(categoryParam) && categoryParam.length > 1;
   // Only index single-key q-only, brand-only, or seller-only views.
   const isMultiFilter = definedKeys.length > 1;
   // Multi-valued sellerId collapses to "" — that's a synthetic combo, not a
@@ -51,6 +61,12 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   } else if (brand) {
     title = `${brand} products`;
     description = `Browse ${brand} products on Teno Store.`;
+  } else if (category && !isMultiValuedCategory) {
+    // Category-only landing — humanise the slug for the title and description
+    // so the SERP snippet reads naturally instead of "telephones products".
+    const human = category.replace(/[-_]/g, " ");
+    title = `${human.charAt(0).toUpperCase()}${human.slice(1)} on Teno Store`;
+    description = `Browse ${human} listings on Teno Store.`;
   } else if (sellerId && !isMultiValuedSeller) {
     // Single-seller landing — resolve the display name so the title and
     // description carry the seller's brand instead of a generic "Browse..."
@@ -79,7 +95,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     description,
     alternates: { canonical },
     robots:
-      hasNonIndexableParam || isMultiFilter || isMultiValuedSeller
+      hasNonIndexableParam || isMultiFilter || isMultiValuedSeller || isMultiValuedCategory
         ? { index: false, follow: true }
         : { index: true, follow: true },
   };

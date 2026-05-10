@@ -29,12 +29,14 @@ interface SitemapHarvest {
   products: SitemapProduct[];
   brands: string[];
   sellerIds: string[];
+  categories: string[];
 }
 
 async function fetchAllProducts(): Promise<SitemapHarvest> {
   const products: SitemapProduct[] = [];
   const brands: string[] = [];
   const sellerIds: string[] = [];
+  const categories: string[] = [];
   let cursor: string | null = null;
   // Cap pagination so a misbehaving API can't cause an unbounded sitemap build.
   const MAX_PAGES = 50;
@@ -61,6 +63,7 @@ async function fetchAllProducts(): Promise<SitemapHarvest> {
       facets?: {
         brands?: Array<{ value: string; count: number }>;
         sellers?: Array<{ sellerId?: string; value?: string; count: number }>;
+        categories?: Array<{ value: string; count: number }>;
       };
     };
     try {
@@ -87,12 +90,15 @@ async function fetchAllProducts(): Promise<SitemapHarvest> {
         const id = s.sellerId ?? s.value;
         if (id && s.count > 0 && !sellerIds.includes(id)) sellerIds.push(id);
       }
+      for (const c of body.facets?.categories ?? []) {
+        if (c.value && c.count > 0 && !categories.includes(c.value)) categories.push(c.value);
+      }
     }
     cursor = body.pagination?.cursor ?? null;
     if (!cursor) break;
   }
 
-  return { products, brands, sellerIds };
+  return { products, brands, sellerIds, categories };
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -128,8 +134,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let productEntries: MetadataRoute.Sitemap = [];
   let brandEntries: MetadataRoute.Sitemap = [];
   let sellerEntries: MetadataRoute.Sitemap = [];
+  let categoryEntries: MetadataRoute.Sitemap = [];
   try {
-    const { products, brands, sellerIds } = await fetchAllProducts();
+    const { products, brands, sellerIds, categories } = await fetchAllProducts();
     productEntries = products.map((p) => ({
       url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
       lastModified: Number.isFinite(p.lastModified.getTime()) ? p.lastModified : now,
@@ -154,12 +161,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.6,
     }));
+    // Category-only landings (`/search?category=telephones`) are now
+    // canonical-self + indexable via search/page.tsx; surface them so Google
+    // sees them as legitimate destinations rather than discovering them by
+    // following links.
+    categoryEntries = categories.map((c) => ({
+      url: `${SITE_URL}/search?category=${encodeURIComponent(c)}`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.7,
+    }));
   } catch {
     // API unreachable — fall back to static-only sitemap.
     productEntries = [];
     brandEntries = [];
     sellerEntries = [];
+    categoryEntries = [];
   }
 
-  return [...staticEntries, ...brandEntries, ...sellerEntries, ...productEntries];
+  return [...staticEntries, ...categoryEntries, ...brandEntries, ...sellerEntries, ...productEntries];
 }
