@@ -11,20 +11,35 @@ interface Facet {
   value: string;
   count: number;
 }
+interface SellerFacet {
+  sellerId?: string;
+  value?: string;
+  displayName?: string | null;
+  count: number;
+}
 
-// Server component that renders a "Browse by category" block in the footer.
-// Used to live in layout's plain footer markup; promoted to its own component
-// so we can fetch from the API (with a 10-minute Next data-cache TTL — categories
-// change ~hourly at most) without making layout itself dynamic.
+// Server component rendering three browse blocks in the site footer
+// (categories, brands, sellers). Each block links every page to every
+// indexable single-key landing — without these the URLs are sitemap-only
+// islands and Google's PageRank can't flow into them. Fetched once with a
+// 10-min Next data-cache TTL so layout stays effectively static.
 export async function CategoryFooter() {
   let categories: Facet[] = [];
+  let brands: Facet[] = [];
+  let sellers: SellerFacet[] = [];
   try {
     const res = await fetch(`${API_URL}/v1/products?limit=1`, {
       headers: { accept: "application/json" },
       next: { revalidate: 600 },
     });
     if (res.ok) {
-      const body = (await res.json()) as { facets?: { categories?: Facet[] } };
+      const body = (await res.json()) as {
+        facets?: {
+          categories?: Facet[];
+          brands?: Facet[];
+          sellers?: SellerFacet[];
+        };
+      };
       categories = (body.facets?.categories ?? [])
         .filter((c) => c.value && c.count > 0)
         // Surface the most populated 18 — keeps the footer compact and lets
@@ -32,6 +47,13 @@ export async function CategoryFooter() {
         // inventory rather than long-tail singletons.
         .sort((a, b) => b.count - a.count)
         .slice(0, 18);
+      brands = (body.facets?.brands ?? [])
+        .filter((b) => b.value && b.count > 0)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 16);
+      sellers = (body.facets?.sellers ?? [])
+        .filter((s) => (s.sellerId ?? s.value) && s.count > 0)
+        .sort((a, b) => b.count - a.count);
     }
   } catch {
     // API hiccup — render nothing rather than break every page. The plain
@@ -39,31 +61,79 @@ export async function CategoryFooter() {
     // links to /search, /seller, /about.
   }
 
-  if (categories.length === 0) return null;
+  if (categories.length === 0 && brands.length === 0 && sellers.length === 0) return null;
 
   return (
-    <section aria-label="Browse by category" className="border-b border-line-soft">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-        <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
-          Browse by category
-        </h2>
-        <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
-          {categories.map((c) => {
-            const human = c.value.replace(/[-_]/g, " ");
-            return (
-              <li key={c.value}>
-                <Link
-                  href={`/search?category=${encodeURIComponent(c.value)}`}
-                  className="inline-flex items-center px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition capitalize"
-                >
-                  {human}
-                  <span className="ml-1.5 text-ink-mute">{c.count}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+    <div className="border-b border-line-soft">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+        {categories.length > 0 && (
+          <section aria-label="Browse by category">
+            <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
+              Browse by category
+            </h2>
+            <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
+              {categories.map((c) => {
+                const human = c.value.replace(/[-_]/g, " ");
+                return (
+                  <li key={c.value}>
+                    <Link
+                      href={`/search?category=${encodeURIComponent(c.value)}`}
+                      className="inline-flex items-center px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition capitalize"
+                    >
+                      {human}
+                      <span className="ml-1.5 text-ink-mute">{c.count}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+        {brands.length > 0 && (
+          <section aria-label="Top brands">
+            <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
+              Top brands
+            </h2>
+            <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
+              {brands.map((b) => (
+                <li key={b.value}>
+                  <Link
+                    href={`/search?brand=${encodeURIComponent(b.value)}`}
+                    className="inline-flex items-center px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                  >
+                    {b.value}
+                    <span className="ml-1.5 text-ink-mute">{b.count}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {sellers.length > 0 && (
+          <section aria-label="Sellers on Teno Store">
+            <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
+              Sellers
+            </h2>
+            <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
+              {sellers.map((s) => {
+                const id = s.sellerId ?? s.value!;
+                const name = s.displayName ?? "Storefront";
+                return (
+                  <li key={id}>
+                    <Link
+                      href={`/search?sellerId=${encodeURIComponent(id)}`}
+                      className="inline-flex items-center px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                    >
+                      {name}
+                      <span className="ml-1.5 text-ink-mute">{s.count}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
       </div>
-    </section>
+    </div>
   );
 }
