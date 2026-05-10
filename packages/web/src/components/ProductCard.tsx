@@ -19,6 +19,15 @@ export function ProductCard({ hit, eager = false }: { hit: SearchHit; eager?: bo
           <img
             src={hit.heroImageUrl}
             alt={hit.heroImage?.altText ?? hit.title.value}
+            // Width/height honour the parent's 4:3 aspect-ratio so the
+            // browser reserves layout space before the image loads.
+            // Without these, every card forces a reflow when its hero
+            // arrives — a Cumulative Layout Shift hit that Lighthouse
+            // (and Google's Core Web Vitals ranking signal) penalises.
+            // The values are intrinsic ratio anchors, not display sizes;
+            // the className still stretches the img to fit the parent.
+            width={400}
+            height={300}
             loading={eager ? "eager" : "lazy"}
             fetchPriority={eager ? "high" : "auto"}
             decoding="async"

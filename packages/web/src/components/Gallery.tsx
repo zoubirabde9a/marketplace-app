@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 
-interface Img { id: string; url: string; altText?: string }
+interface Img { id: string; url: string; altText?: string; width?: number; height?: number }
 
 export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; brand?: string }) {
   const [idx, setIdx] = useState(0);
@@ -51,6 +51,11 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
         <img
           src={active!.url}
           alt={active!.altText ?? alt}
+          // CLS reservation. Prefer the API-supplied dimensions when the
+          // hero media carries them; otherwise fall back to a square at
+          // the gallery's display aspect (1:1, see aspect-square parent).
+          width={active!.width ?? 800}
+          height={active!.height ?? 800}
           decoding="async"
           loading="eager"
           fetchPriority="high"
@@ -74,7 +79,7 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
               )}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt={img.altText ?? `${alt} thumbnail ${i + 1}`} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+              <img src={img.url} alt={img.altText ?? `${alt} thumbnail ${i + 1}`} width={img.width ?? 200} height={img.height ?? 200} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
