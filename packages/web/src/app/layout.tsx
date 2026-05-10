@@ -21,13 +21,30 @@ export const metadata: Metadata = {
   description:
     "Browse thousands of live listings — phones, computing, home appliances, fashion and vehicles — from Algerian sellers, priced in DZD.",
   applicationName: "Teno Store",
+  // Google ignores <meta name="keywords">, but Yandex still reads it and so
+  // do some Algerian-locale regional engines + a few internal site-search
+  // tools. Mix the catalog topical terms (English + French) with the
+  // agent-marketplace angle so both audiences land.
   keywords: [
+    // Catalog (highest CTR/relevance for actual buyers)
+    "marketplace algérien",
+    "annonces algérie",
+    "téléphones algérie",
+    "smartphones DZD",
+    "ordinateurs portables algérie",
+    "électroménager algérie",
+    "vente Algérie",
+    "Algerian marketplace",
+    "Algeria phones",
+    "DZD listings",
+    // Agent-marketplace angle
     "agent-to-agent marketplace",
     "AI agent shopping",
     "MCP marketplace",
     "A2A protocol",
     "AP2 mandates",
     "agentic commerce",
+    // Brand
     "Teno Store",
   ],
   openGraph: {
