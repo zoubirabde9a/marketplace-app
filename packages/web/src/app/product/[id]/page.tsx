@@ -90,6 +90,13 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       ...(images ? { images } : {}),
       url: canonical,
       locale: ogLocale,
+      // Algerian listings also surface to Arabic-script and English-language
+      // queries (titles often mix scripts; abbreviations like "iphone" hit
+      // Arabic-keyed users too). Tell scrapers the same URL covers all three
+      // — they can pick the right preview line for the audience.
+      ...(ogLocale === "fr_DZ"
+        ? { alternateLocale: ["ar_DZ", "en_US"] }
+        : { alternateLocale: ["fr_DZ", "ar_DZ"] }),
     },
     twitter: {
       // Always summary_large_image — either the hero or the dynamic card

@@ -61,6 +61,23 @@ export const metadata: Metadata = {
   // links. The product page emits explicit <a href="tel:..."> chips for
   // real seller phone numbers, so opt out of the heuristic everywhere.
   formatDetection: { telephone: false, email: false, address: false },
+  // Region targeting. The catalog is Algerian — phones, electronics, fashion,
+  // home appliances priced in DZD by sellers in Algiers, Oran, Annaba, etc.
+  // - geo.region uses ISO 3166-2 (DZ-16 = Algiers province; coarse but
+  //   sufficient for a national marketplace).
+  // - geo.placename / geo.position / ICBM mirror the same signal in formats
+  //   Yandex, Bing, and various regional engines have historically read.
+  // - og:country-name carries the same fact in the Open Graph namespace.
+  // These are supplemental hints; they don't replace the structured-data /
+  // sitemap signals, but cost ~200 bytes per page and feed engines that
+  // don't yet read every JSON-LD field.
+  other: {
+    "geo.region": "DZ",
+    "geo.placename": "Algeria",
+    "geo.position": "28.0339;1.6596",
+    "ICBM": "28.0339, 1.6596",
+    "og:country-name": "Algeria",
+  },
 };
 
 export const viewport: Viewport = {
