@@ -87,7 +87,17 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     // breadcrumb, JSON-LD seller field, and OG site_name.
     title: { absolute: title },
     description: desc,
-    alternates: { canonical },
+    alternates: {
+      canonical,
+      // Tell AI search crawlers + agent-discovery tools that the same product
+      // content is available as JSON via REST. The MCP / A2A surfaces are
+      // declared globally in /.well-known/agents.json; this is the per-page
+      // hook that lets a crawler map an individual /product URL to its
+      // /v1/products/<id> JSON twin without parsing any of those files.
+      types: {
+        "application/json": `https://api.teno-store.com/v1/products/${encodeURIComponent(p.productId)}`,
+      },
+    },
     openGraph: {
       title,
       description: desc,
