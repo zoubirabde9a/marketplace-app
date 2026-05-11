@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · api rebuild · SEO — search API surfaces `updatedAt` (ingestion time) alongside `postedAt`; sitemap lastmod range collapses from 2017-2026 → last 3 days (Google freshness signal repair on ~19% of catalog)
+
+- Sitemap emits `<lastmod>` per product using `hit.updatedAt ?? hit.postedAt`. API only shipped `postedAt`, which is `attributes.sourcePostedAt ?? createdAt` — for scraped products the Ouedkniss original-post date wins, even though we only ingested the listing minutes ago. Result: sitemap lastmod ranged 2017-03-12 to today, with **8,464 products (19%) > 6 months old, 3,251 (7%) > 1 year, 2,402 (5%) > 2 years**. Google's freshness algorithms treat those URLs as abandoned content — depresses ranking even though the listings are actively for sale and the page renders dynamically from the current DB.
+- API now also surfaces `updatedAt: new Date(p.createdAt).toISOString()` — our ingestion time. `SearchHit` interface in `packages/api/src/catalog/search.ts` extended; `projectHit` emits both fields; `packages/api/src/routes/products.ts` passes through. Pure additive — `postedAt` is preserved for UI rendering ("Posté il y a N jours" relative time, where the seller's perspective is what's meaningful to a human buyer); `updatedAt` feeds the sitemap.
+- Sitemap.ts already had `const ts = hit.updatedAt ?? hit.postedAt` from an earlier iteration — preferring updatedAt when present — so no web-side change needed. New field auto-takes effect after the sitemap module-cache TTL rolls over.
+- Verified live: `GET /v1/products?limit=3&sort=newest` returns `postedAt: 2026-05-11T13:34Z` (Ouedkniss source) AND `updatedAt: 2026-05-11T18:09Z` (our ingestion) on the same hit. Sitemap lastmod range now `2026-05-08 → 2026-05-11` (was `2017-03-12 → 2026-05-11`). Oldest entry is the initial seed-batch date.
+- API typecheck clean; 25/25 api tests pass.
+- Standing iter-1 recommendation still open (Cloudflare Cache Rule). Combined with this iteration's freshness-signal repair, Googlebot will crawl with both (a) much lower origin cost per fetch once Cloudflare caches kick in and (b) recent lastmods telling it URLs are worth refreshing.
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO — anonymous HTML now ships `Cache-Control: public, s-maxage=60, stale-while-revalidate=300` (was `private, no-store`); code half of the iter-1 standing recommendation, operator-side Cloudflare Cache Rule still needed to actually cache at the edge
 
 - Every indexable HTML page (home / search / product / about / seller / store) was shipping the framework's dynamic-route default `private, no-cache, no-store, max-age=0, must-revalidate`. That blocked Cloudflare and any intermediate cache from holding HTML — every Googlebot crawl of the 21k product URLs in the sitemap hit origin, capped catalog indexation depth and freshness on per-origin crawl budget.
@@ -821,3 +830,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — consolidated duplicate seller-storefront URLs (operator's new /store/{id} + the existing /search?sellerId= were both self-canonical and indexable). /search?sellerId= now canonicals → /store/{id}; sitemap emits /store/{id} entries directly. Avoids PageRank split + duplicate-content penalty
 
 2026-05-11 · vps-eu · web rebuild — internal seller links + JSON-LD seller.url all point at /store/{id} now (was /search?sellerId=). Consolidates link-equity flow with the new canonical seller URL; faster crawl discovery since Googlebot doesn't have to follow the canonical hint from previous commit
+
+2026-05-11 · vps-eu · web rebuild — added BreadcrumbList JSON-LD to /store/{id} (operator's new canonical seller storefront). Without it, SERP rich-result breadcrumb row above seller-storefront snippets disappeared after /search?sellerId= canonical'd to /store/{id}
