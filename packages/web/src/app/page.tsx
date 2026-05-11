@@ -171,27 +171,15 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
     ],
   };
 
-  // Preload the first eager product card's hero image — that's the home
-  // page LCP element on viewports where the recent strip is in-view. The
-  // browser only sees the <img> URL when it parses the recent-strip section
-  // (~30KB into the document); preloading from the head shaves ~50-100ms
-  // off LCP on cold visits. imageSrcSet/imageSizes left off because all
-  // ProductCard images render at the same size.
-  const lcpImageUrl = recent[0]?.heroImageUrl;
+  // NOTE: previously had an explicit <link rel="preload" as="image"> for
+  // the first product card's hero (iter-32). Reverted: Next.js already
+  // auto-emits a preload for every <img fetchPriority="high">, and
+  // ProductGrid renders the first 4 cards as eager+high. The explicit tag
+  // was a duplicate of the auto-emitted one and could trigger Lighthouse
+  // "preloaded resource not used" warnings via the
+  // crossorigin="anonymous" mismatch (Next emits without it).
   return (
     <section className="relative">
-      {lcpImageUrl ? (
-        <link
-          rel="preload"
-          as="image"
-          href={lcpImageUrl}
-          // crossOrigin matches the CDN preconnect crossorigin from layout.
-          crossOrigin="anonymous"
-          // High priority so the browser doesn't deprioritise it relative
-          // to JS chunks Next.js also preloads.
-          fetchPriority="high"
-        />
-      ) : null}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(websiteJsonLd) }}
