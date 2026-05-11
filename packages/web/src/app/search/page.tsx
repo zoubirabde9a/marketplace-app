@@ -11,6 +11,39 @@ import { jsonLdString } from "@/lib/jsonld";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
+// French display labels for category slugs. Slugs in URL paths are stored
+// unaccented for ergonomics (telephones, electromenager, vehicules); without
+// this map the SERP title, the visible H1, and the slice-intro paragraph
+// all rendered as English-coded ASCII ('Telephones') on a lang=fr document,
+// mismatching the actual catalog content language. Used by both
+// generateMetadata (SERP) and the page body (H1 + SliceIntro), so it lives
+// at module scope. Unknown slugs fall through to capitalised dash-stripped.
+const FR_CATEGORY: Record<string, string> = {
+  telephones: "Téléphones",
+  smartphones: "Smartphones",
+  informatique: "Informatique",
+  portables: "Ordinateurs portables",
+  electromenager: "Électroménager",
+  mode: "Mode",
+  maison: "Maison & Déco",
+  vehicules: "Véhicules",
+  voitures: "Voitures",
+  motos: "Motos",
+  immobilier: "Immobilier",
+  jeux: "Jeux & Loisirs",
+  bebe: "Bébé & Enfants",
+  sport: "Sport & Loisirs",
+  services: "Services",
+  emploi: "Emploi",
+};
+
+function humanizeCategorySlug(slug: string): string {
+  const k = slug.toLowerCase();
+  if (FR_CATEGORY[k]) return FR_CATEGORY[k];
+  const h = slug.replace(/[-_]/g, " ");
+  return `${h.charAt(0).toUpperCase()}${h.slice(1)}`;
+}
+
 type SP = Record<string, string | string[] | undefined>;
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<SP> }): Promise<Metadata> {
@@ -111,36 +144,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       ? `${fmtCount} ${frAnnonceBrand} ${brand} de vendeurs algériens sur Teno Store. Filtrez par catégorie, prix ou vendeur. Prix en dinars (DZD).`
       : `Annonces ${brand} de vendeurs algériens sur Teno Store. Prix en DZD.`;
   } else if (category && !isMultiValuedCategory) {
-    // Category slugs are stored unaccented for URL ergonomics (telephones,
-    // electromenager, vehicules). Without a label map, the SERP title
-    // surfaced as "Telephones" — an English-coded ASCII string on a French-
-    // language document, mismatching the catalog content's actual language.
-    // Map known top-level slugs to their proper French display form,
-    // matching the home-page category chip labels. Unknown slugs fall
-    // through to the humanised slug.
-    const FR_CATEGORY: Record<string, string> = {
-      telephones: "Téléphones",
-      smartphones: "Smartphones",
-      informatique: "Informatique",
-      portables: "Ordinateurs portables",
-      electromenager: "Électroménager",
-      mode: "Mode",
-      maison: "Maison & Déco",
-      vehicules: "Véhicules",
-      voitures: "Voitures",
-      motos: "Motos",
-      immobilier: "Immobilier",
-      jeux: "Jeux & Loisirs",
-      bebe: "Bébé & Enfants",
-      sport: "Sport & Loisirs",
-      services: "Services",
-      emploi: "Emploi",
-    };
-    const slug = category.toLowerCase();
-    const human = FR_CATEGORY[slug] ?? (() => {
-      const h = category.replace(/[-_]/g, " ");
-      return `${h.charAt(0).toUpperCase()}${h.slice(1)}`;
-    })();
+    const human = humanizeCategorySlug(category);
     title = human;
     // Description in pure French — matches the document's primary language
     // and the catalog's source language. The 'annonces' / 'vendeurs algériens'
@@ -307,7 +311,7 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
   })();
   const singleCategory = (input.category ?? []).length === 1 ? input.category![0] : undefined;
   const humanCategory = singleCategory
-    ? singleCategory.replace(/[-_]/g, " ").replace(/^./, (c) => c.toUpperCase())
+    ? humanizeCategorySlug(singleCategory)
     : undefined;
   const itemListName = input.q
     ? `Marketplace search: ${input.q}`
