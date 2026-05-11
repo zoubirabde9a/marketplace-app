@@ -834,3 +834,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — added BreadcrumbList JSON-LD to /store/{id} (operator's new canonical seller storefront). Without it, SERP rich-result breadcrumb row above seller-storefront snippets disappeared after /search?sellerId= canonical'd to /store/{id}
 
 2026-05-11 · vps-eu · web rebuild — /store/{id} now ships ItemList with up to 25 Product entries (image/brand/offers); restores Shopping-bucketing + per-product Brand→Seller graph that /search?sellerId= had before canonical consolidation
+
+2026-05-11 · vps-eu · web rebuild — /store/{id} OG/Twitter card fixes (siteName, image at 1200x630, full twitter block with seller-specific title/description) + .npmrc dangerously-allow-all-builds (production build was blocked on ERR_PNPM_IGNORED_BUILDS; pnpm 10.0.0 wasn't honoring package.json onlyBuiltDependencies config in the docker build environment)
