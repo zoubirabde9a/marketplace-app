@@ -89,7 +89,18 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
 
   await app.register(import("@fastify/sensible"));
   await app.register(import("@fastify/helmet"), { contentSecurityPolicy: false });
-  await app.register(import("@fastify/cors"), { origin: false });
+  await app.register(import("@fastify/cors"), {
+    origin: false,
+    // Custom response headers cross-origin browser JS needs to READ.
+    // Without Access-Control-Expose-Headers, the browser hides these
+    // from the fetch response object even when they're on the wire.
+    // - x-mp-cart-id: cart route returns the resolved cart id on every
+    //   call; web client tracks it for session-cart continuity. Without
+    //   exposing it, cross-origin clients (teno-store.com → api.) get
+    //   null on r.headers.get('x-mp-cart-id') even when present.
+    // - x-request-id: useful for client-side error correlation.
+    exposedHeaders: ["x-mp-cart-id", "x-request-id"],
+  });
 
   await registerHealth(app);
   await registerWellKnown(app);
