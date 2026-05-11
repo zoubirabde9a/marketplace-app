@@ -689,3 +689,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — /v1/snapshots/{id} now public-cacheable (1h + SWR 24h + immutable); was 'private, max-age=300' blocking CDN even though snapshots are token-addressed immutables — audit-trail viewers re-shared a URL all hit origin
 
 2026-05-11 · vps-eu · web rebuild — /s/{id} snapshot page was 500ing on every visit ('Objects are not valid as a React child'); captureRestSnapshot stores input.query as the full SearchQuery object but the page rendered it as a string. Now handles both shapes. Verified live: snapshot URL returns 200
+
+2026-05-11 · vps-eu · web rebuild — edge-cache /s/{id} snapshot pages (1h + SWR 24h + immutable); was 'private, no-cache' so every audit-trail viewer hit origin even though the API-side data was already aggressively cached at the edge (commit 480c816). Matches API policy now
