@@ -186,19 +186,37 @@ async function searchPage(page, attempt = 1) {
   }
 }
 
+// Convert Ouedkniss's (value, priceUnit) pair into a real DZD-denominated
+// integer. priceUnit is a GraphQL enum:
+//   UNIT     — value is already in DZD (typical for phones / electronics).
+//   MILLION  — Algerian car-pricing slang. 1 "million" = 1,000,000 centimes
+//              = 10,000 DZD. So multiply by 10,000.
+//   BILLION  — same scale up: 1 "milliard" = 1,000 millions = 10,000,000 DZD.
+// Anything else is treated as UNIT (logged below by the seeder if it ever
+// stores DZD <1000, which is a useful canary).
+const PRICE_UNIT_TO_DZD = {
+  UNIT: 1,
+  MILLION: 10_000,
+  BILLION: 10_000_000,
+};
+
 function priceText(item) {
-  // Ouedkniss returns priceUnit as a GraphQL enum string ("UNIT", "MILLION", etc.).
-  // For seeding purposes the seeder only cares about digits, but a human-readable
-  // label is nicer. UNIT means "as-is in DZD"; everything else we leave as-is so
-  // the seeder logs are still informative.
-  const labelFor = (u) => (u === "UNIT" || u == null ? "DA" : `${u}`);
-  if (item.pricePreview != null && item.pricePreview !== "" && item.pricePreview !== "0") {
-    return `${item.pricePreview} ${labelFor(item.priceUnit)}`;
+  // pricePreview is the seller-formatted string ("1.250.000") and is null /
+  // "0" / empty when the seller didn't set a real price (Échange / Prix
+  // négociable / similar). Trust `price` (numeric) as the source of truth
+  // and fall back to pricePreview only when price is missing.
+  let raw = item.price;
+  if (raw == null) {
+    raw = item.pricePreview;
   }
-  if (item.price != null && Number(item.price) > 0) {
-    return `${item.price} ${labelFor(item.priceUnit)}`;
-  }
-  return null;
+  if (raw == null || raw === "" || raw === "0" || Number(raw) === 0) return null;
+  const value = typeof raw === "number" ? raw : Number(String(raw).replace(/[^\d]/g, ""));
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const mult = PRICE_UNIT_TO_DZD[item.priceUnit] ?? 1;
+  const dzd = value * mult;
+  // Emit a canonical "<dzd> DA" string so the seeder's digit-only parser
+  // produces the right priceMinor. No commas / dots so nothing strips wrong.
+  return `${dzd} DA`;
 }
 
 // Fetch a public Ouedkniss store profile by store id. Returns
