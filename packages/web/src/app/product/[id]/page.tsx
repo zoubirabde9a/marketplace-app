@@ -402,8 +402,8 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: `${SITE_URL}/` },
-      { "@type": "ListItem", position: 2, name: "Catalog", item: `${SITE_URL}/search` },
+      { "@type": "ListItem", position: 1, name: "Accueil", item: `${SITE_URL}/` },
+      { "@type": "ListItem", position: 2, name: "Catalogue", item: `${SITE_URL}/search` },
       {
         "@type": "ListItem",
         position: 3,
@@ -623,9 +623,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 function Breadcrumbs({ title }: { title: string }) {
   return (
     <nav aria-label="Fil d'Ariane" className="text-xs text-ink-mute flex items-center gap-2">
-      <Link href="/" className="hover:text-ink-soft">Home</Link>
+      <Link href="/" className="hover:text-ink-soft">Accueil</Link>
       <span aria-hidden>/</span>
-      <Link href="/search" className="hover:text-ink-soft">Catalog</Link>
+      <Link href="/search" className="hover:text-ink-soft">Catalogue</Link>
       <span aria-hidden>/</span>
       <span aria-current="page" className="text-ink-soft truncate max-w-[40ch]">{title}</span>
     </nav>

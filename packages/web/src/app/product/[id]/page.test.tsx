@@ -114,8 +114,8 @@ describe("ProductPage", () => {
       .find((o) => o["@type"] === "BreadcrumbList");
     expect(bc).toBeDefined();
     expect(bc.itemListElement).toHaveLength(3);
-    expect(bc.itemListElement[0].name).toBe("Home");
-    expect(bc.itemListElement[1].name).toBe("Catalog");
+    expect(bc.itemListElement[0].name).toBe("Accueil");
+    expect(bc.itemListElement[1].name).toBe("Catalogue");
     expect(bc.itemListElement[2].name).toBe("Test Widget 9000");
   });
 
