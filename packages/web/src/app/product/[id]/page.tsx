@@ -387,7 +387,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   "@type": "Organization",
                   name: p.sellerDisplayName,
                   identifier: p.sellerId,
-                  url: `${SITE_URL}/search?sellerId=${encodeURIComponent(p.sellerId)}`,
+                  url: `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
                 },
               }
             : {}),
@@ -411,7 +411,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   "@type": "Organization",
                   name: p.sellerDisplayName,
                   identifier: p.sellerId,
-                  url: `${SITE_URL}/search?sellerId=${encodeURIComponent(p.sellerId)}`,
+                  url: `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
                 },
               }
             : {}),
@@ -467,7 +467,24 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     productJsonLd.image = [upscaleOuedknissForCrawler(p.heroImageUrl)];
   }
   if (p.brand) {
-    productJsonLd.brand = { "@type": "Brand", name: p.brand };
+    // @id + url make the Brand a stable entity Google can dedupe across all
+    // listings on this site. Without @id, every product page declares an
+    // anonymous Brand node — Google has to guess "Renault on Teno Store"
+    // is the same entity across 200+ Renault listings. With @id pointing
+    // at the canonical brand-slice URL (the same target the visible brand
+    // chip links to since iter-10), all those listings cluster under one
+    // Brand entity in Google's knowledge graph, and the brand-slice page
+    // accumulates the entity's authority. Pure additive change — strings
+    // and ImageObject brand shapes both still validate as Product.brand,
+    // and Google's structured-data validator accepts ${SITE_URL}/search?brand=X
+    // as the entity URL.
+    const brandSliceUrl = `${SITE_URL}/search?brand=${encodeURIComponent(p.brand)}`;
+    productJsonLd.brand = {
+      "@type": "Brand",
+      "@id": brandSliceUrl,
+      name: p.brand,
+      url: brandSliceUrl,
+    };
   }
   // Surface the primary category to schema.org's `category` field so Google
   // can place us in its product taxonomy (e.g. browse-card grouping).
@@ -502,19 +519,41 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     };
   }
 
+  // Breadcrumb hierarchy: Accueil → Catalogue → [Category] → Product
+  // Adding the category step (when known) gives Google's mobile-SERP
+  // breadcrumb display an extra French token to render and routes
+  // PageRank from product pages into the category-slice landing
+  // (/search?category=…). The slice landings already canonical-self
+  // and are sitemapped (priority 0.7), so this is pure internal-link
+  // flow, not a new indexable surface. Falls back to the 3-level form
+  // when categoryIds is empty (a few legacy products) so existing
+  // structured-data validators don't regress.
+  const breadcrumbCategorySlug = p.categoryIds[0];
+  const breadcrumbCategoryLabel = breadcrumbCategorySlug
+    ? humanizeCategorySlug(breadcrumbCategorySlug)
+    : null;
+  const breadcrumbItems: Array<Record<string, unknown>> = [
+    { "@type": "ListItem", position: 1, name: "Accueil", item: `${SITE_URL}/` },
+    { "@type": "ListItem", position: 2, name: "Catalogue", item: `${SITE_URL}/search` },
+  ];
+  if (breadcrumbCategorySlug && breadcrumbCategoryLabel) {
+    breadcrumbItems.push({
+      "@type": "ListItem",
+      position: 3,
+      name: breadcrumbCategoryLabel,
+      item: `${SITE_URL}/search?category=${encodeURIComponent(breadcrumbCategorySlug)}`,
+    });
+  }
+  breadcrumbItems.push({
+    "@type": "ListItem",
+    position: breadcrumbItems.length + 1,
+    name: p.title.value,
+    item: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
+  });
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Accueil", item: `${SITE_URL}/` },
-      { "@type": "ListItem", position: 2, name: "Catalogue", item: `${SITE_URL}/search` },
-      {
-        "@type": "ListItem",
-        position: 3,
-        name: p.title.value,
-        item: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
-      },
-    ],
+    itemListElement: breadcrumbItems,
   };
 
   // Tag the article subtree with the content language so screen readers
@@ -559,7 +598,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
       />
-      <Breadcrumbs title={p.title.value} />
+      <Breadcrumbs
+        title={p.title.value}
+        categorySlug={breadcrumbCategorySlug ?? null}
+        categoryLabel={breadcrumbCategoryLabel}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-6">
         <Gallery images={p.images} alt={p.title.value} brand={p.brand} />
@@ -567,17 +610,34 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         <div className="space-y-6">
           <div>
             <div className="flex items-center gap-2 mb-2">
-              {p.brand && <span className="text-xs uppercase tracking-widest text-ink-mute font-medium">{p.brand}</span>}
+              {p.brand && (
+                // Brand chip is now a link to the brand-slice landing
+                // (/search?brand=<brand>). Two wins: (a) every branded
+                // product page becomes an internal-link vote for that brand
+                // slice — those slices are sitemapped when they pass
+                // MIN_FACET_COUNT=5 (see sitemap.ts) and canonical-self,
+                // so the link routes PageRank into a Google-indexable
+                // brand landing; (b) matches buyer expectation that
+                // clicking a brand label surfaces other items from the
+                // same brand. Styled subtly so it doesn't fight the H1
+                // for attention.
+                <Link
+                  href={`/search?brand=${encodeURIComponent(p.brand)}`}
+                  className="text-xs uppercase tracking-widest text-ink-mute font-medium hover:text-ink transition"
+                >
+                  {p.brand}
+                </Link>
+              )}
               <CounterfeitBadge risk={p.counterfeitRisk} />
             </div>
             <h1 dir="auto" className="text-3xl font-semibold tracking-tight leading-tight untrusted">{p.title.value}</h1>
             <div className="mt-3 text-sm text-ink-soft">
-              Sold by{" "}
+              Vendu par{" "}
               <Link
-                href={`/search?sellerId=${encodeURIComponent(p.sellerId)}`}
+                href={`/store/${encodeURIComponent(p.sellerId)}`}
                 className="text-ink hover:text-accent underline-offset-4 hover:underline"
               >
-                {p.sellerDisplayName?.trim() ? p.sellerDisplayName : "this seller"}
+                {p.sellerDisplayName?.trim() ? p.sellerDisplayName : "ce vendeur"}
               </Link>
             </div>
             {(() => {
@@ -793,7 +853,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           )}
 
           <div className="text-xs text-ink-mute pt-4 border-t border-line-soft">
-            <Link href={`/search?sellerId=${encodeURIComponent(p.sellerId)}`} className="hover:text-accent">
+            <Link href={`/store/${encodeURIComponent(p.sellerId)}`} className="hover:text-accent">
               Plus d&rsquo;annonces de {p.sellerDisplayName ?? "ce vendeur"} →
             </Link>
           </div>
@@ -853,7 +913,7 @@ async function RelatedProducts({
           {sellerDisplayName ? `Plus d'annonces de ${sellerDisplayName}` : "Plus d'annonces"}
         </h2>
         <Link
-          href={`/search?sellerId=${encodeURIComponent(sellerId)}`}
+          href={`/store/${encodeURIComponent(sellerId)}`}
           className="text-sm text-ink-soft hover:text-ink transition"
         >
           Voir tout →
@@ -864,12 +924,31 @@ async function RelatedProducts({
   );
 }
 
-function Breadcrumbs({ title }: { title: string }) {
+function Breadcrumbs({
+  title,
+  categorySlug,
+  categoryLabel,
+}: {
+  title: string;
+  categorySlug: string | null;
+  categoryLabel: string | null;
+}) {
   return (
-    <nav aria-label="Fil d'Ariane" className="text-xs text-ink-mute flex items-center gap-2">
+    <nav aria-label="Fil d'Ariane" className="text-xs text-ink-mute flex items-center gap-2 flex-wrap">
       <Link href="/" className="hover:text-ink-soft">Accueil</Link>
       <span aria-hidden>/</span>
       <Link href="/search" className="hover:text-ink-soft">Catalogue</Link>
+      {categorySlug && categoryLabel && (
+        <>
+          <span aria-hidden>/</span>
+          <Link
+            href={`/search?category=${encodeURIComponent(categorySlug)}`}
+            className="hover:text-ink-soft"
+          >
+            {categoryLabel}
+          </Link>
+        </>
+      )}
       <span aria-hidden>/</span>
       <span aria-current="page" className="text-ink-soft truncate max-w-[40ch]">{title}</span>
     </nav>

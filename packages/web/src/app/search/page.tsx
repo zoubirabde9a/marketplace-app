@@ -371,7 +371,7 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
             "@type": "Organization",
             name: hit.sellerDisplayName,
             identifier: hit.sellerId,
-            url: `${SITE_URL}/search?sellerId=${encodeURIComponent(hit.sellerId)}`,
+            url: `${SITE_URL}/store/${encodeURIComponent(hit.sellerId)}`,
           }
         : undefined;
       const lowPrice = minorToMajor(hit.priceFromMinor);
@@ -735,7 +735,10 @@ function SearchBreadcrumbs({ label }: { label: string }) {
 function canonicalSlicePath(input: ReturnType<typeof parseSearchParams>): string {
   if (input.q) return `/search?q=${encodeURIComponent(input.q)}`;
   const sellerIds = (input.sellerId ?? []).filter(Boolean);
-  if (sellerIds.length === 1) return `/search?sellerId=${encodeURIComponent(sellerIds[0])}`;
+  // Single-seller view canonicals at /store/{id} (commit d62bd2f added the
+  // dedicated storefront URL; previous /search?sellerId=... is now a
+  // redirect-via-canonical to consolidate PageRank).
+  if (sellerIds.length === 1) return `/store/${encodeURIComponent(sellerIds[0])}`;
   if (input.brand) return `/search?brand=${encodeURIComponent(input.brand)}`;
   const cats = (input.category ?? []).filter(Boolean);
   if (cats.length === 1) return `/search?category=${encodeURIComponent(cats[0])}`;

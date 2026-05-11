@@ -89,7 +89,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
             "@type": "Organization",
             name: hit.sellerDisplayName,
             identifier: hit.sellerId,
-            url: `${SITE_URL}/search?sellerId=${encodeURIComponent(hit.sellerId)}`,
+            url: `${SITE_URL}/store/${encodeURIComponent(hit.sellerId)}`,
           }
         : undefined;
       const flatPrice = minorToMajor(hit.priceMinor);
@@ -306,7 +306,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
           <Card title="Deep-linked searches" body="When your agent narrows a search, you get a URL that mirrors the same filters and results." />
           <Card title="Full product detail" body="Photos, variants, prices, attributes, and seller info — exactly what the agent saw." />
-          <Card title="Trust signals" body="Counterfeit risk, stock state, and seller-supplied content tagged as untrusted by default." />
+          <Card title="Trust signals" body="Stock state, verified seller information, and every listing scored on the same trust rubric." />
         </div>
       </section>
       {recent.length > 0 && (
