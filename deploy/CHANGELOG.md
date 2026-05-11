@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · api rebuild · feat — buyer-side MCP tools so agents can place COD orders end-to-end (commits 5c99ae1 + 8c596ab)
+
+- Added seven tools to the live `/mcp` surface: `cart.add_item`, `cart.update_qty`, `cart.remove_item`, `cart.get`, `checkout.confirm`, `order.get`, `seller.list_orders`. tools/list on prod now returns 9 tools total (these seven + the two existing seller-write tools).
+- All seven go through the same Drizzle repos as the REST routes. Domain validation (priceQuote, currency-lock, cart non-empty, seller-ownership) is not forked between MCP and HTTP — an agent that places an order shows up in the seller dashboard the same as a browser-driven order.
+- Verified live end-to-end with `X-Mp-Mcp-Token`: `cart.add_item` (no cartId → fresh anonymous cart created, Renault Symbol added, `title="Renault Symbol 2018 Diesel 1.5 dCi"`, `subtotal=115000000`) → `checkout.confirm` with `customer: {name: "Agent MCP", phone: "0555888999", region: "Constantine"}` → order `MP-260511-PR94S4` (`status=paid`) → `order.get` with the returned token returns the same order; `order.get` without the token correctly rejects with `Validation failed: orderToken: order_access_denied`.
+- New scope strings recognised by the admin-bypass path: `buyer:cart:read`, `buyer:cart:write`, `buyer:checkout:write`, `buyer:order:read`, `seller:order:read`. The fix in 8c596ab corrected a half-applied edit that initially missed the `/mcp` public-path scope default and caused the first prod test to return `missing_scope:buyer:cart:write`.
+- New tools wrap the existing `/v1` endpoints' behaviour 1:1 — no schema or DB changes were needed; this is purely an MCP surface addition.
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO — /seller landing page French-ified (was English on a `<html lang="fr">` site); follow-up to iter-12 /about French-ification
 
 - `/seller` page was the last fully-English sitemapped surface (after iter-7 home and iter-12 /about): `<title>Sell</title>`, English meta description, H1 "Sell on Teno Store", three English value-prop bullets, English noscript copy. Sitemapped (`priority=0.5`, `index,follow`) and the destination of every "+ Vendre" CTA in the header — so its locale signal also affects every visitor who clicked through from a French page.
