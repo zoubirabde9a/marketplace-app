@@ -543,3 +543,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — llms.txt + agents.json updated with compound Ouedkniss category slugs (automobiles_vehicules, electronique_electromenager, vetements_mode, sante_beaute, immobilier) that hold the bulk of the catalog; previous list only had bare subcategory slugs
 
 2026-05-11 · vps-eu · web rebuild — home hero buyer CTA from 'Browse the catalog' (English) → 'Parcourir le catalogue' (French, lang=fr attribute inside the otherwise-English hero wrapper); matches the entirely-French catalog flow it links to
+
+2026-05-11 · vps-eu · web rebuild — CounterfeitBadge text French ('Risque de contrefaçon', 'Suspendu', 'En examen'); affects subset of listings (elevated/high risk) but it's the only trust-signal buyers see when triggered
