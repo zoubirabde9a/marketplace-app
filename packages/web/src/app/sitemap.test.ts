@@ -97,8 +97,11 @@ describe("sitemap()", () => {
     // strings, mis-categorised values, etc.).
     expect(urls.some((u) => u.includes("brand=ThinBrand"))).toBe(false);
     expect(urls.some((u) => u.includes("brand=Ghost"))).toBe(false);
-    expect(urls.some((u) => u.endsWith("/search?sellerId=s-1"))).toBe(true);
-    expect(urls.some((u) => u.endsWith("/search?sellerId=s-2"))).toBe(false);
+    // Sitemap points seller entries at /store/{id} — the canonical
+    // storefront route (commit d62bd2f); /search?sellerId=... canonicals
+    // here too. The 'below-floor' seller still gets dropped entirely.
+    expect(urls.some((u) => u.endsWith("/store/s-1"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/store/s-2"))).toBe(false);
   });
 
   it("falls back to static entries when the API responds non-OK", async () => {

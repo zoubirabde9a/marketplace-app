@@ -292,8 +292,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.6,
     }));
+    // Seller storefront entries point at /store/{id} — the canonical
+    // seller URL (commit d62bd2f). /search?sellerId=... now canonicals
+    // to this same URL, so both routes consolidate PageRank instead of
+    // splitting across two indexable variants.
     sellerEntries = sellerIds.map((id) => ({
-      url: `${SITE_URL}/search?sellerId=${encodeURIComponent(id)}`,
+      url: `${SITE_URL}/store/${encodeURIComponent(id)}`,
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.6,

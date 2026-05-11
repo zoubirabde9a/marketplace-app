@@ -68,9 +68,12 @@ describe("search page generateMetadata", () => {
     expect(m.robots).toEqual({ index: false, follow: true });
   });
 
-  it("?sellerId=abc alone → indexable single-seller landing", async () => {
+  it("?sellerId=abc alone → indexable, canonical points at /store/{id}", async () => {
+    // Single-seller view canonicals at the dedicated /store/{id} storefront
+    // route (added in commit d62bd2f) so PageRank consolidates instead of
+    // splitting between the search-param variant and the pretty URL.
     const m = await M({ sellerId: "abc" });
-    expect(m.alternates?.canonical).toBe("/search?sellerId=abc");
+    expect(m.alternates?.canonical).toBe("/store/abc");
     expect(m.robots).toEqual({ index: true, follow: true });
   });
 

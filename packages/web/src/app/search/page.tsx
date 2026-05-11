@@ -64,7 +64,14 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     : brand && definedKeys.length === 1
       ? `/search?brand=${encodeURIComponent(brand)}`
       : sellerId && definedKeys.length === 1
-        ? `/search?sellerId=${encodeURIComponent(sellerId)}`
+        // Single-seller view: point canonical at the dedicated /store/{id}
+        // storefront route. Both URLs render the same seller's products
+        // (commit d62bd2f added /store/[id] as the prettier canonical
+        // seller URL); self-canonicalising /search?sellerId=... would
+        // tell Google there are two indexable URLs for the same content
+        // and split link equity between them. Let /search?sellerId=
+        // canonical at /store/{id} so PageRank consolidates.
+        ? `/store/${encodeURIComponent(sellerId)}`
         : category && definedKeys.length === 1
           ? `/search?category=${encodeURIComponent(category)}`
           : "/search";
