@@ -171,12 +171,14 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
         ? `Annonces de ${sellerName} sur Teno Store.`
         : "Annonces de ce vendeur sur Teno Store.";
   } else {
-    title = "Browse the marketplace";
-    // ~150 chars for Google SERP. Earlier 181-char version got
-    // truncated near the end. Catalog signal in the lede; "filter by
-    // category/brand/seller" cut since it doesn't add ranking value.
+    // /search root — French to match lang=fr root + the catalog content
+    // language. ~150 chars for Google SERP; the lede leads with the
+    // Algerian-marketplace positioning (the actual ranking-relevant
+    // signal) and lists the same top categories as the home topical
+    // block so the meta description reinforces them.
+    title = "Parcourir le marketplace";
     description =
-      "Browse thousands of listings — phones, computing, home appliances, fashion and vehicles from Algerian sellers, priced in DZD.";
+      "Parcourez des milliers d'annonces — téléphones, informatique, électroménager, mode et véhicules de vendeurs algériens, prix en dinars (DZD).";
   }
 
   return {

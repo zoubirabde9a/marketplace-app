@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   // og:description (which Facebook/Discord/Slack render with no length
   // budget).
   description:
-    "Browse thousands of live listings — phones, computing, home appliances, fashion and vehicles — from Algerian sellers, priced in DZD.",
+    "Marketplace algérien — milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD).",
   applicationName: "Teno Store",
   // Google ignores <meta name="keywords">, but Yandex still reads it and so
   // do some Algerian-locale regional engines + a few internal site-search

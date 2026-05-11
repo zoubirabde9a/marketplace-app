@@ -33,7 +33,7 @@ describe("search page generateMetadata", () => {
     const m = await M({});
     expect(m.alternates?.canonical).toBe("/search");
     expect(m.robots).toEqual({ index: true, follow: true });
-    expect(m.title).toBe("Browse the marketplace");
+    expect(m.title).toBe("Parcourir le marketplace");
   });
 
   it("?q=phone → noindex,follow (free-text search results not indexable)", async () => {
