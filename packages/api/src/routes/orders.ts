@@ -111,7 +111,9 @@ export async function registerOrderRoutes(
   // Seller view: orders that contain at least one of this seller's items.
   // Only the seller's own lines are returned. Caller must be the seller owner
   // (synthetic agent id matches), enforced via the SESSION_OR_PASSPORT path.
-  app.get<{ Params: { id: string } }>("/v1/sellers/:id/orders", async (req) => {
+  app.get<{ Params: { id: string } }>("/v1/sellers/:id/orders", async (req, reply) => {
+    // Seller-scoped order list — must never be cached across sellers.
+    reply.header("cache-control", "private, no-store");
     const principal = requirePrincipal(req);
     const seller = await sellers.get(req.params.id);
     if (!seller) throw new NotFoundError("seller", req.params.id);
