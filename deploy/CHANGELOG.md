@@ -859,3 +859,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — /store/{id} OG/Twitter card fixes (siteName, image at 1200x630, full twitter block with seller-specific title/description) + .npmrc dangerously-allow-all-builds (production build was blocked on ERR_PNPM_IGNORED_BUILDS; pnpm 10.0.0 wasn't honoring package.json onlyBuiltDependencies config in the docker build environment)
 
 2026-05-11 · vps-eu · web rebuild — /store/{id} description no longer renders broken/misleading country fallbacks. frCountry now whitelist-only (DZ/FR/TN/MA); unknown codes drop the locality. Was 'en US' (broken French) → 'en États-Unis' (false location claim) → no country mentioned (clean + accurate). Underlying data bug (Algerian sellers tagged countryCode='US') still operator-territory
+
+2026-05-11 · vps-eu · web rebuild — Store JSON-LD PostalAddress no longer emits addressCountry='US' on Algerian-seller rows. Was authoritatively telling Google's local-business graph these sellers are US-based; now omits the field entirely for unmapped codes. Worst-case schema.org-level misinformation closed off
