@@ -63,19 +63,27 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     const space = cut.lastIndexOf(" ");
     return (space > 80 ? cut.slice(0, space) : cut).replace(/[\s\p{P}\p{S}]+$/u, "") + "…";
   })();
-  // Live probe found products that ship a 0-char meta description (seller
-  // posted no body text, or the body was nothing but emoji and got
-  // stripped by the punctuation-leading regex). Without a description
-  // Google falls back to scraping the page body for a snippet — usually
-  // grabs the breadcrumb and footer chips, which makes for a terrible SERP
-  // preview. Build a structured fallback from the data we already have.
-  const desc = cleanedDesc && cleanedDesc.length > 0
+  // Live probe found products that ship a too-short meta description: 0-char
+  // (seller posted no body, or body was nothing but emoji stripped by the
+  // punctuation regex) AND minimal short seller blurbs like "سيارة ماشاء الله"
+  // (16 chars, 'a car, mashallah') flowing through to <meta name=description>
+  // on a Volkswagen T-Roc page — Google SERP snippet ~155 chars, anything
+  // below ~40 looks like missing/broken data and Google falls back to
+  // scraping the page body (usually grabs the breadcrumb + footer chips).
+  // Threshold: 40 chars triggers the structured fallback. Below that,
+  // build a richer description from title/brand/seller/price — every word
+  // in this fallback is from validated catalog data.
+  const MIN_USEFUL_DESC_CHARS = 40;
+  const desc = cleanedDesc && cleanedDesc.length >= MIN_USEFUL_DESC_CHARS
     ? cleanedDesc
     : (() => {
         const parts: string[] = [];
         parts.push(fullTitle);
-        if (p.brand) parts.push(`brand ${p.brand}`);
-        if (p.sellerDisplayName) parts.push(`from ${p.sellerDisplayName}`);
+        // French labels — document is lang=fr (DZD-priced products always
+        // have contentLang=fr below). 'marque' / 'de' match the SliceIntro
+        // and feed-summary phrasing.
+        if (p.brand) parts.push(`marque ${p.brand}`);
+        if (p.sellerDisplayName) parts.push(`de ${p.sellerDisplayName}`);
         const lowest = [...p.variants].sort(
           (a, b) => Number(a.priceMinor) - Number(b.priceMinor),
         )[0];
@@ -92,7 +100,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
             parts.push("Prix sur demande");
           }
         }
-        return `${parts.join(" · ")} — listed on Teno Store, the agent-to-agent marketplace for Algerian sellers.`;
+        return `${parts.join(" · ")} — annonce sur Teno Store, marketplace algérien.`;
       })();
   // Resolve full hero metadata (width/height/alt) so social previews can size
   // the image without a round-trip and avoid Facebook "image too small" warnings.
