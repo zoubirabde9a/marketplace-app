@@ -390,6 +390,10 @@ export async function registerProductRoutes(
         heroImage: h.heroImage ?? null,
         imageCount: h.imageCount,
         postedAt: h.postedAt ?? null,
+        // Surface ingestion time as a separate signal so the web sitemap
+        // can emit a recent <lastmod> on URLs that came from old-dated
+        // source listings — see updatedAt comment in catalog/search.ts.
+        updatedAt: h.updatedAt ?? null,
       })),
       pagination: { cursor: r.cursor ?? null, totalEstimate: r.totalEstimate },
       facets: {
@@ -489,14 +493,22 @@ export function makeProductReader(repo: {
   // Browse-path TTL cache. Empty-query browse pulls every product+variant+
   // media row, hydrates them, JS-filters/sorts/computes facets — order of
   // ~700 row reads on prod just to render a 10-listing page. Caching the
-  // hydrated result for 30 seconds drops cached browses to microseconds.
-  // The window is short enough that the 1-min scrape loop only ever delays
-  // a new listing's appearance by ≤30s, which is the same freshness budget
-  // the operator is OK with elsewhere (snapshot TTLs, etc.).
-  // Concurrent expired-cache hits may both fire loadAll once; the second one
-  // overwrites — harmless. Promises are deliberately not deduped; the extra
-  // call is cheaper than the lock bookkeeping at our scale.
-  const BROWSE_TTL_MS = 30_000;
+  // hydrated result drops cached browses to microseconds.
+  //
+  // TTL bumped from 30s to 90s (2026-05-11). Live probe found cold-cache
+  // /v1/products?sort=newest&limit=8 — the query the home page hits on
+  // every fresh visit — took 5-7s while warm hits were ~200ms (loadAll
+  // hydrates 43k+ products + variants + media). The 30s window was
+  // narrower than the scrape loop's seed cadence (~1/min per category),
+  // and Googlebot/agent crawler timing didn't always fall inside it, so
+  // cold rebuilds were firing maybe 1–2/min in production. 90s tracks the
+  // scrape-loop's actual unique-product yield: the cache only needs to
+  // refresh when newest-N changes substantively, and 90s of stale-recent
+  // is well within agents.json's '5 min cache' data-freshness commitment.
+  // Concurrent expired-cache hits may both fire loadAll once; the second
+  // one overwrites — harmless. Promises are deliberately not deduped; the
+  // extra call is cheaper than the lock bookkeeping at our scale.
+  const BROWSE_TTL_MS = 90_000;
   let browseCache: { value: { products: StoredProduct[]; sellers: Map<string, StoredSeller> }; expiresAt: number } | null = null;
   async function loadAllCached() {
     const now = Date.now();
