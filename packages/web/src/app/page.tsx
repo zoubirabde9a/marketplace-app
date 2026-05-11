@@ -189,7 +189,15 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         dangerouslySetInnerHTML={{ __html: jsonLdString(websiteJsonLd) }}
       />
       <div className="absolute inset-0 bg-grid opacity-50 pointer-events-none [mask-image:radial-gradient(closest-side,black,transparent)]" />
-      <div className="relative pt-24 pb-16 text-center max-w-3xl mx-auto">
+      {/* lang="en" wrapper: with <html lang="fr"> set at the layout level
+          (previous iter), the hero block + agent cards are the only English
+          content on the home page. Tagging them explicitly so screen
+          readers switch voice/accent, language detectors don't penalise
+          the document for mixed content without per-region hints, and
+          Lighthouse's "Document has a content-language for non-default
+          regions" audit passes. The bilingual catalog block below carries
+          its own per-paragraph lang attributes. */}
+      <div lang="en" className="relative pt-24 pb-16 text-center max-w-3xl mx-auto">
         <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-accent bg-accent/10 border border-accent/30 mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> live
         </span>
@@ -233,7 +241,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           pays. Filtrez par marque, prix, vendeur ou catégorie pour trouver exactement
           ce que vous cherchez.
         </p>
-        <p className="text-sm text-ink-mute leading-relaxed">
+        <p lang="en" className="text-sm text-ink-mute leading-relaxed">
           Browse a continuously-refreshed catalog of consumer goods listed for sale
           in Algeria — phones, computing, home appliances, fashion and vehicles —
           priced in DZD, sourced from real Algerian sellers. Built API-first so AI
@@ -261,7 +269,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           ))}
         </ul>
       </section>
-      <section className="mt-16 max-w-4xl mx-auto" aria-labelledby="agent-heading">
+      <section lang="en" className="mt-16 max-w-4xl mx-auto" aria-labelledby="agent-heading">
         <h2 id="agent-heading" className="sr-only">How the agent observer works</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
           <Card title="Deep-linked searches" body="When your agent narrows a search, you get a URL that mirrors the same filters and results." />
