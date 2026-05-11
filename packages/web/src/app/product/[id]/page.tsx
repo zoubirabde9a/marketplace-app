@@ -10,6 +10,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { ProductGrid } from "@/components/ProductGrid";
 import { jsonLdString } from "@/lib/jsonld";
 import { upscaleOuedknissForCrawler } from "@/lib/images";
+import { humanizeCategorySlug } from "@/lib/categories";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
@@ -407,7 +408,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // categoryIds are slug-style ("telephones", "informatique") — humanise the
   // first segment for the JSON-LD payload.
   if (p.categoryIds.length > 0 && p.categoryIds[0]) {
-    productJsonLd.category = p.categoryIds[0].replace(/[-_]/g, " ");
+    // Use the same FR_CATEGORY map as search slice H1/title so Google's
+    // product taxonomy gets the proper French label ('Automobiles &
+    // Véhicules') instead of an ASCII slug-with-dashes-replaced string
+    // ('automobiles vehicules').
+    productJsonLd.category = humanizeCategorySlug(p.categoryIds[0]);
   }
   // Promote a single variant's SKU to the Product level so Google can match
   // this listing to known catalogs even without scanning the Offer.
