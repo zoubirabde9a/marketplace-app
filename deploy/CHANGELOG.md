@@ -23,6 +23,19 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 - `docker-compose.prod.yml` passes `API_WORKERS=${API_WORKERS:-auto}` (auto = available cores capped at 4). Rollback: set `API_WORKERS=1` in `.env` and `up -d api`.
 - Deployed via rsync + `docker compose -f docker-compose.prod.yml up -d --build api`.
 
+## 2026-05-11 — vps-eu · scraper-loop · per-listing seller resolution (with real phones for shop accounts)
+
+- Every scraped product was being attached to the single hard-coded "Smart Phone DZ" seller, so the storefront showed one seller name + phone for everything. Replaced that with per-listing seller resolution: each unique Ouedkniss seller (a store id for shop accounts, a user id for individuals) now maps to one teno-store seller, persistent across runs.
+- Scraper (`scrape-ouedkniss.mjs`): GraphQL query extended to capture `user { id }`, `isFromStore`, `store { id }` per listing. After scraping, the script collects the unique store ids and calls Ouedkniss's public `siteBuildGetByStore(storeId)` endpoint to pull each shop's `mainLocation.phones`, `emails`, and `socials` (website / facebook / whatsapp / telegram). Emits a `stores` map alongside `items` in the dump JSON.
+- Phone-number posture, documented after investigation: Ouedkniss's `announcementPhoneGet(id)` mutation (the "show phone" button on listings) is auth-gated — anonymous calls return `[]` even with full browser headers (Origin, Referer, x-app-version, Chrome UA). The only public path to a real phone is the shop's site-build endpoint, which exposes the store's main-location phones. So:
+  - **shop-account listings (`isFromStore=true`)** → real shop phone, email, website when present in the store profile
+  - **individual-seller listings** → phone left null (operator policy: synthetic seller names allowed, synthetic phones never)
+- Seeder (`packages/db/src/seed-from-scraped.ts`): added `resolveSeller(item)` that looks up an existing seller by deterministic `storeSlug` (`okk-store-<id>` for shops, `okk-user-<id>` for individuals) and creates one if absent. Display name is synthetic — `Vendeur Pro <5-hex>` for shops, `Vendeur <5-hex>` for individuals, derived from sha1 of the slug so the same Ouedkniss seller always gets the same name across runs. Phone/email/website set only when the store-enrichment step found real public values.
+- `run-loop.sh`: `--seller-id` is now optional. When omitted (per-listing mode), the skip-urls dump pulls every product where `attributes->>'source' = 'ouedkniss-public-listing'` (so re-scraped listings are deduped across sibling sellers), and the prune query applies its cap globally to scraper-source products instead of one seller. State key shifted from `<seller>-<category>` to `global-<category>` in per-listing mode — page progress restarts at 1 for each category, which is acceptable.
+- `marketplace-scrape-loop.service`: dropped `--seller-id` from `ExecStart`. Triggered one manual run after deploy: 50 telephones listings scraped, 7 unique stores enriched (6 with real phones), seeder created 14 distinct sellers (7 shops + 7 individuals), seeded 22 new products, 28 duplicates skipped. DB confirms 5 shop sellers carry real Ouedkniss phones (`+213780343697`, `0773589615`, `0550120130`, `0799003308`, `0775646256`), all individual sellers have `phone IS NULL`. No fabricated phones written for anyone.
+- Known limitation: the existing ~21k products from before this change remain owned by the original Smart Phone DZ seller. They will age out naturally as the global 280k cap fills with per-listing-owned products; if you want them retired sooner, ask and I can delete them in a one-shot SQL pass.
+- API image rebuilt in place (`docker compose -f docker-compose.prod.yml build api`); container not restarted because the seeder runs as a fresh `docker run` against the new tag — the live api keeps the old image until its next deploy.
+
 ## 2026-05-11 — vps-eu · scraper-loop · rotate across 7 top-level categories
 
 - Scrape loop was pinned to `telephones` only — the systemd unit hard-coded that single category, so 100% of seeded products were phones/tablets despite the catalog being able to hold anything.
@@ -481,3 +494,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — French product-page related-products H2 + 'More from seller' link, French SearchBar placeholder + aria-label, French breadcrumb/footer aria-labels
 
 2026-05-11 · vps-eu · web rebuild — French home 'Annonces récentes' H2 + 'Voir tout', French product shipping label, French Share button text/aria-label
+
+2026-05-11 · vps-eu · web rebuild — /about + /seller body wrapped in lang=en (intentional English content nested in French-rooted document); fixes WCAG 3.1.2 language-of-parts + Google's HTML-level language classifier consistency check
