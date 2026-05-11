@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · api · Redis response cache for /v1/products GETs
+
+- Site sits behind Cloudflare in DNS-only mode (gray cloud, required because the proxy doesn't work reliably in Algeria), so no edge cache is available. Caching has to happen on the VPS itself.
+- Added a generic Fastify response-cache plugin (`packages/api/src/middleware/response-cache.ts`) and wired it for `GET /v1/products` in `start.ts`.
+- Caches the rendered JSON body in Redis keyed by full URL, TTL=30s (overridable via `RESPONSE_CACHE_TTL_SECONDS`). Only anonymous traffic (no `Authorization` header) is cached — we never reuse responses across principals.
+- Writes are not invalidated; staleness is bounded by the TTL. Acceptable for a low-write catalog where the scraper seeds in batches.
+- Response advertises `X-Cache: HIT|MISS` for observability.
+- Deployed via rsync + `docker compose -f docker-compose.prod.yml up -d --build api`.
+
 ## 2026-05-11 — vps-eu · api · enable Node cluster mode (multi-core)
 
 - Stress test showed `marketplace-api` was bottlenecked on a single CPU core (118% of one core under 5 concurrent search users; p99 ~10s, throughput ~3 req/s).

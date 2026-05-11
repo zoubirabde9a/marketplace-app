@@ -16,6 +16,7 @@ import { catalog } from "@marketplace/domain";
 import { buildServer } from "./server.js";
 import { makeProductReader } from "./routes/products.js";
 import { RedisSnapshotStore } from "./repos/snapshots.js";
+import { registerResponseCache } from "./middleware/response-cache.js";
 
 const envBaseDir: string = (function loadDotenvFromAncestor(): string {
   let dir = process.cwd();
@@ -152,6 +153,24 @@ async function main(): Promise<void> {
       now: () => Date.now(),
     },
   });
+
+  // Response cache for read-heavy public endpoints. Only anonymous traffic
+  // (no Authorization header) is cached so we never leak agent/user-scoped
+  // responses across principals. TTL is short on purpose — writes don't
+  // invalidate, so staleness is bounded by RESPONSE_CACHE_TTL_SECONDS.
+  if (redis) {
+    const ttl = Number(process.env.RESPONSE_CACHE_TTL_SECONDS ?? 30);
+    await registerResponseCache(app, {
+      redis,
+      ttlSeconds: ttl,
+      tag: "products-search",
+      shouldCache: (req) =>
+        req.method === "GET" &&
+        (req.url === "/v1/products" || req.url.startsWith("/v1/products?")) &&
+        !req.headers.authorization,
+      keyOf: (req) => `pcache:v1:products:${req.url}`,
+    });
+  }
 
   app.addHook("onClose", async () => {
     await close();
