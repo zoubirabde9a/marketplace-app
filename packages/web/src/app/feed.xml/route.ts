@@ -38,9 +38,20 @@ function escapeXml(s: string): string {
     .replace(/'/g, "&apos;");
 }
 
+// Threshold for what counts as a "real" price. Ouedkniss sellers commonly use
+// placeholder values (priceMinor=0 for "Prix sur demande", priceMinor=100 for
+// "1 DA" as a price-omission convention) when the actual price is negotiable.
+// Emitting "0.00 DZD" or "1.00 DZD" in feed summaries makes the catalog look
+// broken to AI crawlers and RSS readers that summarise listings. 100 DZD
+// (~$0.75) is well below any legitimate consumer-goods price on the platform.
+// priceMinor is in santeem (1 DZD = 100 santeem), so 100 DZD = 10000 minor.
+const MIN_REAL_PRICE_MINOR = 10000;
+
 function fmtPrice(minor: string | undefined, currency: string | undefined): string | null {
   if (!minor || !currency) return null;
-  const major = (Number(minor) / 100).toFixed(2);
+  const n = Number(minor);
+  if (!Number.isFinite(n) || n < MIN_REAL_PRICE_MINOR) return null;
+  const major = (n / 100).toFixed(2);
   return `${major} ${currency}`;
 }
 

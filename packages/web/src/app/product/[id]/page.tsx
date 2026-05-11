@@ -12,6 +12,16 @@ import { jsonLdString } from "@/lib/jsonld";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
+// Ouedkniss sellers commonly use placeholder prices: priceMinor=0 ("Prix sur
+// demande"), priceMinor=100 ("1 DA"), priceMinor=400 ("4 DA") — all
+// negotiate-only conventions, not real prices. Emitting them in meta
+// descriptions, og:price, JSON-LD Offers, and shopping aggregator payloads
+// makes the catalog look broken or fraudulent. 100 DZD (=10000 santeem,
+// ~$0.75) is well below the cheapest legitimate consumer-goods listing on
+// the platform; anything under this threshold is treated as "Prix sur demande".
+// Match feed.xml's MIN_REAL_PRICE_MINOR.
+const MIN_REAL_PRICE_MINOR = 10000;
+
 interface Params { id: string }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -74,7 +84,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
           // for an embarrassing SERP snippet. Substitute the French convention
           // when no real price exists.
           const priceMinorNum = Number(lowest.priceMinor);
-          if (Number.isFinite(priceMinorNum) && priceMinorNum > 0) {
+          if (Number.isFinite(priceMinorNum) && priceMinorNum >= MIN_REAL_PRICE_MINOR) {
             const price = (priceMinorNum / 100).toLocaleString("fr-DZ");
             parts.push(`${price} ${lowest.currency}`);
           } else {
@@ -120,7 +130,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // "Prix sur demande") would broadcast "0.00 DZD" to Facebook/Pinterest
   // product cards and tell shopping aggregators the item is free.
   const minorPriceNum = minorVariant ? Number(minorVariant.priceMinor) : NaN;
-  const ogPriceAmount = Number.isFinite(minorPriceNum) && minorPriceNum > 0
+  const ogPriceAmount = Number.isFinite(minorPriceNum) && minorPriceNum >= MIN_REAL_PRICE_MINOR
     ? (minorPriceNum / 100).toFixed(2)
     : undefined;
   const anyInStockMeta = p.variants.some((v) => v.inStock);
@@ -278,7 +288,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // description) — just without a price line in the snippet.
   const hasRealPrice = variants.some((v) => {
     const n = Number(v.priceMinor);
-    return Number.isFinite(n) && n > 0;
+    return Number.isFinite(n) && n >= MIN_REAL_PRICE_MINOR;
   });
   const offers = !hasRealPrice
     ? undefined
