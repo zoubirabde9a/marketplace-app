@@ -37,6 +37,8 @@ export interface ProductReader {
     sellerDisplayName?: string;
     sellerPhone?: string;
     sellerWhatsapp?: string;
+    /** All phone numbers for the seller, primary first; empty when none. */
+    sellerPhones?: Array<{ phone: string; isWhatsapp: boolean; isViber: boolean; isPrimary: boolean }>;
     sellerWebsite?: string;
     categoryIds?: string[];
     shipsTo?: string[];
@@ -273,8 +275,21 @@ export async function registerProductRoutes(
   snapshots?: catalog.SnapshotStore,
   searchLog?: SearchLogSink,
 ): Promise<void> {
-  app.get("/v1/products", async (req) => {
+  app.get("/v1/products", async (req, reply) => {
     const agentId = req.principal?.agentId ?? "anonymous";
+    // Public reads (no principal) get an edge-cacheable response so
+    // Cloudflare can serve repeated crawler / agent / catalog-browser
+    // hits without slamming origin. Authenticated callers get
+    // private/no-store so each call writes a fresh per-agent snapshot
+    // for audit trail (anonymous snapshots have no agentId attribution
+    // and are functionally a verifiable response copy — safe to share
+    // across the 60s cache window). Matches the agents.json
+    // 'data_freshness: products: 5 min cache' commitment with headroom.
+    if (agentId === "anonymous") {
+      void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
+    } else {
+      void reply.header("cache-control", "private, no-store");
+    }
     const params = SearchQueryParamsSchema.parse(req.query);
     const attributes = extractAttributeFilters(req.query);
     const query: catalog.SearchQuery & { fuzzy?: boolean } = {
@@ -307,7 +322,12 @@ export async function registerProductRoutes(
     // Errors are logged at warn but never bubble up — search must not break
     // on a logging failure.
     const rawQ = (params.q ?? "").trim();
-    if (searchLog && rawQ.length > 0) {
+    // Skip Schema.org SearchAction template placeholders ("{search_term_string}",
+    // "{query}", etc.) that crawlers send while probing the search endpoint.
+    // They show up as zero-result queries in the log and pollute synonym
+    // mining. Measured 2026-05-11: 12 such queries in the last 7 days.
+    const isSchemaTemplate = /^\{[^}]+\}\\?$/.test(rawQ);
+    if (searchLog && rawQ.length > 0 && !isSchemaTemplate) {
       const hasFilters =
         params.brand !== undefined ||
         (params.sellerId && params.sellerId.length > 0) ||
@@ -373,8 +393,16 @@ export async function registerProductRoutes(
     return snap ? { ...body, ...snap } : body;
   });
 
-  app.get<{ Params: { id: string } }>("/v1/products/:id", async (req) => {
+  app.get<{ Params: { id: string } }>("/v1/products/:id", async (req, reply) => {
     const agentId = req.principal?.agentId ?? "anonymous";
+    // Same caching policy as the list endpoint: anonymous reads are
+    // edge-cacheable (60s + SWR), authenticated calls bypass the CDN
+    // so each agent's per-request snapshot is preserved.
+    if (agentId === "anonymous") {
+      void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
+    } else {
+      void reply.header("cache-control", "private, no-store");
+    }
     const p = await reader.getProduct(req.params.id, { agentId });
     if (!p) throw new NotFoundError("product", req.params.id);
     const base = resolveBaseUrl(req as unknown as { protocol: string; hostname: string; headers: Record<string, unknown> });
@@ -421,6 +449,7 @@ function projectDetail(p: DetailInput) {
     sellerDisplayName: p.sellerDisplayName ?? null,
     sellerPhone: p.sellerPhone ?? null,
     sellerWhatsapp: p.sellerWhatsapp ?? null,
+    sellerPhones: p.sellerPhones ?? [],
     sellerWebsite: p.sellerWebsite ?? null,
     categoryIds: p.categoryIds ?? [],
     shipsTo: p.shipsTo ?? [],
