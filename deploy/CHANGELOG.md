@@ -619,3 +619,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — deleted product loading.tsx (now safe). Source order: H1 byte 9818 (was 112,791), footer byte 13820. TTFB ~290ms, total ~470ms warm — faster end-to-end than the previous skeleton+stream pattern (total was 2.3s) because the API perf fix two commits ago made the underlying lookup fast
 
 2026-05-11 · vps-eu · web rebuild — French JSON-LD on /search slice landings: CollectionPage.description + ItemList.name + mainEntity name all now match the page's French H1 and meta description (Google rich-result graph was reading 'Téléphones on Teno Store' and 'NN téléphones listings from Algerian sellers')
+
+2026-05-11 · vps-eu · web rebuild — home #recent ItemList name in JSON-LD: 'Recently posted on Teno Store' → 'Annonces récentes sur Teno Store' (matches visible H2; same pattern as previous /search JSON-LD French fix)
