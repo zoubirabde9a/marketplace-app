@@ -195,6 +195,11 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       // for OG would lose detail unnecessarily.
       title: fullTitle,
       description: desc,
+      // siteName redeclared because Next.js metadata REPLACES openGraph
+      // wholesale on child pages — no shallow-merge of nested fields.
+      // Without this, FB / LinkedIn / Discord share previews on individual
+      // product pages dropped the 'Teno Store' brand context entirely.
+      siteName: "Teno Store",
       // When there's a seller hero image, surface it. When there isn't,
       // OMIT the field entirely so Next.js's file-based opengraph-image.tsx
       // convention can fill it in. Setting `images: undefined` explicitly

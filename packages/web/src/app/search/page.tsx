@@ -204,7 +204,20 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     // child fields entirely instead of merging into the layout default,
     // so without this every /search share loses the "Teno Store" brand
     // context that the home and product pages carry.
-    openGraph: { title, description, url: canonical, type: "website", siteName: "Teno Store" },
+    // Next.js metadata REPLACES openGraph wholesale on child pages (no
+    // shallow-merge of nested fields). Re-declare locale + alternateLocale
+    // here or Facebook share previews on slice landings get no regional
+    // signal. siteName redeclared for the same reason — without it,
+    // FB share cards on /search?... drop the 'Teno Store' brand context.
+    openGraph: {
+      title,
+      description,
+      url: canonical,
+      type: "website",
+      siteName: "Teno Store",
+      locale: "fr_DZ",
+      alternateLocale: ["ar_DZ", "en_US"],
+    },
     twitter: { card: "summary_large_image", title, description },
   };
 }
