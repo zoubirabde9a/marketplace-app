@@ -29,6 +29,8 @@ export default async function SellerLandingPage() {
     "@id": `${SITE_URL}/seller`,
     url: `${SITE_URL}/seller`,
     name: "Sell on Teno Store",
+    description:
+      "Onboard as a seller on Teno Store — an agent-first Algerian marketplace. Sign in with Google to create a seller profile, list products, and have AI agents discover and transact on your inventory via MCP, A2A and AP2.",
     inLanguage: "en",
     isPartOf: { "@id": `${SITE_URL}/#website` },
     about: { "@id": `${SITE_URL}/#organization` },

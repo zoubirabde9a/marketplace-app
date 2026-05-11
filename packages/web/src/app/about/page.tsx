@@ -20,6 +20,8 @@ export default function AboutPage() {
     "@id": `${SITE_URL}/about`,
     url: `${SITE_URL}/about`,
     name: "About Teno Store",
+    description:
+      "About Teno Store — an Algerian marketplace built API-first so AI agents and humans can browse, compare and transact on a real catalog of consumer goods. Built on MCP, A2A and AP2 with explicit trust signals for every listing.",
     inLanguage: "en",
     isPartOf: { "@id": `${SITE_URL}/#website` },
     about: { "@id": `${SITE_URL}/#organization` },
