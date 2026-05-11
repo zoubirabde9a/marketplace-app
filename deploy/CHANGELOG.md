@@ -553,3 +553,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — Atom feed alternate link now on every page (was missing on /search + /product; child-page alternates.types overrides replaced layout's types map entirely, dropping feed discovery on the deepest indexed surfaces where AI crawlers most often enter)
 
 2026-05-11 · vps-eu · web rebuild — restored og:locale + alternates on /search (FB regional bucketing on slice landings) + og:site_name on /product (FB share cards showed product title with no brand context); same Next.js-metadata-replaces-not-merges bug class as yesterday's Atom feed fix
+
+2026-05-11 · vps-eu · web rebuild — /search canonical + robots logic now strips tracking params (utm_*, fbclid, gclid, msclkid, etc.) before deciding indexability; previously any shared-with-tracking URL collapsed to bare /search canonical, losing the category/brand/seller landing context for ranking
