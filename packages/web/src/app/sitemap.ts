@@ -33,6 +33,18 @@ export function __resetSitemapCacheForTests(): void {
   inFlight = null;
 }
 
+// Rewrite Ouedkniss CDN URLs from the API's default /400/ size to /1200/
+// for higher-resolution image-search-eligible URLs in the sitemap. Same
+// transform as product page upscaleForShare. Pattern intentionally narrow
+// so non-Ouedkniss URLs (if the API ever returns them) pass through
+// unchanged.
+function upscaleOuedknissImage(url: string): string {
+  return url.replace(
+    /^(https?:\/\/cdn\d*\.ouedkniss\.com)\/\d{2,4}(\/medias\/)/,
+    "$1/1200$2",
+  );
+}
+
 interface SitemapProductHit {
   productId: string;
   postedAt?: string | null;
@@ -263,7 +275,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // Surface the hero image to Google Image Search via the
       // sitemap-image extension. With ~3k+ catalog rows, image search
       // is a non-trivial discovery surface that costs nothing to expose.
-      ...(p.heroImageUrl ? { images: [p.heroImageUrl] } : {}),
+      // API surfaces heroImageUrl at the /400/ Ouedkniss CDN size — too
+      // small for Image Search to rank well. The CDN supports a /1200/
+      // variant on the same path; sitemap entries are crawler-only so
+      // weight doesn't matter, and the larger asset is indexable for
+      // higher-quality image-result eligibility. See product page
+      // upscaleForShare for the same transform applied to og:image.
+      ...(p.heroImageUrl
+        ? { images: [upscaleOuedknissImage(p.heroImageUrl)] }
+        : {}),
     }));
     // Brand-only landing pages (/search?brand=Apple) are indexable per
     // search/page.tsx's canonical logic — give Google a direct seed for each.
