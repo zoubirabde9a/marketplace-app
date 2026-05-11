@@ -36,10 +36,13 @@ describe("search page generateMetadata", () => {
     expect(m.title).toBe("Browse the marketplace");
   });
 
-  it("?q=phone → indexable, canonical /search?q=phone", async () => {
+  it("?q=phone → noindex,follow (free-text search results not indexable)", async () => {
+    // Open-ended internal search results are noindex-by-default: spam-link
+    // injection risk + duplicate of curated brand/category landings.
+    // Canonical still points at the q URL so internal links don't fragment.
     const m = await M({ q: "phone" });
     expect(m.alternates?.canonical).toBe("/search?q=phone");
-    expect(m.robots).toEqual({ index: true, follow: true });
+    expect(m.robots).toEqual({ index: false, follow: true });
     expect(m.title).toBe("Search: phone");
   });
 

@@ -106,14 +106,43 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       ? `Browse ${fmtCount} ${brand} ${listingWord} from Algerian sellers on Teno Store. Filter by category, price or seller. Prices in DZD.`
       : `Browse ${brand} products on Teno Store.`;
   } else if (category && !isMultiValuedCategory) {
-    const human = category.replace(/[-_]/g, " ");
-    // Layout template appends " · Teno Store"; saying "<X> on Teno Store"
-    // here would render as "<X> on Teno Store · Teno Store" — redundant
-    // and burns SERP characters. Bare humanised slug only.
-    title = `${human.charAt(0).toUpperCase()}${human.slice(1)}`;
+    // Category slugs are stored unaccented for URL ergonomics (telephones,
+    // electromenager, vehicules). Without a label map, the SERP title
+    // surfaced as "Telephones" — an English-coded ASCII string on a French-
+    // language document, mismatching the catalog content's actual language.
+    // Map known top-level slugs to their proper French display form,
+    // matching the home-page category chip labels. Unknown slugs fall
+    // through to the humanised slug.
+    const FR_CATEGORY: Record<string, string> = {
+      telephones: "Téléphones",
+      smartphones: "Smartphones",
+      informatique: "Informatique",
+      portables: "Ordinateurs portables",
+      electromenager: "Électroménager",
+      mode: "Mode",
+      maison: "Maison & Déco",
+      vehicules: "Véhicules",
+      voitures: "Voitures",
+      motos: "Motos",
+      immobilier: "Immobilier",
+      jeux: "Jeux & Loisirs",
+      bebe: "Bébé & Enfants",
+      sport: "Sport & Loisirs",
+      services: "Services",
+      emploi: "Emploi",
+    };
+    const slug = category.toLowerCase();
+    const human = FR_CATEGORY[slug] ?? (() => {
+      const h = category.replace(/[-_]/g, " ");
+      return `${h.charAt(0).toUpperCase()}${h.slice(1)}`;
+    })();
+    title = human;
+    // Description in pure French — matches the document's primary language
+    // and the catalog's source language. The 'annonces' / 'vendeurs algériens'
+    // / 'prix en DZD' phrasing reinforces the locale signal in SERP snippets.
     description = fmtCount
-      ? `${fmtCount} ${human} ${listingWord} from Algerian sellers on Teno Store. Annonces actualisées en temps réel, prix en DZD.`
-      : `Browse ${human} listings on Teno Store.`;
+      ? `${fmtCount} annonces ${human.toLowerCase()} de vendeurs algériens sur Teno Store, actualisées en temps réel. Filtrez par marque, prix ou vendeur. Prix en dinars (DZD).`
+      : `Annonces ${human.toLowerCase()} de vendeurs algériens sur Teno Store. Prix en DZD.`;
   } else if (sellerId && !isMultiValuedSeller) {
     // Same suffix-duplication concern as the category branch — layout
     // appends " · Teno Store", so "{Seller} on Teno Store" would render

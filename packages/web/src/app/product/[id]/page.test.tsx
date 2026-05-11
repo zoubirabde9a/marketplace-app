@@ -30,7 +30,7 @@ const baseProduct = (overrides: Partial<ProductDetail> = {}): ProductDetail => (
   brand: "Acme",
   attributes: {},
   variants: [
-    { id: "v1", sku: "SKU-1", priceMinor: "1000", currency: "USD", inStock: true },
+    { id: "v1", sku: "SKU-1", priceMinor: "1000000", currency: "USD", inStock: true },
   ],
   sellerId: "s-1",
   sellerDisplayName: "Acme Storefront",
