@@ -6,6 +6,8 @@
 import { config as loadDotenv } from "dotenv";
 import { existsSync, readFileSync } from "node:fs";
 import { createPrivateKey, createPublicKey, type KeyObject } from "node:crypto";
+import cluster from "node:cluster";
+import { availableParallelism } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createDb, createRepos } from "@marketplace/db";
@@ -101,7 +103,12 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const { db, close } = createDb({ url: databaseUrl });
+  // Cap the per-worker pg pool when clustering so total connections across
+  // workers stay well under Postgres max_connections (100 on prod). Default
+  // pool is 20; with N workers we divide and floor at 5.
+  const workerCount = Number(process.env.API_WORKER_COUNT ?? 1);
+  const poolMax = workerCount > 1 ? Math.max(5, Math.floor(40 / workerCount)) : 20;
+  const { db, close } = createDb({ url: databaseUrl, max: poolMax });
   const repos = createRepos(db);
   const keys = loadKeys();
   const audience = process.env.AUDIENCE ?? "marketplace.dev";
@@ -124,6 +131,7 @@ async function main(): Promise<void> {
       audience,
       now: () => Date.now(),
       devBypass,
+      ...(process.env.MCP_ADMIN_TOKEN ? { mcpAdminToken: process.env.MCP_ADMIN_TOKEN } : {}),
     },
     productReader,
     repos,
@@ -155,8 +163,43 @@ async function main(): Promise<void> {
   app.log.info(`Issuer kid: ${keys.kid}. Google client: ${googleClientId.slice(0, 16)}…`);
 }
 
-main().catch((err) => {
+// Multi-core scaling via Node's built-in cluster module. The primary process
+// forks N workers; each worker runs main() and shares the listening socket on
+// PORT via the kernel. Set API_WORKERS=1 to disable (or for local dev/tests).
+// API_WORKERS=auto uses available cores capped at 4 (leaves headroom for
+// postgres/web/scraper on the 6-core prod box).
+function resolveWorkerCount(): number {
+  const raw = process.env.API_WORKERS;
+  if (!raw || raw === "1") return 1;
+  if (raw === "auto") return Math.min(4, Math.max(1, availableParallelism()));
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 1;
+}
+
+const workers = resolveWorkerCount();
+
+if (workers > 1 && cluster.isPrimary) {
   // eslint-disable-next-line no-console
-  console.error("fatal", err);
-  process.exit(1);
-});
+  console.log(`api primary pid=${process.pid} forking ${workers} workers`);
+  for (let i = 0; i < workers; i++) cluster.fork({ API_WORKER_COUNT: String(workers) });
+
+  cluster.on("exit", (worker, code, signal) => {
+    // eslint-disable-next-line no-console
+    console.error(`api worker pid=${worker.process.pid} exited (code=${code} signal=${signal}); respawning`);
+    cluster.fork({ API_WORKER_COUNT: String(workers) });
+  });
+
+  const shutdown = (sig: NodeJS.Signals) => {
+    // eslint-disable-next-line no-console
+    console.log(`api primary received ${sig}; forwarding to workers`);
+    for (const id in cluster.workers) cluster.workers[id]?.kill(sig);
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+} else {
+  main().catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error("fatal", err);
+    process.exit(1);
+  });
+}

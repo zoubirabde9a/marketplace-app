@@ -90,6 +90,10 @@ services:
       ISSUER_KEYS_PATH: /app/minimal-issuer/keys/issuer.json
       DATABASE_URL: postgres://marketplace:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/marketplace
       REDIS_URL: redis://redis:6379
+      # Multi-core scaling. `auto` uses available cores capped at 4 (leaves
+      # headroom on the 6-core box for postgres / web / scraper). Set to 1
+      # to disable clustering and revert to single-process mode.
+      API_WORKERS: ${API_WORKERS:-auto}
     volumes:
       - ./minimal-issuer:/app/minimal-issuer:ro
     expose:

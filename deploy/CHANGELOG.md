@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · api · enable Node cluster mode (multi-core)
+
+- Stress test showed `marketplace-api` was bottlenecked on a single CPU core (118% of one core under 5 concurrent search users; p99 ~10s, throughput ~3 req/s).
+- Wrapped the API entry point (`packages/api/src/start.ts`) in Node's built-in `cluster` module. Primary forks N workers sharing the listening socket on :3100; on worker exit it respawns.
+- Per-worker Postgres pool capped at `floor(40 / workers)` (min 5) so total connections stay well under `max_connections=100` with headroom for psql / seed-loop sessions.
+- `docker-compose.prod.yml` passes `API_WORKERS=${API_WORKERS:-auto}` (auto = available cores capped at 4). Rollback: set `API_WORKERS=1` in `.env` and `up -d api`.
+- Deployed via rsync + `docker compose -f docker-compose.prod.yml up -d --build api`.
+
 ## 2026-05-11 — vps-eu · scraper-loop · rotate across 7 top-level categories
 
 - Scrape loop was pinned to `telephones` only — the systemd unit hard-coded that single category, so 100% of seeded products were phones/tablets despite the catalog being able to hold anything.
