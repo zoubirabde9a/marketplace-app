@@ -225,6 +225,25 @@ function snapshotWebUrl(id: string): string | undefined {
   return base ? `${base}/s/${id}` : undefined;
 }
 
+// Set public-read cache policy on a reply based on the calling principal.
+// Anonymous reads: edge-cacheable for 60s + SWR 300s. Authenticated calls:
+// private no-store so per-agent snapshot audit trails stay fresh.
+// Always sets Vary: Authorization — without it, CDNs can serve a cached
+// anonymous response to an authenticated agent, breaking the snapshot
+// audit. Vary keys the cache entry by presence/value of Authorization,
+// so anon ↔ auth never share an entry.
+export function applyPublicReadCacheHeaders(
+  reply: { header: (name: string, value: string) => unknown },
+  agentId: string,
+): void {
+  if (agentId === "anonymous") {
+    void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
+  } else {
+    void reply.header("cache-control", "private, no-store");
+  }
+  void reply.header("vary", "Authorization");
+}
+
 async function captureRestSnapshot(
   store: catalog.SnapshotStore | undefined,
   kind: catalog.SnapshotKind,
@@ -285,11 +304,7 @@ export async function registerProductRoutes(
     // and are functionally a verifiable response copy — safe to share
     // across the 60s cache window). Matches the agents.json
     // 'data_freshness: products: 5 min cache' commitment with headroom.
-    if (agentId === "anonymous") {
-      void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
-    } else {
-      void reply.header("cache-control", "private, no-store");
-    }
+    applyPublicReadCacheHeaders(reply, agentId);
     const params = SearchQueryParamsSchema.parse(req.query);
     const attributes = extractAttributeFilters(req.query);
     const query: catalog.SearchQuery & { fuzzy?: boolean } = {
@@ -398,11 +413,7 @@ export async function registerProductRoutes(
     // Same caching policy as the list endpoint: anonymous reads are
     // edge-cacheable (60s + SWR), authenticated calls bypass the CDN
     // so each agent's per-request snapshot is preserved.
-    if (agentId === "anonymous") {
-      void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
-    } else {
-      void reply.header("cache-control", "private, no-store");
-    }
+    applyPublicReadCacheHeaders(reply, agentId);
     const p = await reader.getProduct(req.params.id, { agentId });
     if (!p) throw new NotFoundError("product", req.params.id);
     const base = resolveBaseUrl(req as unknown as { protocol: string; hostname: string; headers: Record<string, unknown> });
@@ -413,11 +424,7 @@ export async function registerProductRoutes(
 
   app.get("/v1/products/_batch", async (req, reply) => {
     const agentId = req.principal?.agentId ?? "anonymous";
-    if (agentId === "anonymous") {
-      void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
-    } else {
-      void reply.header("cache-control", "private, no-store");
-    }
+    applyPublicReadCacheHeaders(reply, agentId);
     const params = BatchGetQuerySchema.parse(req.query);
     const found = await reader.getProductsByIds(params.id);
     const base = resolveBaseUrl(req as unknown as { protocol: string; hostname: string; headers: Record<string, unknown> });

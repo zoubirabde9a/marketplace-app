@@ -5,6 +5,7 @@ import { z } from "zod";
 import { seller as sellerDomain } from "@marketplace/domain";
 import { NotFoundError, UnauthorizedError } from "@marketplace/shared/errors";
 import { requirePrincipal } from "../middleware/auth.js";
+import { applyPublicReadCacheHeaders } from "./products.js";
 import type { SellerRepo, SellerRecord } from "../repos/seller.js";
 
 const CreateSellerSchema = z.object({
@@ -94,11 +95,7 @@ export async function registerSellerRoutes(app: FastifyInstance, sellers: Seller
     // per agents.json; anonymous reads are edge-cacheable for 60s, auth'd
     // calls stay private. See routes/products.ts for the rationale.
     const agentId = req.principal?.agentId ?? "anonymous";
-    if (agentId === "anonymous") {
-      void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
-    } else {
-      void reply.header("cache-control", "private, no-store");
-    }
+    applyPublicReadCacheHeaders(reply, agentId);
     const params = ListSellersQuerySchema.parse(req.query);
     const all = await sellers.list();
     let filtered = params.q
@@ -123,11 +120,7 @@ export async function registerSellerRoutes(app: FastifyInstance, sellers: Seller
 
   app.get<{ Params: { id: string } }>("/v1/sellers/:id", async (req, reply) => {
     const agentId = req.principal?.agentId ?? "anonymous";
-    if (agentId === "anonymous") {
-      void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
-    } else {
-      void reply.header("cache-control", "private, no-store");
-    }
+    applyPublicReadCacheHeaders(reply, agentId);
     const s = await sellers.get(req.params.id);
     if (!s) throw new NotFoundError("seller", req.params.id);
     return shapeSellerPublic(s, await sellers.countProducts(s.sellerId));
