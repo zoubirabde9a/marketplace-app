@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web+mcp · public seller storefront page at /store/[id], wired into MCP outputs
+
+- Earlier rounds gave every seller create + product create a 24h frozen snapshot, but the only buyer-facing "see this seller" URL was `/search?sellerId=…` — a filtered search-results page, not a storefront. A real marketplace gives each store a permanent destination with its name, location, contact channels, bio, and product grid.
+- Added `/store/[id]` as the public seller storefront. Server-rendered for SEO; pulls `/v1/sellers/:id` for identity (display name, city/country, bio, multi-line phones with WhatsApp/Viber/primary tags, website, support email) and `/v1/products?sellerId=...` for the product grid. Schema.org `Store` JSON-LD embedded for search engines.
+- The MCP `seller.create_account` response now carries `storeUrl` (permanent, public) alongside the existing `snapshotUrl` (24h, ephemeral). `product.create_listing` adds both `productUrl` (the public product page) and `storeUrl` (the owning seller's storefront).
+- The `/s/[id]` snapshot page now CTAs into the live storefront: "View live storefront →" on seller-create snapshots, and "View live product page →" + "Go to store" on product-create snapshots. Buyers (and the operator) can jump from the verification snapshot to the durable customer URL with one click.
+- `web/src/lib/api.ts` gets `getSeller(id)` and widens `SellerRecord` to expose `phones[]` / `description` / `city` / `countryCode` / `supportEmail`.
+- Deployed via tar + `docker compose build api web && up -d api web`. No DB migration in this pass (data shape unchanged; just exposes more of what's already there). Full test suite green.
+
 ## 2026-05-11 — vps-eu · scraper+api+web · capture all seller phones from Ouedkniss (multi-line shops)
 
 - Bug: the scraper-driven seeder was dropping every phone past the first. Ouedkniss publishes an ordered list of phones per shop (with per-number `hasWhatsapp` / `hasViber` flags); we were calling `pickPhone()` to keep only the first and using it for both the `phone` and `whatsapp` columns. A shop with three sales lines looked like a one-line shop, and every phone was falsely labelled WhatsApp-capable.
@@ -621,3 +630,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — French JSON-LD on /search slice landings: CollectionPage.description + ItemList.name + mainEntity name all now match the page's French H1 and meta description (Google rich-result graph was reading 'Téléphones on Teno Store' and 'NN téléphones listings from Algerian sellers')
 
 2026-05-11 · vps-eu · web rebuild — home #recent ItemList name in JSON-LD: 'Recently posted on Teno Store' → 'Annonces récentes sur Teno Store' (matches visible H2; same pattern as previous /search JSON-LD French fix)
+
+2026-05-11 · vps-eu · web rebuild — French WebSite JSON-LD description (was English 'agent-to-agent marketplace...') + inLanguage:[fr,ar,en] on the home knowledge-graph entity; alternateName 'agent observer' → 'marketplace algérien'
