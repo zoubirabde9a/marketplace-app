@@ -17,14 +17,45 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").r
 
 interface Params { id: string }
 
+// Map ISO 3166-1 alpha-2 country codes to their French name for display.
+// The catalog is Algeria-primary so "DZ" is the dominant value; other codes
+// fall back to the raw ISO code (sellers can flag this for a proper map if
+// they expand outside Algeria).
+function frCountry(cc: string | null | undefined): string | null {
+  if (!cc) return null;
+  const m: Record<string, string> = { DZ: "Algérie", FR: "France", TN: "Tunisie", MA: "Maroc" };
+  return m[cc.toUpperCase()] ?? cc;
+}
+
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { id } = await params;
   const s = await getSeller(id).catch(() => null);
-  if (!s) return { title: "Store not found", robots: { index: false, follow: false } };
-  const locality = [s.city, s.countryCode].filter(Boolean).join(", ");
+  if (!s) return { title: "Boutique introuvable", robots: { index: false, follow: false } };
+  // Display-friendly French locality. Joins city + French country name with
+  // a comma; either side may be null. ISO country code passes through
+  // frCountry() so prod meta description reads "Alger, Algérie" rather
+  // than the bare ISO "DZ" that landed on Google's prior crawl.
+  const locality = [s.city, frCountry(s.countryCode)].filter(Boolean).join(", ");
+  // French preposition before the locality. With a city we use "à" ("à Alger"
+  // or "à Alger, Algérie"). Without a city — locality is just the country —
+  // we need the gendered "en"/"au"/"aux" forms ("en Algérie", "au Maroc").
+  // "à Algérie" is ungrammatical and showed up on the prior crawl for
+  // sellers who had countryCode but no city.
+  const localityPrep = (() => {
+    if (!locality) return "";
+    if (s.city) return "à ";
+    // Country-only — pick preposition by country.
+    const cc = (s.countryCode ?? "").toUpperCase();
+    // au + masculine: MA Maroc, CA Canada, JP Japon… (only MA in our map).
+    if (cc === "MA") return "au ";
+    // aux + plural-feminine/masculine: US États-Unis, NL Pays-Bas, AE Émirats…
+    // (none in our map today).
+    // en + feminine: DZ Algérie, FR France, TN Tunisie. Default.
+    return "en ";
+  })();
   const desc =
     s.description ||
-    `Shop ${s.displayName}${locality ? ` in ${locality}` : ""} on Teno Store. ${s.productCount} listing${s.productCount === 1 ? "" : "s"}.`;
+    `Boutique ${s.displayName}${locality ? ` ${localityPrep}${locality}` : ""} sur Teno Store. ${s.productCount} annonce${s.productCount === 1 ? "" : "s"} en dinars algériens (DZD).`;
   return {
     title: s.displayName,
     description: desc.slice(0, 200),
@@ -34,6 +65,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       description: desc.slice(0, 200),
       url: `${SITE_URL}/store/${s.sellerId}`,
       type: "website",
+      locale: "fr_DZ",
     },
   };
 }
@@ -53,7 +85,10 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   const totalEstimate = listings?.pagination.totalEstimate ?? 0;
 
   const phones = seller.phones ?? [];
-  const location = [seller.city, seller.countryCode].filter(Boolean).join(", ");
+  // Visible location uses the French country name (frCountry()) so the
+  // header reads "Alger, Algérie" rather than "Alger, DZ"; matches the
+  // meta description and the rest of the French-locale page copy.
+  const location = [seller.city, frCountry(seller.countryCode)].filter(Boolean).join(", ");
 
   const storeJsonLd = {
     "@context": "https://schema.org",
@@ -80,15 +115,34 @@ export default async function StorePage({ params }: { params: Promise<Params> })
       : {}),
   };
 
+  // BreadcrumbList for SERP rich-result row above the snippet
+  // ("teno-store.com › Accueil › Catalogue › {seller}"). The /search?sellerId
+  // page (now canonical-redirect to /store/{id} via commit efb4f54) had this
+  // signal; preserving it on the new canonical URL avoids regressing the
+  // rich-result coverage we already had.
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Accueil", item: `${SITE_URL}/` },
+      { "@type": "ListItem", position: 2, name: "Catalogue", item: `${SITE_URL}/search` },
+      { "@type": "ListItem", position: 3, name: seller.displayName, item: `${SITE_URL}/store/${seller.sellerId}` },
+    ],
+  };
+
   return (
     <article className="max-w-6xl mx-auto p-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(storeJsonLd) }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
+      />
 
       <header className="border-b border-line-soft pb-6 mb-6">
-        <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Store</p>
+        <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Boutique</p>
         <h1 className="text-3xl font-semibold mt-1">{seller.displayName}</h1>
         {location ? <p className="text-sm text-ink-soft mt-1">{location}</p> : null}
         {seller.description ? (
@@ -98,13 +152,13 @@ export default async function StorePage({ params }: { params: Promise<Params> })
         <dl className="mt-5 text-sm grid grid-cols-1 sm:grid-cols-[max-content_1fr] gap-x-4 gap-y-1 max-w-xl">
           {phones.length > 0 ? (
             <>
-              <dt className="text-ink-mute">Phone{phones.length > 1 ? "s" : ""}</dt>
+              <dt className="text-ink-mute">Téléphone{phones.length > 1 ? "s" : ""}</dt>
               <dd>
                 <ul>
                   {phones.map((p) => (
                     <li key={p.phone}>
                       <a className="font-mono text-accent hover:underline" href={`tel:${p.phone}`}>{p.phone}</a>
-                      {p.isPrimary ? <span className="text-xs text-ink-mute"> · primary</span> : null}
+                      {p.isPrimary ? <span className="text-xs text-ink-mute"> · principal</span> : null}
                       {p.isWhatsapp ? <span className="text-xs text-ink-mute"> · WhatsApp</span> : null}
                       {p.isViber ? <span className="text-xs text-ink-mute"> · Viber</span> : null}
                     </li>
@@ -114,19 +168,19 @@ export default async function StorePage({ params }: { params: Promise<Params> })
             </>
           ) : seller.phone ? (
             <>
-              <dt className="text-ink-mute">Phone</dt>
+              <dt className="text-ink-mute">Téléphone</dt>
               <dd><a className="font-mono text-accent hover:underline" href={`tel:${seller.phone}`}>{seller.phone}</a></dd>
             </>
           ) : null}
           {seller.website ? (
             <>
-              <dt className="text-ink-mute">Website</dt>
+              <dt className="text-ink-mute">Site web</dt>
               <dd><a className="text-accent hover:underline" href={seller.website} rel="nofollow noopener">{seller.website}</a></dd>
             </>
           ) : null}
           {seller.supportEmail ? (
             <>
-              <dt className="text-ink-mute">Support</dt>
+              <dt className="text-ink-mute">Contact</dt>
               <dd><a className="text-accent hover:underline" href={`mailto:${seller.supportEmail}`}>{seller.supportEmail}</a></dd>
             </>
           ) : null}
@@ -136,18 +190,18 @@ export default async function StorePage({ params }: { params: Promise<Params> })
       <section>
         <h2 className="text-xl font-medium mb-4">
           {totalEstimate > 0
-            ? `Listings (${totalEstimate})`
-            : "No listings yet"}
+            ? `Annonces (${totalEstimate})`
+            : "Pas encore d’annonces"}
         </h2>
         {hits.length > 0 ? (
           <ProductGrid hits={hits} />
         ) : (
-          <p className="text-ink-soft">This store hasn’t published any products yet.</p>
+          <p className="text-ink-soft">Cette boutique n’a pas encore publié d’annonces.</p>
         )}
         {totalEstimate > hits.length ? (
           <p className="mt-6">
             <Link className="text-accent hover:underline" href={`/search?sellerId=${seller.sellerId}`}>
-              See all {totalEstimate} listings →
+              Voir les {totalEstimate} annonces →
             </Link>
           </p>
         ) : null}
