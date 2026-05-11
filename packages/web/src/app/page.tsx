@@ -217,9 +217,10 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           </Link>
           <Link
             href="/search"
+            lang="fr"
             className="inline-flex h-11 px-5 items-center rounded-xl bg-bg-soft border border-line text-ink-soft hover:border-accent/40 hover:text-ink transition"
           >
-            Browse the catalog
+            Parcourir le catalogue
           </Link>
         </div>
       </div>
