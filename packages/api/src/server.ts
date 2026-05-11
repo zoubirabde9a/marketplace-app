@@ -144,6 +144,36 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
   app.post("/register", dcrStub);
   app.post("/oauth/register", dcrStub);
 
+  // OAuth 2.1 endpoint stubs. Both apex agents.json and api agent-card.json
+  // declare these endpoint URLs as part of the documented auth posture, but
+  // they returned bare 404 in production — AI agents following the discovery
+  // doc and attempting the documented OAuth flow saw 'Not Found' and had no
+  // signal that the endpoints exist-but-aren't-implemented vs the URL being
+  // wrong. RFC 6749 §5.2 error responses make the failure mode explicit:
+  // agents see a structured 'unsupported_grant_type' (or analogous) and
+  // know to fall back to the Agent Passport / DPoP path that Teno actually
+  // supports today.
+  // Same pattern as the DCR stub above; both /POST and /GET on the auth
+  // endpoint because some OAuth clients probe with GET first.
+  const oauthNotImplemented = async (
+    _req: unknown,
+    reply: { code: (n: number) => unknown; header: (k: string, v: string) => unknown; send: (b: unknown) => unknown },
+  ) => {
+    reply.code(501);
+    reply.header("content-type", "application/json");
+    return reply.send({
+      error: "unsupported_grant_type",
+      error_description:
+        "OAuth 2.1 token/authorize/introspection endpoints are not implemented on this host. Use the Agent Passport flow described in /.well-known/agent-card.json instead.",
+    });
+  };
+  app.post("/oauth/token", oauthNotImplemented);
+  app.post("/oauth/introspect", oauthNotImplemented);
+  // Authorization endpoint is GET per RFC 6749 §3.1; agents that follow
+  // the spec arrive here via redirect, not POST.
+  app.get("/oauth/authorize", oauthNotImplemented);
+  app.post("/oauth/authorize", oauthNotImplemented);
+
   // MCP streamable-HTTP transport. The registry holds tool defs; buildContext
   // resolves the calling agent from auth middleware's req.principal (synthesised
   // for DEV_BYPASS on /mcp — see middleware/auth.ts).
