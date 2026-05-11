@@ -15,22 +15,33 @@
   French; some Arabic and English.
 - Scale: thousands of live product listings sourced from real Algerian
   marketplaces, refreshed continuously.
-- Top categories (browse pages — each indexable as its own landing):
-  - Phones / smartphones — `/search?category=telephones`,
+- Top categories (browse pages — each indexable as its own landing). The
+  compound underscore-joined slugs are the highest-volume Ouedkniss top-level
+  categories and host the bulk of the catalog; the bare slugs are
+  subcategories.
+  - Téléphones (~21k products) — `/search?category=telephones`,
     `/search?category=smartphones`
-  - Computing — `/search?category=informatique`,
+  - Automobiles & Véhicules — `/search?category=automobiles_vehicules`,
+    `/search?category=vehicules`, `/search?category=voitures`,
+    `/search?category=motos`
+  - Électronique & Électroménager — `/search?category=electronique_electromenager`,
+    `/search?category=electromenager`
+  - Vêtements & Mode — `/search?category=vetements_mode`,
+    `/search?category=mode`, `/search?category=femme`,
+    `/search?category=homme`, `/search?category=accessoires`,
+    `/search?category=traditionnel`
+  - Santé & Beauté — `/search?category=sante_beaute`
+  - Immobilier — `/search?category=immobilier`
+  - Informatique — `/search?category=informatique`,
     `/search?category=ordinateurs`, `/search?category=portables`,
     `/search?category=peripheriques`, `/search?category=ecrans`
-  - Home & appliances — `/search?category=maison`,
-    `/search?category=electromenager`, `/search?category=salon`,
-    `/search?category=decoration`
-  - Fashion — `/search?category=mode`, `/search?category=femme`,
-    `/search?category=homme`, `/search?category=accessoires`
-  - Vehicles — `/search?category=vehicules`,
-    `/search?category=voitures`
-- Brand landings: `/search?brand=<Brand>` (e.g. Apple, Samsung, HP, LG).
-- Free-text search: `/search?q=<query>` — supports French/English/Arabic
-  queries and common abbreviations (e.g. `frigo`, `tlf`).
+  - Maison & Déco — `/search?category=maison`,
+    `/search?category=decoration`, `/search?category=salon`
+- Brand landings: `/search?brand=<Brand>` (e.g. Apple, Samsung, Xiaomi, HP, LG).
+- Seller landings: `/search?sellerId=<uuid>` — each Algerian seller's full
+  storefront on one indexable URL.
+- Free-text search results (`/search?q=<query>`) are noindex,follow — agents
+  can use them but they are not surfaced as separate indexed landings.
 
 ## What this site is for
 
