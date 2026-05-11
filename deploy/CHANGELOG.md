@@ -555,3 +555,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — restored og:locale + alternates on /search (FB regional bucketing on slice landings) + og:site_name on /product (FB share cards showed product title with no brand context); same Next.js-metadata-replaces-not-merges bug class as yesterday's Atom feed fix
 
 2026-05-11 · vps-eu · web rebuild — /search canonical + robots logic now strips tracking params (utm_*, fbclid, gclid, msclkid, etc.) before deciding indexability; previously any shared-with-tracking URL collapsed to bare /search canonical, losing the category/brand/seller landing context for ranking
+
+2026-05-11 · vps-eu · web rebuild — sitemap brand + seller facet floor raised to count>=5; dropped 9 scrape-noise brand landings (Mode & Style, Atelier Constantine, Maison & Déco, Acme, Artisanat Sétif, etc. with count 1-3); 37 → 28 brand URLs in sitemap
