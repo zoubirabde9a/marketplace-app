@@ -186,14 +186,16 @@ async function searchPage(page, attempt = 1) {
   }
 }
 
-// Convert Ouedkniss's (value, priceUnit) pair into a real DZD-denominated
-// integer. priceUnit is a GraphQL enum:
-//   UNIT     — value is already in DZD (typical for phones / electronics).
-//   MILLION  — Algerian car-pricing slang. 1 "million" = 1,000,000 centimes
-//              = 10,000 DZD. So multiply by 10,000.
-//   BILLION  — same scale up: 1 "milliard" = 1,000 millions = 10,000,000 DZD.
-// Anything else is treated as UNIT (logged below by the seeder if it ever
-// stores DZD <1000, which is a useful canary).
+// Ouedkniss data model (verified 2026-05-11 against the live SearchQuery):
+//   `price`        — numeric DZD value, ALWAYS in dinars regardless of unit.
+//                    Authoritative when present. For a 2.85 M-DZD car this
+//                    is e.g. 2850000.
+//   `pricePreview` — the "X" the seller chose to display, in `priceUnit`s.
+//                    For the same car: pricePreview=285, priceUnit=MILLION
+//                    (Algerian slang: 1 "million" = 10,000 DZD; 1 "milliard"
+//                    = 10,000,000 DZD). So preview × unit_factor reconstructs
+//                    price.
+//   pricePreview=0 means "no price set" (Prix négociable / Échange).
 const PRICE_UNIT_TO_DZD = {
   UNIT: 1,
   MILLION: 10_000,
@@ -201,21 +203,24 @@ const PRICE_UNIT_TO_DZD = {
 };
 
 function priceText(item) {
-  // pricePreview is the seller-formatted string ("1.250.000") and is null /
-  // "0" / empty when the seller didn't set a real price (Échange / Prix
-  // négociable / similar). Trust `price` (numeric) as the source of truth
-  // and fall back to pricePreview only when price is missing.
-  let raw = item.price;
-  if (raw == null) {
-    raw = item.pricePreview;
+  // Prefer the authoritative DZD value. Only synthesize from pricePreview
+  // when the seller didn't fill price (rare but happens in legacy listings).
+  let dzd = null;
+  if (item.price != null && Number(item.price) > 0) {
+    dzd = Number(item.price);
+  } else if (
+    item.pricePreview != null &&
+    item.pricePreview !== "" &&
+    item.pricePreview !== "0" &&
+    Number(item.pricePreview) > 0
+  ) {
+    const preview = Number(String(item.pricePreview).replace(/[^\d]/g, ""));
+    const mult = PRICE_UNIT_TO_DZD[item.priceUnit] ?? 1;
+    dzd = preview * mult;
   }
-  if (raw == null || raw === "" || raw === "0" || Number(raw) === 0) return null;
-  const value = typeof raw === "number" ? raw : Number(String(raw).replace(/[^\d]/g, ""));
-  if (!Number.isFinite(value) || value <= 0) return null;
-  const mult = PRICE_UNIT_TO_DZD[item.priceUnit] ?? 1;
-  const dzd = value * mult;
+  if (dzd == null || !Number.isFinite(dzd) || dzd <= 0) return null;
   // Emit a canonical "<dzd> DA" string so the seeder's digit-only parser
-  // produces the right priceMinor. No commas / dots so nothing strips wrong.
+  // produces the right priceMinor.
   return `${dzd} DA`;
 }
 
