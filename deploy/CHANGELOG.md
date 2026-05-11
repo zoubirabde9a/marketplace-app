@@ -438,3 +438,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — add Cache-Control: public, s-maxage=300, SWR=1800 to /sitemap.xml · was max-age=0 must-revalidate (Next dynamic-route default), every crawler hit reached origin; now Cloudflare can cache between crawls
 
 2026-05-11 · vps-eu · web rebuild — add Cache-Control 1h to /manifest.webmanifest (was Next default max-age=0); PWA installers + Lighthouse audits no longer hit origin per fetch
+
+2026-05-11 · vps-eu · web rebuild — <html lang=fr> + og:locale=fr_DZ (alt ar_DZ, en_US) — catalog content is overwhelmingly French (Ouedkniss source); en mismatched the actual language signal Google uses to match French queries
