@@ -61,11 +61,30 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     description: desc.slice(0, 200),
     alternates: { canonical: `/store/${s.sellerId}` },
     openGraph: {
+      // Next.js metadata.openGraph REPLACES the layout default wholesale on
+      // child pages (no shallow-merge of nested fields). Probed live before
+      // this fix: no og:site_name, no og:image. Redeclare each field that
+      // child pages need; matches the pattern from /search + /product.
       title: s.displayName,
       description: desc.slice(0, 200),
       url: `${SITE_URL}/store/${s.sellerId}`,
       type: "website",
+      siteName: "Teno Store",
       locale: "fr_DZ",
+      alternateLocale: ["ar_DZ", "en_US"],
+      // og:image — without this, Twitter summary_large_image renders a
+      // degraded card and FB/LinkedIn show no preview image. Use the
+      // home opengraph-image route which renders the brand card at
+      // 1200×630 (the spec minimum for summary_large_image).
+      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: `${s.displayName} — Teno Store` }],
+    },
+    twitter: {
+      // Same shallow-merge gotcha — without explicit twitter.*, /store/{id}
+      // share previews on X showed the layout-default brand pitch instead
+      // of the seller's name.
+      card: "summary_large_image",
+      title: s.displayName,
+      description: desc.slice(0, 200),
     },
   };
 }
