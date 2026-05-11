@@ -115,6 +115,78 @@ export default async function StorePage({ params }: { params: Promise<Params> })
       : {}),
   };
 
+  // ItemList of this seller's products. The /search?sellerId=... page (now
+  // canonical-redirect to /store/{id}) shipped one with up to 25 nested
+  // Product entries — each with name/url/image/brand/offers. Without it on
+  // the new canonical URL, Google loses per-product structured-data
+  // coverage from the seller-storefront entity, Shopping bucketing for
+  // the seller's inventory, and the Brand→Seller relationship signal.
+  // Price floor below 100 DZD treated as "Prix sur demande" (matches the
+  // home / search / product / feed price-suppression policy).
+  const minorToMajor = (minor: string | undefined): string | undefined => {
+    if (!minor) return undefined;
+    const n = Number(minor);
+    if (!Number.isFinite(n) || n < 10000) return undefined;
+    return (n / 100).toFixed(2);
+  };
+  const itemListJsonLd = hits.length > 0
+    ? {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "@id": `${SITE_URL}/store/${seller.sellerId}#products`,
+        name: `Annonces de ${seller.displayName}`,
+        numberOfItems: hits.length,
+        itemListElement: hits.slice(0, 25).map((hit, idx) => {
+          const productUrl = `${SITE_URL}/product/${encodeURIComponent(hit.productId)}`;
+          const product: Record<string, unknown> = {
+            "@type": "Product",
+            "@id": productUrl,
+            name: hit.title?.value,
+            url: productUrl,
+            productID: hit.productId,
+          };
+          if (hit.heroImageUrl) {
+            // Inline the same /400 → /1200 upscale used elsewhere so crawler-
+            // facing image URLs hit the higher-resolution variant for Image
+            // Search ranking. (Helper lives in lib/images but this file is
+            // operator-managed; keeping the regex inline avoids touching
+            // their import surface.)
+            product.image = [hit.heroImageUrl.replace(
+              /^(https?:\/\/cdn\d*\.ouedkniss\.com)\/\d{2,4}(\/medias\/)/,
+              "$1/1200$2",
+            )];
+          }
+          if (hit.brand) product.brand = { "@type": "Brand", name: hit.brand };
+          const availability = hit.inStock
+            ? "https://schema.org/InStock"
+            : "https://schema.org/OutOfStock";
+          const flat = minorToMajor(hit.priceMinor);
+          const low = minorToMajor(hit.priceFromMinor);
+          const high = minorToMajor(hit.priceToMinor);
+          if (low && high && hit.currency && (hit.variantCount ?? 0) > 1) {
+            product.offers = {
+              "@type": "AggregateOffer",
+              offerCount: hit.variantCount,
+              lowPrice: low,
+              highPrice: high,
+              priceCurrency: hit.currency,
+              availability,
+              url: productUrl,
+            };
+          } else if ((flat ?? low) && hit.currency) {
+            product.offers = {
+              "@type": "Offer",
+              price: flat ?? low,
+              priceCurrency: hit.currency,
+              availability,
+              url: productUrl,
+            };
+          }
+          return { "@type": "ListItem", position: idx + 1, item: product };
+        }),
+      }
+    : null;
+
   // BreadcrumbList for SERP rich-result row above the snippet
   // ("teno-store.com › Accueil › Catalogue › {seller}"). The /search?sellerId
   // page (now canonical-redirect to /store/{id} via commit efb4f54) had this
@@ -140,6 +212,12 @@ export default async function StorePage({ params }: { params: Promise<Params> })
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
       />
+      {itemListJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdString(itemListJsonLd) }}
+        />
+      )}
 
       <header className="border-b border-line-soft pb-6 mb-6">
         <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Boutique</p>
