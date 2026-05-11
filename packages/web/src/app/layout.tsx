@@ -80,10 +80,11 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: SITE_URL,
-    // Atom feed of the 50 most-recent listings. Feed readers, RSS-aware
-    // search engines (Bing/Yandex), and AI crawlers (ChatGPT, Perplexity,
-    // Claude search) auto-discover via <link rel=alternate type=...>.
-    types: { "application/atom+xml": [{ url: "/feed.xml", title: "Teno Store — Recent listings" }] },
+    // Atom feed alternate link is rendered inline in the <head> below
+    // instead of here — when child pages (/search, /product) override
+    // their own alternates.types, Next.js replaces the layout-level
+    // types entirely, dropping feed discovery on the deepest indexed
+    // surfaces (where AI crawlers most often land from Google).
   },
   robots: { index: true, follow: true },
   // Prevent iOS Safari and Chrome from auto-detecting numeric text (DZD
@@ -135,6 +136,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* OG country tag — must use property= per OG spec; Next.js
             metadata.other emits name= so this is rendered inline. */}
         <meta property="og:country-name" content="Algeria" />
+        {/* Atom feed auto-discovery. Declared inline (not via Next's
+            metadata.alternates.types) because pages with their own
+            alternates — /search, /product/[id] — replace the entire
+            types map and lose feed discovery. Render here so RSS-aware
+            AI crawlers (ChatGPT, Perplexity, Claude search) find the
+            feed regardless of which page they enter the site through. */}
+        <link
+          rel="alternate"
+          type="application/atom+xml"
+          title="Teno Store — Recent listings"
+          href="/feed.xml"
+        />
       </head>
       <body className="min-h-screen antialiased">
         <a
