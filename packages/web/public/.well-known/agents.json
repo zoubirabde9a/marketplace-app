@@ -16,6 +16,11 @@
     "top_categories": [
       "telephones",
       "smartphones",
+      "automobiles_vehicules",
+      "electronique_electromenager",
+      "vetements_mode",
+      "sante_beaute",
+      "immobilier",
       "informatique",
       "ordinateurs",
       "portables",
@@ -30,7 +35,8 @@
       "homme",
       "accessoires",
       "vehicules",
-      "voitures"
+      "voitures",
+      "motos"
     ]
   },
   "discovery": {
