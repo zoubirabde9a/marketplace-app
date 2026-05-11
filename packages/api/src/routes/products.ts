@@ -476,6 +476,16 @@ export function makeProductReader(repo: {
       ...(seller?.displayName !== undefined ? { sellerDisplayName: seller.displayName } : {}),
       ...(seller?.phone !== undefined ? { sellerPhone: seller.phone } : {}),
       ...(seller?.whatsapp !== undefined ? { sellerWhatsapp: seller.whatsapp } : {}),
+      ...(seller && seller.phones.length > 0
+        ? {
+            sellerPhones: seller.phones.map((ph) => ({
+              phone: ph.phoneE164,
+              isWhatsapp: ph.isWhatsapp,
+              isViber: ph.isViber,
+              isPrimary: ph.isPrimary,
+            })),
+          }
+        : {}),
       ...(seller?.website !== undefined ? { sellerWebsite: seller.website } : {}),
       ...(p.categoryIds && p.categoryIds.length > 0 ? { categoryIds: [...p.categoryIds] } : {}),
       ...(p.shipsTo && p.shipsTo.length > 0 ? { shipsTo: [...p.shipsTo] } : {}),
@@ -517,12 +527,23 @@ export function makeProductReader(repo: {
     async getProduct(id) {
       const p = await repo.loadOne(id);
       if (!p) return null;
-      const { sellers } = await repo.loadAll();
+      // Use loadSellers() instead of loadAll() — we only need the sellers
+      // map for projectOne, not the 25k-product catalog. Probed live: this
+      // detail endpoint was running ~2.5s vs ~170ms for the list endpoint
+      // (which uses loadAllCached). Without loadSellers fallback, detail
+      // was effectively re-hydrating the entire catalog on every single
+      // product lookup. Falls back to loadAll for repos that don't expose
+      // loadSellers (older test fixtures).
+      const sellers = repo.loadSellers
+        ? await repo.loadSellers()
+        : (await repo.loadAll()).sellers;
       return projectOne(p, sellers);
     },
     async getProductsByIds(ids) {
       const found = await repo.getProductsByIds(ids);
-      const { sellers } = await repo.loadAll();
+      const sellers = repo.loadSellers
+        ? await repo.loadSellers()
+        : (await repo.loadAll()).sellers;
       return found.map((p) => (p ? projectOne(p, sellers) : null));
     },
   };
