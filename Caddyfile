@@ -70,6 +70,12 @@ api.teno-store.com {
 		Access-Control-Allow-Origin "*"
 		Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 		Access-Control-Allow-Headers "Content-Type, Authorization, DPoP, X-Mp-Agent-Id"
+		# Custom response headers that cross-origin browser JS must be able
+		# to READ. Without this, fetch().headers.get('x-mp-cart-id') returns
+		# null even when the header is on the wire (CORS-safelisted headers
+		# like Content-Type / Cache-Control / ETag are accessible by
+		# default; everything else needs explicit exposure).
+		Access-Control-Expose-Headers "X-Mp-Cart-Id, X-Request-Id"
 		Access-Control-Max-Age "86400"
 		-Server
 	}
