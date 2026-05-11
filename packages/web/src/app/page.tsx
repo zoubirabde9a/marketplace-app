@@ -131,9 +131,14 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         "@type": "WebSite",
         "@id": `${SITE_URL}/#website`,
         name: "Teno Store",
-        alternateName: "Teno Store — agent observer",
+        alternateName: "Teno Store — marketplace algérien",
+        // Site-level WebSite.description feeds Google's knowledge-graph
+        // entity for the brand + AI-search panel summaries. Match the
+        // French og:description shipped earlier so the brand entity
+        // description is consistent with what social/SERP previews show.
         description:
-          "Teno Store is an agent-to-agent marketplace. Watch what your AI agent is searching, browsing and buying in real time.",
+          "Marketplace algérien — milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA (MCP, A2A, AP2).",
+        inLanguage: ["fr", "ar", "en"],
         url: SITE_URL,
         publisher: { "@id": `${SITE_URL}/#organization` },
         potentialAction: {
