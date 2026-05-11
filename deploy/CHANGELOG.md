@@ -545,3 +545,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — home hero buyer CTA from 'Browse the catalog' (English) → 'Parcourir le catalogue' (French, lang=fr attribute inside the otherwise-English hero wrapper); matches the entirely-French catalog flow it links to
 
 2026-05-11 · vps-eu · web rebuild — CounterfeitBadge text French ('Risque de contrefaçon', 'Suspendu', 'En examen'); affects subset of listings (elevated/high risk) but it's the only trust-signal buyers see when triggered
+
+2026-05-11 · vps-eu · web rebuild — product JSON-LD description now uses the same 40-char structured-fallback helper as the meta description (no more 'سيارة ماشاء الله' in Google rich product cards); JSON-LD image array dedup'd (hero was emitted twice)
