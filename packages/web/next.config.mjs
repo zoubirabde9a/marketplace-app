@@ -32,6 +32,14 @@ const nextConfig = {
         source: "/:file(robots.txt|llms.txt|81b0a3ff408a96ef5c0381a78aae7f58.txt)",
         headers: [
           { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },
+          // Public-by-design discovery files. Without Access-Control-Allow-
+          // Origin, browser-based tooling (SEO debuggers, llms.txt parsers,
+          // agent-discovery validators) can't fetch them cross-origin —
+          // they see a CORS error even though the content is intentionally
+          // public. Server-side crawlers (Googlebot, GPTBot, ClaudeBot)
+          // don't enforce browser CORS, so the missing header was invisible
+          // until someone tried to read these from JS in a tab.
+          { key: "Access-Control-Allow-Origin", value: "*" },
         ],
       },
       {
@@ -39,6 +47,7 @@ const nextConfig = {
         source: "/.well-known/:file(agents.json|security.txt)",
         headers: [
           { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },
+          { key: "Access-Control-Allow-Origin", value: "*" },
         ],
       },
       {
@@ -62,6 +71,15 @@ const nextConfig = {
         source: "/sitemap.xml",
         headers: [
           { key: "Cache-Control", value: "public, max-age=300, s-maxage=300, stale-while-revalidate=1800" },
+          { key: "Access-Control-Allow-Origin", value: "*" },
+        ],
+      },
+      {
+        // Atom feed: public-by-design feed-discovery content. Browser-based
+        // RSS readers / AI-search feed validators need cross-origin access.
+        source: "/feed.xml",
+        headers: [
+          { key: "Access-Control-Allow-Origin", value: "*" },
         ],
       },
       {
