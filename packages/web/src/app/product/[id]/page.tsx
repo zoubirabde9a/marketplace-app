@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, type SearchHit } from "@/lib/api";
@@ -245,32 +246,12 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
   // Pull a small grid of related listings from the same seller for crawl-path
   // density and human discovery. With ~5,000 products and Googlebot's crawl
-  // budget, every product-to-product link helps the deep catalog get indexed
-  // faster than the sitemap alone can drive. Falls back to first-category
-  // siblings if the seller only has this one listing; renders nothing on
-  // API hiccup.
-  let relatedHits: SearchHit[] = [];
-  try {
-    // searchProductsCached: same (sellerId, sort:newest) tuple is hit by
-    // EVERY product render from that seller. Smart Phone DZ has 4,800+
-    // products → 4,800 identical fetches per crawl wave without this
-    // cache. iter-29 API overload mitigation.
-    const sellerSlice = await searchProductsCached({ sellerId: [p.sellerId], limit: 9, sort: "newest" });
-    relatedHits = sellerSlice.data.filter((h) => h.productId !== p.productId).slice(0, 8);
-    if (relatedHits.length < 4 && p.categoryIds[0]) {
-      const catSlice = await searchProductsCached({ category: [p.categoryIds[0]], limit: 12, sort: "newest" });
-      const seen = new Set([p.productId, ...relatedHits.map((h) => h.productId)]);
-      for (const h of catSlice.data) {
-        if (relatedHits.length >= 8) break;
-        if (!seen.has(h.productId)) {
-          relatedHits.push(h);
-          seen.add(h.productId);
-        }
-      }
-    }
-  } catch {
-    // ignore — page still renders without the related grid
-  }
+  // Related products fetched in a streaming Suspense child (see
+  // RelatedProducts below). Previously this fetch ran inline here and
+  // blocked the shell flush — putting the H1 ~110KB downstream of
+  // CategoryFooter chips in the byte stream. Now the page's main info
+  // (H1, gallery, description, seller contact) renders in the shell as
+  // soon as getProduct resolves; related products stream in afterwards.
 
   const variants = [...p.variants].sort((a, b) => Number(a.priceMinor) - Number(b.priceMinor));
   const inStockVariants = variants.filter((v) => v.inStock);
@@ -668,23 +649,68 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           </div>
         </div>
       </div>
-      {relatedHits.length > 0 && (
-        <section className="mt-16 border-t border-line-soft pt-10" aria-labelledby="related-heading">
-          <div className="flex items-baseline justify-between mb-4">
-            <h2 id="related-heading" className="text-xl font-semibold tracking-tight">
-              {p.sellerDisplayName ? `Plus d'annonces de ${p.sellerDisplayName}` : "Plus d'annonces"}
-            </h2>
-            <Link
-              href={`/search?sellerId=${encodeURIComponent(p.sellerId)}`}
-              className="text-sm text-ink-soft hover:text-ink transition"
-            >
-              See all →
-            </Link>
-          </div>
-          <ProductGrid hits={relatedHits} />
-        </section>
-      )}
+      <Suspense fallback={null}>
+        <RelatedProducts
+          productId={p.productId}
+          sellerId={p.sellerId}
+          sellerDisplayName={p.sellerDisplayName ?? null}
+          categoryId={p.categoryIds[0] ?? null}
+        />
+      </Suspense>
     </div>
+  );
+}
+
+async function RelatedProducts({
+  productId,
+  sellerId,
+  sellerDisplayName,
+  categoryId,
+}: {
+  productId: string;
+  sellerId: string;
+  sellerDisplayName: string | null;
+  categoryId: string | null;
+}) {
+  let relatedHits: SearchHit[] = [];
+  try {
+    // searchProductsCached: same (sellerId, sort:newest) tuple is hit by
+    // EVERY product render from that seller. Smart Phone DZ has 4,800+
+    // products → 4,800 identical fetches per crawl wave without this
+    // cache. iter-29 API overload mitigation.
+    const sellerSlice = await searchProductsCached({ sellerId: [sellerId], limit: 9, sort: "newest" });
+    relatedHits = sellerSlice.data.filter((h) => h.productId !== productId).slice(0, 8);
+    if (relatedHits.length < 4 && categoryId) {
+      const catSlice = await searchProductsCached({ category: [categoryId], limit: 12, sort: "newest" });
+      const seen = new Set([productId, ...relatedHits.map((h) => h.productId)]);
+      for (const h of catSlice.data) {
+        if (relatedHits.length >= 8) break;
+        if (!seen.has(h.productId)) {
+          relatedHits.push(h);
+          seen.add(h.productId);
+        }
+      }
+    }
+  } catch {
+    // API hiccup — page still renders without the related grid.
+    return null;
+  }
+  if (relatedHits.length === 0) return null;
+  return (
+    <section className="mt-16 border-t border-line-soft pt-10" aria-labelledby="related-heading">
+      <div className="flex items-baseline justify-between mb-4">
+        <h2 id="related-heading" className="text-xl font-semibold tracking-tight">
+          {sellerDisplayName ? `Plus d'annonces de ${sellerDisplayName}` : "Plus d'annonces"}
+        </h2>
+        <Link
+          href={`/search?sellerId=${encodeURIComponent(sellerId)}`}
+          className="text-sm text-ink-soft hover:text-ink transition"
+        >
+          Voir tout →
+        </Link>
+      </div>
+      <ProductGrid hits={relatedHits} />
+    </section>
   );
 }
 
