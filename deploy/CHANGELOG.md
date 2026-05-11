@@ -574,3 +574,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — /favicon.ico on api.teno-store.com now 204 No Content + 7-day cache (was 401 from auth middleware filling logs every time someone pasted a JSON URL into their address bar)
 
 2026-05-11 · vps-eu · api rebuild — HEAD now accepted on public read endpoints (was 401 from auth middleware checking method===GET literally); crawlers + CDN edge probes that send HEAD-before-GET no longer get the misleading 'this endpoint needs auth' signal
+
+2026-05-11 · vps-eu · web rebuild — deleted top-level loading.tsx (it was creating an implicit suspense around main and forcing the H1 ~110KB downstream of the CategoryFooter chips); source order now correct: <main> byte 5792, H1 byte 10450, <footer> byte 24164. TTFB unchanged ~240ms (page data fetch is warm-cached)
