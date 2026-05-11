@@ -69,7 +69,14 @@ api.teno-store.com {
 		# add cookie-based auth on this subdomain.
 		Access-Control-Allow-Origin "*"
 		Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-		Access-Control-Allow-Headers "Content-Type, Authorization, DPoP, X-Mp-Agent-Id"
+		# Request headers cross-origin clients can SEND. Beyond the basic
+		# auth set, two are mandatory for write paths:
+		# - Idempotency-Key: required by mutation middleware on every POST/
+		#   PATCH/DELETE. Without it in Allow-Headers, browser preflight on
+		#   any seller-dashboard write fails before the request goes out.
+		# - X-Mp-Order-Token: used for token-based order-detail access
+		#   (anonymous checkout receipt links).
+		Access-Control-Allow-Headers "Content-Type, Authorization, DPoP, X-Mp-Agent-Id, Idempotency-Key, X-Mp-Order-Token, X-Mp-Mcp-Token"
 		# Custom response headers that cross-origin browser JS must be able
 		# to READ. Without this, fetch().headers.get('x-mp-cart-id') returns
 		# null even when the header is on the wire (CORS-safelisted headers
