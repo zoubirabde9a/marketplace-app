@@ -469,3 +469,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — tag lang=en on home page English regions (hero, agent cards, English catalog paragraph); pairs with the lang=fr root from earlier today for proper mixed-language document hints (WCAG 3.1.2)
 
 2026-05-11 · vps-eu · web rebuild — /search?category=… title now uses French display name with accent (Téléphones not Telephones); description fully in French + correct singular/plural agreement; matches the home-page chip labels and the lang=fr document
+
+2026-05-11 · vps-eu · web rebuild — French descriptions on brand + seller slices and feed subtitle; brand title trimmed from '{brand} products' to bare '{brand}' (layout appends ' · Teno Store')
