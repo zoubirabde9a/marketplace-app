@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import { searchProducts } from "@/lib/api";
 import { searchProductsCached } from "@/lib/searchCache";
 import { parseSearchParams } from "@/lib/url";
@@ -281,7 +281,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       (k) => k !== "sellerId" && sp[k] !== undefined,
     );
     if (otherKeys.length === 0) {
-      redirect(`/store/${encodeURIComponent(sellerIds[0])}`);
+      // permanentRedirect → 308 (permanent). redirect() defaults to 307
+      // (temporary) which Google treats as 'do not consolidate'; we want
+      // the full canonical-migration signal.
+      permanentRedirect(`/store/${encodeURIComponent(sellerIds[0])}`);
     }
   }
 
