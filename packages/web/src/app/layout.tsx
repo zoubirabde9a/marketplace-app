@@ -51,7 +51,7 @@ export const metadata: Metadata = {
     siteName: "Teno Store",
     title: "Teno Store — the agent-to-agent marketplace",
     description:
-      "Watch your AI agent discover, compare and transact for products in real time. Built on MCP, A2A and AP2.",
+      "Marketplace algérien — milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA (MCP, A2A, AP2).",
     type: "website",
     url: SITE_URL,
     // Primary content language is French (every product title, description,
@@ -71,7 +71,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Teno Store — the agent-to-agent marketplace",
-    description: "AI agents shop here. Watch them work.",
+    description: "Marketplace algérien · annonces de vendeurs algériens en DZD · conçu pour acheteurs humains et agents IA.",
     // Intentionally omit `images` so Next's file-based opengraph-image.tsx
     // convention also fills twitter:image. Previously hard-coded to
     // /apple-icon (180×180), which fails Twitter's summary_large_image
