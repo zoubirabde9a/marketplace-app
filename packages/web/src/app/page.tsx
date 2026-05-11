@@ -154,6 +154,12 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         "@type": "Organization",
         "@id": `${SITE_URL}/#organization`,
         name: "Teno Store",
+        // Organization description for Google's knowledge-graph brand
+        // entity. Parallel to WebSite.description above so both nodes in
+        // the @graph paint the same picture. Without this Google's brand
+        // panel was scraping page body text to summarise the entity.
+        description:
+          "Marketplace algérien d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA.",
         url: SITE_URL,
         logo: {
           "@type": "ImageObject",
