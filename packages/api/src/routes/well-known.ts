@@ -26,6 +26,14 @@ export async function registerWellKnown(app: FastifyInstance): Promise<void> {
       capabilities: {
         mcp: { transport: "streamable-http", endpoint: `${base}/mcp` },
         a2a: { endpoint: `${base}/a2a` },
+        // REST surface — was missing from this agent-card while the apex
+        // agents.json declared it. AI agents reading agent-card.json (the
+        // canonical machine-readable discovery doc) couldn't discover REST
+        // without cross-referencing the apex JSON.
+        rest: {
+          base: `${base}/v1`,
+          public_endpoints: ["GET /v1/products", "GET /v1/products/{id}"],
+        },
         ap2: { version: "0.2.0", mandates: "supported" },
       },
       auth: {

@@ -18,7 +18,7 @@ export function Header() {
                 className="h-10 rounded-xl bg-bg-soft/80 border border-line"
                 role="status"
                 aria-busy="true"
-                aria-label="Loading search"
+                aria-label="Chargement de la recherche"
               />
             }
           >
@@ -27,13 +27,22 @@ export function Header() {
         </div>
         <nav className="ml-auto flex items-center gap-1 text-sm text-ink-soft shrink-0">
           <Link href="/search" className="hidden sm:inline-flex px-3 py-1.5 rounded-md hover:text-ink hover:bg-bg-elev transition">Parcourir</Link>
+          <Link href="/about" className="hidden md:inline-flex px-3 py-1.5 rounded-md hover:text-ink hover:bg-bg-elev transition">À propos</Link>
+          <Link
+            href="/seller/products/new"
+            aria-label="Publier une annonce"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-accent text-bg font-medium shadow-glow hover:brightness-110 transition"
+          >
+            <span aria-hidden className="text-base leading-none">+</span>
+            <span className="hidden sm:inline">Vendre</span>
+          </Link>
           <Suspense
             fallback={
               <span
                 className="px-3 py-1.5 text-sm text-ink-mute"
                 role="status"
                 aria-busy="true"
-                aria-label="Loading user menu"
+                aria-label="Chargement du menu utilisateur"
               >
                 <span aria-hidden>…</span>
               </span>
