@@ -465,3 +465,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — extend 100 DZD price floor to home ItemList JSON-LD + search slice ItemList; kills price=0/1.00 Offer entries from Google structured-data on the highest-traffic surfaces
 
 2026-05-11 · vps-eu · web rebuild — /search?q=… now noindex,follow (was index,follow); kills open-ended internal-search results from index (spam-link injection risk, duplicates curated brand/category landings, infinite URL space bleeding crawl budget)
+
+2026-05-11 · vps-eu · web rebuild — tag lang=en on home page English regions (hero, agent cards, English catalog paragraph); pairs with the lang=fr root from earlier today for proper mixed-language document hints (WCAG 3.1.2)
