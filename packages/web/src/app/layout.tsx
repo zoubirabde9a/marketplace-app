@@ -54,7 +54,15 @@ export const metadata: Metadata = {
       "Watch your AI agent discover, compare and transact for products in real time. Built on MCP, A2A and AP2.",
     type: "website",
     url: SITE_URL,
-    locale: "en_US",
+    // Primary content language is French (every product title, description,
+    // category label and slice intro comes from Algerian Ouedkniss listings
+    // in French; Arabic is the secondary regional language, English is only
+    // the homepage hero copy). Mis-stating locale as en_US was telling
+    // Facebook/LinkedIn/etc. share previews to render English-locale
+    // formatting on French catalog content, and giving Open Graph crawlers
+    // a wrong language signal.
+    locale: "fr_DZ",
+    alternateLocale: ["ar_DZ", "en_US"],
     // Default share image used when a page (homepage, /search, /seller, /about)
     // doesn't supply its own og:image. apple-icon is generated at 180x180; the
     // ImageResponse renderer paints the brand mark on a green gradient.
@@ -110,7 +118,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="fr" className="dark">
       <head>
         {/* Hero images live on Ouedkniss CDN (cdn7/cdn8/cdn9.ouedkniss.com).
             Preconnect lets the browser run TLS + TCP handshakes in parallel
