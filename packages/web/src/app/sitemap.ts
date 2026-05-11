@@ -197,14 +197,23 @@ async function fetchAllProductsUncached(): Promise<SitemapHarvest> {
       });
     }
     // Brand facets are global (not per-page), so capture from the first page only.
+    // Apply a min-count floor on brands + sellers: live data has scrape-source
+    // noise where category-like or seller-like strings end up tagged as
+    // "brands" with count=1 (e.g. 'Mode & Style', 'Atelier Constantine',
+    // 'Maison & Déco', 'Acme'). Indexing those as their own thin brand
+    // landings (1-2 products each) hurts site-quality signals. The compound
+    // categories and high-volume brands all have count ≥5; this floor cleans
+    // the long tail without dropping anything substantive.
     if (page === 0) {
+      const MIN_FACET_COUNT = 5;
       for (const b of body.facets?.brands ?? []) {
-        if (b.value && b.count > 0 && !brands.includes(b.value)) brands.push(b.value);
+        if (b.value && b.count >= MIN_FACET_COUNT && !brands.includes(b.value)) brands.push(b.value);
       }
       for (const s of body.facets?.sellers ?? []) {
         const id = s.sellerId ?? s.value;
-        if (id && s.count > 0 && !sellerIds.includes(id)) sellerIds.push(id);
+        if (id && s.count >= MIN_FACET_COUNT && !sellerIds.includes(id)) sellerIds.push(id);
       }
+      // Categories aren't noisy (closed taxonomy); keep the >0 threshold.
       for (const c of body.facets?.categories ?? []) {
         if (c.value && c.count > 0 && !categories.includes(c.value)) categories.push(c.value);
       }

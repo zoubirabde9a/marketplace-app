@@ -68,21 +68,21 @@ describe("sitemap()", () => {
     expect(urls.some((u) => u.includes("/product/"))).toBe(false);
   });
 
-  it("emits one sitemap entry per active brand and per active seller", async () => {
+  it("emits one sitemap entry per active brand and per active seller (above min-count floor)", async () => {
     fetchMock.mockResolvedValueOnce(
       okResponse({
         data: [{ productId: "p1" }],
         pagination: { cursor: null },
         facets: {
           brands: [
-            { value: "Apple", count: 5 },
-            { value: "Samsung", count: 3 },
-            // Zero-count brands shouldn't be emitted.
-            { value: "Ghost", count: 0 },
+            { value: "Apple", count: 10 },          // above floor
+            { value: "Samsung", count: 5 },         // at floor (>=)
+            { value: "ThinBrand", count: 3 },       // below floor — dropped
+            { value: "Ghost", count: 0 },           // below floor — dropped
           ],
           sellers: [
-            { sellerId: "s-1", displayName: "Smart Phone DZ", count: 7 },
-            { sellerId: "s-2", displayName: "TechStore", count: 2 },
+            { sellerId: "s-1", displayName: "Smart Phone DZ", count: 7 },  // above floor
+            { sellerId: "s-2", displayName: "TechStore", count: 2 },       // below floor — dropped
           ],
         },
       }),
@@ -92,9 +92,13 @@ describe("sitemap()", () => {
     const urls = entries.map((e) => e.url);
     expect(urls.some((u) => u.endsWith("/search?brand=Apple"))).toBe(true);
     expect(urls.some((u) => u.endsWith("/search?brand=Samsung"))).toBe(true);
+    // Below MIN_FACET_COUNT = scrape-source noise, not indexable as own
+    // landing (these were tagged as "brands" but are really one-off seller
+    // strings, mis-categorised values, etc.).
+    expect(urls.some((u) => u.includes("brand=ThinBrand"))).toBe(false);
     expect(urls.some((u) => u.includes("brand=Ghost"))).toBe(false);
     expect(urls.some((u) => u.endsWith("/search?sellerId=s-1"))).toBe(true);
-    expect(urls.some((u) => u.endsWith("/search?sellerId=s-2"))).toBe(true);
+    expect(urls.some((u) => u.endsWith("/search?sellerId=s-2"))).toBe(false);
   });
 
   it("falls back to static entries when the API responds non-OK", async () => {
