@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · scraper-loop · drop sante_beaute from category rotation
+
+- Operator wants the health/beauty category dropped from the scrape rotation (catalog focus). Removed `sante_beaute` from `--categories` in `deploy/systemd/marketplace-scrape-loop.service`; rotation now cycles 6 categories: `telephones, informatique, electronique_electromenager, vetements_mode, immobilier, automobiles_vehicules`. Each category gets a turn every ~6 minutes instead of ~7.
+- Existing `sante_beaute` products in the catalog are left in place; they will age out naturally as the global 280k cap fills with newer per-listing-owned products.
+- Deployed by scp of the updated unit file to `/etc/systemd/system/marketplace-scrape-loop.service` + `systemctl daemon-reload`. The currently-running iteration (if any) is unaffected; next timer fire uses the new category list.
+- Also: caught the repo up with the per-listing-seller rewrite that was already deployed via rsync on 2026-05-11 (`scraper/scrape-ouedkniss.mjs`, `scraper/run-loop.sh`, `packages/db/src/seed-from-scraped.ts`). Working tree had drifted from the live server; these are now committed for traceability.
+
 ## 2026-05-11 — vps-eu · api · Redis response cache for /v1/products GETs
 
 - Site sits behind Cloudflare in DNS-only mode (gray cloud, required because the proxy doesn't work reliably in Algeria), so no edge cache is available. Caching has to happen on the VPS itself.

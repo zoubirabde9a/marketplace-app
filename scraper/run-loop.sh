@@ -155,10 +155,12 @@ if [[ -n "$MAX_PRODUCTS" ]]; then
   fi
 fi
 
-if [[ -z "$SELLER_ID" ]]; then
-  echo "fatal: --seller-id (or SELLER_ID env) is required" >&2
-  exit 2
-fi
+# SELLER_ID is now optional: the seeder resolves a per-listing seller
+# from the scraped user/store identity. If --seller-id IS set, it acts
+# as a fallback for legacy dumps that don't carry seller fields, and
+# scopes the skip-urls/prune queries to a single seller (legacy mode).
+# When unset, both skip-urls and prune operate globally on all
+# scraper-source products.
 
 # ─── category rotation ───────────────────────────────────────────────────
 # When --categories is passed (comma-separated list), round-robin one
@@ -304,11 +306,21 @@ with_retries() {
 }
 
 # ─── step 1: refresh skip-urls ───────────────────────────────────────────
+# Pull every sourceUrl already seeded by the scraper, regardless of which
+# per-listing seller it landed on. Filtering by attributes->>'source' (set
+# by the seeder for every scraped product) is the source-of-truth — using
+# seller_id would miss listings under sibling per-listing sellers and we'd
+# re-seed them. Legacy mode (--seller-id set) narrows to that seller's
+# rows only, preserving the older single-seller behavior.
 refresh_skip_urls() {
+  local where="attributes->>'source' = 'ouedkniss-public-listing'"
+  if [[ -n "$SELLER_ID" ]]; then
+    where="seller_id='$SELLER_ID'"
+  fi
   docker exec "$PG_CONTAINER" psql -U marketplace -d marketplace -At -c "
     SELECT attributes->>'sourceUrl'
     FROM catalog.products
-    WHERE seller_id='$SELLER_ID'
+    WHERE $where
       AND attributes ? 'sourceUrl'
       AND attributes->>'sourceUrl' <> '';
   " > "$SKIP_URLS_FILE" 2>>"$LOG_FILE"
@@ -325,10 +337,12 @@ SKIP_COUNT=$(wc -l < "$SKIP_URLS_FILE" 2>/dev/null || echo 0)
 log info "skip_urls_count=$SKIP_COUNT path=$SKIP_URLS_FILE"
 
 # ─── step 2a: resolve START_PAGE from state ──────────────────────────────
-# State file shape: { "<seller>-<category>": { "next_start_page": N } }
+# State file shape: { "<seller-or-global>-<category>": { "next_start_page": N } }
 # Each successful run advances next_start_page by PAGES, wrapping to 1
 # when the scraper reports hasMorePages=false (full category covered).
-STATE_KEY="${SELLER_ID}-${CATEGORY}"
+# In per-listing-seller mode (no SELLER_ID), key is "global-<category>" so
+# all categories share the same page-progress namespace.
+STATE_KEY="${SELLER_ID:-global}-${CATEGORY}"
 read_state_page() {
   if [[ ! -s "$STATE_FILE" ]]; then echo 1; return; fi
   python3 -c "
@@ -502,17 +516,24 @@ else
 fi
 
 # ─── step 3.6: prune oldest products to cap ──────────────────────────────
-# Keeps the catalog at a steady size: after seeding, count this seller's
-# products and delete the oldest (created_at ASC) until count <= MAX_PRODUCTS.
+# Keeps the catalog at a steady size: after seeding, delete the oldest
+# (created_at ASC) until count <= MAX_PRODUCTS. In per-listing-seller
+# mode the cap applies globally across every scraper-created product
+# (filtered by attributes->>'source' = 'ouedkniss-public-listing'); in
+# legacy single-seller mode (SELLER_ID set) it scopes to that seller.
 # Cascades wipe catalog.media + catalog.product_variants + inventory_levels
 # automatically (via the FK onDelete: cascade in the schema). Images live
 # as URL refs only — there is no local image bytes to clean up.
 PRUNED=0
 if [[ -n "$MAX_PRODUCTS" ]]; then
+  PRUNE_WHERE="attributes->>'source' = 'ouedkniss-public-listing'"
+  if [[ -n "$SELLER_ID" ]]; then
+    PRUNE_WHERE="seller_id='$SELLER_ID'"
+  fi
   PRUNE_OUT="$(docker exec "$PG_CONTAINER" psql -U marketplace -d marketplace -At -v ON_ERROR_STOP=1 -c "
     WITH excess AS (
       SELECT id FROM catalog.products
-      WHERE seller_id='$SELLER_ID'
+      WHERE $PRUNE_WHERE
       ORDER BY created_at DESC, id DESC
       OFFSET $MAX_PRODUCTS
     ),

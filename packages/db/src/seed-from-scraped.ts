@@ -33,7 +33,9 @@
 // (title, image URLs, price text, posting date). See scraper/README.md for
 // the legal & privacy posture.
 
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { eq } from "drizzle-orm";
 import { createDb } from "./client.js";
 import { createRepos } from "./repos/index.js";
 import { sellerProfiles } from "./schema/seller.js";
@@ -49,12 +51,33 @@ interface ScrapedItem {
   priceText?: string | null;
   postedAt?: string | null;
   scrapedAt?: string;
+  // Per-listing seller identity (added 2026-05-11). All three may be null
+  // for legacy dumps; the seeder falls back to env SELLER_ID in that case.
+  sellerUserId?: string | null;
+  sellerIsFromStore?: boolean;
+  sellerStoreId?: string | null;
+}
+
+interface ScrapedStore {
+  id: string;
+  name?: string | null;
+  slug?: string | null;
+  phones?: string[];
+  emails?: string[];
+  website?: string | null;
+  whatsapp?: string | null;
+  facebook?: string | null;
+  telegram?: string | null;
+  address?: string | null;
+  city?: string | null;
+  region?: string | null;
 }
 
 interface ScrapedDump {
   category?: string;
   count?: number;
   items?: ScrapedItem[];
+  stores?: Record<string, ScrapedStore>;
 }
 
 // "150 000 DA" / "1.250.000 DZD" / "12,500 DA" → minor units (santeem) as bigint.
@@ -109,6 +132,40 @@ function pickImages(item: ScrapedItem): Array<{ url: string; contentType: string
     if (out.length >= 5) break;
   }
   return out;
+}
+
+// Per-listing seller key. Shop accounts have a store id (preferred —
+// same key across both their store page and their listings); individual
+// sellers only have a user id. Returns null when neither is present
+// (legacy dumps), which sends the listing to the fallback seller.
+function sellerKey(item: ScrapedItem): string | null {
+  if (item.sellerIsFromStore && item.sellerStoreId) {
+    return `okk-store-${item.sellerStoreId}`;
+  }
+  if (item.sellerUserId) {
+    return `okk-user-${item.sellerUserId}`;
+  }
+  return null;
+}
+
+// Synthetic seller display name. Operator policy: real Ouedkniss
+// displayNames are never copied. The 5-char suffix is the first 5 chars
+// of sha1(key) so the same Ouedkniss seller always gets the same name
+// across runs (sellers may exist before the seller-profile row does).
+function syntheticName(key: string, kind: "store" | "user"): string {
+  const tag = createHash("sha1").update(key).digest("hex").slice(0, 5).toUpperCase();
+  return kind === "store" ? `Vendeur Pro ${tag}` : `Vendeur ${tag}`;
+}
+
+// Pick the first phone that parses as Algerian-shaped. Ouedkniss stores
+// most numbers as "+213XXXXXXXXX" (12 digits after +). We prefer that
+// shape but accept anything non-empty as a last resort.
+function pickPhone(phones: string[] | undefined): string | undefined {
+  if (!phones?.length) return undefined;
+  const dz = phones.find((p) => /^\+213\d{9}$/.test((p ?? "").replace(/\s+/g, "")));
+  if (dz) return dz.replace(/\s+/g, "");
+  const any = phones.find(Boolean);
+  return any ? any.trim() : undefined;
 }
 
 function slug(s: string, max = 40): string {
@@ -169,33 +226,87 @@ async function main(): Promise<void> {
 
   const { db, close } = createDb({ url, applicationName: "seed-from-scraped" });
   const repos = createRepos(db);
+  const stores = dump.stores ?? {};
 
-  // Resolve seller. Either operator-supplied SELLER_ID, or the oldest
-  // existing seller (the synthetic Algerian sellers from seed-algerian.mjs
-  // are typically what we want here).
-  let sellerId: string;
+  // Optional fallback for listings whose seller fields are missing (e.g.
+  // legacy dumps from before the scraper captured seller identity). When
+  // SELLER_ID is set, those listings land on that seller; when not, they
+  // are skipped (counted as invalid).
+  let fallbackSellerId: string | undefined;
   if (requestedSellerId) {
     const seller = await repos.sellers.get(requestedSellerId);
     if (!seller) {
       console.error(`SELLER_ID=${requestedSellerId} not found in organizations table.`);
-      console.error("Run scripts/seed-algerian.mjs against this DB first, or pass an existing org UUID.");
       await close();
       process.exit(2);
     }
-    sellerId = seller.sellerId;
-    log.info(`using seller ${sellerId} (${seller.displayName}) [from SELLER_ID env]`);
+    fallbackSellerId = seller.sellerId;
+    log.info(`fallback seller ${seller.sellerId} (${seller.displayName}) for items without seller info`);
   } else {
-    const all = await db.select().from(sellerProfiles).orderBy(sellerProfiles.createdAt).limit(1);
-    if (!all[0]) {
-      console.error(
-        "No sellers exist in the database. Run `pnpm -F @marketplace/db db:seed` " +
-          "or `node scripts/seed-algerian.mjs` first, then re-run this with SELLER_ID set.",
-      );
-      await close();
-      process.exit(2);
+    log.info("no SELLER_ID set; items without seller info will be skipped");
+  }
+
+  // Per-listing seller resolution. Each unique Ouedkniss seller (a store id
+  // for shop accounts, a user id for individual sellers) maps to one
+  // teno-store seller. The mapping is materialized in `storeSlug` (which
+  // is already a unique column) so we can look up the same seller across
+  // runs without keeping a side table:
+  //   shop account     → storeSlug = "okk-store-<storeId>"
+  //   individual user  → storeSlug = "okk-user-<userId>"
+  // Cache the resolution per run to avoid re-querying for repeat sellers.
+  const sellerCache = new Map<string, string>();
+  // Lazy resolution: only paid for the sellers that actually own a listing
+  // that survives validation. Returns undefined if the listing has no
+  // seller key and no fallback is configured (caller should skip).
+  async function resolveSeller(item: ScrapedItem): Promise<string | undefined> {
+    const key = sellerKey(item);
+    if (!key) return fallbackSellerId;
+    const cached = sellerCache.get(key);
+    if (cached) return cached;
+    const existing = await db
+      .select()
+      .from(sellerProfiles)
+      .where(eq(sellerProfiles.storeSlug, key))
+      .limit(1);
+    if (existing[0]) {
+      sellerCache.set(key, existing[0].orgId);
+      return existing[0].orgId;
     }
-    sellerId = all[0].orgId;
-    log.info(`using seller ${sellerId} (${all[0].storeName}) [oldest seller; pass SELLER_ID to override]`);
+    // Brand-new seller. Display name is always synthetic (per operator
+    // policy, never the real Ouedkniss displayName). Phone/whatsapp/website
+    // are only set when the store-enrichment step produced public values;
+    // null otherwise (no synthetic phones — operator policy).
+    const isShop = item.sellerIsFromStore === true && item.sellerStoreId;
+    const display = syntheticName(key, isShop ? "store" : "user");
+    const store = isShop && item.sellerStoreId ? stores[item.sellerStoreId] : undefined;
+    const phone = pickPhone(store?.phones);
+    const whatsapp = store?.whatsapp ?? phone;
+    const website = store?.website ?? undefined;
+    const created = await repos.sellers.create({
+      displayName: display,
+      ownerAgentId: `scraper:${key}`,
+      ...(phone ? { phone } : {}),
+      ...(whatsapp ? { whatsapp } : {}),
+      ...(website ? { website } : {}),
+    });
+    // Override the auto-generated storeSlug with our deterministic key so
+    // future runs find this seller by key. Then store the supportEmail if
+    // we have one (the create() repo path doesn't accept it).
+    const email = store?.emails?.[0];
+    await db
+      .update(sellerProfiles)
+      .set({
+        storeSlug: key,
+        ...(email ? { supportEmail: email } : {}),
+      })
+      .where(eq(sellerProfiles.orgId, created.sellerId));
+    sellerCache.set(key, created.sellerId);
+    log.info(
+      `seller created: ${key} → ${created.sellerId} (${display})` +
+        (phone ? ` phone=${phone}` : " no-phone") +
+        (isShop ? " [shop]" : " [individual]"),
+    );
+    return created.sellerId;
   }
 
   let ok = 0;
@@ -232,6 +343,12 @@ async function main(): Promise<void> {
       continue;
     }
 
+    const sellerId = await resolveSeller(it);
+    if (!sellerId) {
+      skipped++;
+      log.warn(`skip [${i}] no seller (sellerKey=null and no SELLER_ID fallback set)`);
+      continue;
+    }
     try {
       const created = await repos.products.create({
         sellerId,

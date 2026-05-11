@@ -9,14 +9,18 @@ Type=oneshot
 # --quiet suppresses the OK summary on stdout; everything goes to the
 # per-run log + structured metrics (see run-loop.sh --help). systemd
 # captures any unsuppressed output to journald automatically.
-# --max-products caps the seller catalog by deleting oldest products
-# after each seed (cascades media+variants).
+# --max-products caps the catalog by deleting oldest scraper-created
+# products after each seed (cascades media+variants). In per-listing-
+# seller mode the cap is global across every scraper-source product.
 # --categories rotates one Ouedkniss top-level category per run via
 # the state file. Each category keeps its own next_start_page entry,
 # so progress is preserved across rotations.
+# No --seller-id: the seeder resolves a per-listing seller from the
+# scraped Ouedkniss user/store id (one teno-store seller per real
+# Ouedkniss seller, synthetic display name, real public phone where
+# the store endpoint exposes one).
 ExecStart=/opt/marketplace/scripts/run-loop.sh \
-  --seller-id 019e08a4-97cd-7d98-afd7-670878dc51c2 \
-  --categories telephones,informatique,electronique_electromenager,vetements_mode,sante_beaute,immobilier,automobiles_vehicules \
+  --categories telephones,informatique,electronique_electromenager,vetements_mode,immobilier,automobiles_vehicules \
   --max-products 280000 \
   --quiet
 Restart=no

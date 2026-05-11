@@ -53,7 +53,7 @@ const DATA_DIR = join(HERE, "..", "data");
 // Legacy slug → current slug map. Keeps old invocations working.
 // Real slugs come from Ouedkniss's listingMenu GraphQL op (verified 2026-05-09):
 // telephones, automobiles_vehicules, immobilier, informatique,
-// electronique_electromenager, vetements_mode, sante_beaute, ...
+// electronique_electromenager, vetements_mode, ...
 // Sub-categories: telephones-smartphones, telephones-tablets, etc.
 const SLUG_ALIASES = {
   telephone: "telephones",
@@ -93,6 +93,16 @@ const SEARCH_QUERY = `query SearchQuery($q: String, $filter: SearchFilterInput) 
         medias(size: SMALL) { mediaUrl mimeType }
         category { id slug name }
         cities { id name region { id name } }
+        # Seller identity (public): we capture the Ouedkniss user id so the
+        # seeder can group products under one teno-store seller per real
+        # Ouedkniss seller. displayName is never reused — the seeder
+        # generates a synthetic name. isFromStore + store{id} lets us look
+        # up real public phone numbers via siteBuildGetByStore (shop-account
+        # listings only — individual-seller phones are auth-gated and not
+        # reachable anonymously).
+        user { id }
+        isFromStore
+        store { id }
       }
       paginatorInfo { lastPage hasMorePages }
     }
@@ -162,6 +172,70 @@ function priceText(item) {
     return `${item.price} ${labelFor(item.priceUnit)}`;
   }
   return null;
+}
+
+// Fetch a public Ouedkniss store profile by store id. Returns
+// { name, slug, phones[], whatsapp[], emails[], website, facebook,
+//   address, lat, lng } or null if the store has no public site-build
+// (some store accounts haven't published one).
+async function fetchStoreProfile(storeId, attempt = 1) {
+  const query = `query FetchByStore($id: ID!) {
+    siteBuild: siteBuildGetByStore(storeId: $id) {
+      land {
+        __typename
+        ... on Store {
+          id
+          storeName: name
+          slug
+          mainLocation {
+            phones { phone }
+            emails
+            socials { name url }
+            location { address lat lng city { name region { name } } }
+          }
+        }
+      }
+    }
+  }`;
+  try {
+    const res = await fetch(GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "user-agent": "teno-store-research/1.0 (+https://teno-store.com/about)",
+      },
+      body: JSON.stringify({ operationName: "FetchByStore", query, variables: { id: storeId } }),
+    });
+    if (!res.ok) throw new Error(`store-fetch ${res.status}`);
+    const json = await res.json();
+    const land = json.data?.siteBuild?.land;
+    if (!land || land.__typename !== "Store") return null;
+    const loc = land.mainLocation ?? {};
+    const phones = (loc.phones ?? []).map((p) => p?.phone).filter(Boolean);
+    const emails = (loc.emails ?? []).filter(Boolean);
+    const socials = loc.socials ?? [];
+    const pick = (name) => socials.find((s) => s?.name === name)?.url?.trim() || null;
+    return {
+      id: land.id,
+      name: land.storeName ?? null,
+      slug: land.slug ?? null,
+      phones,
+      emails,
+      website: pick("website"),
+      facebook: pick("facebook"),
+      whatsapp: pick("whatsapp"),
+      telegram: pick("telegram"),
+      address: loc.location?.address ?? null,
+      city: loc.location?.city?.name ?? null,
+      region: loc.location?.city?.region?.name ?? null,
+    };
+  } catch (err) {
+    if (attempt < 3) {
+      await new Promise((r) => setTimeout(r, 800 * attempt));
+      return fetchStoreProfile(storeId, attempt + 1);
+    }
+    throw err;
+  }
 }
 
 function imagesOf(item) {
@@ -236,6 +310,9 @@ async function main() {
               .filter(Boolean),
           ),
         ),
+        sellerUserId: it.user?.id ?? null,
+        sellerIsFromStore: !!it.isFromStore,
+        sellerStoreId: it.store?.id ?? null,
       });
 
       if (results.length % BATCH_SIZE === 0) {
@@ -256,6 +333,35 @@ async function main() {
 
   console.log(`\n[done] kept ${results.length}, dropped ${tooOld} as older than ${MAX_AGE_DAYS}d, ${undated} undated, of ${totalSeen} seen`);
 
+  // ─── store enrichment ──────────────────────────────────────────────────
+  // For each unique store id we observed, fetch the public store profile
+  // via siteBuildGetByStore. mainLocation.phones, emails, and socials are
+  // public on Ouedkniss (rendered on the shop's own page) — no auth needed.
+  // Anonymous announcementPhoneGet returns [] (gated), so this is the only
+  // anonymous path to real seller phones. Per-listing phones from
+  // individual (non-shop) sellers stay null.
+  const storeIds = Array.from(
+    new Set(results.map((r) => r.sellerStoreId).filter(Boolean)),
+  );
+  const stores = {};
+  if (storeIds.length) {
+    console.log(`[stores] enriching ${storeIds.length} unique stores...`);
+    for (let i = 0; i < storeIds.length; i++) {
+      const sid = storeIds[i];
+      try {
+        const enriched = await fetchStoreProfile(sid);
+        if (enriched) stores[sid] = enriched;
+      } catch (err) {
+        console.log(`  store ${sid}: ${err.message ?? err}`);
+      }
+      // Polite pause between store fetches (one per unique shop, so the
+      // count is well under the per-page listing count).
+      if (i < storeIds.length - 1) await new Promise((r) => setTimeout(r, 200));
+    }
+    const withPhone = Object.values(stores).filter((s) => s.phones?.length).length;
+    console.log(`[stores] enriched ${Object.keys(stores).length}, with-phone=${withPhone}`);
+  }
+
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const outPath = join(DATA_DIR, `ouedkniss-${CATEGORY}-${stamp}.json`);
   await writeFile(
@@ -268,10 +374,10 @@ async function main() {
       hasMorePages,
       count: results.length,
       items: results,
+      stores,
     }, null, 2),
   );
-  console.log(`wrote ${outPath} (${results.length} listings)`);
-  console.log("NB: phone numbers are NOT requested — the GraphQL query intentionally omits user/seller-contact fields.");
+  console.log(`wrote ${outPath} (${results.length} listings, ${Object.keys(stores).length} stores)`);
 }
 
 main().catch((e) => {
