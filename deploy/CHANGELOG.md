@@ -539,3 +539,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — product meta description structured-fallback threshold raised from 0 → 40 chars (was passing tiny 16-char Arabic seller blurbs through to all three meta description channels for major listings like a Volkswagen T-Roc); fallback labels localised (marque/de instead of brand/from)
 
 2026-05-11 · vps-eu · web rebuild — home og:description + twitter:description switched from English agent-pitch to French-first 'Marketplace algérien…' with the agent angle as a trailing clause; matches the share-channel audience (Algerian buyers on WhatsApp) and the indexable French catalog content
+
+2026-05-11 · vps-eu · web rebuild — llms.txt + agents.json updated with compound Ouedkniss category slugs (automobiles_vehicules, electronique_electromenager, vetements_mode, sante_beaute, immobilier) that hold the bulk of the catalog; previous list only had bare subcategory slugs
