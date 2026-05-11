@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO/perf — bump anonymous HTML s-maxage 60s→300s, swr 300s→1800s (buffer origin from sustained ClaudeBot load)
+
+- Caddy access log analysis this iteration: ClaudeBot is now crawling at **163 req/min sustained** (up from ~12/min at iter-19), p99 latency **9.8s**, max **60.5s**, avg 1.05s. ~1% of requests are very slow because every hit reaches origin uncached (Cloudflare Cache Rule still pending). 1,423 ClaudeBot hits in a recent 10-min window.
+- Bumped middleware Cache-Control on anonymous HTML: `s-maxage=60, stale-while-revalidate=300` → `s-maxage=300, stale-while-revalidate=1800`. Once Cloudflare activates, one cold render now serves 5 minutes worth of crawler hits to the same URL (vs 1 minute before), plus 30 minutes of stale-while-revalidate grace serving warmly while a background refresh fires. That's the buffer the 2-3 req/s ClaudeBot load actually needs.
+- Why this staleness window is safe for the Ouedkniss-sourced catalog: scraped listings update on the seller's schedule, not minute-to-minute. The scrape-and-seed loop runs at minute cadence so genuinely-new products surface via the sitemap (fresh lastmod every minute) regardless of per-URL cache TTL. Price/availability staleness up to 5 min is well within marketplace norms.
+- Verified live: `curl -sI /product/<id>` returns `Cache-Control: public, max-age=0, s-maxage=300, stale-while-revalidate=1800`. Cookie-bearing requests still get the framework default `private, no-store` (logged-in personalization protected).
+- Type-check clean. Standing iter-1 recommendation still open (Cloudflare Cache Rule activation). Standing iter-20 recommendation still open (DB country backfill of 1,705 US-tagged Algerian sellers).
+
 ## 2026-05-11 — vps-eu · scraper + api rebuild · per-listing phone reveal + resilience pass
 
 - Scraper (`/opt/marketplace/scripts/scrape-ouedkniss.mjs`): adds optional `OUEDKNISS_JWT` env. When set, calls `announcementPhoneGet` per listing (the SPA's `UnhidePhone` op) and attaches `phoneEntries` to each item. Anonymous calls return `[]` — phone reveal is gated behind a reCAPTCHA-backed `/login-anonymous` Bearer JWT; operator pastes the JWT once per expiry. The seeder unions per-listing phones with shop site-build phones, dedupes by E.164, marks the first primary. JWT not yet set in `.env`; the loop currently logs `[phones] OUEDKNISS_JWT not set` and behaves as before.
@@ -886,3 +894,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — browse-path cache TTL 30s → 90s. Cold-hit /v1/products?sort=newest was 5-7s (loadAll re-hydrates 43k+ products); 30s TTL was narrower than the cron + agent-crawl cadence so most home-page visits saw the cold path. 90s tracks scrape-loop yield better, still inside the agents.json 5-min freshness commitment
 
 2026-05-11 · vps-eu · web rebuild — /search?sellerId={id} (single-seller variant) now 308-redirects → /store/{id} instead of just emitting a canonical hint. Faster PageRank migration, cleaner URL bar UX, works for crawlers that don't follow rel=canonical. Used permanentRedirect not redirect (307→308) so Google treats it as canonical migration not temporary
+
+2026-05-11 · vps-eu · web rebuild — removed broken 'Voir les N annonces' link on /store/{id}. It had pointed at /search?sellerId=… which now 308-redirects right back to /store/{id} (self-redirect, confusing UX). Page still shows 60 products. Restore once storefront has internal pagination or /store/[id]/all overflow surface
