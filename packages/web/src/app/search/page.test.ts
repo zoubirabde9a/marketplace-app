@@ -50,7 +50,10 @@ describe("search page generateMetadata", () => {
     const m = await M({ brand: "Acme" });
     expect(m.alternates?.canonical).toBe("/search?brand=Acme");
     expect(m.robots).toEqual({ index: true, follow: true });
-    expect(m.title).toBe("Acme products");
+    // Brand title is bare "{brand}" — the layout appends " · Teno Store"
+    // so adding "products" would double-up brand context. Description
+    // carries the brand-pitch wording in French.
+    expect(m.title).toBe("Acme");
   });
 
   it("?brand=Acme&minRating=4 → multi-filter, noindex,follow, canonical /search", async () => {

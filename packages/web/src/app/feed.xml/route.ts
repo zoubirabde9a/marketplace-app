@@ -166,7 +166,7 @@ export async function GET(req: NextRequest) {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom" xml:lang="fr">
   <title>Teno Store — Recent listings</title>
-  <subtitle>The 50 most recently posted listings on Teno Store — phones, computing, home appliances, fashion and vehicles from Algerian sellers, priced in DZD.</subtitle>
+  <subtitle>Les 50 annonces les plus récentes sur Teno Store — téléphones, informatique, électroménager, mode et véhicules de vendeurs algériens, prix en dinars (DZD).</subtitle>
   <link rel="alternate" type="text/html" href="${SITE_URL}/"/>
   <link rel="self" type="application/atom+xml" href="${SITE_URL}/feed.xml"/>
   <id>${SITE_URL}/feed.xml</id>

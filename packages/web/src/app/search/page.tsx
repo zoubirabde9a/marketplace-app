@@ -101,10 +101,15 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       ? `${fmtCount} ${listingWord} matching “${q}” on Teno Store — phones, computing and more from Algerian sellers, prices in DZD.`
       : `Marketplace results matching “${q}” on Teno Store.`;
   } else if (brand) {
-    title = `${brand} products`;
+    // Brand title is just "{brand}" — the layout template appends " · Teno
+    // Store" so "{brand} products" would duplicate the brand context.
+    // Description in French to match the lang=fr document and the
+    // overwhelmingly-French catalog content (Ouedkniss listings).
+    title = brand;
+    const frAnnonceBrand = totalCount === 1 ? "annonce" : "annonces";
     description = fmtCount
-      ? `Browse ${fmtCount} ${brand} ${listingWord} from Algerian sellers on Teno Store. Filter by category, price or seller. Prices in DZD.`
-      : `Browse ${brand} products on Teno Store.`;
+      ? `${fmtCount} ${frAnnonceBrand} ${brand} de vendeurs algériens sur Teno Store. Filtrez par catégorie, prix ou vendeur. Prix en dinars (DZD).`
+      : `Annonces ${brand} de vendeurs algériens sur Teno Store. Prix en DZD.`;
   } else if (category && !isMultiValuedCategory) {
     // Category slugs are stored unaccented for URL ergonomics (telephones,
     // electromenager, vehicules). Without a label map, the SERP title
@@ -152,14 +157,19 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     // Same suffix-duplication concern as the category branch — layout
     // appends " · Teno Store", so "{Seller} on Teno Store" would render
     // as "{Seller} on Teno Store · Teno Store".
-    title = sellerName ?? "Storefront";
+    // Seller-slice description in French to match lang=fr + the seller's
+    // own catalog content (Algerian seller storefronts on the platform are
+    // exclusively French / Arabic). "Toutes les X annonces de {seller}"
+    // matches the catalog's actual voice.
+    title = sellerName ?? "Boutique";
+    const frAnnonceSeller = totalCount === 1 ? "annonce" : "annonces";
     description = fmtCount
       ? sellerName
-        ? `All ${fmtCount} ${listingWord} from ${sellerName} on Teno Store, refreshed continuously.`
-        : `All ${fmtCount} ${listingWord} from this seller on Teno Store, refreshed continuously.`
+        ? `Toutes les ${fmtCount} ${frAnnonceSeller} de ${sellerName} sur Teno Store, actualisées en continu.`
+        : `Toutes les ${fmtCount} ${frAnnonceSeller} de ce vendeur sur Teno Store, actualisées en continu.`
       : sellerName
-        ? `Browse listings from ${sellerName} on Teno Store.`
-        : "Browse listings from this seller on Teno Store.";
+        ? `Annonces de ${sellerName} sur Teno Store.`
+        : "Annonces de ce vendeur sur Teno Store.";
   } else {
     title = "Browse the marketplace";
     // ~150 chars for Google SERP. Earlier 181-char version got
