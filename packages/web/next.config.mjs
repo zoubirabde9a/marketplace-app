@@ -41,6 +41,19 @@ const nextConfig = {
           { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },
         ],
       },
+      {
+        // /sitemap.xml ships with Next's default `max-age=0, must-revalidate`
+        // because it's a dynamic route. That means Cloudflare cannot cache
+        // it — every Googlebot/Bingbot/IndexNow hit reaches origin and
+        // triggers a full render of all ~14k URLs. The module-level harvest
+        // cache in sitemap.ts already keeps the render fast, but origin
+        // still pays the work. A short edge TTL is safe: catalog changes
+        // every few minutes, and sitemap lastmod values are advisory.
+        source: "/sitemap.xml",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=300, s-maxage=300, stale-while-revalidate=1800" },
+        ],
+      },
     ];
   },
   async redirects() {
