@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · api+web rebuild · feat — minimal cart + cash-on-delivery checkout + seller-orders view (commits d62bd2f + 3500af0)
+
+- Buyer flow live at `/product/:id` (Add-to-cart on the main row + per-variant in the variants table) → `/cart` (qty / remove / subtotal) → `/checkout` (name + phone + Algerian wilaya dropdown of 58 entries) → `/order/:id` (order number + delivery contact + line items). Cart id lives in a 30-day httpOnly cookie; order access token lives in a 90-day per-order httpOnly cookie so anonymous buyers can revisit their confirmation page.
+- Backend: `POST /v1/checkout/confirm` now requires a `customer: { name, phone, region }` payload and persists it into `orders.metadata` (existing jsonb column — no new migration). New `GET /v1/sellers/:id/orders`, session-authenticated, returns orders containing the caller's seller items with buyer contact + line subtotal scoped to that seller only.
+- Cart + order responses are enriched server-side with product title + SKU + hero image via a single `CartRepo.enrichLines(variantIds)` join — no N+1 round-trips from the web tier.
+- Seller dashboard at `/seller/dashboard` now lists incoming orders per seller card: buyer name + click-to-call phone + region, item list with qty, line subtotal, timestamp, status pill.
+- Header cart badge renders in the existing nav via a Suspense'd server component; no count is shown until a cart cookie exists, so first-load latency is unchanged for visitors who haven't added anything yet.
+- Live end-to-end smoke: POST `/v1/cart/items` (Renault Symbol product) → POST `/v1/checkout/confirm` (customer "Smoke Test", phone 0555000000, region Alger) → order `MP-260511-S9HEBX` status `paid`. /cart returns 200, /checkout 307 redirects to /cart for empty-cart visitors as designed.
+- 25 API tests + 26 DB tests + 108 web tests + full repo typecheck all green pre-deploy.
+- DB migrations 0007 (`seller.city`) and 0008 (`seller_phones` multi-phone table) bundled in commit d62bd2f and applied on the live Postgres via `node dist/migrate.js` after the api container restart. No data backfill needed — both columns are nullable / new tables.
+- Cors update: api now exposes `x-mp-cart-id` + `x-request-id` so cross-origin JS at `teno-store.com` can read the resolved cart id from the response headers (previously hidden by browser default behaviour even when the header was on the wire).
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO — Product Offer JSON-LD now carries `areaServed` derived from `p.shipsTo` (sharper geo-targeting for Algerian regional SERPs)
 
 - Product page's Offer / AggregateOffer JSON-LD blocks were missing any explicit region binding. Without `areaServed`, Google has to infer the offer's eligible region from `<html lang="fr">` + `Product.inLanguage`; that works OK for unambiguous queries but degrades when the buyer's IP is outside Algeria (a French-speaker in Paris searching `marketplace algérien` got a less-confident regional match than a buyer in Algiers).
