@@ -463,3 +463,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — min-price floor 100 DZD across feed + product (priceMinor<10000 → 'Prix sur demande'); kills Ouedkniss placeholder '1 DA'/'4 DA' values from feed summaries, og:price, JSON-LD Offers
 
 2026-05-11 · vps-eu · web rebuild — extend 100 DZD price floor to home ItemList JSON-LD + search slice ItemList; kills price=0/1.00 Offer entries from Google structured-data on the highest-traffic surfaces
+
+2026-05-11 · vps-eu · web rebuild — /search?q=… now noindex,follow (was index,follow); kills open-ended internal-search results from index (spam-link injection risk, duplicates curated brand/category landings, infinite URL space bleeding crawl budget)
