@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO — strip leading Arabic boilerplate from product meta description + JSON-LD on French-tagged pages (9,309 / 30,028 long-desc products affected ≈ 31%)
+
+- Algerian sellers commonly prepend a single Arabic delivery boilerplate line ("التوصيل متوفر لجميع الولايات" — "Delivery available to all wilayas") to descriptions that are otherwise in French. The site declares `<html lang="fr">` and tags `Product.inLanguage="fr"` in JSON-LD. Shipping Arabic-leading text in `<meta description>` + JSON-LD `Product.description` on a French-locale page sends Google a mixed-language signal that hurts both SERP snippet quality and ranking for French queries; sample product before this deploy was leading its snippet with `التوصيل متوفر لجميع الولايات Compatible avec la série P4…`.
+- DB check across the live catalog: **9,309 of 30,028 (31%)** products with descriptions ≥40 chars start with an Arabic-script run. Single highest-coverage SEO lever shippable without operator action this iteration.
+- Added `stripLeadingArabic(s)` helper in `packages/web/src/app/product/[id]/page.tsx`. Regex strips a leading run of Arabic-script (U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF) + whitespace/punctuation/digits/emoji up to the first Latin letter. Guarded so a fully-Arabic description is left intact (those sellers wrote a complete Arabic description; stripping to empty would force the template fallback and lose useful copy — let Google decide what to do with the language-shell mismatch on those minority pages).
+- Wired into both call sites that feed Google's snippet pipeline: the `<meta description>` build in `generateMetadata` and the JSON-LD `Product.description` build downstream. Falls back to the raw seller text if stripping would leave less than `MIN_USEFUL_DESC_CHARS` (40); falls back further to the structured-French template (with category label from the earlier iter-3 deploy) if the surviving text is still too short.
+- Verified live: sample Arduino/IPEGA product page now ships `Compatible avec la série P4 /XBOX-d'un commutateur de série…` as its meta description (was `التوصيل متوفر لجميع الولايات Compatible avec…`). Type-check clean; 8/8 product-page tests pass locally.
+- Standing iteration-1 recommendation still open: Cache-Control middleware for anonymous HTML + Cloudflare Cache Rule (operator-side). Highest remaining lever.
+
 ## 2026-05-11 — vps-eu · web · stop /s/[id] from lying when an entity id is pasted into a snapshot URL
 
 - The `/v1/snapshots/:id` API returns 410 with title "Snapshot expired or not found" for three different cases that the web page used to collapse into the same misleading "Snapshot expired — kept for 24 hours" message: (a) snapshot was real and has now actually expired, (b) snapshot was real but was evicted under Redis memory pressure before its TTL, (c) the id was never a snapshot to begin with — e.g. someone pasted a sellerId or productId UUID into `/s/<id>`. Case (c) is the most common way users hit this page incorrectly, and the old copy made the marketplace look broken when it wasn't.
@@ -676,3 +685,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — added Vary: Authorization to all public-read cache responses (without it, CDN would serve a cached anon response to authenticated agents and break their per-agent snapshotUrl audit). Also DRY'd the cache-control assignments behind applyPublicReadCacheHeaders() helper shared by products + sellers routes
 
 2026-05-11 · vps-eu · api rebuild — agent-card.json now ships Cache-Control public/300/SWR=24h (was no header); every MCP/A2A SDK first-connect probe used to re-fetch from origin
+
+2026-05-11 · vps-eu · api rebuild — /v1/snapshots/{id} now public-cacheable (1h + SWR 24h + immutable); was 'private, max-age=300' blocking CDN even though snapshots are token-addressed immutables — audit-trail viewers re-shared a URL all hit origin
