@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO — product page brand chip is now a link to /search?brand=X, "Sold by" → "Vendu par"
+
+- Product page rendered the brand label as a plain `<span>` next to the H1. That left every branded product page with no internal-link edge to the brand-slice landing (`/search?brand=<brand>`). Brand slices are already sitemapped (when they pass MIN_FACET_COUNT=5, see sitemap.ts) and canonical-self, but received no PageRank from the ~40k product pages that actually mention the brand. Wrapped the chip in `<Link href="/search?brand=...">` with the same visual styling plus a subtle `hover:text-ink` so it reads as interactive without competing with the H1.
+- Also caught two strings of English copy on a `<html lang="fr">` page: `Sold by <seller>` and the fallback `this seller`. Changed to `Vendu par <seller>` / `ce vendeur`. Small alignment win for the locale signal — the product page now has no English content in the seller-info block, which previously contributed a brief English fragment in the topical region just below the H1.
+- Verified live: sample Renault Symbol product page now ships `<a href="/search?brand=Renault">Renault</a>` next to the H1 and `Vendu par <seller-link>` below it. Type-check clean; 8/8 product tests pass locally.
+- Standing iter-1 recommendation still open: Cache-Control middleware for anonymous HTML + Cloudflare Cache Rule (operator-side). Highest unrealized lever.
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO — product breadcrumb gained a category layer (was 3-level Accueil→Catalogue→Product; now 4-level Accueil→Catalogue→{Category}→Product, in both JSON-LD BreadcrumbList and visible UI)
 
 - Visible UI breadcrumb and `BreadcrumbList` JSON-LD on product pages were both 3-level (Accueil / Catalogue / ProductTitle). For a marketplace with a closed category taxonomy that's already visible in `p.categoryIds`, the missing category step costs us two things: (a) Google's mobile SERP breadcrumb display renders one less French token, weaker click affordance; (b) PageRank from product pages doesn't flow into category-slice landings (`/search?category=…`) via the breadcrumb edge, even though those slices are sitemapped (priority 0.7) and canonical-self.
@@ -743,3 +750,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — added Cache-Control: private, no-store to /v1/cart, /v1/orders, /v1/orders/{id}, /v1/auth/me, /v1/me/activity. Without these, intermediaries could heuristic-cache user-correlated data — user-A's cart/orders/identity surfacing to user-B would be a real leak. /v1/cart verified live on GET
 
 2026-05-11 · vps-eu · api rebuild — private/no-store on /v1/cart + /v1/orders + /v1/auth/me + /v1/me/activity. ALSO: Caddyfile updated in repo to expose X-Mp-Cart-Id + X-Request-Id cross-origin (browser JS currently can't read the cart id); operator action needed: 'docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile' after pulling latest
+
+2026-05-11 · vps-eu · Caddyfile change pending operator reload — Access-Control-Allow-Headers expanded with Idempotency-Key, X-Mp-Order-Token, X-Mp-Mcp-Token. Without Idempotency-Key in the allow list, every browser-based write (seller dashboard) was being rejected at CORS preflight with 'Idempotency-Key not allowed' (API requires this header on all mutations)
