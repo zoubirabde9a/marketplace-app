@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · api+web · snapshot links for MCP write tools (seller.create_account, product.create_listing)
+
+- Previously, only catalog *read* tools (`catalog.search` / `get_product` / `compare` / `recommend`) produced a 24h-frozen `snapshotUrl` an agent could hand to a human. Write tools returned only entity ids (`sellerId`, `productId`); pasting one of those into `/s/<id>` triggered the misleading "Snapshot expired" page (the API returns 410 for both expired and never-existed ids; web copy claimed expiry).
+- Added `seller_create` and `product_create` to `catalog.SnapshotKind`. Both MCP write handlers now capture input + output into the same `SnapshotStore` (Redis-backed in prod, 24h TTL) and return `snapshotUrl` / `snapshotCreatedAt` / `snapshotExpiresAt` alongside their existing fields.
+- Refactored `captureSnapshot` / `snapshotWebUrl` / `webBase` out of `packages/mcp-server/src/tools/catalog.ts` into a shared `snapshot-helpers.ts` so write tools reuse without duplication.
+- Web `/s/[id]` page renders the two new kinds with dedicated views (seller card; product card with variants table) and a "What the agent created" heading instead of "What the agent saw".
+- Deployed via tar + `docker compose up -d --build api web` (no env changes; the existing `RedisSnapshotStore` is shared with read tools).
+- Tests: 3 new in `packages/mcp-server/test/seller-write-snapshot.test.ts`. Full suite green (575+ tests).
+
 ## 2026-05-11 — vps-eu · scraper-loop · drop sante_beaute from category rotation
 
 - Operator wants the health/beauty category dropped from the scrape rotation (catalog focus). Removed `sante_beaute` from `--categories` in `deploy/systemd/marketplace-scrape-loop.service`; rotation now cycles 6 categories: `telephones, informatique, electronique_electromenager, vetements_mode, immobilier, automobiles_vehicules`. Each category gets a turn every ~6 minutes instead of ~7.
@@ -559,3 +568,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — sitemap brand + seller facet floor raised to count>=5; dropped 9 scrape-noise brand landings (Mode & Style, Atelier Constantine, Maison & Déco, Acme, Artisanat Sétif, etc. with count 1-3); 37 → 28 brand URLs in sitemap
 
 2026-05-11 · vps-eu · web rebuild — thin brand+seller /search slices noindex when totalCount<5 (mirrors sitemap MIN_FACET_COUNT floor from previous commit); even after removing from sitemap, internal links / external links could still drive Google to index them
+
+2026-05-11 · vps-eu · api rebuild — added /robots.txt route on api.teno-store.com (was 401 from auth middleware); host now properly tells crawlers Disallow: / since it serves only programmatic surfaces; sitemap pointer routes them to the apex
