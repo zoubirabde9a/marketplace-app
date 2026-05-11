@@ -674,3 +674,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — extended anonymous-read caching to /v1/sellers, /v1/sellers/{id}, /v1/products/_batch (same 60s+SWR policy; auth'd calls private/no-store)
 
 2026-05-11 · vps-eu · api rebuild — added Vary: Authorization to all public-read cache responses (without it, CDN would serve a cached anon response to authenticated agents and break their per-agent snapshotUrl audit). Also DRY'd the cache-control assignments behind applyPublicReadCacheHeaders() helper shared by products + sellers routes
+
+2026-05-11 · vps-eu · api rebuild — agent-card.json now ships Cache-Control public/300/SWR=24h (was no header); every MCP/A2A SDK first-connect probe used to re-fetch from origin
