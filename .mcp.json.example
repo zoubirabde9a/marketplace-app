@@ -1,0 +1,13 @@
+{
+  "_comment": "Copy to .mcp.json and fill in MCP_ADMIN_TOKEN from /opt/marketplace/.env on vps-eu. .mcp.json itself is gitignored — never commit a real token.",
+  "mcpServers": {
+    "teno-store": {
+      "type": "http",
+      "url": "https://api.teno-store.com/mcp",
+      "headers": {
+        "X-Mp-Mcp-Token": "PASTE_MCP_ADMIN_TOKEN_HERE",
+        "X-Mp-Agent-Id": "agt_local_operator"
+      }
+    }
+  }
+}

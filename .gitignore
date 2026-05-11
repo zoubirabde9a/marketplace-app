@@ -28,6 +28,13 @@ yarn-error.log*
 !.vscode/extensions.json
 !.vscode/settings.json
 
+# Local MCP client config — embeds the operator's MCP admin token, must not
+# leave the workstation. Committed shape lives in .mcp.json.example.
+/.mcp.json
+
+# Claude Code harness internal scheduling state, not source.
+/.claude/scheduled_tasks.lock
+
 # Scraper output (per-run JSON dumps land here when run-loop.sh runs locally).
 # In prod the canonical path is /opt/marketplace/data on vps-eu.
 /data/
