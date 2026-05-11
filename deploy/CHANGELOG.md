@@ -647,3 +647,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — added description fields to /about (AboutPage) and /seller (WebPage) JSON-LD nodes; were missing entirely, leaving Google's structured-data parser to scrape page body for the entity summary
 
 2026-05-11 · vps-eu · api rebuild — /.well-known/agent-card.json base URL was leaking 'http://0.0.0.0:3100' (docker bind addr); now derived from req.protocol+host via trustProxy, all endpoints absolute https://api.teno-store.com URLs — agents can use the discovery doc without URL-joining
+
+2026-05-11 · vps-eu · api + web rebuild — agent-card.json adds rest capability (was missing from API-side discovery doc while apex agents.json declared it); Header Suspense fallbacks now French (Chargement de la recherche / du menu utilisateur)
