@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { upscaleOuedknissForCrawler } from "@/lib/images";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
@@ -33,17 +34,6 @@ export function __resetSitemapCacheForTests(): void {
   inFlight = null;
 }
 
-// Rewrite Ouedkniss CDN URLs from the API's default /400/ size to /1200/
-// for higher-resolution image-search-eligible URLs in the sitemap. Same
-// transform as product page upscaleForShare. Pattern intentionally narrow
-// so non-Ouedkniss URLs (if the API ever returns them) pass through
-// unchanged.
-function upscaleOuedknissImage(url: string): string {
-  return url.replace(
-    /^(https?:\/\/cdn\d*\.ouedkniss\.com)\/\d{2,4}(\/medias\/)/,
-    "$1/1200$2",
-  );
-}
 
 interface SitemapProductHit {
   productId: string;
@@ -282,7 +272,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // higher-quality image-result eligibility. See product page
       // upscaleForShare for the same transform applied to og:image.
       ...(p.heroImageUrl
-        ? { images: [upscaleOuedknissImage(p.heroImageUrl)] }
+        ? { images: [upscaleOuedknissForCrawler(p.heroImageUrl)] }
         : {}),
     }));
     // Brand-only landing pages (/search?brand=Apple) are indexable per

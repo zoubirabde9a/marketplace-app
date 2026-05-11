@@ -8,6 +8,7 @@ import { ActiveFilters } from "@/components/ActiveFilters";
 import { EmptyState } from "@/components/EmptyState";
 import { InfiniteResults } from "@/components/InfiniteResults";
 import { jsonLdString } from "@/lib/jsonld";
+import { upscaleOuedknissForCrawler } from "@/lib/images";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
@@ -336,7 +337,7 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
         url: productUrl,
         productID: hit.productId,
       };
-      if (hit.heroImageUrl) product.image = [hit.heroImageUrl];
+      if (hit.heroImageUrl) product.image = [upscaleOuedknissForCrawler(hit.heroImageUrl)];
       if (hit.brand) product.brand = { "@type": "Brand", name: hit.brand };
       const availability = hit.inStock
         ? "https://schema.org/InStock"

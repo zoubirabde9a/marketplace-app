@@ -12,6 +12,7 @@ import type { SearchHit } from "@/lib/api";
 import { AgentActivity } from "@/components/AgentActivity";
 import { ProductGrid } from "@/components/ProductGrid";
 import { jsonLdString } from "@/lib/jsonld";
+import { upscaleOuedknissForCrawler } from "@/lib/images";
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +79,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         url: productUrl,
         productID: hit.productId,
       };
-      if (hit.heroImageUrl) product.image = [hit.heroImageUrl];
+      if (hit.heroImageUrl) product.image = [upscaleOuedknissForCrawler(hit.heroImageUrl)];
       if (hit.brand) product.brand = { "@type": "Brand", name: hit.brand };
       const availability = hit.inStock
         ? "https://schema.org/InStock"

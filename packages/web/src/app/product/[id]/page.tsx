@@ -9,6 +9,7 @@ import { CounterfeitBadge } from "@/components/CounterfeitBadge";
 import { ShareButton } from "@/components/ShareButton";
 import { ProductGrid } from "@/components/ProductGrid";
 import { jsonLdString } from "@/lib/jsonld";
+import { upscaleOuedknissForCrawler } from "@/lib/images";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
@@ -99,17 +100,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     ? p.images.find((img) => img.url === p.heroImageUrl) ?? null
     : null;
   // Ouedkniss CDN hero URLs come back at /400/ size — below Facebook /
-  // LinkedIn / Twitter summary_large_image minimums (1200x630). The CDN
-  // supports a /1200/ variant on the same path, so swap the size segment
-  // for share-card metadata only. The visible <img> on the page can stay
-  // at the cheaper /400/ size (the gallery handles full-res internally).
-  // Pattern matches cdn[N].ouedkniss.com/<digits>/medias/...
-  const upscaleForShare = (url: string): string =>
-    url.replace(
-      /^(https?:\/\/cdn\d*\.ouedkniss\.com)\/\d{2,4}(\/medias\/)/,
-      "$1/1200$2",
-    );
-  const shareImageUrl = p.heroImageUrl ? upscaleForShare(p.heroImageUrl) : undefined;
+  // LinkedIn / Twitter summary_large_image minimums (1200x630). Swap the
+  // size segment for share-card metadata only; the visible <img> on the
+  // page can stay at the cheaper /400/ asset. Shared helper.
+  const shareImageUrl = p.heroImageUrl
+    ? upscaleOuedknissForCrawler(p.heroImageUrl)
+    : undefined;
   // If we successfully upscaled (URL changed), omit explicit width/height —
   // they describe the /400/ asset, and Facebook/Twitter will re-detect.
   // If pattern didn't match (URL stayed the same), keep the original
@@ -214,7 +210,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       // X allows ~70-char titles in summary_large_image; full title is fine.
       title: fullTitle,
       description: desc,
-      ...(p.heroImageUrl ? { images: [p.heroImageUrl] } : {}),
+      ...(shareImageUrl ? { images: [shareImageUrl] } : {}),
     },
     other: ogProductOther,
   };
@@ -366,9 +362,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   };
   if (p.description?.value) productJsonLd.description = p.description.value;
   if (p.images && p.images.length > 0) {
-    productJsonLd.image = p.images.map((img) => img.url);
+    productJsonLd.image = p.images.map((img) => upscaleOuedknissForCrawler(img.url));
   } else if (p.heroImageUrl) {
-    productJsonLd.image = [p.heroImageUrl];
+    productJsonLd.image = [upscaleOuedknissForCrawler(p.heroImageUrl)];
   }
   if (p.brand) {
     productJsonLd.brand = { "@type": "Brand", name: p.brand };
