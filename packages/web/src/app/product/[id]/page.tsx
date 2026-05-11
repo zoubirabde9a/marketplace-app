@@ -98,12 +98,29 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const heroImage = p.heroImageUrl
     ? p.images.find((img) => img.url === p.heroImageUrl) ?? null
     : null;
-  const images = p.heroImageUrl
+  // Ouedkniss CDN hero URLs come back at /400/ size — below Facebook /
+  // LinkedIn / Twitter summary_large_image minimums (1200x630). The CDN
+  // supports a /1200/ variant on the same path, so swap the size segment
+  // for share-card metadata only. The visible <img> on the page can stay
+  // at the cheaper /400/ size (the gallery handles full-res internally).
+  // Pattern matches cdn[N].ouedkniss.com/<digits>/medias/...
+  const upscaleForShare = (url: string): string =>
+    url.replace(
+      /^(https?:\/\/cdn\d*\.ouedkniss\.com)\/\d{2,4}(\/medias\/)/,
+      "$1/1200$2",
+    );
+  const shareImageUrl = p.heroImageUrl ? upscaleForShare(p.heroImageUrl) : undefined;
+  // If we successfully upscaled (URL changed), omit explicit width/height —
+  // they describe the /400/ asset, and Facebook/Twitter will re-detect.
+  // If pattern didn't match (URL stayed the same), keep the original
+  // width/height metadata.
+  const upscaled = shareImageUrl && shareImageUrl !== p.heroImageUrl;
+  const images = shareImageUrl
     ? [
         {
-          url: p.heroImageUrl,
-          ...(heroImage?.width ? { width: heroImage.width } : {}),
-          ...(heroImage?.height ? { height: heroImage.height } : {}),
+          url: shareImageUrl,
+          ...(!upscaled && heroImage?.width ? { width: heroImage.width } : {}),
+          ...(!upscaled && heroImage?.height ? { height: heroImage.height } : {}),
           ...(heroImage?.altText ? { alt: heroImage.altText } : { alt: fullTitle }),
         },
       ]
