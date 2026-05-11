@@ -832,3 +832,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — internal seller links + JSON-LD seller.url all point at /store/{id} now (was /search?sellerId=). Consolidates link-equity flow with the new canonical seller URL; faster crawl discovery since Googlebot doesn't have to follow the canonical hint from previous commit
 
 2026-05-11 · vps-eu · web rebuild — added BreadcrumbList JSON-LD to /store/{id} (operator's new canonical seller storefront). Without it, SERP rich-result breadcrumb row above seller-storefront snippets disappeared after /search?sellerId= canonical'd to /store/{id}
+
+2026-05-11 · vps-eu · web rebuild — /store/{id} now ships ItemList with up to 25 Product entries (image/brand/offers); restores Shopping-bucketing + per-product Brand→Seller graph that /search?sellerId= had before canonical consolidation
