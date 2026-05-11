@@ -22,20 +22,23 @@ interface Params { id: string }
 //
 // Probed 2026-05-11: many seller rows carry countryCode='US' (apparent
 // data bug — Algerian sellers shouldn't have US set). With the prior
-// 'fall back to raw ISO' behaviour, those rendered as 'Boutique X en US
-// sur Teno Store' — English-coded ASCII mid-French sentence on every
-// affected seller's meta description. Now returns null on unknown codes
-// so the locality is dropped from the description entirely instead of
-// surfacing the raw code. The known set is broadened to cover plausible
-// non-Algerian regional sellers (FR, TN, MA, the GCC + EU neighbours).
+// 'fall back to raw ISO' behaviour, those rendered 'Boutique X en US
+// sur Teno Store' on every affected seller's meta description.
+//
+// First fix added US → 'États-Unis' to the map. But that just made the
+// data bug LOOK correct — broke 'en US' → grammatical 'en États-Unis',
+// claiming Algerian sellers are US-based to Google. Worse outcome.
+//
+// Final policy: only DZ + plausible same-region neighbours (FR, TN, MA)
+// are mapped. Unknown codes return null so the locality is dropped from
+// the description. Algerian sellers mis-tagged with US/other codes now
+// render 'Boutique X sur Teno Store' — drops the location but doesn't
+// misrepresent it. The data bug stays flagged for the seller-onboarding
+// pipeline.
 function frCountry(cc: string | null | undefined): string | null {
   if (!cc) return null;
   const m: Record<string, string> = {
     DZ: "Algérie", FR: "France", TN: "Tunisie", MA: "Maroc",
-    BE: "Belgique", CH: "Suisse", CA: "Canada", LB: "Liban",
-    EG: "Égypte", LY: "Libye", SA: "Arabie saoudite", AE: "Émirats arabes unis",
-    QA: "Qatar", KW: "Koweït", DE: "Allemagne", IT: "Italie",
-    ES: "Espagne", GB: "Royaume-Uni", US: "États-Unis",
   };
   return m[cc.toUpperCase()] ?? null;
 }
