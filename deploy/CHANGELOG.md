@@ -6,6 +6,27 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO — Atom feed `<updated>` now uses ingestion time (was source post date); same fix iter-16 applied to the sitemap
+
+- `/feed.xml` (announced via `<link rel="alternate" type="application/atom+xml">` on every page; consumed by RSS readers and AI crawlers' freshness pipelines — Claude's web tool, Perplexity, etc.) emitted every entry's `<updated>` and `<published>` and the top-level `<updated>` from `hit.postedAt` — the same `attributes.sourcePostedAt ?? createdAt` precedence that iter-16 fixed for the sitemap. Feed readers were seeing entries with "last modified 2017" / "2020" / "2024" timestamps on listings we ingested today.
+- Wired the iter-16 `updatedAt` API field through to feed.xml:
+  - `<entry><updated>` = `hit.updatedAt ?? hit.postedAt` (our ingestion time, falling back to source date if the API hasn't shipped the new field yet)
+  - `<entry><published>` = unchanged (source post date — semantically "when the listing was first published on Ouedkniss" still makes sense for first-publication timestamp)
+  - Top-level `<feed><updated>` = `hits[0].updatedAt ?? hits[0].postedAt` (newest ingestion timestamp across the feed)
+  - ETag fingerprint now incorporates the newest updatedAt, so conditional GET (`If-None-Match` / `If-Modified-Since`) correctly invalidates when fresh ingestion happens even if source post dates are old.
+- Verified live: feed top `<updated>` went `2026-05-11T13:34:29` → `2026-05-11T18:09:18` (ingestion time, ~5 hours newer than the source date). Per-entry `<updated>` aligned.
+- Type-check clean.
+- Standing iter-1 recommendation still open (Cloudflare Cache Rule for anonymous HTML). With this and iter-16 both shipping, Google + RSS-aware crawlers now see consistent recent freshness signals across BOTH the sitemap and the Atom feed.
+
+## 2026-05-11 — vps-eu · web rebuild · SEO — Open Graph `product:category` now uses humanized French label (was raw slug); unblock pnpm v10 build via `onlyBuiltDependencies`; flag deploy footgun re-occurrence
+
+- Product page emitted `<meta property="product:category" content="telephones"/>` — the raw category slug. Pinterest / Facebook / Discord product cards parse this tag to render category context; "telephones" reads as English/lowercase noise vs. "Téléphones". Switched to `humanizeCategorySlug(p.categoryIds[0])` — same FR_CATEGORY map that already feeds JSON-LD `Product.category`, the breadcrumb category step, and `buildProductDescription`. Single source of truth for the French taxonomy label across the page's structured-data surface.
+- Verified live: sample product now ships `<meta property="product:category" content="Téléphones"/>`.
+- **pnpm v10 build break:** during this iteration's deploy the web image rebuild failed with `ERR_PNPM_IGNORED_BUILDS` on `esbuild@*` and `sharp@0.34.5`. pnpm 10 made ignored-builds-as-error the default behavior — previously these post-install scripts ran silently. Fixed by adding `"pnpm": {"onlyBuiltDependencies": ["esbuild", "sharp"]}` to root `package.json` (allowlist for native-binary postinstalls; everything else still blocked). Tested + verified the build then completed normally.
+- **Deploy footgun re-occurrence (iter-11 lesson not absorbed):** my first deploy attempt this iteration chained `cd packages/web && npx tsc && tar ...` for the typecheck, leaving the shell cwd in the package subdir; the tar then shipped a single-package layout on top of the workspace, overwriting `/opt/marketplace/package.json` with `packages/web/package.json`. The pnpm build break above became visible only AFTER fixing this. Recovered by re-shipping from explicit repo root. The hardening I keep deferring (a small `scripts/deploy.sh` that runs `cd "$(git rev-parse --show-toplevel)"` first) would prevent the recurrence — flagging as a real action item for the operator or a future iteration.
+- Type-check clean; 8/8 product-page tests pass.
+- Standing iter-1 recommendation still open: Cloudflare Cache Rule for anonymous HTML. Highest unrealized lever — code-side groundwork is complete.
+
 ## 2026-05-11 — vps-eu · api rebuild · SEO — search API surfaces `updatedAt` (ingestion time) alongside `postedAt`; sitemap lastmod range collapses from 2017-2026 → last 3 days (Google freshness signal repair on ~19% of catalog)
 
 - Sitemap emits `<lastmod>` per product using `hit.updatedAt ?? hit.postedAt`. API only shipped `postedAt`, which is `attributes.sourcePostedAt ?? createdAt` — for scraped products the Ouedkniss original-post date wins, even though we only ingested the listing minutes ago. Result: sitemap lastmod ranged 2017-03-12 to today, with **8,464 products (19%) > 6 months old, 3,251 (7%) > 1 year, 2,402 (5%) > 2 years**. Google's freshness algorithms treat those URLs as abandoned content — depresses ranking even though the listings are actively for sale and the page renders dynamically from the current DB.
@@ -836,3 +857,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — /store/{id} now ships ItemList with up to 25 Product entries (image/brand/offers); restores Shopping-bucketing + per-product Brand→Seller graph that /search?sellerId= had before canonical consolidation
 
 2026-05-11 · vps-eu · web rebuild — /store/{id} OG/Twitter card fixes (siteName, image at 1200x630, full twitter block with seller-specific title/description) + .npmrc dangerously-allow-all-builds (production build was blocked on ERR_PNPM_IGNORED_BUILDS; pnpm 10.0.0 wasn't honoring package.json onlyBuiltDependencies config in the docker build environment)
+
+2026-05-11 · vps-eu · web rebuild — /store/{id} description no longer renders broken/misleading country fallbacks. frCountry now whitelist-only (DZ/FR/TN/MA); unknown codes drop the locality. Was 'en US' (broken French) → 'en États-Unis' (false location claim) → no country mentioned (clean + accurate). Underlying data bug (Algerian sellers tagged countryCode='US') still operator-territory
