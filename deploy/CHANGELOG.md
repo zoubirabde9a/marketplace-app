@@ -603,3 +603,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — refactored product page related-products into a Suspense child (independent streaming, no longer blocks main shell). Tried deleting product loading.tsx for source order but /v1/products/{id} takes 2.5-3.2s under load, so TTFB jumped from 240ms to 2.5s — restored loading.tsx, kept the Suspense refactor (still useful)
 
 2026-05-11 · vps-eu · api rebuild — /v1/products/{id} latency 2.0-2.7s → 250-400ms (~10x faster) by replacing repo.loadAll() with repo.loadSellers() in makeProductReader.getProduct. Detail endpoint was re-hydrating the entire 25k-product catalog just to read one seller's displayName. Web product page now 380-460ms warm (was 2.3s)
+
+2026-05-11 · vps-eu · web rebuild — deleted product loading.tsx (now safe). Source order: H1 byte 9818 (was 112,791), footer byte 13820. TTFB ~290ms, total ~470ms warm — faster end-to-end than the previous skeleton+stream pattern (total was 2.3s) because the API perf fix two commits ago made the underlying lookup fast
