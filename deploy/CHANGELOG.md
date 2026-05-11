@@ -557,3 +557,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — /search canonical + robots logic now strips tracking params (utm_*, fbclid, gclid, msclkid, etc.) before deciding indexability; previously any shared-with-tracking URL collapsed to bare /search canonical, losing the category/brand/seller landing context for ranking
 
 2026-05-11 · vps-eu · web rebuild — sitemap brand + seller facet floor raised to count>=5; dropped 9 scrape-noise brand landings (Mode & Style, Atelier Constantine, Maison & Déco, Acme, Artisanat Sétif, etc. with count 1-3); 37 → 28 brand URLs in sitemap
+
+2026-05-11 · vps-eu · web rebuild — thin brand+seller /search slices noindex when totalCount<5 (mirrors sitemap MIN_FACET_COUNT floor from previous commit); even after removing from sitemap, internal links / external links could still drive Google to index them
