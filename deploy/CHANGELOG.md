@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · scraper + api rebuild · per-listing phone reveal + resilience pass
+
+- Scraper (`/opt/marketplace/scripts/scrape-ouedkniss.mjs`): adds optional `OUEDKNISS_JWT` env. When set, calls `announcementPhoneGet` per listing (the SPA's `UnhidePhone` op) and attaches `phoneEntries` to each item. Anonymous calls return `[]` — phone reveal is gated behind a reCAPTCHA-backed `/login-anonymous` Bearer JWT; operator pastes the JWT once per expiry. The seeder unions per-listing phones with shop site-build phones, dedupes by E.164, marks the first primary. JWT not yet set in `.env`; the loop currently logs `[phones] OUEDKNISS_JWT not set` and behaves as before.
+- Resilience: all GraphQL traffic now goes through `fetchWithTimeout` (15s default, `FETCH_TIMEOUT_MS` overridable). Page-fetch failures `continue` to the next page instead of `break`ing; per-item exceptions are caught with an `itemFailures` counter; the output JSON is written via a `finally` block so partial results always land on disk. Seeder `resolveSeller` is wrapped in `try/catch` — one seller-create failure no longer aborts the batch.
+- API image rebuilt (`docker compose -f docker-compose.prod.yml build api && up -d api`) so the bundled `packages/db/dist/seed-from-scraped.js` ships the seeder changes. Verified: next run-loop iteration at 23:53 CEST seeded 32/50, exit_code=0, `[phones]` line emitted.
+
 ## 2026-05-11 — vps-eu · api rebuild · checkout no longer silently auto-applies a shipping fee
 
 - Bug: order confirmation page showed a total higher than the cart/checkout pages (e.g. cart says DZD 44, order page says DZD 49.99). Root cause: `priceQuote` auto-selects `shippingOptions[0]` when the caller doesn't pass `preferredShipping`. `/v1/checkout/confirm` was passing `FLAT_SHIPPING_OPTIONS` unconditionally, so a 599-minor "standard" fee was added at order-creation time even though the web UI never surfaces a shipping picker.
