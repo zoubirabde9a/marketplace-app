@@ -452,3 +452,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — product page: suppress 'price=0' from meta description (now 'Prix sur demande'), og:price/product:price, and JSON-LD Offer when no variant has a positive price (Ouedkniss 'Prix sur demande' listings, cars/real-estate/services)
 
 2026-05-11 · vps-eu · web rebuild — min-price floor 100 DZD across feed + product (priceMinor<10000 → 'Prix sur demande'); kills Ouedkniss placeholder '1 DA'/'4 DA' values from feed summaries, og:price, JSON-LD Offers
+
+2026-05-11 · vps-eu · web rebuild — extend 100 DZD price floor to home ItemList JSON-LD + search slice ItemList; kills price=0/1.00 Offer entries from Google structured-data on the highest-traffic surfaces
