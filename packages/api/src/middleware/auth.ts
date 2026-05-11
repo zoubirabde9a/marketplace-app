@@ -63,7 +63,11 @@ export interface AuthDeps {
 }
 
 const PUBLIC_MATCHERS: ReadonlyArray<(method: string, path: string) => boolean> = [
-  (m, p) => p.startsWith("/livez") || p.startsWith("/readyz") || p.startsWith("/.well-known/"),
+  (m, p) =>
+    p.startsWith("/livez") ||
+    p.startsWith("/readyz") ||
+    p.startsWith("/.well-known/") ||
+    p === "/robots.txt",
   (m, p) => p.startsWith("/oauth/"),
   // MCP streamable-HTTP entry point. Per-tool scope checks run inside the MCP
   // registry; we synthesize a dev principal below when DEV_BYPASS is on so write
