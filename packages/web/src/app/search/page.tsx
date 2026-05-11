@@ -34,7 +34,27 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       ? categoryParam[0]
       : ""
     : categoryParam ?? "";
-  const definedKeys = Object.keys(sp).filter((k) => sp[k] !== undefined);
+  // Tracking / attribution params don't change the page content — they're
+  // attached by ad networks, share platforms, and analytics tools (utm_*,
+  // fbclid, gclid, msclkid, yclid, etc.). Without stripping these from the
+  // canonical-selection logic, a real category URL like
+  //   /search?category=telephones&utm_source=facebook
+  // would canonicalize to bare /search (losing the category landing context)
+  // because definedKeys.length === 2 fails the single-key check below.
+  // Strip them up front so the user-visible content key (q/brand/category/
+  // sellerId) drives canonical and indexability decisions.
+  const TRACKING_PREFIXES = ["utm_"];
+  const TRACKING_KEYS = new Set([
+    "fbclid", "gclid", "msclkid", "yclid", "dclid", "ttclid",
+    "twclid", "li_fat_id", "_hsenc", "_hsmi", "mc_eid", "mkt_tok",
+    "ref", "ref_src", "ref_url", "source", "via",
+  ]);
+  const isTrackingKey = (k: string): boolean => {
+    if (TRACKING_KEYS.has(k)) return true;
+    for (const pfx of TRACKING_PREFIXES) if (k.startsWith(pfx)) return true;
+    return false;
+  };
+  const definedKeys = Object.keys(sp).filter((k) => sp[k] !== undefined && !isTrackingKey(k));
   // Canonicalize. q-only, brand-only, single-seller, and single-category
   // slices are worth indexing as their own pages; everything else (cursor,
   // price ranges, ratings, multi-filter combinations) collapses back to the
