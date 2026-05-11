@@ -819,3 +819,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — OAuth 2.1 endpoints (/oauth/token /oauth/authorize /oauth/introspect) now return RFC 6749 §5.2-shaped 501 unsupported_grant_type instead of bare 404. AI agents following the discovery doc's auth posture fail fast with a structured signal pointing at the Agent Passport flow we actually support
 
 2026-05-11 · vps-eu · web rebuild — consolidated duplicate seller-storefront URLs (operator's new /store/{id} + the existing /search?sellerId= were both self-canonical and indexable). /search?sellerId= now canonicals → /store/{id}; sitemap emits /store/{id} entries directly. Avoids PageRank split + duplicate-content penalty
+
+2026-05-11 · vps-eu · web rebuild — internal seller links + JSON-LD seller.url all point at /store/{id} now (was /search?sellerId=). Consolidates link-equity flow with the new canonical seller URL; faster crawl discovery since Googlebot doesn't have to follow the canonical hint from previous commit
