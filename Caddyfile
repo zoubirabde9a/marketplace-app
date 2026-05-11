@@ -33,7 +33,25 @@
 # ─── Apex: human-readable observer (Next.js) ─────────────────────────────────
 teno-store.com {
 	encode zstd gzip
-	reverse_proxy web:3200
+	reverse_proxy web:3200 {
+		# Bridge the ~3-5s gap when `docker compose up -d --build web`
+		# recreates the upstream during a deploy. Without this, anyone who
+		# clicks Add-to-cart, Checkout, or any Next.js Server Action POST
+		# inside that window gets a hard 502 (we saw a wave of these on
+		# the 2026-05-11 cart deploy). lb_try_duration tells Caddy to keep
+		# retrying connect-refused / dial errors against this backend for
+		# up to 30 s, polling every 250 ms.
+		lb_try_duration 30s
+		lb_try_interval 250ms
+		# Server-action POSTs (form submits from /cart, /checkout) carry a
+		# small multipart payload. To retry those after a connect error,
+		# Caddy needs the body buffered — otherwise the retry attempt
+		# would have no body to resend. 4 MB is well over any server-
+		# action payload (the cart/checkout forms are < 1 KB) and well
+		# under any real media upload (which goes to api.teno-store.com,
+		# not here).
+		request_buffers 4MB
+	}
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -58,7 +76,16 @@ www.teno-store.com {
 # ─── API subdomain: REST + (future) MCP / A2A endpoints (Fastify) ───────────
 api.teno-store.com {
 	encode zstd gzip
-	reverse_proxy api:3100
+	reverse_proxy api:3100 {
+		# Same recreate-gap mitigation as the apex (see comment there).
+		# No request buffering: this backend serves media uploads and we
+		# don't want to balloon Caddy memory on large multipart POSTs.
+		# Retries only protect idempotent paths in practice, but that
+		# covers the bulk of /v1/products, /v1/cart GETs etc. that the
+		# web tier fetches during SSR.
+		lb_try_duration 30s
+		lb_try_interval 250ms
+	}
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
