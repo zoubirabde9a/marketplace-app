@@ -58,12 +58,18 @@ interface ScrapedItem {
   sellerUserId?: string | null;
   sellerIsFromStore?: boolean;
   sellerStoreId?: string | null;
+  // Per-listing phones revealed via authenticated announcementPhoneGet
+  // (added 2026-05-11). When present, the seeder unions these into the
+  // resolved seller's phone list so individual-seller listings get a
+  // working contact path. Absent for unauthenticated scrape runs.
+  phoneEntries?: ScrapedPhoneEntry[];
 }
 
 interface ScrapedPhoneEntry {
   phone: string;
   hasWhatsapp?: boolean;
   hasViber?: boolean;
+  hasTelegram?: boolean;
 }
 
 interface ScrapedStore {
@@ -172,21 +178,30 @@ function syntheticName(key: string, kind: "store" | "user"): string {
   return kind === "store" ? `Vendeur Pro ${tag}` : `Vendeur ${tag}`;
 }
 
-// Build the seller_phones input list from a scraped store. Prefers the
-// per-phone metadata shape (`phoneEntries`, with hasWhatsapp/hasViber).
-// Falls back to the legacy flat `phones` string list (whatsapp unknown).
-// Output is normalized to E.164 (+213…) and deduplicated; the first
-// remaining entry is marked primary. Returns [] when the store has no
-// parsable phones — the seller is still created, just without contact info.
-function buildPhoneList(store: ScrapedStore | undefined): SellerPhoneInput[] {
-  if (!store) return [];
-  const entries: ScrapedPhoneEntry[] = store.phoneEntries?.length
+// Build the seller_phones input list from a set of scraped phone sources.
+// Accepts both the store's site-build phones (for shops) and per-listing
+// phones revealed via authenticated announcementPhoneGet. Normalizes to
+// E.164 (+213…), deduplicates by number (per-listing metadata wins over
+// store metadata when the same number appears in both), and marks the
+// first remaining entry primary. Returns [] when no parsable phones are
+// available — the seller is still created, just without contact info.
+function buildPhoneList(
+  store: ScrapedStore | undefined,
+  listingPhones: ScrapedPhoneEntry[] = [],
+): SellerPhoneInput[] {
+  const storeEntries: ScrapedPhoneEntry[] = store?.phoneEntries?.length
     ? store.phoneEntries
-    : (store.phones ?? []).map((phone) => ({ phone }));
+    : (store?.phones ?? []).map((phone) => ({ phone }));
+  // listing-phones first so they win the dedupe (they carry the truthier
+  // hasTelegram flag and reflect what the seller advertises per listing).
+  const combined: Array<{ entry: ScrapedPhoneEntry; source: "ouedkniss-listing" | "ouedkniss-store" }> = [
+    ...listingPhones.map((entry) => ({ entry, source: "ouedkniss-listing" as const })),
+    ...storeEntries.map((entry) => ({ entry, source: "ouedkniss-store" as const })),
+  ];
   const seen = new Set<string>();
   const out: SellerPhoneInput[] = [];
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i]!;
+  for (let i = 0; i < combined.length; i++) {
+    const { entry, source } = combined[i]!;
     const e164 = normalizeAlgerianPhone(entry.phone);
     if (!e164 || seen.has(e164)) continue;
     seen.add(e164);
@@ -196,7 +211,7 @@ function buildPhoneList(store: ScrapedStore | undefined): SellerPhoneInput[] {
       isViber: !!entry.hasViber,
       isPrimary: out.length === 0,
       position: i,
-      source: "ouedkniss-store",
+      source,
     });
   }
   return out;
@@ -312,7 +327,7 @@ async function main(): Promise<void> {
       // cost bounded — typically <30 sellers per scrape run.
       const isShopExisting = item.sellerIsFromStore === true && item.sellerStoreId;
       const storeExisting = isShopExisting && item.sellerStoreId ? stores[item.sellerStoreId] : undefined;
-      const phoneList = buildPhoneList(storeExisting);
+      const phoneList = buildPhoneList(storeExisting, item.phoneEntries ?? []);
       if (phoneList.length > 0) {
         try {
           await repos.sellers.replacePhones(existing[0].orgId, phoneList);
@@ -330,7 +345,7 @@ async function main(): Promise<void> {
     const isShop = item.sellerIsFromStore === true && item.sellerStoreId;
     const display = syntheticName(key, isShop ? "store" : "user");
     const store = isShop && item.sellerStoreId ? stores[item.sellerStoreId] : undefined;
-    const phoneList = buildPhoneList(store);
+    const phoneList = buildPhoneList(store, item.phoneEntries ?? []);
     const website = store?.website ?? undefined;
     const created = await repos.sellers.create({
       displayName: display,
@@ -397,7 +412,15 @@ async function main(): Promise<void> {
       continue;
     }
 
-    const sellerId = await resolveSeller(it);
+    let sellerId: string | undefined;
+    try {
+      sellerId = await resolveSeller(it);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.error(`  resolveSeller failed [${i}] for ${sellerKey(it) ?? "?"}: ${msg}; skipping`);
+      skipped++;
+      continue;
+    }
     if (!sellerId) {
       skipped++;
       log.warn(`skip [${i}] no seller (sellerKey=null and no SELLER_ID fallback set)`);

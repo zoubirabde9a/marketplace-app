@@ -37,6 +37,17 @@
 //                         already paginates server-side, so batching is purely about
 //                         pacing our own requests + log readability).
 //   BATCH_PAUSE_MS=4000   pause between page requests (rate-limit politeness)
+//   OUEDKNISS_JWT=<token> optional Bearer token obtained by solving the reCAPTCHA on
+//                         ouedkniss.com once and copying the JWT from a captured
+//                         /login-anonymous response (or any subsequent GraphQL call's
+//                         Authorization header). When set, the scraper resolves the
+//                         per-listing phone via the announcementPhoneGet query and
+//                         attaches it to each item as `phoneEntries`. When unset or
+//                         the token returns 401/empty, the scraper falls back to
+//                         siteBuildGetByStore-only enrichment (shop phones only).
+//                         Re-seed when the JWT expires — the scraper logs a clear
+//                         warning so the operator knows when that happens.
+//   PHONE_FETCH_PAUSE_MS=120  pause between per-listing announcementPhoneGet calls
 //
 // Output: data/ouedkniss-<category>-<timestamp>.json
 //   Each item carries `postedAt` (ISO 8601) — the Ouedkniss `refreshedAt` field.
@@ -71,9 +82,25 @@ const MAX_LISTINGS = Number(process.env.MAX_LISTINGS ?? 200);
 const MAX_AGE_DAYS = Number(process.env.MAX_AGE_DAYS ?? 3);
 const BATCH_SIZE = Math.max(1, Number(process.env.BATCH_SIZE ?? 10));
 const BATCH_PAUSE_MS = Number(process.env.BATCH_PAUSE_MS ?? 4000);
+const OUEDKNISS_JWT = (process.env.OUEDKNISS_JWT ?? "").trim();
+const PHONE_FETCH_PAUSE_MS = Number(process.env.PHONE_FETCH_PAUSE_MS ?? 120);
 
 const GRAPHQL_URL = "https://api.ouedkniss.com/graphql";
 const BASE_URL = "https://www.ouedkniss.com";
+const FETCH_TIMEOUT_MS = Number(process.env.FETCH_TIMEOUT_MS ?? 15000);
+
+// fetch + AbortController timeout. Native fetch has no built-in timeout, so a
+// dead TCP connection or a hung Ouedkniss endpoint would otherwise stall the
+// whole run forever. All scraper HTTP traffic goes through here.
+async function fetchWithTimeout(url, init = {}, ms = FETCH_TIMEOUT_MS) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(new Error(`timeout after ${ms}ms`)), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // Minimal SearchQuery — only the fields we actually surface in the marketplace.
 // We deliberately omit `user`, `phone`, anything tied to seller identity.
@@ -135,7 +162,7 @@ async function searchPage(page, attempt = 1) {
     query: SEARCH_QUERY,
   };
   try {
-    const res = await fetch(GRAPHQL_URL, {
+    const res = await fetchWithTimeout(GRAPHQL_URL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -201,7 +228,7 @@ async function fetchStoreProfile(storeId, attempt = 1) {
     }
   }`;
   try {
-    const res = await fetch(GRAPHQL_URL, {
+    const res = await fetchWithTimeout(GRAPHQL_URL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -248,6 +275,67 @@ async function fetchStoreProfile(storeId, attempt = 1) {
   }
 }
 
+// Resolve the seller-published phones for a single listing via Ouedkniss's
+// authenticated announcementPhoneGet GraphQL op. Requires a Bearer JWT in
+// OUEDKNISS_JWT (obtained by solving the recaptcha-Token /login-anonymous
+// handshake in a browser once). Returns an array of {phone, hasWhatsapp,
+// hasViber, hasTelegram} (possibly empty) on success, null on auth failure.
+async function fetchListingPhones(announcementId, jwtState, attempt = 1) {
+  if (!OUEDKNISS_JWT || jwtState.disabled) return [];
+  try {
+    const res = await fetchWithTimeout(GRAPHQL_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json",
+        authorization: `Bearer ${OUEDKNISS_JWT}`,
+        origin: BASE_URL,
+        referer: `${BASE_URL}/`,
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
+      },
+      body: JSON.stringify({
+        operationName: "UnhidePhone",
+        variables: { id: String(announcementId) },
+        query: `query UnhidePhone($id: ID!) {
+          phones: announcementPhoneGet(id: $id) {
+            id phone phoneExt hasViber hasWhatsapp hasTelegram
+          }
+        }`,
+      }),
+    });
+    if (res.status === 401 || res.status === 403) {
+      jwtState.disabled = true;
+      console.log(`[phones] JWT rejected (status ${res.status}); falling back to no-phone for remaining listings. Re-seed OUEDKNISS_JWT.`);
+      return null;
+    }
+    if (!res.ok) throw new Error(`phone-fetch ${res.status}`);
+    const json = await res.json();
+    if (json.errors) {
+      const code = json.errors?.[0]?.extensions?.code;
+      if (code === "UNAUTHENTICATED" || code === "FORBIDDEN") {
+        jwtState.disabled = true;
+        console.log(`[phones] JWT rejected (errors=${JSON.stringify(json.errors).slice(0, 120)}); falling back. Re-seed OUEDKNISS_JWT.`);
+        return null;
+      }
+      throw new Error(`phone-fetch errors: ${JSON.stringify(json.errors).slice(0, 200)}`);
+    }
+    const list = (json.data?.phones ?? []).filter((p) => p?.phone);
+    return list.map((p) => ({
+      phone: String(p.phone),
+      hasWhatsapp: !!p.hasWhatsapp,
+      hasViber: !!p.hasViber,
+      hasTelegram: !!p.hasTelegram,
+    }));
+  } catch (err) {
+    if (attempt < 3) {
+      await new Promise((r) => setTimeout(r, 400 * attempt));
+      return fetchListingPhones(announcementId, jwtState, attempt + 1);
+    }
+    console.log(`  [phones] listing ${announcementId}: ${err.message ?? err}`);
+    return [];
+  }
+}
+
 function imagesOf(item) {
   const out = [];
   if (item.defaultMedia?.mediaUrl) {
@@ -266,14 +354,45 @@ async function main() {
   if (CATEGORY !== CATEGORY_RAW) console.log(`        (mapped legacy slug "${CATEGORY_RAW}" -> "${CATEGORY}")`);
 
   const results = [];
+  const stores = {};
+  let lastPageScraped = START_PAGE - 1;
+  let hasMorePages = true;
+  // Always write what we have, even if a later phase throws. The run-loop
+  // shell parser reads the JSON to advance state and seed; losing partial
+  // results to a transient crash means the next iteration re-walks the
+  // same pages and skip-urls dedupes them — wasted work, no progress.
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const outPath = join(DATA_DIR, `ouedkniss-${CATEGORY}-${stamp}.json`);
+  const writePartialOutput = async (note = "") => {
+    try {
+      await writeFile(
+        outPath,
+        JSON.stringify({
+          category: CATEGORY,
+          pages: PAGES,
+          startPage: START_PAGE,
+          lastPageScraped,
+          hasMorePages,
+          count: results.length,
+          items: results,
+          stores,
+        }, null, 2),
+      );
+      console.log(`wrote ${outPath} (${results.length} listings, ${Object.keys(stores).length} stores)${note ? " — " + note : ""}`);
+    } catch (err) {
+      console.error(`failed to write ${outPath}: ${err?.message ?? err}`);
+    }
+  };
   let tooOld = 0;
   let undated = 0;
   let totalSeen = 0;
   let batchNo = 0;
-  let lastPageScraped = START_PAGE - 1;
-  let hasMorePages = true;
+  lastPageScraped = START_PAGE - 1;
   const endPage = START_PAGE + PAGES - 1;
 
+  let pageFailures = 0;
+  let itemFailures = 0;
+  try {
   for (let page = START_PAGE; page <= endPage; page++) {
     if (results.length >= MAX_LISTINGS) break;
     console.log(`[page ${page} of ${START_PAGE}..${endPage}] requesting ${PAGE_SIZE} items...`);
@@ -281,8 +400,15 @@ async function main() {
     try {
       pageResp = await searchPage(page);
     } catch (err) {
-      console.error(`  page ${page} failed: ${err.message ?? err}`);
-      break;
+      pageFailures++;
+      console.error(`  page ${page} failed: ${err.message ?? err}; continuing with next page`);
+      // Keep going — a single page-level failure (rate limit, transient 5xx,
+      // network blip) shouldn't blow up the whole run. We still advance
+      // lastPageScraped so run-loop state moves forward instead of looping
+      // on the same dead page. If every page in the slice fails, we exit
+      // with whatever we collected.
+      lastPageScraped = page;
+      continue;
     }
     lastPageScraped = page;
     hasMorePages = !!pageResp.paginatorInfo?.hasMorePages;
@@ -292,6 +418,7 @@ async function main() {
     for (const it of items) {
       if (results.length >= MAX_LISTINGS) break;
       totalSeen++;
+      try {
       const postedAt = it.refreshedAt ? new Date(it.refreshedAt).toISOString() : null;
       if (MAX_AGE_DAYS > 0 && !postedAt) {
         undated++;
@@ -340,6 +467,11 @@ async function main() {
         const pct = Math.min(100, Math.round((results.length / MAX_LISTINGS) * 100));
         console.log(`  [batch ${batchNo}] kept ${results.length} so far (${pct}% of cap)`);
       }
+      } catch (err) {
+        itemFailures++;
+        console.error(`  item ${it?.id ?? "?"}: ${err?.message ?? err}; skipping`);
+        continue;
+      }
     }
 
     if (!hasMorePages) {
@@ -353,6 +485,45 @@ async function main() {
 
   console.log(`\n[done] kept ${results.length}, dropped ${tooOld} as older than ${MAX_AGE_DAYS}d, ${undated} undated, of ${totalSeen} seen`);
 
+  // ─── per-listing phone enrichment ──────────────────────────────────────
+  // Authenticated path via announcementPhoneGet. Without a JWT this loop is
+  // a no-op; with one it fills `phoneEntries` per item (one anonymous-login
+  // JWT unlocks reveal across the whole run). 401/403 disables further
+  // attempts gracefully — the seeder still writes products, just without
+  // contact info, and the operator re-seeds the JWT.
+  if (OUEDKNISS_JWT && results.length > 0) {
+    console.log(`[phones] fetching per-listing phones for ${results.length} listings (JWT ${OUEDKNISS_JWT.slice(0, 12)}...)`);
+    const jwtState = { disabled: false };
+    let withPhone = 0;
+    let withoutPhone = 0;
+    for (let i = 0; i < results.length; i++) {
+      if (jwtState.disabled) break;
+      const item = results[i];
+      if (!item.ouedknissId) continue;
+      try {
+        const entries = await fetchListingPhones(item.ouedknissId, jwtState);
+        if (entries === null) break;
+        if (entries.length > 0) {
+          item.phoneEntries = entries;
+          withPhone++;
+        } else {
+          withoutPhone++;
+        }
+      } catch (err) {
+        // fetchListingPhones already retries internally and returns []; any
+        // exception here is a programmer error (unexpected shape, etc.).
+        // Don't let it sink the whole enrichment pass.
+        console.log(`  [phones] unexpected error on ${item.ouedknissId}: ${err?.message ?? err}`);
+      }
+      if (PHONE_FETCH_PAUSE_MS > 0 && i < results.length - 1) {
+        await new Promise((r) => setTimeout(r, PHONE_FETCH_PAUSE_MS));
+      }
+    }
+    console.log(`[phones] enriched ${withPhone} listings, ${withoutPhone} had no phone, ${jwtState.disabled ? "JWT-DISABLED" : "ok"}`);
+  } else if (!OUEDKNISS_JWT) {
+    console.log("[phones] OUEDKNISS_JWT not set; skipping per-listing phone reveal (shops still get phones via siteBuildGetByStore)");
+  }
+
   // ─── store enrichment ──────────────────────────────────────────────────
   // For each unique store id we observed, fetch the public store profile
   // via siteBuildGetByStore. mainLocation.phones, emails, and socials are
@@ -363,7 +534,6 @@ async function main() {
   const storeIds = Array.from(
     new Set(results.map((r) => r.sellerStoreId).filter(Boolean)),
   );
-  const stores = {};
   if (storeIds.length) {
     console.log(`[stores] enriching ${storeIds.length} unique stores...`);
     for (let i = 0; i < storeIds.length; i++) {
@@ -382,25 +552,21 @@ async function main() {
     console.log(`[stores] enriched ${Object.keys(stores).length}, with-phone=${withPhone}`);
   }
 
-  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const outPath = join(DATA_DIR, `ouedkniss-${CATEGORY}-${stamp}.json`);
-  await writeFile(
-    outPath,
-    JSON.stringify({
-      category: CATEGORY,
-      pages: PAGES,
-      startPage: START_PAGE,
-      lastPageScraped,
-      hasMorePages,
-      count: results.length,
-      items: results,
-      stores,
-    }, null, 2),
-  );
-  console.log(`wrote ${outPath} (${results.length} listings, ${Object.keys(stores).length} stores)`);
+  if (pageFailures || itemFailures) {
+    console.log(`[resilience] pageFailures=${pageFailures} itemFailures=${itemFailures} (partial output preserved)`);
+  }
+  } finally {
+    // Always flush output — success path and crash path alike. The
+    // run-loop shell parser reads this file to advance state; losing it
+    // means the next iteration re-walks the same pages.
+    try { await writePartialOutput(); } catch {}
+  }
 }
 
 main().catch((e) => {
-  console.error(e);
+  // main() already wrote partial output in its finally block (if any items
+  // were collected). All we do here is log and exit non-zero so run-loop's
+  // retry layer kicks in.
+  console.error(`scrape failed: ${e?.message ?? e}`);
   process.exit(1);
 });
