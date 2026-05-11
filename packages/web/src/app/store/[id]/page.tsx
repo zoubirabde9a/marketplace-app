@@ -18,13 +18,26 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").r
 interface Params { id: string }
 
 // Map ISO 3166-1 alpha-2 country codes to their French name for display.
-// The catalog is Algeria-primary so "DZ" is the dominant value; other codes
-// fall back to the raw ISO code (sellers can flag this for a proper map if
-// they expand outside Algeria).
+// The catalog is Algeria-primary so "DZ" is the dominant value.
+//
+// Probed 2026-05-11: many seller rows carry countryCode='US' (apparent
+// data bug — Algerian sellers shouldn't have US set). With the prior
+// 'fall back to raw ISO' behaviour, those rendered as 'Boutique X en US
+// sur Teno Store' — English-coded ASCII mid-French sentence on every
+// affected seller's meta description. Now returns null on unknown codes
+// so the locality is dropped from the description entirely instead of
+// surfacing the raw code. The known set is broadened to cover plausible
+// non-Algerian regional sellers (FR, TN, MA, the GCC + EU neighbours).
 function frCountry(cc: string | null | undefined): string | null {
   if (!cc) return null;
-  const m: Record<string, string> = { DZ: "Algérie", FR: "France", TN: "Tunisie", MA: "Maroc" };
-  return m[cc.toUpperCase()] ?? cc;
+  const m: Record<string, string> = {
+    DZ: "Algérie", FR: "France", TN: "Tunisie", MA: "Maroc",
+    BE: "Belgique", CH: "Suisse", CA: "Canada", LB: "Liban",
+    EG: "Égypte", LY: "Libye", SA: "Arabie saoudite", AE: "Émirats arabes unis",
+    QA: "Qatar", KW: "Koweït", DE: "Allemagne", IT: "Italie",
+    ES: "Espagne", GB: "Royaume-Uni", US: "États-Unis",
+  };
+  return m[cc.toUpperCase()] ?? null;
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
