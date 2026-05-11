@@ -99,9 +99,9 @@ export async function CategoryFooter() {
     <div className="border-b border-line-soft">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-5">
         {categories.length > 0 && (
-          <section aria-label="Browse by category">
+          <section aria-label="Parcourir par catégorie">
             <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
-              Browse by category
+              Parcourir par catégorie
             </h2>
             <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
               {categories.map((c) => {
@@ -122,9 +122,9 @@ export async function CategoryFooter() {
           </section>
         )}
         {brands.length > 0 && (
-          <section aria-label="Top brands">
+          <section aria-label="Marques populaires">
             <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
-              Top brands
+              Marques populaires
             </h2>
             <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
               {brands.map((b) => (
@@ -142,9 +142,9 @@ export async function CategoryFooter() {
           </section>
         )}
         {sellers.length > 0 && (
-          <section aria-label="Sellers on Teno Store">
+          <section aria-label="Vendeurs sur Teno Store">
             <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
-              Sellers
+              Vendeurs
             </h2>
             <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
               {sellers.map((s) => {
