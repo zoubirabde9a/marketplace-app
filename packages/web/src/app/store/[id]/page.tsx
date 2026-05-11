@@ -324,13 +324,17 @@ export default async function StorePage({ params }: { params: Promise<Params> })
         ) : (
           <p className="text-ink-soft">Cette boutique n’a pas encore publié d’annonces.</p>
         )}
-        {totalEstimate > hits.length ? (
-          <p className="mt-6">
-            <Link className="text-accent hover:underline" href={`/search?sellerId=${seller.sellerId}`}>
-              Voir les {totalEstimate} annonces →
-            </Link>
-          </p>
-        ) : null}
+        {/*
+          'Voir les N annonces →' link removed. Previously pointed at
+          /search?sellerId=… as a paginated overflow surface. After commit
+          bb8be2a 308-redirected single-seller /search?sellerId=… → /store/{id},
+          this link became a self-redirect — user clicks 'view all' from
+          /store/{id}, hits the 308, lands back on /store/{id} with the
+          same 60 products. Confusing UX worse than no link.
+
+          Restore once /store/[id] paginates internally (cursor / load-more)
+          or once an explicit overflow page exists at /store/[id]/all.
+        */}
       </section>
     </article>
   );
