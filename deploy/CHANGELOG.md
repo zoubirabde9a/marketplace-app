@@ -6,6 +6,21 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · api rebuild · checkout no longer silently auto-applies a shipping fee
+
+- Bug: order confirmation page showed a total higher than the cart/checkout pages (e.g. cart says DZD 44, order page says DZD 49.99). Root cause: `priceQuote` auto-selects `shippingOptions[0]` when the caller doesn't pass `preferredShipping`. `/v1/checkout/confirm` was passing `FLAT_SHIPPING_OPTIONS` unconditionally, so a 599-minor "standard" fee was added at order-creation time even though the web UI never surfaces a shipping picker.
+- Fix in `packages/api/src/routes/checkout.ts`: pass `shippingOptions: body.shipping ? FLAT_SHIPPING_OPTIONS : []` in the confirm path. The `/v1/checkout/quote` endpoint still returns the FLAT list unchanged for any future shipping picker.
+- Patched the one existing affected order row in prod: `UPDATE order.orders SET shipping_minor=0, total_minor=subtotal_minor ... WHERE id='019e18fc-602e-7320-aaa0-046c0a30177a'`. Order MP-260511-5EJ08R now shows DZD 44.00 total to match the single DZD 44.00 line item.
+- Verified API: `/v1/orders/019e18fc-…` returns `subtotalMinor=4400 shippingMinor=0 totalMinor=4400`.
+
+## 2026-05-11 — vps-eu · web rebuild · SEO — middleware Vary: Cookie now appends (was set); intent-preserving even though Next.js framework currently overrides the final response Vary
+
+- iter-15 middleware emits `Cache-Control: public, …` + `Vary: Cookie` on anonymous indexable HTML. Live-response audit this iteration found Vary is missing Cookie: actual response is `Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding`. Next.js's framework Vary set runs AFTER middleware and replaces, not merges.
+- Changed `res.headers.set("Vary", "Cookie")` → `.append(...)`. Doesn't change live behavior — Next still overrides — but the code intent is clearer, and a future Next.js version (or alternate framework set-vs-append behavior) would automatically pick up the appended token.
+- Safety unchanged: my middleware emits public Cache-Control only when `mp_session` cookie is ABSENT, so logged-in HTML never gets cacheable headers regardless of Vary. The pending operator-side Cloudflare Cache Rule expression already includes `(not http.cookie contains "mp_session=")` as the explicit cache-bypass condition (see iter-19 seo.md write-up), so the rule doesn't rely on Vary either.
+- No observable response change. Type-check clean.
+- Standing iter-1 recommendation still open (Cloudflare Cache Rule). Standing iter-20 recommendation still open (DB backfill of 1,705 US-tagged Algerian sellers).
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO — Atom feed `<updated>` now uses ingestion time (was source post date); same fix iter-16 applied to the sitemap
 
 - `/feed.xml` (announced via `<link rel="alternate" type="application/atom+xml">` on every page; consumed by RSS readers and AI crawlers' freshness pipelines — Claude's web tool, Perplexity, etc.) emitted every entry's `<updated>` and `<published>` and the top-level `<updated>` from `hit.postedAt` — the same `attributes.sourcePostedAt ?? createdAt` precedence that iter-16 fixed for the sitemap. Feed readers were seeing entries with "last modified 2017" / "2020" / "2024" timestamps on listings we ingested today.
@@ -863,3 +878,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — Store JSON-LD PostalAddress no longer emits addressCountry='US' on Algerian-seller rows. Was authoritatively telling Google's local-business graph these sellers are US-based; now omits the field entirely for unmapped codes. Worst-case schema.org-level misinformation closed off
 
 2026-05-11 · vps-eu · api rebuild — browse-path cache TTL 30s → 90s. Cold-hit /v1/products?sort=newest was 5-7s (loadAll re-hydrates 43k+ products); 30s TTL was narrower than the cron + agent-crawl cadence so most home-page visits saw the cold path. 90s tracks scrape-loop yield better, still inside the agents.json 5-min freshness commitment
+
+2026-05-11 · vps-eu · web rebuild — /search?sellerId={id} (single-seller variant) now 308-redirects → /store/{id} instead of just emitting a canonical hint. Faster PageRank migration, cleaner URL bar UX, works for crawlers that don't follow rel=canonical. Used permanentRedirect not redirect (307→308) so Google treats it as canonical migration not temporary
