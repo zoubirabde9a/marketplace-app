@@ -6,6 +6,21 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO — product breadcrumb gained a category layer (was 3-level Accueil→Catalogue→Product; now 4-level Accueil→Catalogue→{Category}→Product, in both JSON-LD BreadcrumbList and visible UI)
+
+- Visible UI breadcrumb and `BreadcrumbList` JSON-LD on product pages were both 3-level (Accueil / Catalogue / ProductTitle). For a marketplace with a closed category taxonomy that's already visible in `p.categoryIds`, the missing category step costs us two things: (a) Google's mobile SERP breadcrumb display renders one less French token, weaker click affordance; (b) PageRank from product pages doesn't flow into category-slice landings (`/search?category=…`) via the breadcrumb edge, even though those slices are sitemapped (priority 0.7) and canonical-self.
+- `BreadcrumbList` JSON-LD now emits 4 positions when `p.categoryIds[0]` is set: Accueil → Catalogue → {humanized category} → Product. Falls back to the 3-level form for the few legacy products with empty `categoryIds` (so structured-data validators don't regress on those). Category name uses the same `humanizeCategorySlug` lookup the iter-3 thin-content fix introduced — single source of truth for the FR_CATEGORY map.
+- Visible `<Breadcrumbs>` component on the product page mirror-renders the same 4-level structure: extra `<Link>` between Catalogue and the page title, pointing at `/search?category=<slug>` so users have a one-click jump up to the category slice. Layout gained `flex-wrap` so the longer crumb doesn't push the page-title segment off-screen on narrow viewports.
+- Verified live: sample IPEGA product (categoryIds: ["telephones"]) now ships `Accueil → Catalogue → Téléphones → Écouteurs filaires IPEGA…` in both BreadcrumbList JSON-LD and visible UI. Type-check clean; 8/8 product tests pass locally.
+- Standing iter-1 recommendation still open: Cache-Control middleware for anonymous HTML + Cloudflare Cache Rule (operator-side). Highest unrealized lever.
+
+## 2026-05-11 — vps-eu · web rebuild · UX — drop public "Vendeurs" chip list + reword scary trust card
+
+- `CategoryFooter` no longer renders the per-seller chip section at the bottom of every page. We don't want shoppers (or competing sellers) seeing the full list of storefronts plus listing counts as a public directory. Removed the seller fetch/cache plumbing too, and trimmed the disclosure summary from "N catégories · N marques · N vendeurs" to "N catégories · N marques". The `/v1/products` API still returns the `sellers` facet — only the storefront UI stops surfacing it.
+- Home page "Trust signals" card body said *"Counterfeit risk, stock state, and seller-supplied content tagged as untrusted by default."* — "counterfeit risk" and "untrusted" read as alarming/defensive to a buyer landing on the marketing page. Rewrote as *"Stock state, verified seller information, and every listing scored on the same trust rubric."* — same underlying meaning, framed as a positive trust posture.
+- Verified live: home page HTML no longer contains a "Vendeurs" section heading or the "Counterfeit risk" / "untrusted by default" strings; "Vendeurs algériens" still appears (correctly) inside meta description copy.
+- Touched files: `packages/web/src/components/CategoryFooter.tsx`, `packages/web/src/app/page.tsx`. Web image rebuilt + `up -d web`; api/db/redis/caddy untouched.
+
 ## 2026-05-11 — vps-eu · api+web rebuild · feat — minimal cart + cash-on-delivery checkout + seller-orders view (commits d62bd2f + 3500af0)
 
 - Buyer flow live at `/product/:id` (Add-to-cart on the main row + per-variant in the variants table) → `/cart` (qty / remove / subtotal) → `/checkout` (name + phone + Algerian wilaya dropdown of 58 entries) → `/order/:id` (order number + delivery contact + line items). Cart id lives in a 30-day httpOnly cookie; order access token lives in a 90-day per-order httpOnly cookie so anonymous buyers can revisit their confirmation page.
@@ -726,3 +741,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — /v1/snapshots/{id} HEAD requests were 500ing with FST_ERR_REP_ALREADY_SENT (handler used void reply.send() without return reply); switched success path to return body and 410 path to return reply.send(). GET 200, HEAD 200, missing 410 all verified
 
 2026-05-11 · vps-eu · api rebuild — added Cache-Control: private, no-store to /v1/cart, /v1/orders, /v1/orders/{id}, /v1/auth/me, /v1/me/activity. Without these, intermediaries could heuristic-cache user-correlated data — user-A's cart/orders/identity surfacing to user-B would be a real leak. /v1/cart verified live on GET
+
+2026-05-11 · vps-eu · api rebuild — private/no-store on /v1/cart + /v1/orders + /v1/auth/me + /v1/me/activity. ALSO: Caddyfile updated in repo to expose X-Mp-Cart-Id + X-Request-Id cross-origin (browser JS currently can't read the cart id); operator action needed: 'docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile' after pulling latest
