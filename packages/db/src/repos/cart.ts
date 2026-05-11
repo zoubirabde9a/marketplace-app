@@ -1,10 +1,18 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { uuidv7 } from "@marketplace/shared/ids";
 import type { cart as cartDomain } from "@marketplace/domain";
 import { carts, cartItems } from "../schema/cart.js";
-import { productVariants, products } from "../schema/catalog.js";
+import { productVariants, products, media } from "../schema/catalog.js";
 import type { DbClient } from "../client.js";
 import { isUuid } from "./_uuid.js";
+
+export interface CartLineInfo {
+  variantId: string;
+  productId: string;
+  title: string;
+  heroImageUrl: string | null;
+  sku: string;
+}
 
 export interface StoredCart {
   cartId: string;
@@ -120,6 +128,39 @@ export function makeCartRepo(db: DbClient) {
         .where(eq(carts.id, cartId))
         .returning();
       return shape(db, row!);
+    },
+
+    async enrichLines(variantIds: string[]): Promise<CartLineInfo[]> {
+      const ids = variantIds.filter(isUuid);
+      if (ids.length === 0) return [];
+      const rows = await db
+        .select({
+          variantId: productVariants.id,
+          productId: products.id,
+          title: products.titleSanitized,
+          sku: productVariants.sku,
+          heroMediaId: products.heroMediaId,
+        })
+        .from(productVariants)
+        .innerJoin(products, eq(productVariants.productId, products.id))
+        .where(inArray(productVariants.id, ids));
+      if (rows.length === 0) return [];
+      const heroIds = rows.map((r) => r.heroMediaId).filter((v): v is string => Boolean(v));
+      const heroMap = new Map<string, string>();
+      if (heroIds.length > 0) {
+        const mediaRows = await db
+          .select({ id: media.id, url: media.url })
+          .from(media)
+          .where(inArray(media.id, heroIds));
+        for (const m of mediaRows) heroMap.set(m.id, m.url);
+      }
+      return rows.map((r) => ({
+        variantId: r.variantId,
+        productId: r.productId,
+        title: r.title,
+        sku: r.sku,
+        heroImageUrl: r.heroMediaId ? heroMap.get(r.heroMediaId) ?? null : null,
+      }));
     },
 
     async resolveLine(variantId: string, qty: number): Promise<{ line: cartDomain.CartLine; currency: string }> {

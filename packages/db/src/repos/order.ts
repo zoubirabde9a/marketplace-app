@@ -1,10 +1,16 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { uuidv7 } from "@marketplace/shared/ids";
 import { order as orderDomain, type cart as cartDomain } from "@marketplace/domain";
 import { orders, orderItems } from "../schema/order.js";
 import type { DbClient } from "../client.js";
 import type { StoredCart } from "./cart.js";
 import { isUuid } from "./_uuid.js";
+
+export interface OrderCustomer {
+  name: string;
+  phone: string;
+  region: string;
+}
 
 export interface StoredOrder {
   orderId: string;
@@ -19,8 +25,18 @@ export interface StoredOrder {
   taxMinor: bigint;
   subtotalMinor: bigint;
   lines: cartDomain.CartLine[];
+  customer: OrderCustomer | null;
   accessToken: string;
   createdAt: number;
+}
+
+function parseCustomer(meta: unknown): OrderCustomer | null {
+  if (!meta || typeof meta !== "object") return null;
+  const c = (meta as { customer?: unknown }).customer;
+  if (!c || typeof c !== "object") return null;
+  const o = c as Record<string, unknown>;
+  if (typeof o.name !== "string" || typeof o.phone !== "string" || typeof o.region !== "string") return null;
+  return { name: o.name, phone: o.phone, region: o.region };
 }
 
 async function loadLines(db: DbClient, orderId: string): Promise<cartDomain.CartLine[]> {
@@ -47,6 +63,7 @@ async function shape(db: DbClient, row: typeof orders.$inferSelect): Promise<Sto
     taxMinor: row.taxMinor,
     totalMinor: row.totalMinor,
     lines: await loadLines(db, row.id),
+    customer: parseCustomer(row.metadata),
     accessToken: row.accessToken ?? "",
     createdAt: row.createdAt.getTime(),
   };
@@ -61,6 +78,7 @@ export function makeOrderRepo(db: DbClient) {
       taxMinor: bigint;
       totalMinor: bigint;
       accessToken: string;
+      customer?: OrderCustomer;
     }): Promise<StoredOrder> {
       return db.transaction(async (tx) => {
         const id = uuidv7();
@@ -83,6 +101,7 @@ export function makeOrderRepo(db: DbClient) {
             placedAt: new Date(),
             accessToken: input.accessToken,
             ownerKind: input.cart.ownerKind,
+            ...(input.customer ? { metadata: { customer: input.customer } } : {}),
           })
           .returning();
         if (input.cart.lines.length > 0) {
@@ -118,6 +137,23 @@ export function makeOrderRepo(db: DbClient) {
         .select()
         .from(orders)
         .where(and(eq(orders.ownerKind, "user"), eq(orders.buyerUserId, userId)))
+        .orderBy(desc(orders.createdAt));
+      return Promise.all(rows.map((r) => shape(db, r)));
+    },
+
+    async listForSeller(sellerId: string): Promise<StoredOrder[]> {
+      if (!isUuid(sellerId)) return [];
+      // Find order ids that contain at least one item sold by this seller.
+      const idRows = await db
+        .selectDistinct({ orderId: orderItems.orderId })
+        .from(orderItems)
+        .where(eq(orderItems.sellerId, sellerId));
+      if (idRows.length === 0) return [];
+      const orderIds = idRows.map((r) => r.orderId);
+      const rows = await db
+        .select()
+        .from(orders)
+        .where(inArray(orders.id, orderIds))
         .orderBy(desc(orders.createdAt));
       return Promise.all(rows.map((r) => shape(db, r)));
     },

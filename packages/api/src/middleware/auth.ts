@@ -123,6 +123,10 @@ const SESSION_OR_PASSPORT_MATCHERS: ReadonlyArray<(method: string, path: string)
   (m, p) => m === "PATCH" && /^\/v1\/products\/[^/]+$/.test(p),
   (m, p) => m === "POST" && /^\/v1\/products\/[^/]+\/media$/.test(p),
   (m, p) => m === "DELETE" && /^\/v1\/products\/[^/]+\/media\/[^/]+$/.test(p),
+  // Seller-only view of incoming orders. Handler enforces the caller's
+  // synthetic agent id matches the seller's ownerAgentId; auth here just
+  // ensures we have *some* principal (session or passport).
+  (m, p) => m === "GET" && /^\/v1\/sellers\/[^/]+\/orders$/.test(p),
 ];
 
 function pathOnly(url: string): string {

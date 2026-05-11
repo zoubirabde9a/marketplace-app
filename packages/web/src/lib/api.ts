@@ -62,6 +62,13 @@ export interface ProductDetail {
   sellerDisplayName: string | null;
   sellerPhone: string | null;
   sellerWhatsapp: string | null;
+  /**
+   * Full list of contact phones for the seller, primary first. When present,
+   * the product page renders one row per number with per-channel deep-links
+   * (tel: / wa.me). When absent or empty, falls back to the legacy
+   * sellerPhone / sellerWhatsapp fields.
+   */
+  sellerPhones?: Array<{ phone: string; isWhatsapp: boolean; isViber: boolean; isPrimary: boolean }>;
   sellerWebsite: string | null;
   categoryIds: string[];
   shipsTo: string[];
@@ -182,6 +189,13 @@ export interface MeResponse {
   };
 }
 
+export interface SellerPhonePublic {
+  phone: string;
+  isWhatsapp: boolean;
+  isViber: boolean;
+  isPrimary: boolean;
+}
+
 export interface SellerRecord {
   sellerId: string;
   displayName: string;
@@ -189,8 +203,22 @@ export interface SellerRecord {
   productCount: number;
   phone: string | null;
   whatsapp: string | null;
+  phones?: SellerPhonePublic[];
   website: string | null;
+  description?: string | null;
+  supportEmail?: string | null;
+  city?: string | null;
+  countryCode?: string | null;
   createdAt: string;
+}
+
+export async function getSeller(sellerId: string): Promise<SellerRecord | null> {
+  try {
+    return await request<SellerRecord>(`/v1/sellers/${encodeURIComponent(sellerId)}`);
+  } catch (e) {
+    if ((e as ApiError).status === 404) return null;
+    throw e;
+  }
 }
 
 export interface SellersListResponse {
@@ -267,7 +295,17 @@ export async function listMySellers(sessionJwt: string, ownerAgentId: string): P
 
 export async function createSeller(
   sessionJwt: string,
-  body: { displayName: string; phone?: string; whatsapp?: string; website?: string },
+  body: {
+    displayName: string;
+    // phone + countryCode are mandatory at the API layer (CreateSellerSchema
+    // in packages/api/src/routes/sellers.ts — "best-practice marketplace
+    // minimums"). Reflect that in the helper signature so call sites can't
+    // forget them and ship a 400-producing payload.
+    phone: string;
+    countryCode: string;
+    whatsapp?: string;
+    website?: string;
+  },
 ): Promise<SellerRecord & { ownerAgentId: string }> {
   return authedRequest("/v1/sellers", sessionJwt, {
     method: "POST",
@@ -317,6 +355,37 @@ export async function createProduct(
     headers: { "content-type": "application/json", "idempotency-key": cryptoRandomKey() },
     body: JSON.stringify(input),
   });
+}
+
+export interface SellerOrderLine {
+  variantId: string;
+  qty: number;
+  unitPriceMinor: string;
+  productId: string | null;
+  title: string | null;
+  sku: string | null;
+  heroImageUrl: string | null;
+}
+
+export interface SellerOrder {
+  orderId: string;
+  publicNumber: string;
+  status: string;
+  currency: string;
+  subtotalMinor: string;
+  lines: SellerOrderLine[];
+  customer: { name: string; phone: string; region: string } | null;
+  createdAt: string;
+}
+
+export async function listSellerOrders(
+  sellerId: string,
+  sessionJwt: string,
+): Promise<{ data: SellerOrder[] }> {
+  return authedRequest<{ data: SellerOrder[] }>(
+    `/v1/sellers/${encodeURIComponent(sellerId)}/orders`,
+    sessionJwt,
+  );
 }
 
 export async function listProductsBySeller(sellerId: string, sessionJwt?: string): Promise<SearchResponse> {

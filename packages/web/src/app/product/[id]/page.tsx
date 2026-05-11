@@ -8,6 +8,7 @@ import { formatPrice, formatPriceRange, formatRelativeTime } from "@/lib/format"
 import { Gallery } from "@/components/Gallery";
 import { CounterfeitBadge } from "@/components/CounterfeitBadge";
 import { ShareButton } from "@/components/ShareButton";
+import { AddToCart } from "@/components/AddToCart";
 import { ProductGrid } from "@/components/ProductGrid";
 import { jsonLdString } from "@/lib/jsonld";
 import { upscaleOuedknissForCrawler } from "@/lib/images";
@@ -30,6 +31,42 @@ const MIN_REAL_PRICE_MINOR = 10000;
 // French description built from validated catalog fields.
 const MIN_USEFUL_DESC_CHARS = 40;
 
+// Algerian sellers commonly prepend a single Arabic boilerplate line
+// ("التوصيل متوفر لجميع الولايات" — "Delivery available to all wilayas")
+// to descriptions that continue in French. The site declares
+// <html lang="fr"> and tags Product.inLanguage="fr"; shipping Arabic-
+// leading text in <meta description> + JSON-LD on a French-locale page
+// sends Google a mixed-language signal that hurts both SERP snippet
+// quality and ranking for French queries. ~31% of long-description
+// products on prod start with an Arabic-script run. Strip leading
+// sentence-ish chunks that are predominantly Arabic; stop at the first
+// chunk that's predominantly Latin so we keep useful Arabic content
+// when the seller wrote the *whole* description in Arabic (those pages
+// should keep their Arabic copy; Google can decide what to do with the
+// French-tagged shell).
+// Strip a leading run of Arabic-script characters (plus interleaved
+// whitespace, punctuation, digits, emoji) up to the first Latin letter.
+// Boilerplate Arabic lines often run straight into French without a
+// sentence terminator ("التوصيل متوفر لجميع الولايات Compatible avec…"),
+// so chunk-splitting on punctuation isn't enough; we need a within-chunk
+// strip. If the string has no Latin letters at all (description is fully
+// Arabic), leave it alone — those sellers wrote a complete Arabic
+// description and stripping it would force the template fallback.
+function stripLeadingArabic(s: string): string {
+  if (!/[A-Za-zÀ-ÿ]/.test(s)) return s;
+  // Character class: Arabic + Arabic-Supplement + Arabic-Extended-A +
+  // Arabic Presentation Forms-A/B, plus whitespace, Unicode P/S, digits.
+  // Stops at the first character outside that union — in practice, the
+  // first Latin letter.
+  const stripped = s.replace(
+    /^[؀-ۿݐ-ݿࢠ-ࣿﭐ-﷿ﹰ-﻿\s\p{P}\p{S}\d]+/u,
+    "",
+  ).trim();
+  // Defensive: if the strip somehow ate the entire string (shouldn't, given
+  // the Latin-letter guard above), return the original.
+  return stripped.length > 0 ? stripped : s;
+}
+
 // Shared description builder — used both by generateMetadata (SERP +
 // social preview) and the page body's Product JSON-LD `description`
 // field. Without this, the JSON-LD payload was shipping the raw 4-word
@@ -41,11 +78,20 @@ function buildProductDescription(args: {
   brand: string | null | undefined;
   sellerDisplayName: string | null | undefined;
   variants: ReadonlyArray<{ priceMinor?: string; currency?: string }>;
+  // Humanized French category label (e.g. "Téléphones", "Automobiles & Véhicules").
+  // Threaded through so thin-content fallback descriptions get a category
+  // segment — ~26% of products land in the fallback path (seller description
+  // < MIN_USEFUL_DESC_CHARS), and without category the template differs only
+  // by title between same-brand listings. Injecting one of ~30 French
+  // category labels adds unique scrapable text + dilutes the boilerplate
+  // ratio for Google's near-duplicate detection.
+  categoryLabel: string | null | undefined;
 }): string {
   if (args.cleanedDesc && args.cleanedDesc.length >= MIN_USEFUL_DESC_CHARS) {
     return args.cleanedDesc;
   }
   const parts: string[] = [args.fullTitle];
+  if (args.categoryLabel) parts.push(args.categoryLabel);
   if (args.brand) parts.push(`marque ${args.brand}`);
   if (args.sellerDisplayName) parts.push(`de ${args.sellerDisplayName}`);
   const lowest = [...args.variants].sort(
@@ -97,20 +143,30 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       .replace(/^[\s\p{P}\p{S}]+/u, "")
       .trim();
     if (!raw) return raw;
-    if (raw.length <= DESC_BUDGET) return raw;
-    const cut = raw.slice(0, DESC_BUDGET);
+    const stripped = stripLeadingArabic(raw).replace(/^[\s\p{P}\p{S}]+/u, "").trim();
+    // If stripping left us with too little to be a useful SERP snippet,
+    // restore the raw text — better a mixed-language snippet than an empty
+    // one, and the template fallback in buildProductDescription is also
+    // available downstream if cleanedDesc is shorter than MIN_USEFUL_DESC_CHARS.
+    const base = stripped.length >= MIN_USEFUL_DESC_CHARS ? stripped : raw;
+    if (base.length <= DESC_BUDGET) return base;
+    const cut = base.slice(0, DESC_BUDGET);
     const space = cut.lastIndexOf(" ");
     return (space > 80 ? cut.slice(0, space) : cut).replace(/[\s\p{P}\p{S}]+$/u, "") + "…";
   })();
   // Shared structured-description helper (module scope) — also consumed by
   // ProductPage for the JSON-LD `description` field, so Google's product
   // rich-card snippet doesn't ship the raw Arabic seller blurb either.
+  const primaryCategoryLabel = p.categoryIds[0]
+    ? humanizeCategorySlug(p.categoryIds[0])
+    : null;
   const desc = buildProductDescription({
     fullTitle,
     cleanedDesc: cleanedDesc ?? "",
     brand: p.brand,
     sellerDisplayName: p.sellerDisplayName,
     variants: p.variants,
+    categoryLabel: primaryCategoryLabel,
   });
   // Resolve full hero metadata (width/height/alt) so social previews can size
   // the image without a round-trip and avoid Facebook "image too small" warnings.
@@ -286,6 +342,21 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // Omitting the field lets Google's own heuristics infer rather than
   // ingesting a wrong fact. Add this back per-listing if/when the API
   // grows a `condition` field.
+  //
+  // Geo-targeting for the Offer. Built from p.shipsTo (the source of truth
+  // — for Ouedkniss-scraped products this is ["DZ"]; the API populates it
+  // per-listing). Without an explicit `areaServed`, Google has to infer the
+  // offer's region from the page's locale + JSON-LD inLanguage; that works
+  // OK for unambiguous queries but degrades when the buyer's IP is outside
+  // the country (a French buyer searching "Renault Symbol Algérie" gets
+  // a less-confident regional match). Country names use ISO 3166-1 alpha-2
+  // — same form schema.org's Country examples use and the form Google's
+  // structured-data validator expects.
+  const offerAreaServed = p.shipsTo && p.shipsTo.length > 0
+    ? p.shipsTo.length === 1
+      ? { "@type": "Country", name: p.shipsTo[0] }
+      : p.shipsTo.map((cc) => ({ "@type": "Country", name: cc }))
+    : undefined;
   // Skip the Offer/AggregateOffer block entirely when no variant has a real
   // price. Emitting Offer with price="0.00" misrepresents Ouedkniss "Prix sur
   // demande" listings as free items in Google rich results, Pinterest cards,
@@ -307,6 +378,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             ? "https://schema.org/InStock"
             : "https://schema.org/OutOfStock",
           priceValidUntil,
+          ...(offerAreaServed ? { areaServed: offerAreaServed } : {}),
           ...(variants[0].sku ? { sku: variants[0].sku } : {}),
           url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
           ...(p.sellerDisplayName
@@ -331,6 +403,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             ? "https://schema.org/InStock"
             : "https://schema.org/OutOfStock",
           priceValidUntil,
+          ...(offerAreaServed ? { areaServed: offerAreaServed } : {}),
           url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
           ...(p.sellerDisplayName
             ? {
@@ -358,15 +431,22 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // body is too short / unhelpful (e.g. a 4-word Arabic blurb on a major
   // listing). Compute via the shared buildProductDescription helper so
   // SERP meta + JSON-LD stay aligned.
-  const ldCleanedDesc = p.description?.value
+  const ldRaw = p.description?.value
     ?.replace(/^[\s\p{P}\p{S}]+/u, "")
     .trim() ?? "";
+  // Mirror the strip applied to <meta description>: drop leading Arabic-
+  // boilerplate chunks so the JSON-LD Product.description that Google
+  // ingests for product rich-cards stays language-consistent with the
+  // French-tagged page shell. See stripLeadingArabic docstring for the why.
+  const ldStripped = stripLeadingArabic(ldRaw).replace(/^[\s\p{P}\p{S}]+/u, "").trim();
+  const ldCleanedDesc = ldStripped.length >= MIN_USEFUL_DESC_CHARS ? ldStripped : ldRaw;
   productJsonLd.description = buildProductDescription({
     fullTitle: p.title.value,
     cleanedDesc: ldCleanedDesc,
     brand: p.brand,
     sellerDisplayName: p.sellerDisplayName,
     variants: p.variants,
+    categoryLabel: p.categoryIds[0] ? humanizeCategorySlug(p.categoryIds[0]) : null,
   });
   if (p.images && p.images.length > 0) {
     // Deduplicate by URL — the API often returns the hero as both
@@ -500,36 +580,91 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 {p.sellerDisplayName?.trim() ? p.sellerDisplayName : "this seller"}
               </Link>
             </div>
-            {(p.sellerPhone || p.sellerWhatsapp || p.sellerWebsite) && (() => {
+            {(() => {
               // Algerian local-style display: drop +213 country code, prefix
               // a leading 0 (e.g. +213555000101 → 0555000101). The tel: and
               // wa.me hrefs keep the international format so dialing still
               // works from anywhere.
               const localizeDz = (n: string) => n.replace(/^\+?213/, "0").replace(/[^\d]/g, "");
+              const waText = `Bonjour, je suis intéressé(e) par votre annonce « ${p.title.value} » sur Teno Store : ${SITE_URL}/product/${p.productId}`;
+
+              // Build the per-channel call/WhatsApp/Viber chips from the
+              // structured phone list when the API returned one. Fall back
+              // to the legacy single-phone + single-whatsapp shape for older
+              // catalog rows (and for tests / fixtures that haven't been
+              // updated). A shop with two sales lines now shows two call
+              // chips and (if both are flagged) two WhatsApp chips, instead
+              // of silently dropping the second.
+              type Chip =
+                | { kind: "tel"; phone: string }
+                | { kind: "wa"; phone: string }
+                | { kind: "viber"; phone: string };
+              const chips: Chip[] = [];
+              if (p.sellerPhones && p.sellerPhones.length > 0) {
+                const ordered = [...p.sellerPhones].sort((a, b) =>
+                  a.isPrimary === b.isPrimary ? 0 : a.isPrimary ? -1 : 1,
+                );
+                for (const ph of ordered) {
+                  chips.push({ kind: "tel", phone: ph.phone });
+                  if (ph.isWhatsapp) chips.push({ kind: "wa", phone: ph.phone });
+                  if (ph.isViber) chips.push({ kind: "viber", phone: ph.phone });
+                }
+              } else {
+                if (p.sellerPhone) chips.push({ kind: "tel", phone: p.sellerPhone });
+                if (p.sellerWhatsapp) chips.push({ kind: "wa", phone: p.sellerWhatsapp });
+              }
+              const hasContact =
+                chips.length > 0 ||
+                (p.sellerWebsite && !/^https?:\/\/(www\.)?example\.(com|org|dz|net)\b/i.test(p.sellerWebsite));
+
+              if (!hasContact) {
+                return (
+                  <div className="mt-3"><ShareButton title={p.title.value} url={`${SITE_URL}/product/${encodeURIComponent(p.productId)}`} /></div>
+                );
+              }
               return (
               <address className="mt-3 flex flex-wrap gap-2 not-italic">
-                {p.sellerPhone && (
-                  <a
-                    href={`tel:${p.sellerPhone}`}
-                    aria-label={`Appeler ${p.sellerDisplayName ?? "le vendeur"} au ${p.sellerPhone}`}
-                    className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-bg-elev border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                    <span className="font-mono tabular-nums tracking-tight" dir="ltr">{localizeDz(p.sellerPhone)}</span>
-                  </a>
-                )}
-                {p.sellerWhatsapp && (
-                  <a
-                    href={`https://wa.me/${p.sellerWhatsapp.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(`Bonjour, je suis intéressé(e) par votre annonce « ${p.title.value} » sur Teno Store : ${SITE_URL}/product/${p.productId}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Contacter ${p.sellerDisplayName ?? "le vendeur"} sur WhatsApp (s'ouvre dans un nouvel onglet)`}
-                    className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 transition"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.2-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.7-.9-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5 4.5 1.7.7 2.4.8 3.3.7.5-.1 1.7-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.3 4.9L2 22l5.3-1.4c1.4.7 2.9 1.1 4.7 1.1 5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg>
-                    <span className="font-mono tabular-nums tracking-tight" dir="ltr">{localizeDz(p.sellerWhatsapp)}</span>
-                  </a>
-                )}
+                {chips.map((chip, idx) => {
+                  if (chip.kind === "tel") {
+                    return (
+                      <a
+                        key={`tel-${chip.phone}-${idx}`}
+                        href={`tel:${chip.phone}`}
+                        aria-label={`Appeler ${p.sellerDisplayName ?? "le vendeur"} au ${chip.phone}`}
+                        className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-bg-elev border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        <span className="font-mono tabular-nums tracking-tight" dir="ltr">{localizeDz(chip.phone)}</span>
+                      </a>
+                    );
+                  }
+                  if (chip.kind === "wa") {
+                    return (
+                      <a
+                        key={`wa-${chip.phone}-${idx}`}
+                        href={`https://wa.me/${chip.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(waText)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`Contacter ${p.sellerDisplayName ?? "le vendeur"} sur WhatsApp au ${chip.phone} (s'ouvre dans un nouvel onglet)`}
+                        className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 transition"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.2-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.7-.9-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5 4.5 1.7.7 2.4.8 3.3.7.5-.1 1.7-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.3 4.9L2 22l5.3-1.4c1.4.7 2.9 1.1 4.7 1.1 5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg>
+                        <span className="font-mono tabular-nums tracking-tight" dir="ltr">{localizeDz(chip.phone)}</span>
+                      </a>
+                    );
+                  }
+                  // Viber deep-link uses the viber://chat?number=… scheme.
+                  return (
+                    <a
+                      key={`viber-${chip.phone}-${idx}`}
+                      href={`viber://chat?number=${encodeURIComponent(chip.phone)}`}
+                      aria-label={`Contacter ${p.sellerDisplayName ?? "le vendeur"} sur Viber au ${chip.phone}`}
+                      className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-violet-500/10 border border-violet-500/30 text-xs text-violet-300 hover:bg-violet-500/20 transition"
+                    >
+                      <span className="font-mono tabular-nums tracking-tight" dir="ltr">Viber {localizeDz(chip.phone)}</span>
+                    </a>
+                  );
+                })}
                 {p.sellerWebsite && !/^https?:\/\/(www\.)?example\.(com|org|dz|net)\b/i.test(p.sellerWebsite) && (
                   <a
                     href={p.sellerWebsite}
@@ -546,9 +681,6 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               </address>
               );
             })()}
-            {!(p.sellerPhone || p.sellerWhatsapp || p.sellerWebsite) && (
-              <div className="mt-3"><ShareButton title={p.title.value} url={`${SITE_URL}/product/${encodeURIComponent(p.productId)}`} /></div>
-            )}
           </div>
 
           <div className="flex items-baseline gap-4">
@@ -557,6 +689,20 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               {inStockVariants.length ? `${inStockVariants.length} variant${inStockVariants.length === 1 ? "" : "s"} in stock` : "Currently out of stock"}
             </div>
           </div>
+
+          {(() => {
+            // Single add-to-cart button targets the cheapest in-stock variant
+            // (or the cheapest overall, disabled, if nothing is in stock).
+            // Buyers who need a specific variant get per-row buttons in the
+            // variants table below.
+            const target = inStockVariants[0] ?? variants[0];
+            if (!target) return null;
+            return (
+              <div>
+                <AddToCart variantId={target.id} inStock={inStockVariants.length > 0} />
+              </div>
+            );
+          })()}
 
           {(() => {
             const postedIso = p.attributes?.sourcePostedAt?.value ?? null;
@@ -588,6 +734,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                       <th scope="col" className="text-left px-4 py-2 font-medium">SKU</th>
                       <th scope="col" className="text-right px-4 py-2 font-medium">Price</th>
                       <th scope="col" className="text-right px-4 py-2 font-medium">Stock</th>
+                      <th scope="col" className="text-right px-4 py-2 font-medium"><span className="sr-only">Action</span></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -605,6 +752,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                               <span aria-hidden>○</span> out
                             </span>
                           )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <AddToCart variantId={v.id} inStock={v.inStock} label="Add" />
                         </td>
                       </tr>
                     ))}

@@ -206,6 +206,23 @@ function makeMockRepos(): Repos & {
         carts.set(cartId, u);
         return u;
       },
+      async enrichLines(variantIds) {
+        const out: Array<{ variantId: string; productId: string; title: string; heroImageUrl: string | null; sku: string }> = [];
+        for (const p of products.values()) {
+          for (const v of p.variants) {
+            if (variantIds.includes(v.id)) {
+              out.push({
+                variantId: v.id,
+                productId: p.productId,
+                title: p.titleSanitized,
+                sku: v.sku,
+                heroImageUrl: null,
+              });
+            }
+          }
+        }
+        return out;
+      },
       async resolveLine(variantId, qty) {
         for (const p of products.values()) {
           const v = p.variants.find((x) => x.id === variantId);
@@ -234,6 +251,7 @@ function makeMockRepos(): Repos & {
           taxMinor: input.taxMinor,
           totalMinor: input.totalMinor,
           lines: [...input.cart.lines],
+          customer: input.customer ?? null,
           accessToken: input.accessToken,
           createdAt: Date.now(),
         };
@@ -245,6 +263,9 @@ function makeMockRepos(): Repos & {
       },
       async listForUser(userId) {
         return [...orders.values()].filter((o) => o.ownerKind === "user" && o.ownerId === userId);
+      },
+      async listForSeller(sellerId) {
+        return [...orders.values()].filter((o) => o.lines.some((l) => l.sellerId === sellerId));
       },
     },
     __seedSeller(input) {
@@ -406,7 +427,7 @@ describe("public catalog + cart + checkout (no auth)", () => {
       method: "POST",
       url: "/v1/checkout/confirm",
       headers: { "idempotency-key": "anon-confirm-12345678" },
-      payload: { cartId },
+      payload: { cartId, customer: { name: "Test Buyer", phone: "0555000111", region: "Alger" } },
     });
     expect(confirm.statusCode).toBe(201);
     const order = confirm.json() as { orderId: string; orderToken: string; ownerKind: string };
@@ -421,6 +442,89 @@ describe("public catalog + cart + checkout (no auth)", () => {
 
     const denied = await app.inject({ method: "GET", url: `/v1/orders/${order.orderId}` });
     expect(denied.statusCode).toBe(401);
+  });
+
+  it("rejects checkout without customer details", async () => {
+    const { app, repos } = await make();
+    const { variantId } = seed(repos);
+    const add = await app.inject({
+      method: "POST",
+      url: "/v1/cart/items",
+      headers: { "idempotency-key": "anon-add-bad-payload" },
+      payload: { variantId, qty: 1 },
+    });
+    const cartId = (add.json() as { cartId: string }).cartId;
+    const r = await app.inject({
+      method: "POST",
+      url: "/v1/checkout/confirm",
+      headers: { "idempotency-key": "anon-confirm-no-customer" },
+      payload: { cartId },
+    });
+    expect(r.statusCode).toBe(400);
+  });
+
+  it("persists customer on the order and exposes it via /v1/sellers/:id/orders", async () => {
+    const { app, repos } = await make();
+    // Log Ada in first so we can derive the synthetic agent id the API will
+    // ascribe to her session-scoped writes (user:<userId>).
+    const login = await app.inject({ method: "POST", url: "/v1/auth/google", payload: { idToken: "ada" } });
+    const session = (login.json() as { sessionJwt: string }).sessionJwt;
+    const adaUserId = (login.json() as { user: { id: string } }).user.id;
+    const adaAgentId = `user:${adaUserId}`;
+
+    // Seed Ada's seller + a product with one variant.
+    const sellerId = repos.__seedSeller({
+      displayName: "Demo Shop",
+      ownerAgentId: adaAgentId,
+    }).sellerId;
+    const product = repos.__seedProduct({
+      sellerId,
+      title: "Phone",
+      variants: [{ sku: "P-1", priceMinor: 50000n, currency: "USD" }],
+    });
+    const variantId = product.variants[0]!.id;
+
+    // Anonymous buyer flow: add → confirm with customer details.
+    const add = await app.inject({
+      method: "POST",
+      url: "/v1/cart/items",
+      headers: { "idempotency-key": "seller-orders-add" },
+      payload: { variantId, qty: 2 },
+    });
+    const cartId = (add.json() as { cartId: string }).cartId;
+    const confirm = await app.inject({
+      method: "POST",
+      url: "/v1/checkout/confirm",
+      headers: { "idempotency-key": "seller-orders-confirm" },
+      payload: {
+        cartId,
+        customer: { name: "Karim B.", phone: "0660111222", region: "Oran" },
+      },
+    });
+    expect(confirm.statusCode).toBe(201);
+
+    // Seller view: Ada lists her seller's orders, sees Karim's order with
+    // contact details and line qty intact.
+    const r = await app.inject({
+      method: "GET",
+      url: `/v1/sellers/${sellerId}/orders`,
+      headers: { authorization: `Bearer ${session}` },
+    });
+    expect(r.statusCode).toBe(200);
+    const body = r.json() as {
+      data: Array<{
+        publicNumber: string;
+        customer: { name: string; phone: string; region: string };
+        lines: Array<{ qty: number }>;
+      }>;
+    };
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0]!.customer).toEqual({ name: "Karim B.", phone: "0660111222", region: "Oran" });
+    expect(body.data[0]!.lines[0]!.qty).toBe(2);
+
+    // Caller without a session is rejected.
+    const noauth = await app.inject({ method: "GET", url: `/v1/sellers/${sellerId}/orders` });
+    expect(noauth.statusCode).toBe(401);
   });
 
   it("logged-in user gets a per-user cart automatically", async () => {

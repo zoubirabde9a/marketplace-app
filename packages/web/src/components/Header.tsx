@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { SearchBar } from "./SearchBar";
 import { HeaderUserMenu } from "./HeaderUserMenu";
+import { HeaderCart } from "./HeaderCart";
 
 export function Header() {
   return (
@@ -36,6 +37,20 @@ export function Header() {
             <span aria-hidden className="text-base leading-none">+</span>
             <span className="hidden sm:inline">Vendre</span>
           </Link>
+          <Suspense
+            fallback={
+              <span
+                className="px-3 py-1.5 text-sm text-ink-mute"
+                role="status"
+                aria-busy="true"
+                aria-label="Chargement du panier"
+              >
+                <span aria-hidden>…</span>
+              </span>
+            }
+          >
+            <HeaderCart />
+          </Suspense>
           <Suspense
             fallback={
               <span

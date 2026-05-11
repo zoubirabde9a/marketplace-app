@@ -29,6 +29,13 @@ export interface StoredCart {
   updatedAt: number;
 }
 
+/** Buyer-supplied contact details, captured at checkout. */
+export interface OrderCustomer {
+  name: string;
+  phone: string;
+  region: string;
+}
+
 export interface StoredOrder {
   orderId: string;
   publicNumber: string;
@@ -42,6 +49,8 @@ export interface StoredOrder {
   taxMinor: bigint;
   subtotalMinor: bigint;
   lines: cartDomain.CartLine[];
+  /** Buyer name/phone/region supplied at checkout. Required for anonymous COD orders. */
+  customer: OrderCustomer | null;
   /** Token returned on confirm so an anonymous buyer can re-fetch the order. */
   accessToken: string;
   createdAt: number;
@@ -85,13 +94,32 @@ export interface StoredProduct {
   createdAt: number;
 }
 
+export interface StoredSellerPhone {
+  /** E.164 form, e.g. "+213556685195". */
+  phoneE164: string;
+  isWhatsapp: boolean;
+  isViber: boolean;
+  isPrimary: boolean;
+  position: number;
+}
+
 export interface StoredSeller {
   sellerId: string;
   displayName: string;
   ownerAgentId: string;
+  /** Convenience alias for the primary number in `phones`. */
   phone?: string;
+  /** All known phones for the seller, primary first. */
+  phones: StoredSellerPhone[];
   whatsapp?: string;
   website?: string;
+  /** Short store bio shown on the storefront. */
+  description?: string;
+  supportEmail?: string;
+  /** Free-text locality (e.g. "Algiers"). City lives on the seller profile; country on the org row. */
+  city?: string;
+  /** ISO 3166-1 alpha-2. */
+  countryCode?: string;
   createdAt: number;
 }
 

@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser, syntheticAgentId } from "@/lib/sellerSession";
-import { listMySellers, listProductsBySeller, type SellerRecord } from "@/lib/api";
+import {
+  listMySellers,
+  listProductsBySeller,
+  listSellerOrders,
+  type SellerOrder,
+  type SellerRecord,
+} from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 import { CreateSellerForm } from "./CreateSellerForm";
 import { LogoutButton } from "./LogoutButton";
 
@@ -72,6 +79,15 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
     productsError = (e as Error).message;
   }
 
+  let orders: SellerOrder[] = [];
+  let ordersError: string | null = null;
+  try {
+    const r = await listSellerOrders(seller.sellerId, sessionJwt);
+    orders = r.data;
+  } catch (e) {
+    ordersError = (e as Error).message;
+  }
+
   return (
     <div className="rounded-2xl border border-line-soft bg-bg-soft/60">
       <header className="p-6 border-b border-line-soft flex items-start justify-between gap-4">
@@ -95,6 +111,64 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
           </Link>
         </div>
       </header>
+      <div className="p-6 border-b border-line-soft">
+        <h3 className="text-sm font-medium text-ink-soft mb-3">
+          Orders ({orders.length})
+        </h3>
+        {ordersError ? (
+          <p className="text-sm text-bad">Failed to load orders: {ordersError}</p>
+        ) : orders.length === 0 ? (
+          <p className="text-sm text-ink-mute">No orders yet.</p>
+        ) : (
+          <ul className="divide-y divide-line-soft">
+            {orders.map((o) => (
+              <li key={o.orderId} className="py-3 flex items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm text-ink">#{o.publicNumber}</span>
+                    <span className="text-xs text-ink-mute">
+                      {new Date(o.createdAt).toLocaleString("fr-DZ")}
+                    </span>
+                    <span
+                      className={
+                        "text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border " +
+                        (o.status === "paid"
+                          ? "border-ok/40 text-ok bg-ok/10"
+                          : "border-line text-ink-mute")
+                      }
+                    >
+                      {o.status}
+                    </span>
+                  </div>
+                  {o.customer && (
+                    <div className="mt-1 text-sm text-ink-soft">
+                      <span className="text-ink">{o.customer.name}</span>
+                      <span className="text-ink-mute"> · </span>
+                      <a href={`tel:${o.customer.phone}`} className="font-mono hover:text-accent">
+                        {o.customer.phone}
+                      </a>
+                      <span className="text-ink-mute"> · {o.customer.region}</span>
+                    </div>
+                  )}
+                  <ul className="mt-2 text-xs text-ink-mute space-y-0.5">
+                    {o.lines.map((l) => (
+                      <li key={l.variantId} className="truncate">
+                        × {l.qty}{" "}
+                        <span className="untrusted">{l.title ?? l.sku ?? l.variantId}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-sm font-medium">
+                    {formatPrice(o.subtotalMinor, o.currency)}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <div className="p-6">
         <h3 className="text-sm font-medium text-ink-soft mb-3">
           Products ({seller.productCount})

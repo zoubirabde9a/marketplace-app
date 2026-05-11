@@ -13,12 +13,22 @@ const QuoteSchema = z.object({
   shipsTo: z.string().length(2).optional(),
 });
 
+const CustomerSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  // E.164-ish — keep permissive so locals can paste "0555..." too; UI normalises.
+  phone: z.string().trim().min(4).max(32),
+  // Free-text region/wilaya. UI offers a dropdown of 58 Algerian wilayas;
+  // we don't enforce the list server-side so sellers can ship internationally.
+  region: z.string().trim().min(2).max(120),
+});
+
 const ConfirmSchema = z.object({
   cartId: z.string().min(1),
   shipsTo: z.string().length(2).optional(),
   shipping: z
     .object({ carrier: z.string(), service: z.string() })
     .optional(),
+  customer: CustomerSchema,
 });
 
 const FLAT_SHIPPING_OPTIONS = [
@@ -98,6 +108,7 @@ export async function registerCheckoutRoutes(
       taxMinor: quote.totals.taxMinor,
       totalMinor: quote.totals.totalMinor,
       accessToken,
+      customer: body.customer,
     });
     await deps.carts.setLines(c.cartId, []);
 

@@ -16,22 +16,33 @@ const UpdateQtySchema = z.object({
 });
 
 export async function registerCartRoutes(app: FastifyInstance, carts: CartRepo): Promise<void> {
-  function shapeCart(c: CartRecord): Record<string, unknown> {
+  async function shapeCart(c: CartRecord): Promise<Record<string, unknown>> {
     const totals = cartDomain.totalsFor({
       cartId: c.cartId,
       currency: c.currency,
       lines: c.lines,
     });
+    const infos = c.lines.length > 0
+      ? await carts.enrichLines(c.lines.map((l) => l.variantId))
+      : [];
+    const byVariant = new Map(infos.map((i) => [i.variantId, i]));
     return {
       cartId: c.cartId,
       currency: c.currency,
       ownerKind: c.ownerKind,
-      lines: c.lines.map((l) => ({
-        variantId: l.variantId,
-        sellerId: l.sellerId,
-        qty: l.qty,
-        unitPriceMinor: l.unitPriceMinor.toString(),
-      })),
+      lines: c.lines.map((l) => {
+        const info = byVariant.get(l.variantId);
+        return {
+          variantId: l.variantId,
+          sellerId: l.sellerId,
+          qty: l.qty,
+          unitPriceMinor: l.unitPriceMinor.toString(),
+          productId: info?.productId ?? null,
+          title: info?.title ?? null,
+          sku: info?.sku ?? null,
+          heroImageUrl: info?.heroImageUrl ?? null,
+        };
+      }),
       totals: {
         subtotalMinor: totals.subtotalMinor.toString(),
         shippingMinor: totals.shippingMinor.toString(),

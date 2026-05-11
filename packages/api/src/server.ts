@@ -111,7 +111,7 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
   await registerProductWriteRoutes(app, { sellers: opts.repos.sellers, products: opts.repos.products });
   await registerCartRoutes(app, opts.repos.carts);
   await registerCheckoutRoutes(app, { carts: opts.repos.carts, orders: opts.repos.orders });
-  await registerOrderRoutes(app, opts.repos.orders);
+  await registerOrderRoutes(app, opts.repos.orders, opts.repos.sellers, opts.repos.carts);
   if (opts.authRouteDeps) {
     await registerAuthRoutes(app, { ...opts.authRouteDeps, users: opts.repos.users });
   }
@@ -136,36 +136,40 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
   // resolves the calling agent from auth middleware's req.principal (synthesised
   // for DEV_BYPASS on /mcp — see middleware/auth.ts).
   const mcpRegistry = new McpRegistry();
-  registerSellerWriteTools(mcpRegistry, {
-    sellers: {
-      create: (input) => opts.repos.sellers.create(input),
-      get: async (id) => {
-        const s = await opts.repos.sellers.get(id);
-        return s ? { sellerId: s.sellerId, ownerAgentId: s.ownerAgentId } : undefined;
+  registerSellerWriteTools(
+    mcpRegistry,
+    {
+      sellers: {
+        create: (input) => opts.repos.sellers.create(input),
+        get: async (id) => {
+          const s = await opts.repos.sellers.get(id);
+          return s ? { sellerId: s.sellerId, ownerAgentId: s.ownerAgentId } : undefined;
+        },
+      },
+      products: {
+        create: async (input) => {
+          const p = await opts.repos.products.create(input);
+          return {
+            productId: p.productId,
+            sellerId: p.sellerId,
+            titleSanitized: p.titleSanitized,
+            ...(p.brand !== undefined ? { brand: p.brand } : {}),
+            variants: p.variants.map((v) => ({
+              id: v.id,
+              sku: v.sku,
+              priceMinor: v.priceMinor,
+              currency: v.currency,
+              inStock: v.inStock,
+            })),
+            media: p.media.map((m) => ({ id: m.id, url: m.url })),
+            ...(p.heroMediaId !== undefined ? { heroMediaId: p.heroMediaId } : {}),
+            createdAt: p.createdAt,
+          };
+        },
       },
     },
-    products: {
-      create: async (input) => {
-        const p = await opts.repos.products.create(input);
-        return {
-          productId: p.productId,
-          sellerId: p.sellerId,
-          titleSanitized: p.titleSanitized,
-          ...(p.brand !== undefined ? { brand: p.brand } : {}),
-          variants: p.variants.map((v) => ({
-            id: v.id,
-            sku: v.sku,
-            priceMinor: v.priceMinor,
-            currency: v.currency,
-            inStock: v.inStock,
-          })),
-          media: p.media.map((m) => ({ id: m.id, url: m.url })),
-          ...(p.heroMediaId !== undefined ? { heroMediaId: p.heroMediaId } : {}),
-          createdAt: p.createdAt,
-        };
-      },
-    },
-  });
+    snapshotStore,
+  );
   await registerMcpTransport(app, {
     registry: mcpRegistry,
     buildContext: async (req): Promise<McpContext> => {
