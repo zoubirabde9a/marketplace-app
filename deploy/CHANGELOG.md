@@ -6,6 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO — homepage H1 swapped to the French marketplace headline (was English "Watch your agent shop, in real time.")
+
+- Home is the highest-priority URL in the sitemap (`priority=1.0`) and Google's primary signal for the site's topic. Page is declared `<html lang="fr">` with a French `<meta description>` targeting Algerian queries (`marketplace algérie`, `annonces téléphones DZD`, `vendeurs algériens`), but its H1 was English brand-positioning copy: `Watch your agent shop, in real time.` H1 is the heaviest single weight in Google's on-page topic-extraction pipeline; the English H1 was telling crawlers this page is primarily about AI-agent shopping observability rather than an Algerian marketplace, pulling French-locale ranking signals in the wrong direction.
+- Swap (no copy lost, no visual layout change):
+  - The English hero line keeps its existing `text-4xl sm:text-6xl` gradient treatment so the brand pitch stays prominent above the fold — but its tag changed from `<h1>` to `<p role="doc-subtitle">`. Reads identically to a sighted user; semantically subordinate to the document's H1.
+  - The French catalog headline below the hero (`Marketplace algérien · annonces actualisées en temps réel`) promoted from `<h2>` to `<h1 lang="fr">`. Visual size bumped `text-2xl` → `text-3xl tracking-tight` so it reads as the document's real heading. Now the page's single H1 element and matches both the `<html lang="fr">` declaration and the French `<meta description>` content.
+- Verified live: `curl -s https://teno-store.com/ | grep -E '<h1'` returns exactly one H1, the French line. `<p role="doc-subtitle">` correctly carries the English text. No other heading levels changed.
+- Type-check + 2/2 home tests pass locally.
+- Standing iter-1 recommendation still open: Cache-Control middleware for anonymous HTML + Cloudflare Cache Rule (operator-side). Highest unrealized lever.
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO — strip leading Arabic boilerplate from product meta description + JSON-LD on French-tagged pages (9,309 / 30,028 long-desc products affected ≈ 31%)
 
 - Algerian sellers commonly prepend a single Arabic delivery boilerplate line ("التوصيل متوفر لجميع الولايات" — "Delivery available to all wilayas") to descriptions that are otherwise in French. The site declares `<html lang="fr">` and tags `Product.inLanguage="fr"` in JSON-LD. Shipping Arabic-leading text in `<meta description>` + JSON-LD `Product.description` on a French-locale page sends Google a mixed-language signal that hurts both SERP snippet quality and ranking for French queries; sample product before this deploy was leading its snippet with `التوصيل متوفر لجميع الولايات Compatible avec la série P4…`.
@@ -691,3 +701,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — /s/{id} snapshot page was 500ing on every visit ('Objects are not valid as a React child'); captureRestSnapshot stores input.query as the full SearchQuery object but the page rendered it as a string. Now handles both shapes. Verified live: snapshot URL returns 200
 
 2026-05-11 · vps-eu · web rebuild — edge-cache /s/{id} snapshot pages (1h + SWR 24h + immutable); was 'private, no-cache' so every audit-trail viewer hit origin even though the API-side data was already aggressively cached at the edge (commit 480c816). Matches API policy now
+
+2026-05-11 · vps-eu · api rebuild — /v1/snapshots/{id} HEAD requests were 500ing with FST_ERR_REP_ALREADY_SENT (handler used void reply.send() without return reply); switched success path to return body and 410 path to return reply.send(). GET 200, HEAD 200, missing 410 all verified
