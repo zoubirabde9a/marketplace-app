@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO/perf — only the first product card gets `fetchPriority="high"` (Core Web Vitals LCP fix on home + search pages)
+
+- Home page was emitting 4 `<link rel="preload" as="image" fetchPriority="high">` tags from the recent-listings strip (4 cards × `eager={i < 4}` in ProductGrid → both `loading=eager` AND `fetchPriority=high` per card). LCP measures the SINGLE largest visible element, so only one image per page benefits from `fetchPriority="high"`; setting it on 4 simultaneous fetches made the browser split bandwidth across them and slowed the actual LCP candidate.
+- Split the ProductCard prop: `eager` still controls `loading="eager"` (parallel above-the-fold loading), but `priority` is a separate, narrower flag controlling `fetchPriority="high"`. ProductGrid now passes `eager={i < 4}` (unchanged — above-fold row still loads in parallel) plus `priority={i === 0}` — only the first card. Same fix applies to /search results pages and any other ProductGrid consumer.
+- Verified live: home page now ships ONE `fetchPriority="high"` preload + 3 `fetchPriority="auto"` preloads, with all 4 still `loading="eager"`. The first product card image is the LCP candidate; the other 3 above-fold cards load in parallel without competing for bandwidth priority.
+- Type-check clean; 9/9 ProductCard tests pass.
+- Standing iter-1, iter-19, iter-20 operator-side recommendations still open.
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO/perf — bump anonymous HTML s-maxage 60s→300s, swr 300s→1800s (buffer origin from sustained ClaudeBot load)
 
 - Caddy access log analysis this iteration: ClaudeBot is now crawling at **163 req/min sustained** (up from ~12/min at iter-19), p99 latency **9.8s**, max **60.5s**, avg 1.05s. ~1% of requests are very slow because every hit reaches origin uncached (Cloudflare Cache Rule still pending). 1,423 ClaudeBot hits in a recent 10-min window.
@@ -896,3 +904,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — /search?sellerId={id} (single-seller variant) now 308-redirects → /store/{id} instead of just emitting a canonical hint. Faster PageRank migration, cleaner URL bar UX, works for crawlers that don't follow rel=canonical. Used permanentRedirect not redirect (307→308) so Google treats it as canonical migration not temporary
 
 2026-05-11 · vps-eu · web rebuild — removed broken 'Voir les N annonces' link on /store/{id}. It had pointed at /search?sellerId=… which now 308-redirects right back to /store/{id} (self-redirect, confusing UX). Page still shows 60 products. Restore once storefront has internal pagination or /store/[id]/all overflow surface
+
+2026-05-11 · vps-eu · web rebuild — added /store/ to robots.txt Allow set across all bot groups (wildcard + AI crawlers + social-share scrapers). Was missing from the explicit allow-list even though /store/{id} is the canonical seller-storefront URL since commit d62bd2f
