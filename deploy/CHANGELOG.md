@@ -651,3 +651,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api + web rebuild — agent-card.json adds rest capability (was missing from API-side discovery doc while apex agents.json declared it); Header Suspense fallbacks now French (Chargement de la recherche / du menu utilisateur)
 
 2026-05-11 · vps-eu · api rebuild — agent-card.json now has homepage pointing at https://teno-store.com so MCP/A2A agents connecting to the API first can discover the apex agents.json + sitemap/feed/llms.txt surfaces without already knowing the brand domain
+
+2026-05-11 · vps-eu · api rebuild — /v1/products + /v1/products/{id} now Cache-Control: public, s-maxage=60, SWR=300 for anonymous reads (was no header at all, Cloudflare couldn't cache). Authenticated calls stay private/no-store so per-agent snapshot audit trail is preserved
