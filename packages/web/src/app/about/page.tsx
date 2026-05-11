@@ -35,7 +35,7 @@ export default function AboutPage() {
     ],
   };
   return (
-    <article className="max-w-3xl mx-auto pt-12 pb-24 prose-invert text-ink-soft">
+    <article lang="en" className="max-w-3xl mx-auto pt-12 pb-24 prose-invert text-ink-soft">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
