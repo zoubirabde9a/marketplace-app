@@ -9,6 +9,7 @@
 import { z } from "zod";
 import { catalog } from "@marketplace/domain";
 import { McpRegistry, type McpContext } from "../registry.js";
+import { captureSnapshot, snapshotWebUrl, webBase } from "./snapshot-helpers.js";
 
 const ProductRefSchema = z.object({
   productId: z.string(),
@@ -40,11 +41,6 @@ const SearchResultSchema = z.object({
 
 // Build a /search?... URL mirroring the agent's filters so a human can open it
 // and inspect the same view. Only set when MARKETPLACE_WEB_BASE_URL is configured.
-function webBase(): string | null {
-  const v = process.env.MARKETPLACE_WEB_BASE_URL;
-  return v ? v.replace(/\/$/, "") : null;
-}
-
 function searchWebUrl(input: catalog.SearchQuery): string | undefined {
   const base = webBase();
   if (!base) return undefined;
@@ -75,35 +71,6 @@ function searchWebUrl(input: catalog.SearchQuery): string | undefined {
 function productWebUrl(productId: string): string | undefined {
   const base = webBase();
   return base ? `${base}/product/${encodeURIComponent(productId)}` : undefined;
-}
-
-function snapshotWebUrl(id: string): string | undefined {
-  const base = webBase();
-  return base ? `${base}/s/${id}` : undefined;
-}
-
-async function captureSnapshot(
-  store: catalog.SnapshotStore | undefined,
-  ctx: McpContext,
-  kind: catalog.SnapshotKind,
-  input: unknown,
-  output: unknown,
-): Promise<{ id: string; createdAt: number; expiresAt: number } | null> {
-  if (!store) return null;
-  const id = catalog.newSnapshotId();
-  const createdAt = ctx.now();
-  const expiresAt = createdAt + catalog.SNAPSHOT_TTL_MS;
-  await store.put({
-    id,
-    kind,
-    input,
-    output,
-    principalId: ctx.ownerId,
-    agentId: ctx.agentId,
-    createdAt,
-    expiresAt,
-  });
-  return { id, createdAt, expiresAt };
 }
 
 export interface CatalogReadAdapter {

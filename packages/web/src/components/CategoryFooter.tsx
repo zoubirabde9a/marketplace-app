@@ -96,8 +96,15 @@ export async function CategoryFooter() {
   if (categories.length === 0 && brands.length === 0 && sellers.length === 0) return null;
 
   return (
-    <div className="border-b border-line-soft">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+    <details className="group border-b border-line-soft bg-bg-soft/30">
+      <summary className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-xs uppercase tracking-widest text-ink-mute font-semibold cursor-pointer list-none hover:text-ink transition [&::-webkit-details-marker]:hidden">
+        <span aria-hidden className="inline-block transition-transform group-open:rotate-90">▸</span>
+        Parcourir le catalogue
+        <span className="ml-2 normal-case tracking-normal text-ink-mute font-normal">
+          {categories.length} catégories · {brands.length} marques · {sellers.length} vendeurs
+        </span>
+      </summary>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6 pt-1 space-y-5">
         {categories.length > 0 && (
           <section aria-label="Parcourir par catégorie">
             <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
@@ -166,6 +173,6 @@ export async function CategoryFooter() {
           </section>
         )}
       </div>
-    </div>
+    </details>
   );
 }

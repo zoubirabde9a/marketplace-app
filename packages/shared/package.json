@@ -45,6 +45,11 @@
       "types": "./dist/result.d.ts",
       "development": "./src/result.ts",
       "default": "./dist/result.js"
+    },
+    "./phone": {
+      "types": "./dist/phone.d.ts",
+      "development": "./src/phone.ts",
+      "default": "./dist/phone.js"
     }
   },
   "scripts": {

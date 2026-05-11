@@ -50,6 +50,20 @@
       "when": 1778977800000,
       "tag": "0006_numeric_token_split",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1778978400000,
+      "tag": "0007_seller_city",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1778979000000,
+      "tag": "0008_seller_phones",
+      "breakpoints": true
     }
   ]
 }

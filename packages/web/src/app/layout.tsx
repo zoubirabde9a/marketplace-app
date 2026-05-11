@@ -156,25 +156,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Aller au contenu principal
         </a>
         <Header />
+        {/* CategoryFooter relocated above main because infinite scrolling
+            on /search and / makes the page bottom effectively unreachable
+            — users (and crawlers walking via scroll) can't get to the
+            categories/brands/sellers chips when they live in the footer.
+            Rendered as a collapsed <details> disclosure so the chips are
+            one click away on every page without dominating the viewport.
+            Awaited inline (no Suspense) — see git history of layout.tsx
+            for the byte-position-ordering rationale. */}
+        <CategoryFooter />
         <main id="main" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-24">{children}</main>
         <footer className="border-t border-line-soft mt-16">
-          {/* CategoryFooter awaited inline (no Suspense). Byte-position
-              probe found that wrapping it in <Suspense fallback={null}>
-              made Next.js / React 19 stream the footer's resolved content
-              BEFORE the main page H1 — its module-level facet cache (~5ms)
-              resolves orders-of-magnitude faster than the main page's
-              search fetch, so the suspense replay ordering put footer
-              first in raw HTML bytes (footer H2s at byte 7K, main H1 at
-              byte 120K). Crawlers reading top-to-bottom saw footer chips
-              as the dominant on-page text. Without the Suspense both
-              awaits happen in parallel; the shell flushes when both are
-              ready, preserving source order. TTFB cost is negligible
-              because both caches are warm. */}
-          <CategoryFooter />
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-ink-mute flex flex-col sm:flex-row items-center justify-between gap-3">
             <nav aria-label="Pied de page" className="flex items-center gap-5">
               <Link href="/search" className="hover:text-ink transition">Parcourir</Link>
-              <Link href="/seller" className="hover:text-ink transition">Vendre</Link>
+              <Link href="/seller/products/new" className="hover:text-ink transition">Vendre</Link>
               <Link href="/about" className="hover:text-ink transition">À propos</Link>
             </nav>
             <span>© {new Date().getFullYear()} Teno Store</span>

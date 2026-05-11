@@ -188,7 +188,10 @@ async function fetchStoreProfile(storeId, attempt = 1) {
           storeName: name
           slug
           mainLocation {
-            phones { phone }
+            # hasWhatsapp / hasViber are public per-phone booleans Ouedkniss
+            # publishes on the shop's site-build page. They let us mark
+            # which numbers buyers can WhatsApp/Viber instead of guessing.
+            phones { phone hasWhatsapp hasViber }
             emails
             socials { name url }
             location { address lat lng city { name region { name } } }
@@ -211,7 +214,13 @@ async function fetchStoreProfile(storeId, attempt = 1) {
     const land = json.data?.siteBuild?.land;
     if (!land || land.__typename !== "Store") return null;
     const loc = land.mainLocation ?? {};
-    const phones = (loc.phones ?? []).map((p) => p?.phone).filter(Boolean);
+    // Keep the per-phone metadata Ouedkniss publishes (hasWhatsapp/hasViber)
+    // so the seeder can record one row per number with channel flags. Drop
+    // entries with no phone string but otherwise preserve order.
+    const phoneEntries = (loc.phones ?? [])
+      .map((p) => (p?.phone ? { phone: String(p.phone), hasWhatsapp: !!p.hasWhatsapp, hasViber: !!p.hasViber } : null))
+      .filter(Boolean);
+    const phones = phoneEntries.map((p) => p.phone);
     const emails = (loc.emails ?? []).filter(Boolean);
     const socials = loc.socials ?? [];
     const pick = (name) => socials.find((s) => s?.name === name)?.url?.trim() || null;
@@ -220,6 +229,7 @@ async function fetchStoreProfile(storeId, attempt = 1) {
       name: land.storeName ?? null,
       slug: land.slug ?? null,
       phones,
+      phoneEntries,
       emails,
       website: pick("website"),
       facebook: pick("facebook"),
@@ -292,7 +302,16 @@ async function main() {
         continue;
       }
 
-      const url = it.slug ? `${BASE_URL}/annonce/${it.slug}` : `${BASE_URL}/annonce/${it.id}`;
+      // Canonical Ouedkniss listing URL on the live SPA is "<slug>-d<id>".
+      // The legacy "/annonce/<slug>" form we used to emit doesn't render
+      // any content on the current site (it serves the SPA shell but the
+      // router has no matching route). Always prefer the canonical form;
+      // fall back to "/<id>" if no slug is present.
+      const url = it.slug && it.id
+        ? `${BASE_URL}/${it.slug}-d${it.id}`
+        : it.id
+          ? `${BASE_URL}/${it.id}`
+          : `${BASE_URL}/annonce/${it.slug ?? ""}`;
       results.push({
         url,
         scrapedAt: new Date().toISOString(),
@@ -310,6 +329,7 @@ async function main() {
               .filter(Boolean),
           ),
         ),
+        ouedknissId: it.id ?? null,
         sellerUserId: it.user?.id ?? null,
         sellerIsFromStore: !!it.isFromStore,
         sellerStoreId: it.store?.id ?? null,

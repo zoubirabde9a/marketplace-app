@@ -97,11 +97,17 @@ describe("SnapshotPage", () => {
     expect(container.textContent).toContain("out");
   });
 
-  it("renders the expired view when API returns 410", async () => {
-    mockFetch(() => new Response("", { status: 410 }));
+  it("renders the unavailable view when API returns 410 and the id is not a known entity", async () => {
+    // 410 from /v1/snapshots/x, plus 404 from /v1/sellers/x and /v1/products/x
+    // (the recogniseEntity probe). The id "x" isn't UUID-shaped so the entity
+    // probes are skipped entirely; we just get the unavailable copy.
+    mockFetch((url) => {
+      if (url.includes("/v1/snapshots/")) return new Response("", { status: 410 });
+      return new Response("", { status: 404 });
+    });
     const tree = await SnapshotPage({ params: Promise.resolve({ id: "x" }) });
     const { container } = render(tree);
-    expect(container.textContent).toMatch(/expired/i);
+    expect(container.textContent).toMatch(/no longer stored|unavailable/i);
     expect(container.textContent).toMatch(/24 hours/i);
   });
 

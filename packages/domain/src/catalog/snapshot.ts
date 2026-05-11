@@ -1,15 +1,22 @@
 // Result snapshots — spec §8.4.
 //
-// When an agent calls a discovery tool (catalog.search, get_product, compare,
-// recommend) the marketplace freezes the exact tool output and stores it under
-// a public, unguessable token. The MCP response carries `snapshotUrl` pointing
-// at /s/{id} on the web origin so the agent can hand the link to a human.
+// When an agent calls a catalog tool (read: search/get_product/compare/recommend,
+// or write: seller.create_account/product.create_listing) the marketplace freezes
+// the exact tool input+output and stores it under a public, unguessable token.
+// The MCP response carries `snapshotUrl` pointing at /s/{id} on the web origin
+// so the agent can hand the link to a human to verify what was seen or created.
 //
 // Storage TTL is 24h. Snapshots are immutable; reading after expiry returns 410.
 
 import { randomBytes } from "node:crypto";
 
-export type SnapshotKind = "search" | "product" | "compare" | "recommend";
+export type SnapshotKind =
+  | "search"
+  | "product"
+  | "compare"
+  | "recommend"
+  | "seller_create"
+  | "product_create";
 
 export interface Snapshot {
   id: string;

@@ -22,16 +22,25 @@ export const SEARCH_SYNONYMS: Record<string, readonly string[]> = {
   tlf: ["telephone"],
   tel: ["telephone"],
   phone: ["telephone"],
-  telephone: ["tlf", "phone"],
+  // Asymmetric on purpose: `phone → telephone` recovers French listings when
+  // users type the English word, but the reverse `telephone → phone` pulls in
+  // accessories whose titles share the bare `phone` token ("Phone Holder",
+  // "Phone Cooler", "Phone Stand"). Measured 2026-05-11: half the top-25 for
+  // "telephone" were mounts/holders/coolers because of this expansion.
+  telephone: ["tlf"],
 
   // Vehicles
   voiture: ["auto"],
   auto: ["voiture"],
 
-  // Computers
+  // Computers — asymmetric on purpose. "pc" is ambiguous in DZ usage (could
+  // mean laptop or desktop), so expanding pc→laptop helps recall when users
+  // mean laptop. But the reverse laptop→pc pulled in desktops like
+  // "PC DE BUREAU ALL IN ONE" for "laptop" queries (measured 2026-05-11).
+  // Same fix pattern as telephone/phone above.
   pc: ["ordinateur", "laptop"],
   ordinateur: ["pc", "laptop"],
-  laptop: ["pc", "ordinateur"],
+  laptop: ["ordinateur"],
 
   // Audio
   casque: ["ecouteurs", "headset"],

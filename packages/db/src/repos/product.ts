@@ -1,7 +1,7 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { uuidv7 } from "@marketplace/shared/ids";
 import { products, productVariants, media } from "../schema/catalog.js";
-import { sellerProfiles } from "../schema/seller.js";
+import { sellerPhones, sellerProfiles } from "../schema/seller.js";
 import type { DbClient } from "../client.js";
 import { isUuid } from "./_uuid.js";
 import { expandForWebsearch } from "../synonyms.js";
@@ -42,12 +42,22 @@ export interface StoredProduct {
   createdAt: number;
 }
 
+export interface StoredSellerPhone {
+  phoneE164: string;
+  isWhatsapp: boolean;
+  isViber: boolean;
+  isPrimary: boolean;
+  position: number;
+}
+
 export interface StoredSeller {
   sellerId: string;
   displayName: string;
   ownerAgentId: string;
+  /** Primary number (E.164). Convenience mirror of `phones[0]`. */
   phone?: string;
   whatsapp?: string;
+  phones: StoredSellerPhone[];
   website?: string;
   createdAt: number;
 }
@@ -105,15 +115,37 @@ export function makeProductRepo(db: DbClient) {
   // pay for products+variants+media when searchIds() has already narrowed
   // the candidate set in SQL.
   async function loadSellers(): Promise<Map<string, StoredSeller>> {
-    const sels = await db.select().from(sellerProfiles);
+    const [sels, phones] = await Promise.all([
+      db.select().from(sellerProfiles),
+      db
+        .select()
+        .from(sellerPhones)
+        .orderBy(desc(sellerPhones.isPrimary), asc(sellerPhones.position), asc(sellerPhones.createdAt)),
+    ]);
+    const phoneMap = new Map<string, StoredSellerPhone[]>();
+    for (const p of phones) {
+      const list = phoneMap.get(p.sellerId) ?? [];
+      list.push({
+        phoneE164: p.phoneE164,
+        isWhatsapp: p.isWhatsapp,
+        isViber: p.isViber,
+        isPrimary: p.isPrimary,
+        position: p.position,
+      });
+      phoneMap.set(p.sellerId, list);
+    }
     const sellerMap = new Map<string, StoredSeller>();
     for (const s of sels) {
+      const list = phoneMap.get(s.orgId) ?? [];
+      const primary = list.find((p) => p.isPrimary) ?? list[0];
+      const wa = list.find((p) => p.isWhatsapp);
       sellerMap.set(s.orgId, {
         sellerId: s.orgId,
         displayName: s.storeName,
         ownerAgentId: s.ownerAgentId,
-        ...(s.phone ? { phone: s.phone } : {}),
-        ...(s.whatsapp ? { whatsapp: s.whatsapp } : {}),
+        phones: list,
+        ...(primary ? { phone: primary.phoneE164 } : s.phone ? { phone: s.phone } : {}),
+        ...(wa ? { whatsapp: wa.phoneE164 } : s.whatsapp ? { whatsapp: s.whatsapp } : {}),
         ...(s.website ? { website: s.website } : {}),
         createdAt: s.createdAt.getTime(),
       });
@@ -168,6 +200,22 @@ export function makeProductRepo(db: DbClient) {
   // Tighter than the pg_trgm default (0.6) is still needed for 4-char typos.
   // The lexical score is weighted ×4 so FTS hits always outrank typo matches.
   //
+  // Custom weights {D=0, C=0.05, B=0.4, A=1.0} (vs default {0.1, 0.2, 0.4,
+  // 1.0}) suppress description-only matches. Default C=0.2 lets a long
+  // description that mentions the query 5× (e.g., a robot-car kit with "car"
+  // sprinkled through the description) beat short title matches. C=0.05 keeps
+  // description as a tiebreaker without letting it dominate. Measured
+  // 2026-05-11: "car" with default weights pulled in an Arduino robot kit;
+  // with C=0.05 all top-12 results have "car" in the title.
+  //
+  // ts_rank_cd normalization=1 (divide by 1+log(doc_length)) is also critical:
+  // without it, listings with long keyword-stuffed descriptions ("iPhone
+  // alternative", "PC & LAPTOP & MULTIMÉDIA") beat short focused titles.
+  // Measured 2026-05-11: "iphone" without norm — IPAD PRO ranked #1 at 3.6,
+  // actual iPhones at 2.0–2.2. With norm=1 — Iphone11 #1 at 0.78, iPad drops
+  // to ~0.50. Same effect for "laptop" (SSD-with-LAPTOP-in-title outranking
+  // actual laptops).
+  //
   // Freshness decay: final score is multiplied by exp(-age_days / 90). A
   // 90-day-old listing scores ×0.37, 30-day ×0.71, 1-day ×0.99 — enough to
   // break ties between equally-relevant listings without inverting the
@@ -191,36 +239,67 @@ export function makeProductRepo(db: DbClient) {
     // typed multiple words deliberately and want all of them. Multi-token
     // typos lose tolerance but they're rare; single-token typos still work.
     const isSingleToken = !/\s/.test(trimmed);
-    const trgmFallback = isSingleToken
-      ? sql`OR word_similarity((SELECT qtxt FROM q), public.f_normalize_search(p."title_sanitized")) >= 0.5
-            OR word_similarity((SELECT qtxt FROM q), public.f_normalize_search(COALESCE(p."brand", ''))) >= 0.5`
-      : sql``;
-    const rows = await db.execute<{ id: string; score: number }>(sql`
-      WITH q AS (
-        SELECT websearch_to_tsquery('simple', public.f_normalize_search(${ftsInput})) AS tsq,
-               public.f_normalize_search(${trimmed})::text AS qtxt
-      )
-      SELECT p."id" AS id,
-             (
-               (
-                 COALESCE(ts_rank_cd(p."search_text", (SELECT tsq FROM q)), 0)::float8 * 4.0
-                 + GREATEST(
-                     word_similarity((SELECT qtxt FROM q), public.f_normalize_search(p."title_sanitized")),
-                     word_similarity((SELECT qtxt FROM q), public.f_normalize_search(COALESCE(p."brand", '')))
-                   )::float8
-               )
-               * exp(-EXTRACT(EPOCH FROM (NOW() - p."created_at")) / 86400.0 / 90.0)::float8
-             ) AS score
-      FROM "catalog"."products" p
-      WHERE p."search_text" @@ (SELECT tsq FROM q)
-         ${trgmFallback}
-      ORDER BY score DESC, p."id" ASC
-      LIMIT ${limit}
-    `);
-    return (rows as Array<{ id: string; score: number | string }>).map((r) => ({
-      id: r.id,
-      score: Number(r.score),
-    }));
+    // Two index-scannable subqueries UNION'd, instead of one query with
+    // `... OR word_similarity(...) >= 0.5` in the WHERE. The function-form
+    // comparison forced a full Seq Scan (measured 2026-05-11: p50 471ms,
+    // 49k buffers/388MB for an "iphone" query); UNION ALL of two CTEs lets
+    // each branch use its proper GIN index — FTS via products_search_text_idx,
+    // trigram via products_title_trgm_idx with the `<%` operator. Bench:
+    // trigram branch alone dropped from 320ms → 24ms (≈13×).
+    //
+    // The `<%` operator uses pg_trgm.word_similarity_threshold (default 0.6).
+    // We need 0.5 to preserve the existing recall calibration, so we run the
+    // query inside a transaction and SET LOCAL the threshold.
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SET LOCAL pg_trgm.word_similarity_threshold = 0.5`);
+      const trgmFallback = isSingleToken
+        ? sql`,
+        trgm_matches AS (
+          SELECT p."id" AS id,
+                 GREATEST(
+                   word_similarity((SELECT qtxt FROM q), public.f_normalize_search(p."title_sanitized")),
+                   word_similarity((SELECT qtxt FROM q), public.f_normalize_search(COALESCE(p."brand", '')))
+                 )::float8
+                 * exp(-EXTRACT(EPOCH FROM (NOW() - p."created_at")) / 86400.0 / 90.0)::float8
+                 AS score
+          FROM "catalog"."products" p
+          WHERE ((SELECT qtxt FROM q) <% public.f_normalize_search(p."title_sanitized")
+                 OR (SELECT qtxt FROM q) <% public.f_normalize_search(COALESCE(p."brand", '')))
+            AND NOT (p."search_text" @@ (SELECT tsq FROM q))
+        )`
+        : sql``;
+      const trgmUnion = isSingleToken ? sql`UNION ALL SELECT id, score FROM trgm_matches` : sql``;
+      const rows = await tx.execute<{ id: string; score: number }>(sql`
+        WITH q AS (
+          SELECT websearch_to_tsquery('simple', public.f_normalize_search(${ftsInput})) AS tsq,
+                 public.f_normalize_search(${trimmed})::text AS qtxt
+        ),
+        fts_matches AS (
+          SELECT p."id" AS id,
+                 (
+                   COALESCE(ts_rank_cd('{0.0,0.05,0.4,1.0}'::float4[], p."search_text", (SELECT tsq FROM q), 1), 0)::float8 * 4.0
+                   + GREATEST(
+                       word_similarity((SELECT qtxt FROM q), public.f_normalize_search(p."title_sanitized")),
+                       word_similarity((SELECT qtxt FROM q), public.f_normalize_search(COALESCE(p."brand", '')))
+                     )::float8
+                 )
+                 * exp(-EXTRACT(EPOCH FROM (NOW() - p."created_at")) / 86400.0 / 90.0)::float8
+                 AS score
+          FROM "catalog"."products" p
+          WHERE p."search_text" @@ (SELECT tsq FROM q)
+        )${trgmFallback}
+        SELECT id, score FROM (
+          SELECT id, score FROM fts_matches
+          ${trgmUnion}
+        ) m
+        ORDER BY score DESC, id ASC
+        LIMIT ${limit}
+      `);
+      return (rows as Array<{ id: string; score: number | string }>).map((r) => ({
+        id: r.id,
+        score: Number(r.score),
+      }));
+    });
   }
 
   return {

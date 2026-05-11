@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getTableConfig } from "drizzle-orm/pg-core";
-import { sellerProfiles } from "../src/schema/seller.js";
+import { sellerPhones, sellerProfiles } from "../src/schema/seller.js";
 
 describe("seller_profiles table schema", () => {
   const config = getTableConfig(sellerProfiles);
@@ -49,5 +49,38 @@ describe("seller_profiles table schema", () => {
   it("places the table in the seller schema", () => {
     expect(config.schema).toBe("seller");
     expect(config.name).toBe("seller_profiles");
+  });
+});
+
+describe("seller_phones table schema", () => {
+  const config = getTableConfig(sellerPhones);
+  const columnsByName = Object.fromEntries(config.columns.map((c) => [c.name, c]));
+
+  it("declares the expected column set", () => {
+    const expected = [
+      "id",
+      "seller_id",
+      "phone_e164",
+      "is_whatsapp",
+      "is_viber",
+      "is_primary",
+      "position",
+      "source",
+      "created_at",
+      "updated_at",
+    ];
+    for (const name of expected) {
+      expect(columnsByName[name], `expected column ${name}`).toBeDefined();
+    }
+  });
+
+  it("requires seller_id and phone_e164", () => {
+    expect(columnsByName.seller_id!.notNull).toBe(true);
+    expect(columnsByName.phone_e164!.notNull).toBe(true);
+  });
+
+  it("places the table in the seller schema", () => {
+    expect(config.schema).toBe("seller");
+    expect(config.name).toBe("seller_phones");
   });
 });

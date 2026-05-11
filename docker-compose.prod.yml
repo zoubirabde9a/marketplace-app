@@ -121,7 +121,16 @@ services:
     image: redis:7.4-alpine
     container_name: marketplace-redis
     restart: unless-stopped
-    command: ["redis-server", "--save", "300", "10", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    # maxmemory 2gb / volatile-lru:
+    #   Snapshots are ~100 KB each (full search-result blobs) and accumulate at
+    #   the rate scraper-driven catalog.search fires, so 24h × that rate × 100 KB
+    #   hits the multi-GB scale. The prior 256 MB cap filled inside an hour and
+    #   `allkeys-lru` then evicted active snapshots well before their 24h TTL —
+    #   share-links broke the same day they were issued. 2 GB fits comfortably
+    #   on the 8 GB VPS. volatile-lru means only TTL-bearing keys are eviction
+    #   candidates, so any durable key (future sessions, etc.) is preserved
+    #   while snapshots and other ephemeral keys take the eviction hit first.
+    command: ["redis-server", "--save", "300", "10", "--appendonly", "no", "--maxmemory", "2gb", "--maxmemory-policy", "volatile-lru"]
     volumes:
       - /var/lib/marketplace/redis:/data
     expose:

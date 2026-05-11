@@ -98,13 +98,24 @@ describe("expandForWebsearch", () => {
     const pairs: Array<[string, string]> = [
       ["frigo", "refrigerateur"],
       ["tlf", "telephone"],
-      ["phone", "telephone"],
       ["voiture", "auto"],
       ["casque", "ecouteurs"],
     ];
     for (const [a, b] of pairs) {
       expect(SEARCH_SYNONYMS[a]).toContain(b);
       expect(SEARCH_SYNONYMS[b]).toContain(a);
+    }
+
+    // Intentionally asymmetric pairs — see synonyms.ts for the rationale.
+    // The forward expansion exists; the reverse is deliberately omitted to
+    // prevent recall pollution.
+    const asymmetric: Array<[string, string]> = [
+      ["phone", "telephone"], // phone→telephone recovers FR listings; reverse would pull in accessories
+      ["pc", "laptop"],       // pc→laptop helps when "pc" means laptop in DZ; reverse would pull in desktops
+    ];
+    for (const [forward, target] of asymmetric) {
+      expect(SEARCH_SYNONYMS[forward]).toContain(target);
+      expect(SEARCH_SYNONYMS[target] ?? []).not.toContain(forward);
     }
   });
 });

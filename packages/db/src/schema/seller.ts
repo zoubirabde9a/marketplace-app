@@ -1,6 +1,7 @@
 // Schema: seller — profiles, KYB, payout accounts, policies, metrics. Spec §4.3.
 
-import { boolean, integer, jsonb, pgSchema, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, integer, jsonb, pgSchema, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
 import { createdAt, idCol, updatedAt, uuidv7 } from "./_common.js";
 import { organizations } from "./identity.js";
 
@@ -18,11 +19,43 @@ export const sellerProfiles = sellerSchema.table("seller_profiles", {
   phone: varchar("phone", { length: 32 }),
   whatsapp: varchar("whatsapp", { length: 32 }),
   website: varchar("website", { length: 512 }),
+  city: varchar("city", { length: 120 }),
   active: boolean("active").notNull().default(false),
   reserveBps: integer("reserve_bps").notNull().default(0), // payout holdback bps for new sellers
   createdAt,
   updatedAt,
 });
+
+// Multiple contact phones per seller. Replaces the single `phone` / `whatsapp`
+// columns on seller_profiles (kept for now for compatibility). Each row is one
+// phone number in canonical E.164 form (+213…); `is_whatsapp` / `is_viber`
+// reflect what Ouedkniss publishes per-number, `is_primary` marks the lead
+// contact (enforced unique-per-seller via a partial unique index below),
+// `position` preserves the order Ouedkniss returned them in, and `source`
+// records where we got the number (e.g. 'ouedkniss-store', 'manual').
+export const sellerPhones = sellerSchema.table(
+  "seller_phones",
+  {
+    id: idCol(),
+    sellerId: uuidv7("seller_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    phoneE164: varchar("phone_e164", { length: 20 }).notNull(),
+    isWhatsapp: boolean("is_whatsapp").notNull().default(false),
+    isViber: boolean("is_viber").notNull().default(false),
+    isPrimary: boolean("is_primary").notNull().default(false),
+    position: integer("position").notNull().default(0),
+    source: varchar("source", { length: 32 }).notNull().default("manual"),
+    createdAt,
+    updatedAt,
+  },
+  (t) => ({
+    sellerPhoneUnique: uniqueIndex("seller_phones_seller_phone_unique").on(t.sellerId, t.phoneE164),
+    sellerPrimaryUnique: uniqueIndex("seller_phones_primary_unique")
+      .on(t.sellerId)
+      .where(sql`${t.isPrimary}`),
+  }),
+);
 
 export const kybRecords = sellerSchema.table("kyb_records", {
   id: idCol(),

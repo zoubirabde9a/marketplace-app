@@ -40,6 +40,8 @@ import { createDb } from "./client.js";
 import { createRepos } from "./repos/index.js";
 import { sellerProfiles } from "./schema/seller.js";
 import { createLogger } from "@marketplace/shared/logger";
+import { normalizeAlgerianPhone } from "@marketplace/shared/phone";
+import type { SellerPhoneInput } from "./repos/seller.js";
 
 const log = createLogger("scraper.seed-from-scraped");
 
@@ -58,11 +60,24 @@ interface ScrapedItem {
   sellerStoreId?: string | null;
 }
 
+interface ScrapedPhoneEntry {
+  phone: string;
+  hasWhatsapp?: boolean;
+  hasViber?: boolean;
+}
+
 interface ScrapedStore {
   id: string;
   name?: string | null;
   slug?: string | null;
+  /** Phones as plain strings — preserved for older dump compatibility. */
   phones?: string[];
+  /**
+   * Per-phone metadata (added 2026-05-11). When present, this drives
+   * seller_phones inserts and `phones` is ignored. When absent (older
+   * dumps), the seeder falls back to `phones` with WhatsApp unknown.
+   */
+  phoneEntries?: ScrapedPhoneEntry[];
   emails?: string[];
   website?: string | null;
   whatsapp?: string | null;
@@ -157,15 +172,34 @@ function syntheticName(key: string, kind: "store" | "user"): string {
   return kind === "store" ? `Vendeur Pro ${tag}` : `Vendeur ${tag}`;
 }
 
-// Pick the first phone that parses as Algerian-shaped. Ouedkniss stores
-// most numbers as "+213XXXXXXXXX" (12 digits after +). We prefer that
-// shape but accept anything non-empty as a last resort.
-function pickPhone(phones: string[] | undefined): string | undefined {
-  if (!phones?.length) return undefined;
-  const dz = phones.find((p) => /^\+213\d{9}$/.test((p ?? "").replace(/\s+/g, "")));
-  if (dz) return dz.replace(/\s+/g, "");
-  const any = phones.find(Boolean);
-  return any ? any.trim() : undefined;
+// Build the seller_phones input list from a scraped store. Prefers the
+// per-phone metadata shape (`phoneEntries`, with hasWhatsapp/hasViber).
+// Falls back to the legacy flat `phones` string list (whatsapp unknown).
+// Output is normalized to E.164 (+213…) and deduplicated; the first
+// remaining entry is marked primary. Returns [] when the store has no
+// parsable phones — the seller is still created, just without contact info.
+function buildPhoneList(store: ScrapedStore | undefined): SellerPhoneInput[] {
+  if (!store) return [];
+  const entries: ScrapedPhoneEntry[] = store.phoneEntries?.length
+    ? store.phoneEntries
+    : (store.phones ?? []).map((phone) => ({ phone }));
+  const seen = new Set<string>();
+  const out: SellerPhoneInput[] = [];
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i]!;
+    const e164 = normalizeAlgerianPhone(entry.phone);
+    if (!e164 || seen.has(e164)) continue;
+    seen.add(e164);
+    out.push({
+      phone: e164,
+      isWhatsapp: !!entry.hasWhatsapp,
+      isViber: !!entry.hasViber,
+      isPrimary: out.length === 0,
+      position: i,
+      source: "ouedkniss-store",
+    });
+  }
+  return out;
 }
 
 function slug(s: string, max = 40): string {
@@ -270,6 +304,23 @@ async function main(): Promise<void> {
       .limit(1);
     if (existing[0]) {
       sellerCache.set(key, existing[0].orgId);
+      // Resync phones from the latest scrape. Ouedkniss shop owners add and
+      // remove numbers over time; the old seeder only ever wrote phones on
+      // first-create, so a shop that added a second sales line after we'd
+      // already seen it once would stay stuck on one number forever. Doing
+      // this once per seller per run (resolveSeller is cached) keeps the
+      // cost bounded — typically <30 sellers per scrape run.
+      const isShopExisting = item.sellerIsFromStore === true && item.sellerStoreId;
+      const storeExisting = isShopExisting && item.sellerStoreId ? stores[item.sellerStoreId] : undefined;
+      const phoneList = buildPhoneList(storeExisting);
+      if (phoneList.length > 0) {
+        try {
+          await repos.sellers.replacePhones(existing[0].orgId, phoneList);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          log.warn(`phones-resync failed for ${key} (${existing[0].orgId}): ${msg}`);
+        }
+      }
       return existing[0].orgId;
     }
     // Brand-new seller. Display name is always synthetic (per operator
@@ -279,14 +330,12 @@ async function main(): Promise<void> {
     const isShop = item.sellerIsFromStore === true && item.sellerStoreId;
     const display = syntheticName(key, isShop ? "store" : "user");
     const store = isShop && item.sellerStoreId ? stores[item.sellerStoreId] : undefined;
-    const phone = pickPhone(store?.phones);
-    const whatsapp = store?.whatsapp ?? phone;
+    const phoneList = buildPhoneList(store);
     const website = store?.website ?? undefined;
     const created = await repos.sellers.create({
       displayName: display,
       ownerAgentId: `scraper:${key}`,
-      ...(phone ? { phone } : {}),
-      ...(whatsapp ? { whatsapp } : {}),
+      ...(phoneList.length > 0 ? { phones: phoneList } : {}),
       ...(website ? { website } : {}),
     });
     // Override the auto-generated storeSlug with our deterministic key so
@@ -301,9 +350,14 @@ async function main(): Promise<void> {
       })
       .where(eq(sellerProfiles.orgId, created.sellerId));
     sellerCache.set(key, created.sellerId);
+    const phoneSummary =
+      phoneList.length === 0
+        ? " no-phone"
+        : ` phones=${phoneList.length}` +
+          (phoneList.some((p) => p.isWhatsapp) ? ` wa=${phoneList.filter((p) => p.isWhatsapp).length}` : "");
     log.info(
       `seller created: ${key} → ${created.sellerId} (${display})` +
-        (phone ? ` phone=${phone}` : " no-phone") +
+        phoneSummary +
         (isShop ? " [shop]" : " [individual]"),
     );
     return created.sellerId;

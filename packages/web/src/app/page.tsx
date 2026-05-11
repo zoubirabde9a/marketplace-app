@@ -213,9 +213,21 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-accent bg-accent/10 border border-accent/30 mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> live
         </span>
-        <h1 className="text-4xl sm:text-6xl font-semibold tracking-tight bg-gradient-to-b from-ink to-ink-soft bg-clip-text text-transparent">
+        {/* Visual hero retains its existing size + gradient treatment so the
+            English brand pitch stays prominent above the fold. Demoted from
+            <h1> to a <p role="doc-subtitle">: Google heavily weights H1 for
+            topic extraction, and an English brand-pitch H1 on a French-locale
+            page (<html lang="fr">, French <meta description>, target queries
+            "marketplace algérie" / "annonces algériens DZD") was telling
+            crawlers this page is primarily about agent shopping rather than
+            an Algerian marketplace. The actual H1 lives below as the catalog
+            section heading. */}
+        <p
+          role="doc-subtitle"
+          className="text-4xl sm:text-6xl font-semibold tracking-tight bg-gradient-to-b from-ink to-ink-soft bg-clip-text text-transparent"
+        >
           Watch your agent shop, in real time.
-        </h1>
+        </p>
         <p className="mt-5 text-lg text-ink-soft leading-relaxed">
           See every search, every product, every price your agent looked at — exactly as it saw them.
         </p>
@@ -244,9 +256,16 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           cards (H2s) → recent strip. The catalog signal now reaches
           crawlers before the agent narrative. */}
       <section className="mt-12 max-w-4xl mx-auto" aria-labelledby="catalog-heading">
-        <h2 id="catalog-heading" className="text-2xl font-semibold tracking-tight mb-3">
+        {/* Promoted from <h2> to <h1>: now the page's only H1 element and the
+            primary topic signal for crawlers. Matches the <html lang="fr">
+            declaration and the French meta description. The English hero
+            above stays visually prominent but ships as a <p role="doc-subtitle">
+            — see the comment up there for the topic-signal rationale.
+            Visual size bumped (text-2xl → text-3xl tracking-tight) so it
+            reads as a real heading rather than a small section label. */}
+        <h1 id="catalog-heading" lang="fr" className="text-3xl font-semibold tracking-tight mb-3">
           Marketplace algérien · annonces actualisées en temps réel
-        </h2>
+        </h1>
         <p lang="fr" className="text-ink-soft leading-relaxed mb-3">
           Découvrez des milliers d&rsquo;annonces de vendeurs algériens — téléphones,
           informatique, électroménager, mode, véhicules et plus. Prix en dinars (DZD),
