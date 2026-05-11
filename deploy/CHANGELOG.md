@@ -531,3 +531,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — FR_CATEGORY map expanded with compound Ouedkniss slugs (automobiles_vehicules, electronique_electromenager, vetements_mode, sante_beaute + 11 subcategory slugs); ~2,500 products' indexable slice landings now ship proper accented French H1/title
 
 2026-05-11 · vps-eu · api rebuild — Fastify trustProxy:true so viewUrl in /v1/products responses ships https://api.teno-store.com/... (was http:// because req.protocol saw the docker-internal hop from Caddy → API container, not the original https connection); fixes mixed-content + extra-redirect-hop for AI crawlers / agents reading product JSON
+
+2026-05-11 · vps-eu · web rebuild — product page OG extension tags switched from <meta name='og:*'> to <meta property='og:*'> (Facebook spec requires property= and silently ignores name=; was missing og:type=product + product:* on every share card)
