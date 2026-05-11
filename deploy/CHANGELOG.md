@@ -537,3 +537,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — og:country-name switched site-wide from <meta name=> to <meta property=> (Facebook required attribute; same bug class as yesterday's product OG-extension fix). Geo.region / geo.placename / ICBM stay name= per their own convention
 
 2026-05-11 · vps-eu · web rebuild — product meta description structured-fallback threshold raised from 0 → 40 chars (was passing tiny 16-char Arabic seller blurbs through to all three meta description channels for major listings like a Volkswagen T-Roc); fallback labels localised (marque/de instead of brand/from)
+
+2026-05-11 · vps-eu · web rebuild — home og:description + twitter:description switched from English agent-pitch to French-first 'Marketplace algérien…' with the agent angle as a trailing clause; matches the share-channel audience (Algerian buyers on WhatsApp) and the indexable French catalog content
