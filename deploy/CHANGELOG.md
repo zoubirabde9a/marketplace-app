@@ -30,6 +30,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 - `docker-compose.prod.yml` passes `API_WORKERS=${API_WORKERS:-auto}` (auto = available cores capped at 4). Rollback: set `API_WORKERS=1` in `.env` and `up -d api`.
 - Deployed via rsync + `docker compose -f docker-compose.prod.yml up -d --build api`.
 
+## 2026-05-11 — vps-eu · scraper-loop · fix stored sourceUrl to canonical Ouedkniss format
+
+- Scraper was writing `attributes.sourceUrl = "https://www.ouedkniss.com/annonce/<slug>"` — the legacy URL form. The current Ouedkniss SPA has no `/annonce/<slug>` route; that URL returns the SPA shell with no listing content. The canonical form on the live site is `https://www.ouedkniss.com/<slug>-d<id>`.
+- Fix: `scrape-ouedkniss.mjs` now emits `${BASE_URL}/${it.slug}-d${it.id}` (both `id` and `slug` are already in the GraphQL response). Also surfaces `ouedknissId` in each scraped item for future tooling (e.g. an authenticated phone-reveal pass would need it as `announcementPhoneGet(id:)`).
+- One-time dedup cost: products seeded before this fix carry the old URL in `attributes.sourceUrl`; the same Ouedkniss listing re-scraped after will appear novel because the new URL string won't match the old skip-urls dump. Expect a brief uptick in seeded counts as those listings re-enter under the canonical URL; future runs deduplicate normally.
+- Deployed (scp scrape-ouedkniss.mjs to /opt/marketplace/scripts/, CRLF stripped). Verified by triggering the loop: new products created in the last minute show URLs like `…-dreame-x40-ultra-…-d51149353`. Direct `curl -I` against one such URL returns HTTP/2 200.
+- Live tree audit: `seed-from-scraped.ts`, `run-loop.sh`, and the systemd unit on vps-eu are byte-identical (modulo line endings) to the repo. API image already carries the latest seeder from the morning's rebuild.
+
 ## 2026-05-11 — vps-eu · scraper-loop · per-listing seller resolution (with real phones for shop accounts)
 
 - Every scraped product was being attached to the single hard-coded "Smart Phone DZ" seller, so the storefront showed one seller name + phone for everything. Replaced that with per-listing seller resolution: each unique Ouedkniss seller (a store id for shop accounts, a user id for individuals) now maps to one teno-store seller, persistent across runs.
@@ -519,3 +527,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — sitemap MAX_PAGES 200 → 400; sitemap product URL count went 20,000 → 24,389 (was clipping the oldest ~4,500 products from Googlebot discovery; pagination is newest-first cursor so the tail is what got dropped)
 
 2026-05-11 · vps-eu · web rebuild — French breadcrumbs across product / search / about / seller (visible nav AND BreadcrumbList JSON-LD — Google surfaces breadcrumb labels directly in SERP URL row above the snippet)
+
+2026-05-11 · vps-eu · web rebuild — FR_CATEGORY map expanded with compound Ouedkniss slugs (automobiles_vehicules, electronique_electromenager, vetements_mode, sante_beaute + 11 subcategory slugs); ~2,500 products' indexable slice landings now ship proper accented French H1/title
