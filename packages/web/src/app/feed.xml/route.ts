@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { upscaleOuedknissForCrawler } from "@/lib/images";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 const API_URL = (
@@ -138,9 +139,9 @@ export async function GET(req: NextRequest) {
       const posted = h.postedAt ?? new Date().toISOString();
       const price = fmtPrice(h.priceMinor ?? h.priceFromMinor, h.currency);
       const summaryParts = [
-        h.brand ? `Brand: ${h.brand}` : null,
-        h.sellerDisplayName ? `Seller: ${h.sellerDisplayName}` : null,
-        price ? `Price: ${price}` : null,
+        h.brand ? `Marque : ${h.brand}` : null,
+        h.sellerDisplayName ? `Vendeur : ${h.sellerDisplayName}` : null,
+        price ? `Prix : ${price}` : null,
       ].filter(Boolean);
       const summary = summaryParts.length > 0 ? summaryParts.join(" · ") : title;
       return `  <entry>
@@ -152,7 +153,7 @@ export async function GET(req: NextRequest) {
     <author><name>${escapeXml(h.sellerDisplayName ?? "Teno Store")}</name></author>
     <summary>${escapeXml(summary)}</summary>${
         h.heroImageUrl
-          ? `\n    <link rel="enclosure" type="image/jpeg" href="${escapeXml(h.heroImageUrl)}"/>`
+          ? `\n    <link rel="enclosure" type="image/jpeg" href="${escapeXml(upscaleOuedknissForCrawler(h.heroImageUrl))}"/>`
           : ""
       }
   </entry>`;
