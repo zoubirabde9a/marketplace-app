@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO — /about page lede + headings now French (was fully English on a `<html lang="fr">` site); long-form developer copy stays English under a `<section lang="en">`
+
+- The `/about` page was fully English: `<title>About</title>`, English meta description, H1 "About Teno Store", all H2s, all body copy. Sitemapped (`priority=0.5`) and `index,follow`, so Google was getting an English topic signal at the apex of the entity-graph site (it cross-references `/#website` + `/#organization` JSON-LD). For French queries like `À propos Teno Store`, `marketplace algérien`, `agents IA Algérie`, the page was working against the site's French locale declaration.
+- Mirror of the iter-7 home-page approach: French primary content at the top (title, H1, lede, "Pour les acheteurs", "Pour les vendeurs", "Commencer" sections — the parts crawlers weigh heaviest for topic extraction), then the existing English deep-dive (for-buyers / for-sellers / for-agents / trust-signals) preserved verbatim under a `<section lang="en">` with its own H2 introducing it as the "agents & developers" track. Both audiences served: French SEO signals where they matter most, English technical content kept for AI-agent / developer readers.
+- Page-level changes: `metadata.title` `"About"` → `"À propos"`; meta description rewritten in French; `metadata.openGraph.locale` now `"fr_DZ"` with `"en_US"` as alternateLocale; AboutPage JSON-LD `name` → `"À propos de Teno Store"`, `description` rewritten in French, `inLanguage` flipped from `"en"` to `["fr", "en"]` to reflect the bilingual content. Updated the page snapshot test accordingly (3/3 about tests pass).
+- Verified live: `<title>À propos · Teno Store</title>`, French meta description (`Teno Store — marketplace algérien…`), H1 `À propos de Teno Store`. Type-check clean; 108/108 web tests pass.
+- Standing iter-1 recommendation still open: Cache-Control middleware for anonymous HTML + Cloudflare Cache Rule (operator-side). Highest unrealized lever.
+- Follow-up flagged: `/seller` page has the same pattern (`<title>Sell · Teno Store</title>`, H1 "Sell on Teno Store", English meta description) — same fix could apply next iteration.
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO — /store/[id] storefront page French-ified (meta description, labels, CTAs) + country code rendered as "Algérie" not "DZ"
 
 - The public seller storefront at `/store/[id]` (sitemapped, `index,follow`) was leaking English copy onto an `<html lang="fr">` site: meta description `"Shop X in DZ on Teno Store. N listings."`, header chip `"Store"`, dt labels `"Phone"/"Website"/"Support"`, badge `"primary"`, section heading `"Listings (N)"` / `"No listings yet"`, empty-state `"This store hasn't published any products yet."`, and CTA `"See all N listings →"`. Plus the visible location rendered the raw ISO country code `"DZ"` next to the seller's city. Mixed-language signal on a French-locale storefront that's pointed at Algerian shoppers searching `boutique <name> Algérie`.
@@ -764,3 +773,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · Caddyfile change pending operator reload — Access-Control-Allow-Headers expanded with Idempotency-Key, X-Mp-Order-Token, X-Mp-Mcp-Token. Without Idempotency-Key in the allow list, every browser-based write (seller dashboard) was being rejected at CORS preflight with 'Idempotency-Key not allowed' (API requires this header on all mutations)
 
 2026-05-11 · vps-eu · web rebuild — Access-Control-Allow-Origin: * on /.well-known/agents.json, /sitemap.xml, /feed.xml, /llms.txt, /robots.txt. Server-side crawlers (Googlebot, GPTBot, ClaudeBot) didn't care but browser-based tooling (SEO debuggers, agent-discovery validators, llms.txt parsers in tabs) got CORS errors fetching these public-by-design discovery surfaces
+
+2026-05-11 · vps-eu · web rebuild — sitemap MAX_PAGES 400→500. Was clipping again at 40,000 (catalog grew to 42,695); now serving 42,999 product URLs in the sitemap, no more oldest-product clipping. 500 is the Google per-file URL limit ceiling without needing a sitemap-index split
