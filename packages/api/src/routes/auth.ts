@@ -104,7 +104,11 @@ export async function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDe
     };
   });
 
-  app.get("/v1/auth/me", async (req) => {
+  app.get("/v1/auth/me", async (req, reply) => {
+    // Identity endpoint — user-specific by definition. Must never be
+    // cached by any intermediary; user A's identity reaching user B
+    // would be a full session-takeover-level leak.
+    reply.header("cache-control", "private, no-store");
     const sess = requireUser(req);
     const user = await deps.users.get(sess.userId);
     if (!user) throw new UnauthorizedError("user_not_found");

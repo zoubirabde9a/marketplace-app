@@ -13,7 +13,9 @@ export interface MeRouteDeps {
 }
 
 export async function registerMeRoutes(app: FastifyInstance, deps: MeRouteDeps): Promise<void> {
-  app.get("/v1/me/activity", async (req) => {
+  app.get("/v1/me/activity", async (req, reply) => {
+    // User activity feed — per-user data; never cacheable across users.
+    reply.header("cache-control", "private, no-store");
     const sess = requireUser(req);
     const [user, agents, recentActions] = await Promise.all([
       deps.users.get(sess.userId),

@@ -64,6 +64,12 @@ export async function registerCartRoutes(app: FastifyInstance, carts: CartRepo):
   }
 
   app.get("/v1/cart", async (req, reply) => {
+    // Cart is correlated to the caller (anonymous: session-cookie scoped;
+    // authenticated: user-scoped). MUST NOT be cached by any intermediate
+    // — a CDN serving user A's cart contents to user B is a real
+    // user-data leak. No Cache-Control means HTTP heuristic caching MAY
+    // kick in; private+no-store is explicit and intermediary-proof.
+    void reply.header("cache-control", "private, no-store");
     const c = await resolveCart(req);
     void reply.header("x-mp-cart-id", c.cartId);
     return shapeCart(c);

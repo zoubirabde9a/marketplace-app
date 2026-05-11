@@ -81,14 +81,19 @@ export async function registerOrderRoutes(
     return ids.size > 0 ? carts.enrichLines([...ids]) : [];
   }
 
-  app.get("/v1/orders", async (req) => {
+  app.get("/v1/orders", async (req, reply) => {
+    // User-scoped order list — MUST NOT be cached by intermediates.
+    reply.header("cache-control", "private, no-store");
     const sess = requireUser(req);
     const list = await orders.listForUser(sess.userId);
     const infos = await enrichFor(list);
     return { data: list.map((o) => shapeOrder(o, infos)) };
   });
 
-  app.get<{ Params: { id: string } }>("/v1/orders/:id", async (req) => {
+  app.get<{ Params: { id: string } }>("/v1/orders/:id", async (req, reply) => {
+    // Order detail is owner-scoped (user or one-time token). Never
+    // cacheable across users — explicit no-store.
+    reply.header("cache-control", "private, no-store");
     const o = await orders.get(req.params.id);
     if (!o) throw new NotFoundError("order", req.params.id);
 
