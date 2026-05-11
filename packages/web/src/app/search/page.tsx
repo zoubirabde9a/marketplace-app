@@ -147,11 +147,30 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       // signal we got back from the API; null (fetch failed) keeps the
       // current behaviour so a transient outage doesn't deindex a
       // legitimate slice.
+      // Free-text /search?q=... is noindex. Open-ended internal search results
+      // are exactly the surface Google's thin/duplicate-content heuristics
+      // target (Search Quality Guidelines § "low-value pages" explicitly
+      // calls out "search results pages from another search engine"). Three
+      // concrete risks of indexing them:
+      //   1. Spam injection: anyone can link /search?q=<spammy text> and
+      //      Google will crawl and index that variant under our domain —
+      //      one viral spam link can drag the whole site's quality score.
+      //   2. Duplicate content: /search?q=samsung returns the same products
+      //      as /search?brand=Samsung (the indexable canonical brand
+      //      landing), so we'd be competing against ourselves for the same
+      //      query.
+      //   3. Infinite URL space: every typo, synonym, language variant
+      //      becomes a discoverable thin page; crawl budget bleeds into
+      //      noise.
+      // Brand/category/seller landings stay indexable because they have a
+      // finite, curated URL space. follow=true so internal links from the
+      // results still pass equity to product pages.
       hasNonIndexableParam ||
       isMultiFilter ||
       isMultiValuedSeller ||
       isMultiValuedCategory ||
-      totalCount === 0
+      totalCount === 0 ||
+      Boolean(q)
         ? { index: false, follow: true }
         : { index: true, follow: true },
     // Also override openGraph and twitter so social-share scrapers
