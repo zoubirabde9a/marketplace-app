@@ -570,3 +570,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — thin brand+seller /search slices noindex when totalCount<5 (mirrors sitemap MIN_FACET_COUNT floor from previous commit); even after removing from sitemap, internal links / external links could still drive Google to index them
 
 2026-05-11 · vps-eu · api rebuild — added /robots.txt route on api.teno-store.com (was 401 from auth middleware); host now properly tells crawlers Disallow: / since it serves only programmatic surfaces; sitemap pointer routes them to the apex
+
+2026-05-11 · vps-eu · api rebuild — /favicon.ico on api.teno-store.com now 204 No Content + 7-day cache (was 401 from auth middleware filling logs every time someone pasted a JSON URL into their address bar)
