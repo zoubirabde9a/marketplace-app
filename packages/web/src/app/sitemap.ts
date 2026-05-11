@@ -133,14 +133,15 @@ async function fetchAllProductsUncached(): Promise<SitemapHarvest> {
   const categories: string[] = [];
   let cursor: string | null = null;
   // Cap pagination so a misbehaving API can't cause an unbounded sitemap build.
-  // Probed 2026-05-11: catalog total ≈ 22,633 across all sellers; the previous
-  // 200 × 100 = 20,000 cap was leaving ~2,600 of the OLDEST products out of
-  // /sitemap.xml (pagination is newest-first cursor-based, so the tail is
-  // what gets clipped). Bumped to 400 pages = 40,000 product headroom — well
-  // above current growth trajectory and still walks in seconds with the
-  // module-level harvest cache (30-min TTL + SWR to 4 h). The API silently
-  // caps `limit` at 100 so we can't shrink round-trips.
-  const MAX_PAGES = 400;
+  // Live probe 2026-05-11T18:* found the previous 400 × 100 = 40,000 cap was
+  // again clipping ~2,700 of the OLDEST products (catalog grew to 42,695
+  // since the last bump). Pagination is newest-first cursor-based so the
+  // clipped tail is the most-stale inventory. Bumped to 500 pages = 50,000
+  // product headroom — also the per-file URL limit Google enforces on
+  // sitemaps, so beyond this we'd need to split into a sitemap index
+  // anyway. Walks in seconds thanks to the module-level harvest cache
+  // (30-min TTL + SWR to 4 h). Capped at 50,000 by Google's hard limit.
+  const MAX_PAGES = 500;
   const LIMIT = 100;
 
   for (let page = 0; page < MAX_PAGES; page++) {
