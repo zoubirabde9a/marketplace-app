@@ -471,3 +471,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — /search?category=… title now uses French display name with accent (Téléphones not Telephones); description fully in French + correct singular/plural agreement; matches the home-page chip labels and the lang=fr document
 
 2026-05-11 · vps-eu · web rebuild — French descriptions on brand + seller slices and feed subtitle; brand title trimmed from '{brand} products' to bare '{brand}' (layout appends ' · Teno Store')
+
+2026-05-11 · vps-eu · web rebuild — French metadata on home + /search root descriptions (the two highest-PageRank URLs on the site); /about kept English (intentional English content, JSON-LD inLanguage en)
