@@ -20,13 +20,33 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").r
 // generateMetadata (SERP) and the page body (H1 + SliceIntro), so it lives
 // at module scope. Unknown slugs fall through to capitalised dash-stripped.
 const FR_CATEGORY: Record<string, string> = {
+  // Compound Ouedkniss top-level slugs (the actual category values most
+  // products are stored under — verified by GET /v1/products?limit=1
+  // facet counts: automobiles_vehicules=676, electronique_electromenager=641,
+  // vetements_mode=618, sante_beaute=533). Without these, the SERP title
+  // and visible H1 surfaced as 'Automobiles vehicules' (ASCII, no accents,
+  // no proper French label).
+  automobiles_vehicules: "Automobiles & Véhicules",
+  electronique_electromenager: "Électronique & Électroménager",
+  vetements_mode: "Vêtements & Mode",
+  sante_beaute: "Santé & Beauté",
+  // Single-word slugs (smaller counts but still indexable).
   telephones: "Téléphones",
   smartphones: "Smartphones",
   informatique: "Informatique",
+  ordinateurs: "Ordinateurs",
   portables: "Ordinateurs portables",
+  peripheriques: "Périphériques",
+  ecrans: "Écrans",
   electromenager: "Électroménager",
   mode: "Mode",
+  femme: "Mode femme",
+  homme: "Mode homme",
+  accessoires: "Accessoires",
+  traditionnel: "Mode traditionnelle",
   maison: "Maison & Déco",
+  decoration: "Décoration",
+  salon: "Salon",
   vehicules: "Véhicules",
   voitures: "Voitures",
   motos: "Motos",
