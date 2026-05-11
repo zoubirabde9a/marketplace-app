@@ -146,21 +146,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const ogPriceAmount = Number.isFinite(minorPriceNum) && minorPriceNum >= MIN_REAL_PRICE_MINOR
     ? (minorPriceNum / 100).toFixed(2)
     : undefined;
-  const anyInStockMeta = p.variants.some((v) => v.inStock);
-  const ogProductOther: Record<string, string> = {
-    "og:type": "product",
-  };
-  if (ogPriceAmount && minorVariant?.currency) {
-    ogProductOther["product:price:amount"] = ogPriceAmount;
-    ogProductOther["product:price:currency"] = minorVariant.currency;
-    ogProductOther["og:price:amount"] = ogPriceAmount;
-    ogProductOther["og:price:currency"] = minorVariant.currency;
-  }
-  ogProductOther["product:availability"] = anyInStockMeta ? "instock" : "oos";
-  if (p.brand) ogProductOther["product:brand"] = p.brand;
-  if (p.categoryIds.length > 0 && p.categoryIds[0]) {
-    ogProductOther["product:category"] = p.categoryIds[0].replace(/[-_]/g, " ");
-  }
+  // NOTE: og:type, product:* OG-extension tags are NOT emitted here. Next.js's
+  // metadata.other field always renders <meta name="..."> but the Open Graph
+  // spec (and Facebook's parser) requires <meta property="og:type"...> with
+  // the `property` attribute — Facebook silently ignores `name=`. So these
+  // tags are rendered inline in the page body's JSX below; React 19 hoists
+  // <meta> from anywhere into <head>.
   return {
     // Bypass the layout's "%s · Teno Store" template — that suffix eats 13
     // chars and Google's SERP truncates at 55-65, so any product title >50
@@ -212,7 +203,6 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       description: desc,
       ...(shareImageUrl ? { images: [shareImageUrl] } : {}),
     },
-    other: ogProductOther,
   };
 }
 
@@ -420,8 +410,33 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // Also tag in the JSON-LD so search/AI agents have the same signal.
   if (contentLang) productJsonLd.inLanguage = contentLang;
 
+  // Open Graph product-extension tags. Rendered inline rather than via
+  // metadata.other because the OG spec requires <meta property="og:type"...>
+  // and Next's `other` map always emits `name=` which Facebook silently
+  // ignores. React 19 auto-hoists <meta> from anywhere into <head>.
+  const ogBodyMinor = (() => {
+    const v = variants.find((x) => Number.isFinite(Number(x.priceMinor)) && Number(x.priceMinor) >= MIN_REAL_PRICE_MINOR);
+    return v ? (Number(v.priceMinor) / 100).toFixed(2) : null;
+  })();
+  const ogBodyCurrency = ogBodyMinor ? variants[0]?.currency : null;
+  const anyBodyInStock = variants.some((v) => v.inStock);
+
   return (
     <div className="pt-8" lang={contentLang}>
+      <meta property="og:type" content="product" />
+      <meta property="product:availability" content={anyBodyInStock ? "instock" : "oos"} />
+      {ogBodyMinor && ogBodyCurrency && (
+        <>
+          <meta property="product:price:amount" content={ogBodyMinor} />
+          <meta property="product:price:currency" content={ogBodyCurrency} />
+          <meta property="og:price:amount" content={ogBodyMinor} />
+          <meta property="og:price:currency" content={ogBodyCurrency} />
+        </>
+      )}
+      {p.brand && <meta property="product:brand" content={p.brand} />}
+      {p.categoryIds[0] && (
+        <meta property="product:category" content={p.categoryIds[0].replace(/[-_]/g, " ")} />
+      )}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(productJsonLd) }}
