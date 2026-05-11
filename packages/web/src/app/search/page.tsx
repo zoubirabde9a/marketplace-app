@@ -225,10 +225,14 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
     }
   }
 
+  // Match feed.xml + product/[id]/page.tsx MIN_REAL_PRICE_MINOR. Returns
+  // undefined for priceMinor < 100 DZD (10000 santeem) so Ouedkniss
+  // 'Prix sur demande' placeholders ('1 DA', '4 DA', '0 DA') don't leak
+  // into the ItemList JSON-LD as fake Offers.
   const minorToMajor = (minor: string | undefined) => {
     if (!minor) return undefined;
     const n = Number(minor);
-    if (!Number.isFinite(n)) return undefined;
+    if (!Number.isFinite(n) || n < 10000) return undefined;
     return (n / 100).toFixed(2);
   };
   const itemListSellerName = (() => {

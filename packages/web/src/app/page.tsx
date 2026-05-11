@@ -54,10 +54,14 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
   // /search slice ItemList shape so the home page contributes the same
   // rich-result-eligible payload to Google's structured-data graph as
   // the slice landings do — and the home page has the highest PageRank.
+  // Match feed.xml + product/[id]/page.tsx MIN_REAL_PRICE_MINOR. Returns
+  // undefined for priceMinor < 100 DZD (10000 santeem) so Ouedkniss
+  // 'Prix sur demande' placeholders don't leak into the ItemList JSON-LD
+  // as fake "$0.00" Offers on the home page's recent-listings strip.
   const minorToMajor = (minor: string | undefined) => {
     if (!minor) return undefined;
     const n = Number(minor);
-    if (!Number.isFinite(n)) return undefined;
+    if (!Number.isFinite(n) || n < 10000) return undefined;
     return (n / 100).toFixed(2);
   };
   const recentItemList = recent.length > 0 ? {
