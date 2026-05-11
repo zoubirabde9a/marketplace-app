@@ -67,7 +67,8 @@ const PUBLIC_MATCHERS: ReadonlyArray<(method: string, path: string) => boolean> 
     p.startsWith("/livez") ||
     p.startsWith("/readyz") ||
     p.startsWith("/.well-known/") ||
-    p === "/robots.txt",
+    p === "/robots.txt" ||
+    p === "/favicon.ico",
   (m, p) => p.startsWith("/oauth/"),
   // MCP streamable-HTTP entry point. Per-tool scope checks run inside the MCP
   // registry; we synthesize a dev principal below when DEV_BYPASS is on so write

@@ -33,6 +33,21 @@ export async function registerWellKnown(app: FastifyInstance): Promise<void> {
     return { revocations: [], updated_at: new Date().toISOString(), signature: null };
   });
 
+  // /favicon.ico — browsers always probe favicon when a user pastes an
+  // API URL into the address bar (e.g. for debugging a JSON response).
+  // Without this the auth middleware returns 401, which fills production
+  // logs with noise + makes the address-bar tab icon flicker as the
+  // browser keeps retrying. 204 No Content is the standard "no favicon
+  // here" response — browsers cache the empty response and stop asking.
+  // 7-day cache: favicon policy doesn't change.
+  app.get("/favicon.ico", async (_req, reply) => {
+    void reply
+      .code(204)
+      .header("cache-control", "public, max-age=604800, immutable")
+      .header("content-length", "0");
+    return reply.send();
+  });
+
   // /robots.txt — without this the auth middleware caught the request and
   // returned 401 Unauthorized, which is confusing to crawlers (they expect
   // an unauthed robots policy before doing anything else on a host). The
