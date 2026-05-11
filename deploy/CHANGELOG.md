@@ -529,3 +529,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — French breadcrumbs across product / search / about / seller (visible nav AND BreadcrumbList JSON-LD — Google surfaces breadcrumb labels directly in SERP URL row above the snippet)
 
 2026-05-11 · vps-eu · web rebuild — FR_CATEGORY map expanded with compound Ouedkniss slugs (automobiles_vehicules, electronique_electromenager, vetements_mode, sante_beaute + 11 subcategory slugs); ~2,500 products' indexable slice landings now ship proper accented French H1/title
+
+2026-05-11 · vps-eu · api rebuild — Fastify trustProxy:true so viewUrl in /v1/products responses ships https://api.teno-store.com/... (was http:// because req.protocol saw the docker-internal hop from Caddy → API container, not the original https connection); fixes mixed-content + extra-redirect-hop for AI crawlers / agents reading product JSON
