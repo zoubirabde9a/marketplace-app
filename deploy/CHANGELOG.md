@@ -861,3 +861,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — /store/{id} description no longer renders broken/misleading country fallbacks. frCountry now whitelist-only (DZ/FR/TN/MA); unknown codes drop the locality. Was 'en US' (broken French) → 'en États-Unis' (false location claim) → no country mentioned (clean + accurate). Underlying data bug (Algerian sellers tagged countryCode='US') still operator-territory
 
 2026-05-11 · vps-eu · web rebuild — Store JSON-LD PostalAddress no longer emits addressCountry='US' on Algerian-seller rows. Was authoritatively telling Google's local-business graph these sellers are US-based; now omits the field entirely for unmapped codes. Worst-case schema.org-level misinformation closed off
+
+2026-05-11 · vps-eu · api rebuild — browse-path cache TTL 30s → 90s. Cold-hit /v1/products?sort=newest was 5-7s (loadAll re-hydrates 43k+ products); 30s TTL was narrower than the cron + agent-crawl cadence so most home-page visits saw the cold path. 90s tracks scrape-loop yield better, still inside the agents.json 5-min freshness commitment
