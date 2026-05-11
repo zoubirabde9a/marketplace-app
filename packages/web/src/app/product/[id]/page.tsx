@@ -69,8 +69,17 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
           (a, b) => Number(a.priceMinor) - Number(b.priceMinor),
         )[0];
         if (lowest) {
-          const price = (Number(lowest.priceMinor) / 100).toLocaleString("fr-DZ");
-          parts.push(`${price} ${lowest.currency}`);
+          // Ouedkniss often omits price ("Prix sur demande" / negotiate). Emitting
+          // "0 DZD" in the meta description suggests the item is free and makes
+          // for an embarrassing SERP snippet. Substitute the French convention
+          // when no real price exists.
+          const priceMinorNum = Number(lowest.priceMinor);
+          if (Number.isFinite(priceMinorNum) && priceMinorNum > 0) {
+            const price = (priceMinorNum / 100).toLocaleString("fr-DZ");
+            parts.push(`${price} ${lowest.currency}`);
+          } else {
+            parts.push("Prix sur demande");
+          }
         }
         return `${parts.join(" · ")} — listed on Teno Store, the agent-to-agent marketplace for Algerian sellers.`;
       })();
@@ -107,8 +116,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const minorVariant = [...p.variants].sort(
     (a, b) => Number(a.priceMinor) - Number(b.priceMinor),
   )[0];
-  const ogPriceAmount = minorVariant
-    ? (Number(minorVariant.priceMinor) / 100).toFixed(2)
+  // Only emit a price when we actually have one. priceMinor=0 (Ouedkniss
+  // "Prix sur demande") would broadcast "0.00 DZD" to Facebook/Pinterest
+  // product cards and tell shopping aggregators the item is free.
+  const minorPriceNum = minorVariant ? Number(minorVariant.priceMinor) : NaN;
+  const ogPriceAmount = Number.isFinite(minorPriceNum) && minorPriceNum > 0
+    ? (minorPriceNum / 100).toFixed(2)
     : undefined;
   const anyInStockMeta = p.variants.some((v) => v.inStock);
   const ogProductOther: Record<string, string> = {
@@ -257,8 +270,19 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // Omitting the field lets Google's own heuristics infer rather than
   // ingesting a wrong fact. Add this back per-listing if/when the API
   // grows a `condition` field.
-  const offers =
-    variants.length === 1
+  // Skip the Offer/AggregateOffer block entirely when no variant has a real
+  // price. Emitting Offer with price="0.00" misrepresents Ouedkniss "Prix sur
+  // demande" listings as free items in Google rich results, Pinterest cards,
+  // and shopping aggregators. Without an Offer, the Product node still ranks
+  // for the rich-result eligibility on the Product type (name, image, brand,
+  // description) — just without a price line in the snippet.
+  const hasRealPrice = variants.some((v) => {
+    const n = Number(v.priceMinor);
+    return Number.isFinite(n) && n > 0;
+  });
+  const offers = !hasRealPrice
+    ? undefined
+    : variants.length === 1
       ? {
           "@type": "Offer",
           price: minorToMajor(variants[0].priceMinor),
