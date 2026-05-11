@@ -45,7 +45,7 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
       <button
         onClick={() => setOpen(true)}
         className="block w-full aspect-square rounded-2xl border border-line-soft bg-bg-soft overflow-hidden group relative"
-        aria-label="Open image fullscreen"
+        aria-label="Ouvrir l'image en plein écran"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -62,7 +62,7 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
           className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
         />
         <span className="absolute bottom-3 right-3 px-2 py-1 rounded-md text-[11px] font-mono bg-bg/80 text-ink-soft border border-line-soft opacity-0 group-hover:opacity-100 transition">
-          Click to expand
+          Cliquer pour agrandir
         </span>
       </button>
       {images.length > 1 && (
@@ -71,7 +71,7 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
             <button
               key={img.id}
               onClick={() => setIdx(i)}
-              aria-label={`Image ${i + 1} of ${images.length}`}
+              aria-label={`Image ${i + 1} sur ${images.length}`}
               aria-current={i === idx ? "true" : undefined}
               className={clsx(
                 "aspect-square rounded-lg overflow-hidden border transition",
@@ -95,7 +95,7 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
           <button
             className="absolute top-4 right-4 w-10 h-10 rounded-full bg-bg-elev/80 border border-line text-ink hover:bg-bg-elev"
             onClick={(e) => { e.stopPropagation(); setOpen(false); }}
-            aria-label="Close"
+            aria-label="Fermer"
           >
             ✕
           </button>
@@ -104,12 +104,12 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
               <button
                 className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-bg-elev/80 border border-line text-xl"
                 onClick={(e) => { e.stopPropagation(); setIdx((i) => (i - 1 + images.length) % images.length); }}
-                aria-label="Previous image"
+                aria-label="Image précédente"
               >‹</button>
               <button
                 className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-bg-elev/80 border border-line text-xl"
                 onClick={(e) => { e.stopPropagation(); setIdx((i) => (i + 1) % images.length); }}
-                aria-label="Next image"
+                aria-label="Image suivante"
               >›</button>
             </>
           )}

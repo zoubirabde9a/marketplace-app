@@ -643,14 +643,13 @@ function SliceIntro({
   const enListing = isOne ? "listing" : "listings";
   const frAnnonce = isOne ? "annonce" : "annonces";
   const frProduit = isOne ? "produit" : "produits";
-  const frListing = isOne ? "listing" : "listings";
   // Bilingual: lead with the audience-matching language, follow with a
   // shorter English sentence so search engines that don't honor the
   // <div lang> wrap still see English keywords.
   const fr = (() => {
     if (q) return `${isOne ? "1 annonce correspondant" : `Plus de ${fmt} annonces correspondant`} à « ${q} » en provenance de vendeurs algériens. Prix en DZD, mises à jour en continu.`;
     if (sellerName) return `Toutes les ${frAnnonce} de ${sellerName}. ${fmt} ${frProduit}, prix en DZD, actualisés en temps réel.`;
-    if (brand) return `Annonces ${brand} en Algérie · ${fmt} ${frListing} de vendeurs algériens. Filtrez par catégorie, prix ou vendeur. Prix en DZD.`;
+    if (brand) return `Annonces ${brand} en Algérie · ${fmt} ${frAnnonce} de vendeurs algériens. Filtrez par catégorie, prix ou vendeur. Prix en DZD.`;
     if (category) return `Découvrez ${fmt} ${frAnnonce} de ${category.toLowerCase()} en Algérie. Filtrez par marque, prix ou vendeur. ${isOne ? "Annonce actualisée" : "Annonces actualisées"} en temps réel, prix en DZD.`;
     return null;
   })();
@@ -678,15 +677,14 @@ function BareCatalogIntro({ total, contentLang }: { total: number; contentLang?:
   const isOne = total === 1;
   const enListing = isOne ? "listing" : "listings";
   const frAnnonce = isOne ? "annonce" : "annonces";
-  const frListing = isOne ? "listing" : "listings";
-  const frActualised = isOne ? "actualisé" : "actualisés";
+  const frActualisee = isOne ? "actualisée" : "actualisées";
   return (
     <div className="-mt-3 mb-5 text-sm text-ink-soft leading-relaxed max-w-3xl">
       {contentLang === "fr" ? (
         <p lang="fr">
           Découvrez {fmt} {frAnnonce} de vendeurs algériens — téléphones, informatique,
           électroménager, mode, véhicules et plus. Filtrez par marque, prix, vendeur
-          ou catégorie. Prix en DZD, {frListing} {frActualised} en temps réel.
+          ou catégorie. Prix en DZD, {frAnnonce} {frActualisee} en temps réel.
         </p>
       ) : (
         <p>
@@ -701,7 +699,7 @@ function BareCatalogIntro({ total, contentLang }: { total: number; contentLang?:
 
 function SearchBreadcrumbs({ label }: { label: string }) {
   return (
-    <nav aria-label="Breadcrumb" className="text-xs text-ink-mute flex items-center gap-2 mb-3">
+    <nav aria-label="Fil d'Ariane" className="text-xs text-ink-mute flex items-center gap-2 mb-3">
       <Link href="/" className="hover:text-ink-soft">Home</Link>
       <span aria-hidden>/</span>
       <Link href="/search" className="hover:text-ink-soft">Catalog</Link>
