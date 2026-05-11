@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO — PWA manifest now French (lang+description); was English on a `<html lang="fr">` site
+
+- `/manifest.webmanifest` was emitting `"lang":"en"` with an English `description` even though every other surface on the site is French primary (HTML root, home H1, JSON-LD inLanguage, OpenGraph locale, all sitemapped pages). Lighthouse PWA audits, browser "Install app" surfaces, and the few search-engine pipelines that consume the manifest were seeing English copy on a French-locale page.
+- Switched `lang` → `"fr"` and rewrote description in French: `Teno Store — marketplace algérien avec des milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD), catalogue actualisé en continu. Aussi un marketplace agent-à-agent via MCP/A2A/AP2.` Updated the matching assertion in `manifest.test.ts`.
+- Verified live: `curl https://teno-store.com/manifest.webmanifest | jq .lang` → `"fr"`. Type-check clean, 4/4 manifest tests pass.
+- Standing iter-1, iter-19, iter-20 operator-side recommendations still open.
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO/perf — only the first product card gets `fetchPriority="high"` (Core Web Vitals LCP fix on home + search pages)
 
 - Home page was emitting 4 `<link rel="preload" as="image" fetchPriority="high">` tags from the recent-listings strip (4 cards × `eager={i < 4}` in ProductGrid → both `loading=eager` AND `fetchPriority=high` per card). LCP measures the SINGLE largest visible element, so only one image per page benefits from `fetchPriority="high"`; setting it on 4 simultaneous fetches made the browser split bandwidth across them and slowed the actual LCP candidate.
@@ -27,6 +34,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 - Scraper (`/opt/marketplace/scripts/scrape-ouedkniss.mjs`): adds optional `OUEDKNISS_JWT` env. When set, calls `announcementPhoneGet` per listing (the SPA's `UnhidePhone` op) and attaches `phoneEntries` to each item. Anonymous calls return `[]` — phone reveal is gated behind a reCAPTCHA-backed `/login-anonymous` Bearer JWT; operator pastes the JWT once per expiry. The seeder unions per-listing phones with shop site-build phones, dedupes by E.164, marks the first primary. JWT not yet set in `.env`; the loop currently logs `[phones] OUEDKNISS_JWT not set` and behaves as before.
 - Resilience: all GraphQL traffic now goes through `fetchWithTimeout` (15s default, `FETCH_TIMEOUT_MS` overridable). Page-fetch failures `continue` to the next page instead of `break`ing; per-item exceptions are caught with an `itemFailures` counter; the output JSON is written via a `finally` block so partial results always land on disk. Seeder `resolveSeller` is wrapped in `try/catch` — one seller-create failure no longer aborts the batch.
 - API image rebuilt (`docker compose -f docker-compose.prod.yml build api && up -d api`) so the bundled `packages/db/dist/seed-from-scraped.js` ships the seeder changes. Verified: next run-loop iteration at 23:53 CEST seeded 32/50, exit_code=0, `[phones]` line emitted.
+
+## 2026-05-11 — vps-eu · web rebuild · cart/checkout copy + UX polish
+
+- Cart page now says "Delivery — Free (cash on delivery)" instead of the misleading "Calculated at checkout".
+- Cart and checkout Totals now read `totals.totalMinor` (was `totals.subtotalMinor`). Same number today since shipping/tax are zero, but defends against future divergence and matches the order page.
+- New `+` / `−` qty buttons on each cart line for one-click adjustments (server action with the new qty). The typed-number input is still there for keyboard users; the explicit "Update" button is gone (the input commits when blurred via the surrounding form).
+- Added a "← Continue shopping" link to the populated-cart summary panel.
+- Verified end-to-end on prod: anonymous cart with 3× a DZD 1,150,000 listing renders Total = DZD 3,450,000 on both /cart and /checkout.
 
 ## 2026-05-11 — vps-eu · api rebuild · checkout no longer silently auto-applies a shipping fee
 
@@ -906,3 +921,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — removed broken 'Voir les N annonces' link on /store/{id}. It had pointed at /search?sellerId=… which now 308-redirects right back to /store/{id} (self-redirect, confusing UX). Page still shows 60 products. Restore once storefront has internal pagination or /store/[id]/all overflow surface
 
 2026-05-11 · vps-eu · web rebuild — added /store/ to robots.txt Allow set across all bot groups (wildcard + AI crawlers + social-share scrapers). Was missing from the explicit allow-list even though /store/{id} is the canonical seller-storefront URL since commit d62bd2f
+
+2026-05-11 · vps-eu · web rebuild — agents.json seller_landing URL + llms.txt seller landings line updated to canonical /store/{uuid} (was advertising the deprecated /search?sellerId= form, which now 308-redirects; AI agents reading the discovery docs were constructing URLs that immediately redirected)
