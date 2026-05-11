@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · redis · fix premature snapshot eviction (raise maxmemory 256mb→2gb, switch policy allkeys-lru→volatile-lru)
+
+- Snapshots created hours earlier — well inside the documented 24h TTL — were returning 410 from `/v1/snapshots/:id`. Investigation: Redis `maxmemory=256mb`, `used_memory=234mb` (91%), `maxmemory-policy=allkeys-lru`. Each catalog snapshot is ~100 KB (full search-result blob); the scraper-driven `catalog.search` produces them continuously, so 256 MB fills inside an hour. Once over the cap, `allkeys-lru` evicted the least-recently-accessed keys regardless of their remaining TTL — including freshly-issued share-links nobody had clicked yet.
+- Fix applied live (no restart, no data loss):
+  - `CONFIG SET maxmemory 2gb` — VPS has 7.7 GiB total with 4.9 GiB available; 2 GB for Redis is comfortable headroom.
+  - `CONFIG SET maxmemory-policy volatile-lru` — only TTL-bearing keys are eviction candidates. Snapshots and other ephemeral keys take the eviction hit first; any durable key (e.g. future session data) is preserved.
+- Persisted the new values in `docker-compose.prod.yml` (Redis is started from inline `command:` args, no config file to `CONFIG REWRITE` against). A future `docker compose up -d redis` will pick up the new settings.
+- Verified by issuing a fresh `seller.create_account` MCP call after the fix; `/v1/snapshots/...` and `/s/...` both return 200, store URL reachable. Older snapshots that had already been evicted stay gone — eviction isn't reversible — but anything created from this point on lives the full 24h.
+
 ## 2026-05-11 — vps-eu · web+mcp · public seller storefront page at /store/[id], wired into MCP outputs
 
 - Earlier rounds gave every seller create + product create a 24h frozen snapshot, but the only buyer-facing "see this seller" URL was `/search?sellerId=…` — a filtered search-results page, not a storefront. A real marketplace gives each store a permanent destination with its name, location, contact channels, bio, and product grid.
@@ -636,3 +645,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — added French description to home Organization JSON-LD node (was missing entirely); brand-entity knowledge-graph payload now has consistent French summary on both WebSite + Organization sibling nodes in the @graph
 
 2026-05-11 · vps-eu · web rebuild — added description fields to /about (AboutPage) and /seller (WebPage) JSON-LD nodes; were missing entirely, leaving Google's structured-data parser to scrape page body for the entity summary
+
+2026-05-11 · vps-eu · api rebuild — /.well-known/agent-card.json base URL was leaking 'http://0.0.0.0:3100' (docker bind addr); now derived from req.protocol+host via trustProxy, all endpoints absolute https://api.teno-store.com URLs — agents can use the discovery doc without URL-joining
