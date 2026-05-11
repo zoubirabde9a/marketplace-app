@@ -328,15 +328,18 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
   const humanCategory = singleCategory
     ? humanizeCategorySlug(singleCategory)
     : undefined;
+  // ItemList name surfaces in Google rich-result graphs + AI-search panels.
+  // Keep parallel with the page's <title> + <h1> French phrasing so the
+  // structured-data layer matches the user-facing text.
   const itemListName = input.q
-    ? `Marketplace search: ${input.q}`
+    ? `Recherche marketplace : ${input.q}`
     : itemListSellerName
-      ? `Products from ${itemListSellerName}`
+      ? `Annonces de ${itemListSellerName}`
       : input.brand
-        ? `${input.brand} products`
+        ? `Annonces ${input.brand}`
         : humanCategory
-          ? `${humanCategory} on Teno Store`
-          : "Marketplace catalog";
+          ? `${humanCategory} sur Teno Store`
+          : "Catalogue marketplace";
   const itemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -417,30 +420,29 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
   // than an opaque list. Bare /search collapses to a generic Catalog page.
   const collectionUrl = `${SITE_URL}${canonicalSlicePath(input)}`;
   const collectionName = itemListName;
-  // Pull the live count and pluralise — same pattern as the meta
-  // description (iter-17). CollectionPage's description goes into Google's
-  // structured-data graph, so making it a precise, count-bearing sentence
-  // matches what we ship to the SERP.
+  // CollectionPage description feeds Google's structured-data graph
+  // alongside the SERP meta description. Keep French to match the rest of
+  // the slice metadata + on-page text (lang=fr document, French body).
   const collTotal = result.pagination.totalEstimate;
   const collFmtCount = collTotal != null ? collTotal.toLocaleString() : null;
-  const collListing = collTotal === 1 ? "listing" : "listings";
+  const collAnnonce = collTotal === 1 ? "annonce" : "annonces";
   const collectionDescription = input.q
     ? collFmtCount
-      ? `${collFmtCount} ${collListing} matching “${input.q}” on Teno Store from Algerian sellers.`
-      : `Marketplace results matching “${input.q}”.`
+      ? `${collFmtCount} ${collAnnonce} correspondant à « ${input.q} » sur Teno Store, de vendeurs algériens. Prix en dinars (DZD).`
+      : `Résultats marketplace pour « ${input.q} » sur Teno Store.`
     : itemListSellerName
       ? collFmtCount
-        ? `${collFmtCount} ${collListing} from ${itemListSellerName} on Teno Store.`
-        : `Listings from ${itemListSellerName} on Teno Store.`
+        ? `Toutes les ${collFmtCount} ${collAnnonce} de ${itemListSellerName} sur Teno Store.`
+        : `Annonces de ${itemListSellerName} sur Teno Store.`
       : input.brand
         ? collFmtCount
-          ? `${collFmtCount} ${input.brand} ${collListing} from Algerian sellers on Teno Store.`
-          : `Browse ${input.brand} products on Teno Store.`
+          ? `${collFmtCount} ${collAnnonce} ${input.brand} de vendeurs algériens sur Teno Store. Prix en dinars (DZD).`
+          : `Annonces ${input.brand} sur Teno Store.`
         : humanCategory
           ? collFmtCount
-            ? `${collFmtCount} ${humanCategory.toLowerCase()} ${collListing} from Algerian sellers on Teno Store.`
-            : `Browse ${humanCategory.toLowerCase()} listings on Teno Store.`
-          : "Browse the Teno Store catalog of Algerian listings.";
+            ? `${collFmtCount} ${collAnnonce} ${humanCategory.toLowerCase()} de vendeurs algériens sur Teno Store. Prix en dinars (DZD).`
+            : `Annonces ${humanCategory.toLowerCase()} sur Teno Store.`
+          : "Catalogue Teno Store — annonces de vendeurs algériens en dinars (DZD).";
   const collectionPageJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
