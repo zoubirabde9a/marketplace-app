@@ -513,3 +513,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — feed entries: French labels (Marque/Vendeur/Prix) on summary + /1200/ Ouedkniss enclosure URLs (feed-reader thumbnails were /400/)
 
 2026-05-11 · vps-eu · web rebuild — French Gallery aria-labels (Ouvrir l'image en plein écran, Image N sur M, Fermer, Image précédente/suivante), French Header logo aria-label (Accueil Teno Store), remove 'listings' English word from French SliceIntro brand/bare variants
+
+2026-05-11 · vps-eu · web rebuild — French seller-contact UI (phone aria-label 'Appeler', WhatsApp aria-label + prefilled message 'Bonjour, je suis intéressé(e)…', website link 'Site web' + aria-label); buyer→Algerian-seller messages now open in the seller's primary language
