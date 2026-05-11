@@ -43,6 +43,17 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
     requestIdHeader: "x-request-id",
     genReqId: () => crypto.randomUUID(),
     ajv: { customOptions: { strict: false, removeAdditional: "all" } },
+    // Honour X-Forwarded-* headers from the reverse proxy (Caddy on vps-eu).
+    // Without this, req.protocol reflects the docker-internal http hop from
+    // Caddy → API and resolveBaseUrl() in routes/products.ts builds viewUrl
+    // values as 'http://api.teno-store.com/...' — every JSON consumer
+    // (agents reading /v1/products, AI crawlers parsing the response) gets
+    // an http URL on what is published as an https endpoint, causing an
+    // unnecessary redirect hop and some strict clients to drop the URL
+    // entirely. The API container is only reachable through Caddy on the
+    // docker internal network (no direct internet ingress) so trusting all
+    // proxy headers is safe here.
+    trustProxy: true,
   });
 
   app.setErrorHandler((err, req, reply) => {
