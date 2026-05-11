@@ -23,7 +23,7 @@ export function SearchBar() {
       <input
         type="search"
         name="q"
-        placeholder="Search products, brands, categories…"
+        placeholder="Rechercher annonces, marques, catégories…"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         enterKeyHint="search"
@@ -31,7 +31,7 @@ export function SearchBar() {
         autoCorrect="off"
         spellCheck={false}
         className="w-full h-10 pl-10 pr-12 rounded-xl bg-bg-soft/80 border border-line text-sm placeholder:text-ink-mute focus:border-accent focus:bg-bg-elev transition"
-        aria-label="Search marketplace"
+        aria-label="Rechercher dans le marketplace"
       />
       <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-mute" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
         <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />

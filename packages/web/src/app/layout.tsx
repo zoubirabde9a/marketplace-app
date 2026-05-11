@@ -155,7 +155,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <CategoryFooter />
           </Suspense>
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 text-sm text-ink-mute flex flex-col sm:flex-row items-center justify-between gap-3">
-            <nav aria-label="Footer" className="flex items-center gap-5">
+            <nav aria-label="Pied de page" className="flex items-center gap-5">
               <Link href="/search" className="hover:text-ink transition">Parcourir</Link>
               <Link href="/seller" className="hover:text-ink transition">Vendre</Link>
               <Link href="/about" className="hover:text-ink transition">À propos</Link>

@@ -582,7 +582,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
           <div className="text-xs text-ink-mute pt-4 border-t border-line-soft">
             <Link href={`/search?sellerId=${encodeURIComponent(p.sellerId)}`} className="hover:text-accent">
-              More from {p.sellerDisplayName ?? "this seller"} →
+              Plus d&rsquo;annonces de {p.sellerDisplayName ?? "ce vendeur"} →
             </Link>
           </div>
         </div>
@@ -591,7 +591,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         <section className="mt-16 border-t border-line-soft pt-10" aria-labelledby="related-heading">
           <div className="flex items-baseline justify-between mb-4">
             <h2 id="related-heading" className="text-xl font-semibold tracking-tight">
-              {p.sellerDisplayName ? `More from ${p.sellerDisplayName}` : "More listings"}
+              {p.sellerDisplayName ? `Plus d'annonces de ${p.sellerDisplayName}` : "Plus d'annonces"}
             </h2>
             <Link
               href={`/search?sellerId=${encodeURIComponent(p.sellerId)}`}
@@ -609,7 +609,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
 function Breadcrumbs({ title }: { title: string }) {
   return (
-    <nav aria-label="Breadcrumb" className="text-xs text-ink-mute flex items-center gap-2">
+    <nav aria-label="Fil d'Ariane" className="text-xs text-ink-mute flex items-center gap-2">
       <Link href="/" className="hover:text-ink-soft">Home</Link>
       <span aria-hidden>/</span>
       <Link href="/search" className="hover:text-ink-soft">Catalog</Link>
