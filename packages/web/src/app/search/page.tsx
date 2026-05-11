@@ -588,20 +588,22 @@ function ResultsHeader({
     <div className="mb-6">
       <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
         {q ? (
-          <>Results for <span className="text-accent">“{q}”</span></>
+          <>Résultats pour <span className="text-accent">«&nbsp;{q}&nbsp;»</span></>
         ) : sellerName ? (
-          <>Products from <span className="text-accent">{sellerName}</span></>
+          <>Annonces de <span className="text-accent">{sellerName}</span></>
         ) : brand ? (
-          <><span className="text-accent">{brand}</span> products</>
+          <>Annonces <span className="text-accent">{brand}</span></>
         ) : category ? (
-          <><span className="text-accent">{category}</span> on Teno Store</>
+          <><span className="text-accent">{category}</span> sur Teno Store</>
         ) : (
-          "Browse the catalog"
+          "Parcourir le catalogue"
         )}
       </h1>
       <p className="text-sm text-ink-soft mt-1">
-        {total.toLocaleString()} match{total === 1 ? "" : "es"}
-        {resultCount != null && total > resultCount ? ` · showing ${resultCount}` : ""}
+        {total === 1
+          ? "1 résultat"
+          : `${total.toLocaleString()} résultats`}
+        {resultCount != null && total > resultCount ? ` · ${resultCount} affichés` : ""}
       </p>
     </div>
   );

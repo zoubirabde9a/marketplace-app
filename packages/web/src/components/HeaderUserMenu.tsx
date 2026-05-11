@@ -14,7 +14,7 @@ export async function HeaderUserMenu() {
         href="/login"
         className="px-3 py-1.5 rounded-md text-sm font-medium text-ink-soft hover:text-ink hover:bg-bg-elev transition"
       >
-        Sign in
+        Se connecter
       </Link>
     );
   }
