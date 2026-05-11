@@ -101,12 +101,14 @@ export const metadata: Metadata = {
   // These are supplemental hints; they don't replace the structured-data /
   // sitemap signals, but cost ~200 bytes per page and feed engines that
   // don't yet read every JSON-LD field.
+  // NOTE: og:country-name is NOT here — Next's metadata.other emits
+  // <meta name="..."> and the OG spec requires property=. Rendered inline
+  // in the layout body below so React 19 hoists it as <meta property=>.
   other: {
     "geo.region": "DZ",
     "geo.placename": "Algeria",
     "geo.position": "28.0339;1.6596",
     "ICBM": "28.0339, 1.6596",
-    "og:country-name": "Algeria",
   },
 };
 
@@ -130,6 +132,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://cdn8.ouedkniss.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://cdn9.ouedkniss.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://ouedkniss.com" />
+        {/* OG country tag — must use property= per OG spec; Next.js
+            metadata.other emits name= so this is rendered inline. */}
+        <meta property="og:country-name" content="Algeria" />
       </head>
       <body className="min-h-screen antialiased">
         <a
