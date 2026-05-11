@@ -634,3 +634,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — French WebSite JSON-LD description (was English 'agent-to-agent marketplace...') + inLanguage:[fr,ar,en] on the home knowledge-graph entity; alternateName 'agent observer' → 'marketplace algérien'
 
 2026-05-11 · vps-eu · web rebuild — added French description to home Organization JSON-LD node (was missing entirely); brand-entity knowledge-graph payload now has consistent French summary on both WebSite + Organization sibling nodes in the @graph
+
+2026-05-11 · vps-eu · web rebuild — added description fields to /about (AboutPage) and /seller (WebPage) JSON-LD nodes; were missing entirely, leaving Google's structured-data parser to scrape page body for the entity summary
