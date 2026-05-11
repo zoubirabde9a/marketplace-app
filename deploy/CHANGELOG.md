@@ -549,3 +549,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — product JSON-LD description now uses the same 40-char structured-fallback helper as the meta description (no more 'سيارة ماشاء الله' in Google rich product cards); JSON-LD image array dedup'd (hero was emitted twice)
 
 2026-05-11 · vps-eu · web rebuild — product JSON-LD category now uses FR_CATEGORY display label ('Automobiles & Véhicules' was ASCII 'automobiles vehicules'); FR_CATEGORY + humanizeCategorySlug() refactored into lib/categories so search + product share one definition
+
+2026-05-11 · vps-eu · web rebuild — Atom feed alternate link now on every page (was missing on /search + /product; child-page alternates.types overrides replaced layout's types map entirely, dropping feed discovery on the deepest indexed surfaces where AI crawlers most often enter)
