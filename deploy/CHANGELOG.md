@@ -515,3 +515,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — French Gallery aria-labels (Ouvrir l'image en plein écran, Image N sur M, Fermer, Image précédente/suivante), French Header logo aria-label (Accueil Teno Store), remove 'listings' English word from French SliceIntro brand/bare variants
 
 2026-05-11 · vps-eu · web rebuild — French seller-contact UI (phone aria-label 'Appeler', WhatsApp aria-label + prefilled message 'Bonjour, je suis intéressé(e)…', website link 'Site web' + aria-label); buyer→Algerian-seller messages now open in the seller's primary language
+
+2026-05-11 · vps-eu · web rebuild — sitemap MAX_PAGES 200 → 400; sitemap product URL count went 20,000 → 24,389 (was clipping the oldest ~4,500 products from Googlebot discovery; pagination is newest-first cursor so the tail is what got dropped)
