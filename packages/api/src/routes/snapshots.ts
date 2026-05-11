@@ -24,7 +24,10 @@ export async function registerSnapshotRoutes(
     }
     const snap = await deps.store.get(id);
     if (!snap) {
-      void reply
+      // `return reply.send(...)` so Fastify treats the response as fully
+      // owned by the handler — bare `.send()` without return triggered
+      // FST_ERR_REP_ALREADY_SENT 500s on the success path; same risk here.
+      return reply
         .code(410)
         .header("content-type", "application/problem+json")
         .send({
@@ -34,7 +37,6 @@ export async function registerSnapshotRoutes(
           detail: "Snapshots expire 24 hours after creation.",
           instance: req.url,
         });
-      return;
     }
     // Snapshots are immutable + token-addressed (the unguessable id IS
     // the credential — see auth.ts PUBLIC_MATCHERS comment). After
@@ -43,15 +45,18 @@ export async function registerSnapshotRoutes(
     // recipients (agents sharing a snapshot URL as proof of what they
     // saw) don't all hit origin. Was 'private, max-age=300' which
     // blocked CDN caching entirely — every viewer re-fetched.
-    void reply
-      .header("cache-control", "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400, immutable")
-      .send({
-        id: snap.id,
-        kind: snap.kind,
-        input: snap.input,
-        output: snap.output,
-        createdAt: snap.createdAt,
-        expiresAt: snap.expiresAt,
-      });
+    // Set cache header and return the body so Fastify auto-sends — using
+    // .send() inside the handler without `return reply` caused
+    // FST_ERR_REP_ALREADY_SENT 500s under HEAD requests (live probe found
+    // HEAD /v1/snapshots/{id} → 500 in production logs).
+    reply.header("cache-control", "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400, immutable");
+    return {
+      id: snap.id,
+      kind: snap.kind,
+      input: snap.input,
+      output: snap.output,
+      createdAt: snap.createdAt,
+      expiresAt: snap.expiresAt,
+    };
   });
 }
