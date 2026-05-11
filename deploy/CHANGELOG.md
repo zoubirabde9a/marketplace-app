@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO — Product Offer JSON-LD now carries `areaServed` derived from `p.shipsTo` (sharper geo-targeting for Algerian regional SERPs)
+
+- Product page's Offer / AggregateOffer JSON-LD blocks were missing any explicit region binding. Without `areaServed`, Google has to infer the offer's eligible region from `<html lang="fr">` + `Product.inLanguage`; that works OK for unambiguous queries but degrades when the buyer's IP is outside Algeria (a French-speaker in Paris searching `marketplace algérien` got a less-confident regional match than a buyer in Algiers).
+- Now reads `p.shipsTo` (already on every product detail response — Ouedkniss-scraped products carry `["DZ"]`) and emits `areaServed: { "@type": "Country", name: "DZ" }` (or an array when shipsTo has multiple entries). Applied to both branches: single-variant `Offer` and multi-variant `AggregateOffer`.
+- Did NOT touch `itemCondition` — the existing comment at the top of the Offer block documents an earlier deliberate decision to omit it until the API exposes per-listing condition. Respected; coverage signals (~83% of products have a phone-bearing seller and are very likely shops with new merchandise) suggest a phone-presence heuristic could justify `NewCondition` for ~34k products, but that's a separate decision worth a proper API-level field rather than a render-time inference.
+- Verified live: sample IPEGA product now has `"areaServed": {"@type":"Country","name":"DZ"}` inside the Offer node. Type-check clean; 8/8 product-page tests pass locally.
+- Standing iter-1 recommendation still open: Cache-Control middleware for anonymous HTML + Cloudflare Cache Rule (operator-side). Highest unrealized lever.
+- **Heads-up for the operator (not deployed by this iteration):** noticed during tar-ship that `packages/web/src/components/CategoryFooter.tsx` is in a half-applied edit state — `FooterFacets` interface no longer declares `sellers`, but downstream code still destructures + renders `sellers`. Looks like an in-progress refactor (collapsing footer to categories+brands only?). If tar-shipped as-is it would fail type-check. My deploy used the file as it was when the tar started, which still had the older shape; the live site is fine. Just flagging so a future deploy doesn't ship the broken intermediate.
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO — homepage H1 swapped to the French marketplace headline (was English "Watch your agent shop, in real time.")
 
 - Home is the highest-priority URL in the sitemap (`priority=1.0`) and Google's primary signal for the site's topic. Page is declared `<html lang="fr">` with a French `<meta description>` targeting Algerian queries (`marketplace algérie`, `annonces téléphones DZD`, `vendeurs algériens`), but its H1 was English brand-positioning copy: `Watch your agent shop, in real time.` H1 is the heaviest single weight in Google's on-page topic-extraction pipeline; the English H1 was telling crawlers this page is primarily about AI-agent shopping observability rather than an Algerian marketplace, pulling French-locale ranking signals in the wrong direction.
@@ -703,3 +712,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — edge-cache /s/{id} snapshot pages (1h + SWR 24h + immutable); was 'private, no-cache' so every audit-trail viewer hit origin even though the API-side data was already aggressively cached at the edge (commit 480c816). Matches API policy now
 
 2026-05-11 · vps-eu · api rebuild — /v1/snapshots/{id} HEAD requests were 500ing with FST_ERR_REP_ALREADY_SENT (handler used void reply.send() without return reply); switched success path to return body and 410 path to return reply.send(). GET 200, HEAD 200, missing 410 all verified
+
+2026-05-11 · vps-eu · api rebuild — added Cache-Control: private, no-store to /v1/cart, /v1/orders, /v1/orders/{id}, /v1/auth/me, /v1/me/activity. Without these, intermediaries could heuristic-cache user-correlated data — user-A's cart/orders/identity surfacing to user-B would be a real leak. /v1/cart verified live on GET
