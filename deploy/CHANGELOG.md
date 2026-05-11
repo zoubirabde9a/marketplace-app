@@ -511,3 +511,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — consolidate Ouedkniss /400/→/1200/ upscale in lib/images.ts, apply to home + search ItemList JSON-LD images, product twitter:image, product JSON-LD Product.image gallery (was leaking /400/ on these surfaces)
 
 2026-05-11 · vps-eu · web rebuild — feed entries: French labels (Marque/Vendeur/Prix) on summary + /1200/ Ouedkniss enclosure URLs (feed-reader thumbnails were /400/)
+
+2026-05-11 · vps-eu · web rebuild — French Gallery aria-labels (Ouvrir l'image en plein écran, Image N sur M, Fermer, Image précédente/suivante), French Header logo aria-label (Accueil Teno Store), remove 'listings' English word from French SliceIntro brand/bare variants
