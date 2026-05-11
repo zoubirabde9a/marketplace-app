@@ -51,11 +51,32 @@ export interface AuthDeps {
    * in production. Has no effect on session bearer parsing.
    */
   devBypass?: boolean;
+  /**
+   * Shared-secret admin token that authorises privileged MCP calls (e.g.
+   * seller.create_account, product.create_listing) without a full DPoP+passport
+   * handshake. Sent in the `X-Mp-Mcp-Token` header. Only honoured on POST /mcp.
+   * When unset (the default), MCP write tools require the regular passport
+   * path. Token comparison is plain equality — keep the value in
+   * /opt/marketplace/.env (mode 600) and rotate if it leaks.
+   */
+  mcpAdminToken?: string;
 }
 
 const PUBLIC_MATCHERS: ReadonlyArray<(method: string, path: string) => boolean> = [
   (m, p) => p.startsWith("/livez") || p.startsWith("/readyz") || p.startsWith("/.well-known/"),
   (m, p) => p.startsWith("/oauth/"),
+  // MCP streamable-HTTP entry point. Per-tool scope checks run inside the MCP
+  // registry; we synthesize a dev principal below when DEV_BYPASS is on so write
+  // tools find req.principal. Production posture: keep DEV_BYPASS off and let
+  // tool handlers reject unauthenticated callers.
+  // All verbs are public: POST is JSON-RPC, GET opens the server→client SSE
+  // channel, DELETE terminates a session. A 401 on GET makes the MCP SDK
+  // escalate to OAuth and DCR, which we don't support.
+  (_m, p) => p === "/mcp",
+  // OAuth Dynamic Client Registration probes — we don't support DCR but the MCP
+  // TS SDK probes these on connect. A 400 with an RFC 6749 shaped body stops
+  // the SDK from looping on an RFC 7807 problem+json response it can't parse.
+  (m, p) => m === "POST" && (p === "/register" || p === "/oauth/register"),
   (m, p) => m === "GET" && /^\/v1\/products(\/[^/]+)?$/.test(p),
   (m, p) => m === "GET" && /^\/v1\/media\/[^/]+$/.test(p),
   (m, p) => m === "GET" && /^\/v1\/sellers(\/[^/]+)?$/.test(p),
@@ -138,7 +159,41 @@ export async function registerAuth(app: FastifyInstance, deps: AuthDeps): Promis
       }
     }
 
-    if (isPublic(method, path)) return;
+    if (isPublic(method, path)) {
+      // MCP is public at the transport layer (the MCP TS SDK can't easily mint
+      // DPoP-bound passports), so per-tool scope is the real gate. Two ways to
+      // promote an /mcp request from anonymous to a privileged principal:
+      //   a) DEV_BYPASS=1 — local dev / one-off ops. Synthesises an agent from
+      //      X-Mp-Agent-Id with the full default scope bundle.
+      //   b) X-Mp-Mcp-Token matches MCP_ADMIN_TOKEN — production-safe shared
+      //      secret. Lets a known client (the operator's Claude Code) drive
+      //      seller/product creation without standing up the passport stack.
+      const adminTokenHeader = req.headers["x-mp-mcp-token"];
+      const adminTokenOk =
+        deps.mcpAdminToken !== undefined &&
+        deps.mcpAdminToken.length > 0 &&
+        typeof adminTokenHeader === "string" &&
+        adminTokenHeader === deps.mcpAdminToken;
+      if ((deps.devBypass || adminTokenOk) && method === "POST" && path === "/mcp" && !req.principal) {
+        const agentId = (req.headers["x-mp-agent-id"] as string) || "agt_dev";
+        const scopesHeader = (req.headers["x-mp-scopes"] as string) || "";
+        const scopes = new Set(
+          scopesHeader
+            ? scopesHeader.split(",").map((s) => s.trim()).filter(Boolean)
+            : ["catalog:read", "seller:write", "seller:product:write"],
+        );
+        req.principal = {
+          agentId,
+          passportId: `psp_${agentId}`,
+          scopes,
+          dpopJkt: "dev",
+          ownerKind: "user",
+          ownerId: agentId,
+          spendCaps: { currency: "USD" } as identity.SpendCaps,
+        };
+      }
+      return;
+    }
 
     if (isSessionOnly(method, path)) {
       if (!req.userPrincipal) throw new UnauthorizedError("session_required");
@@ -169,7 +224,7 @@ export async function registerAuth(app: FastifyInstance, deps: AuthDeps): Promis
       const scopes = new Set(
         scopesHeader
           ? scopesHeader.split(",").map((s) => s.trim()).filter(Boolean)
-          : ["catalog:read", "seller:product:write"],
+          : ["catalog:read", "seller:write", "seller:product:write"],
       );
       req.principal = {
         agentId,

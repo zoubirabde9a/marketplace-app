@@ -133,9 +133,17 @@ function hash(v: unknown): string {
 }
 
 function schemaToJsonSchema(schema: ZodType): unknown {
-  // Minimal — production should use zod-to-json-schema; here we return the zod
-  // description as a placeholder to keep the package self-contained.
-  return { _zodSchema: true, description: (schema as unknown as { description?: string })?.description };
+  // The MCP TS SDK validates tools/list responses and rejects entries without a
+  // valid JSON Schema object. We don't have zod-to-json-schema in deps, so we
+  // emit a permissive object schema that the SDK accepts. The handler still
+  // calls schema.safeParse() so input validation isn't lost.
+  return {
+    type: "object",
+    additionalProperties: true,
+    ...(typeof (schema as unknown as { description?: string })?.description === "string"
+      ? { description: (schema as unknown as { description?: string }).description }
+      : {}),
+  };
 }
 
 export { z };

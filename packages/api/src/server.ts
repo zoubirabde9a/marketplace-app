@@ -16,6 +16,13 @@ import { registerSnapshotRoutes } from "./routes/snapshots.js";
 import { registerSearchStatsRoutes } from "./routes/search-stats.js";
 import { catalog } from "@marketplace/domain";
 import type { Repos } from "./repos/index.js";
+import {
+  McpRegistry,
+  registerMcpTransport,
+  registerSellerWriteTools,
+  newRequestId,
+  type McpContext,
+} from "@marketplace/mcp-server";
 
 export interface BuildOptions {
   authDeps: AuthDeps;
@@ -82,6 +89,9 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
     exempt: (req) =>
       req.url === "/v1/auth/google" ||
       req.url === "/v1/auth/exchange-link" ||
+      req.url === "/mcp" ||
+      req.url === "/register" ||
+      req.url === "/oauth/register" ||
       /^\/v1\/products\/[^/]+\/media(\/[^/]+)?(\?|$)/.test(req.url),
   });
   const snapshotStore = opts.snapshotStore ?? new catalog.MemorySnapshotStore();
@@ -97,6 +107,85 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
   await registerMeRoutes(app, { users: opts.repos.users });
   await registerSnapshotRoutes(app, { store: snapshotStore });
   await registerSearchStatsRoutes(app, { searchLog: opts.repos.searchLog });
+
+  // OAuth Dynamic Client Registration stub. We don't support RFC 7591 DCR but
+  // the MCP TS SDK probes /register on first connect; without a parseable
+  // response it crashes with a ZodError. Return an RFC 6749-shaped error so
+  // the SDK gives up cleanly and uses the unauthenticated transport.
+  const dcrStub = async (_req: unknown, reply: { code: (n: number) => { send: (b: unknown) => unknown } }) => {
+    return reply.code(400).send({
+      error: "registration_not_supported",
+      error_description: "Dynamic client registration is not supported; connect to /mcp without OAuth.",
+    });
+  };
+  app.post("/register", dcrStub);
+  app.post("/oauth/register", dcrStub);
+
+  // MCP streamable-HTTP transport. The registry holds tool defs; buildContext
+  // resolves the calling agent from auth middleware's req.principal (synthesised
+  // for DEV_BYPASS on /mcp — see middleware/auth.ts).
+  const mcpRegistry = new McpRegistry();
+  registerSellerWriteTools(mcpRegistry, {
+    sellers: {
+      create: (input) => opts.repos.sellers.create(input),
+      get: async (id) => {
+        const s = await opts.repos.sellers.get(id);
+        return s ? { sellerId: s.sellerId, ownerAgentId: s.ownerAgentId } : undefined;
+      },
+    },
+    products: {
+      create: async (input) => {
+        const p = await opts.repos.products.create(input);
+        return {
+          productId: p.productId,
+          sellerId: p.sellerId,
+          titleSanitized: p.titleSanitized,
+          ...(p.brand !== undefined ? { brand: p.brand } : {}),
+          variants: p.variants.map((v) => ({
+            id: v.id,
+            sku: v.sku,
+            priceMinor: v.priceMinor,
+            currency: v.currency,
+            inStock: v.inStock,
+          })),
+          media: p.media.map((m) => ({ id: m.id, url: m.url })),
+          ...(p.heroMediaId !== undefined ? { heroMediaId: p.heroMediaId } : {}),
+          createdAt: p.createdAt,
+        };
+      },
+    },
+  });
+  await registerMcpTransport(app, {
+    registry: mcpRegistry,
+    buildContext: async (req): Promise<McpContext> => {
+      const principal = req.principal;
+      if (!principal) {
+        // No auth + no DEV_BYPASS. Tool calls will fail scope checks; tools/list
+        // and initialize still work so MCP clients can discover the surface.
+        return {
+          agentId: "anonymous",
+          passportId: "psp_anonymous",
+          scopes: new Set(),
+          ownerKind: "user",
+          ownerId: "anonymous",
+          requestId: newRequestId(),
+          now: () => Date.now(),
+          emitAudit: async () => undefined,
+        };
+      }
+      return {
+        agentId: principal.agentId,
+        passportId: principal.passportId,
+        scopes: principal.scopes,
+        ownerKind: principal.ownerKind,
+        ownerId: principal.ownerId,
+        ...(principal.mandateId !== undefined ? { mandateId: principal.mandateId } : {}),
+        requestId: newRequestId(),
+        now: () => Date.now(),
+        emitAudit: async () => undefined,
+      };
+    },
+  });
 
   return app;
 }
