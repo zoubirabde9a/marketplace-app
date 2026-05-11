@@ -64,6 +64,20 @@ const nextConfig = {
           { key: "Cache-Control", value: "public, max-age=300, s-maxage=300, stale-while-revalidate=1800" },
         ],
       },
+      {
+        // /s/{id} agent-snapshot pages are token-addressed (the unguessable id
+        // is the credential, see api/middleware/auth.ts) and immutable until
+        // the underlying snapshot expires 24h after creation. Next's dynamic-
+        // route default ships 'private, no-cache, no-store' so every viewer
+        // hit origin even though many recipients typically share one URL
+        // (audit-trail / proof-of-what-the-agent-saw flows). Match the API
+        // /v1/snapshots/{id} cache policy (commit 480c816) so the WEB page
+        // wrapping the same data is just as cacheable.
+        source: "/s/:id",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400, immutable" },
+        ],
+      },
     ];
   },
   async redirects() {
