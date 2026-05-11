@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { searchProducts } from "@/lib/api";
 import { searchProductsCached } from "@/lib/searchCache";
 import { parseSearchParams } from "@/lib/url";
@@ -262,6 +263,27 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 export default async function SearchPage({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const input = parseSearchParams(sp);
+
+  // Single-seller view canonicals at /store/{id} (commits efb4f54 + 80d55de
+  // consolidated the duplicate URL pair). 308-redirect here so:
+  //   - Browser URL bar updates to /store/{id} on every visit (cleaner UX
+  //     for users who share the link from their address bar afterward)
+  //   - Old indexed /search?sellerId=... URLs hard-migrate instead of
+  //     relying on Google to follow the canonical hint
+  //   - Crawlers / link-checkers that don't honor <link rel="canonical">
+  //     still arrive at the right URL.
+  // Strict filter: ONLY redirect when sellerId is the sole content key
+  // (matches the existing canonical-eligibility branch). Multi-filter
+  // combinations stay on /search (they're noindex anyway).
+  const sellerIds = (input.sellerId ?? []).filter(Boolean);
+  if (sellerIds.length === 1) {
+    const otherKeys = Object.keys(sp).filter(
+      (k) => k !== "sellerId" && sp[k] !== undefined,
+    );
+    if (otherKeys.length === 0) {
+      redirect(`/store/${encodeURIComponent(sellerIds[0])}`);
+    }
+  }
 
   // No Suspense boundary here. With the API on the same docker network the
   // search fetch lands in ~50 ms and React's streaming SSR otherwise flushes
