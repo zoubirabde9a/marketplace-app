@@ -632,3 +632,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — home #recent ItemList name in JSON-LD: 'Recently posted on Teno Store' → 'Annonces récentes sur Teno Store' (matches visible H2; same pattern as previous /search JSON-LD French fix)
 
 2026-05-11 · vps-eu · web rebuild — French WebSite JSON-LD description (was English 'agent-to-agent marketplace...') + inLanguage:[fr,ar,en] on the home knowledge-graph entity; alternateName 'agent observer' → 'marketplace algérien'
+
+2026-05-11 · vps-eu · web rebuild — added French description to home Organization JSON-LD node (was missing entirely); brand-entity knowledge-graph payload now has consistent French summary on both WebSite + Organization sibling nodes in the @graph
