@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · scraper-loop · rotate across 7 top-level categories
+
+- Scrape loop was pinned to `telephones` only — the systemd unit hard-coded that single category, so 100% of seeded products were phones/tablets despite the catalog being able to hold anything.
+- Added `--categories <csv>` to `run-loop.sh`. When set, each run picks the next slug round-robin via a `_rotation/<seller>` counter stored in `run-loop-state.json`. Per-category `next_start_page` state is preserved independently, so each category resumes from where it left off.
+- Updated `/etc/systemd/system/marketplace-scrape-loop.service` to pass `--categories telephones,informatique,electronique_electromenager,vetements_mode,sante_beaute,immobilier,automobiles_vehicules` (the seven top-level Ouedkniss categories per the `listingMenu` op).
+- `daemon-reload`ed and verified with three manual triggers: picked `telephones` (idx 0), then `informatique` (idx 1), then `electronique_electromenager` (idx 2) — last run seeded 44 appliance/electronics products (Moulinex, Philips, Roborock, SMEG…). State file shows `_rotation` counter advanced to 3 and `019e08a4-…-informatique.next_start_page=3`.
+- Cadence unchanged: still 1 run/min via the existing timer. Each category now gets a turn every ~7 minutes; per-category page progress advances at 1/7 the prior rate, which is fine since the catalog cap (`--max-products 280000`) is far above current size (21,125).
+- Source-of-truth: `scraper/run-loop.sh` and `deploy/systemd/marketplace-scrape-loop.service` in the repo. CLAUDE.md's "canonical run" example still works unchanged (default behaviour without `--categories` is preserved).
+
 ## 2026-05-10 — vps-eu · scraper-loop · per-run log rotation added to data-rotate timer
 
 - `data/logs/run-*.log` files accumulate one per scrape iteration (~1,440/day at 1/min cadence). 638 were present after one day. Each is tiny but uncapped growth would eventually matter.
@@ -425,3 +434,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 - Sitemap fix: was statically generated at Docker build time and falling back to 2 entries because the build container can't reach the api container. Switched to `dynamic = "force-dynamic"` + `cache: no-store`. Sitemap now serves 19 URLs (home + search + 17 products).
 - Web UI: added segment 404 page for /product/[id], app/icon.svg favicon, app/apple-icon.tsx (180px iOS icon), theme-color meta, mobile-friendly always-visible user menu, conditional rating display on cards, image placeholders with icons, Call/WhatsApp/Website seller pill buttons, native Web Share button with clipboard fallback, whole-amount price formatting (no .00), "Sold by" → seller-filter link.
 - Outstanding bug: /product/<unknown-id> still returns HTTP 200 with the not-found body (Next.js 15.1.6 streaming-vs-notFound() known issue). Body is correct, only HTTP status is wrong.
+
+2026-05-11 · vps-eu · web rebuild — add Cache-Control: public, s-maxage=300, SWR=1800 to /sitemap.xml · was max-age=0 must-revalidate (Next dynamic-route default), every crawler hit reached origin; now Cloudflare can cache between crawls
