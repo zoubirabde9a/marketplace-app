@@ -68,7 +68,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
   const recentItemList = recent.length > 0 ? {
     "@type": "ItemList",
     "@id": `${SITE_URL}/#recent`,
-    name: "Recently posted on Teno Store",
+    name: "Annonces récentes sur Teno Store",
     numberOfItems: recent.length,
     itemListElement: recent.map((hit, idx) => {
       const productUrl = `${SITE_URL}/product/${encodeURIComponent(hit.productId)}`;
