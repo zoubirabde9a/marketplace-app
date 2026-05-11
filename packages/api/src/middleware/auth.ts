@@ -62,6 +62,13 @@ export interface AuthDeps {
   mcpAdminToken?: string;
 }
 
+// HEAD is semantically a body-less GET; if GET is public on a path, HEAD must
+// be too. Crawlers, scanners and CDN edge probes send HEAD before GET to
+// check freshness/availability — returning 401 on HEAD but 200 on GET was a
+// confusing inconsistency (live probe confirmed HEAD /v1/products → 401,
+// GET /v1/products → 200). Treat both as 'read' verbs in the matchers below.
+const isRead = (m: string): boolean => m === "GET" || m === "HEAD";
+
 const PUBLIC_MATCHERS: ReadonlyArray<(method: string, path: string) => boolean> = [
   (m, p) =>
     p.startsWith("/livez") ||
@@ -82,15 +89,15 @@ const PUBLIC_MATCHERS: ReadonlyArray<(method: string, path: string) => boolean> 
   // TS SDK probes these on connect. A 400 with an RFC 6749 shaped body stops
   // the SDK from looping on an RFC 7807 problem+json response it can't parse.
   (m, p) => m === "POST" && (p === "/register" || p === "/oauth/register"),
-  (m, p) => m === "GET" && /^\/v1\/products(\/[^/]+)?$/.test(p),
-  (m, p) => m === "GET" && /^\/v1\/media\/[^/]+$/.test(p),
-  (m, p) => m === "GET" && /^\/v1\/sellers(\/[^/]+)?$/.test(p),
+  (m, p) => isRead(m) && /^\/v1\/products(\/[^/]+)?$/.test(p),
+  (m, p) => isRead(m) && /^\/v1\/media\/[^/]+$/.test(p),
+  (m, p) => isRead(m) && /^\/v1\/sellers(\/[^/]+)?$/.test(p),
   (m, p) => /^\/v1\/cart(\/.*)?$/.test(p),
   (m, p) => m === "POST" && /^\/v1\/checkout\/.+$/.test(p),
-  (m, p) => m === "GET" && /^\/v1\/orders\/[^/]+$/.test(p),
+  (m, p) => isRead(m) && /^\/v1\/orders\/[^/]+$/.test(p),
   // Snapshots are public-token addressed: the unguessable id IS the credential.
   // The route handler validates the id format and 410s on miss/expiry.
-  (m, p) => m === "GET" && /^\/v1\/snapshots\/[^/]+$/.test(p),
+  (m, p) => isRead(m) && /^\/v1\/snapshots\/[^/]+$/.test(p),
   (m, p) => m === "POST" && p === "/v1/auth/google",
   (m, p) => m === "POST" && p === "/v1/auth/exchange-link",
 ];
