@@ -477,3 +477,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — French primary nav (Parcourir/Vendre/À propos/Se connecter), French /search H1 variants, French category H1 labels (Téléphones/Électroménager with accents) — closes the on-page language-signal mismatch with title/description
 
 2026-05-11 · vps-eu · web rebuild — French CategoryFooter H2s (Parcourir par catégorie / Marques populaires / Vendeurs — render on EVERY page footer), French 404 pages (both site-wide /not-found and product /not-found), French a11y skip link
+
+2026-05-11 · vps-eu · web rebuild — French product-page related-products H2 + 'More from seller' link, French SearchBar placeholder + aria-label, French breadcrumb/footer aria-labels
