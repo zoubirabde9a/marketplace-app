@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · scraper+api+web · capture all seller phones from Ouedkniss (multi-line shops)
+
+- Bug: the scraper-driven seeder was dropping every phone past the first. Ouedkniss publishes an ordered list of phones per shop (with per-number `hasWhatsapp` / `hasViber` flags); we were calling `pickPhone()` to keep only the first and using it for both the `phone` and `whatsapp` columns. A shop with three sales lines looked like a one-line shop, and every phone was falsely labelled WhatsApp-capable.
+- Scraper (`scraper/scrape-ouedkniss.mjs`): GraphQL query on `mainLocation.phones` now requests `hasWhatsapp` and `hasViber`; output dump carries a `phoneEntries: [{phone, hasWhatsapp, hasViber}]` array alongside the legacy flat `phones[]` strings (kept for back-compat with older dumps).
+- Seeder (`packages/db/src/seed-from-scraped.ts`): writes one `seller.seller_phones` row per phone (normalized to `+213XXXXXXXXX` E.164, deduped, first marked primary, `is_whatsapp` / `is_viber` set from real Ouedkniss signal rather than blanket-`true`). On re-encountering a previously-seen seller it calls `replacePhones(...)` so shops that add or remove a number get resynced instead of staying frozen on first-seen.
+- API: `GET /v1/products/:id` now returns `sellerPhones: [{phone, isWhatsapp, isViber, isPrimary}, …]` (primary first). Legacy `sellerPhone` / `sellerWhatsapp` still populated from the primary / first-whatsapp for back-compat.
+- Web product page: renders one chip per (phone × channel) — tel: for every number, wa.me for `isWhatsapp` numbers, viber:// for `isViber` numbers. Falls back to the legacy single-pair shape when the API hasn't been updated.
+- DB: migration 0008 creates `seller.seller_phones` (FK to `identity.organizations(id) ON DELETE CASCADE`, partial unique index forcing ≤1 primary per seller, unique on `(seller_id, phone_e164)`). Backfill copied 420 existing single-phone sellers in as primaries with `source = 'backfill-seller-profiles'`. The legacy `seller_profiles.phone` / `.whatsapp` columns are kept and now act as cached mirrors of the primary / first-whatsapp number.
+- New shared utility: `@marketplace/shared/phone` — `normalizeAlgerianPhone()` (accepts +213…, 213…, 0556…, 556… with arbitrary separators; rejects non-DZ E.164) and `formatAlgerianPhoneNational()`. 16 unit tests.
+- Deployed via tar + `docker compose build api web` + one-off `compose run --rm api db:migrate` + `compose up -d api web caddy`. Scraper timer stopped during the build/migrate window (~3 min) and restarted after. Smoke: `/livez`=ok, product page 200, sample shop product returns 3 phones via API; web page renders 3 `tel:` links.
+- Verified after one scrape cycle: `seller_phones` table now contains rows from `ouedkniss-store` source with multi-phone sellers (3-phone shops appearing for the first time in the catalog).
+
 ## 2026-05-11 — vps-eu · mcp+web · seller.create_account speaks the multi-phone shop model (phones[] with isWhatsapp/isViber/isPrimary)
 
 - Earlier the same day, a parallel change introduced a normalized `seller.seller_phones` table (migration 0008) and widened `repos.sellers.create` to accept either legacy single-`phone`/`whatsapp` or the new `phones: [...]` shape. The MCP write tool wasn't using it yet — multi-line shops (separate sales / support / after-sales numbers, which Ouedkniss returns natively) couldn't be created through the agent path.
@@ -605,3 +617,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — /v1/products/{id} latency 2.0-2.7s → 250-400ms (~10x faster) by replacing repo.loadAll() with repo.loadSellers() in makeProductReader.getProduct. Detail endpoint was re-hydrating the entire 25k-product catalog just to read one seller's displayName. Web product page now 380-460ms warm (was 2.3s)
 
 2026-05-11 · vps-eu · web rebuild — deleted product loading.tsx (now safe). Source order: H1 byte 9818 (was 112,791), footer byte 13820. TTFB ~290ms, total ~470ms warm — faster end-to-end than the previous skeleton+stream pattern (total was 2.3s) because the API perf fix two commits ago made the underlying lookup fast
+
+2026-05-11 · vps-eu · web rebuild — French JSON-LD on /search slice landings: CollectionPage.description + ItemList.name + mainEntity name all now match the page's French H1 and meta description (Google rich-result graph was reading 'Téléphones on Teno Store' and 'NN téléphones listings from Algerian sellers')
