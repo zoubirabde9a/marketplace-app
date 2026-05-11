@@ -140,8 +140,13 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     // Description in pure French — matches the document's primary language
     // and the catalog's source language. The 'annonces' / 'vendeurs algériens'
     // / 'prix en DZD' phrasing reinforces the locale signal in SERP snippets.
+    // French plural agreement: "1 annonces" reads as a low-quality
+    // machine-translated string both to humans and to language classifiers.
+    // Singular: "1 annonce ... actualisée en temps réel".
+    const frAnnonce = totalCount === 1 ? "annonce" : "annonces";
+    const frActualisee = totalCount === 1 ? "actualisée" : "actualisées";
     description = fmtCount
-      ? `${fmtCount} annonces ${human.toLowerCase()} de vendeurs algériens sur Teno Store, actualisées en temps réel. Filtrez par marque, prix ou vendeur. Prix en dinars (DZD).`
+      ? `${fmtCount} ${frAnnonce} ${human.toLowerCase()} de vendeurs algériens sur Teno Store, ${frActualisee} en temps réel. Filtrez par marque, prix ou vendeur. Prix en dinars (DZD).`
       : `Annonces ${human.toLowerCase()} de vendeurs algériens sur Teno Store. Prix en DZD.`;
   } else if (sellerId && !isMultiValuedSeller) {
     // Same suffix-duplication concern as the category branch — layout
