@@ -6,6 +6,17 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · db+api+web · raise seller/product create quality bar (phone+country required, description+image required, store location added)
+
+- Earlier the MCP write tools happily created stub sellers and image-less products from minimal input (just a display name and a SKU). That produced poor-quality storefronts and pushed the work of asking the human onto the agent's good intentions instead of the schema. Tightened both sides so the schema does the asking.
+- **Seller** (`seller.create_account` MCP + `POST /v1/sellers`): `phone` and `countryCode` (ISO 3166-1 alpha-2) are now required inputs. New optional fields exposed: `city`, `description` (store bio, min 20 chars), `supportEmail`, `whatsapp`. The bug where `organizations.country_code` was hardcoded `"US"` for every new seller is fixed — the field now reflects the input (default `"DZ"` if a legacy caller passes nothing, since this marketplace is Algeria-primary).
+- **Product** (`product.create_listing` MCP): `description` (min 30 chars) and `media` (min 1 publicly-fetchable image URL) are now required. `MediaInput.contentType` becomes optional — the server now infers it from the URL extension so an agent can pass `{ url: "…/photo.jpg" }` without having to know the mime type.
+- **Tool descriptions** rewritten to explicitly instruct the calling agent to gather these fields from the human before invoking, rather than inventing minimal stubs.
+- DB: added `seller_profiles.city varchar(120)` (nullable). Migration `0007_seller_city.sql` applied on vps-eu via `db:migrate`. No backfill needed (nullable column). The scraper-direct path still works since `repos.sellers.create` accepts new fields as optional.
+- Web `/s/[id]` page renders the richer seller card (phone, whatsapp, location, bio) and richer product card (description + media list) when those fields exist on the captured snapshot.
+- REST `POST /v1/sellers` matches the MCP validation. REST `POST /v1/products` left as-is for now (it serves the human seller-dashboard form, which uses multipart for image bytes — a coordinated UI change is a separate task).
+- Deployed via tar + `docker compose build api web && up -d api web` + `db:migrate`. Full test suite green (575+ tests). Existing scraper-seeded sellers are unaffected (city = NULL; organizations.country_code = "US" for legacy rows, "DZ" going forward).
+
 ## 2026-05-11 — vps-eu · api+web · snapshot links for MCP write tools (seller.create_account, product.create_listing)
 
 - Previously, only catalog *read* tools (`catalog.search` / `get_product` / `compare` / `recommend`) produced a 24h-frozen `snapshotUrl` an agent could hand to a human. Write tools returned only entity ids (`sellerId`, `productId`); pasting one of those into `/s/<id>` triggered the misleading "Snapshot expired" page (the API returns 410 for both expired and never-existed ids; web copy claimed expiry).
@@ -576,3 +587,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — HEAD now accepted on public read endpoints (was 401 from auth middleware checking method===GET literally); crawlers + CDN edge probes that send HEAD-before-GET no longer get the misleading 'this endpoint needs auth' signal
 
 2026-05-11 · vps-eu · web rebuild — deleted top-level loading.tsx (it was creating an implicit suspense around main and forcing the H1 ~110KB downstream of the CategoryFooter chips); source order now correct: <main> byte 5792, H1 byte 10450, <footer> byte 24164. TTFB unchanged ~240ms (page data fetch is warm-cached)
+
+2026-05-11 · vps-eu · web rebuild — refactored product page related-products into a Suspense child (independent streaming, no longer blocks main shell). Tried deleting product loading.tsx for source order but /v1/products/{id} takes 2.5-3.2s under load, so TTFB jumped from 240ms to 2.5s — restored loading.tsx, kept the Suspense refactor (still useful)
