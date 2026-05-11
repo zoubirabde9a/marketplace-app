@@ -785,3 +785,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — sitemap MAX_PAGES 400→500. Was clipping again at 40,000 (catalog grew to 42,695); now serving 42,999 product URLs in the sitemap, no more oldest-product clipping. 500 is the Google per-file URL limit ceiling without needing a sitemap-index split
 
 2026-05-11 · vps-eu · api rebuild — added Cache-Control: private, no-store to /v1/sellers/{id}/orders; was missed in the previous user-state endpoint sweep; same auth-bypass-scale leak risk as the other user-scoped GETs
+
+2026-05-11 · vps-eu · api rebuild — OAuth 2.1 endpoints (/oauth/token /oauth/authorize /oauth/introspect) now return RFC 6749 §5.2-shaped 501 unsupported_grant_type instead of bare 404. AI agents following the discovery doc's auth posture fail fast with a structured signal pointing at the Agent Passport flow we actually support
