@@ -20,6 +20,7 @@ import {
   McpRegistry,
   registerMcpTransport,
   registerSellerWriteTools,
+  registerBuyerTools,
   newRequestId,
   type McpContext,
 } from "@marketplace/mcp-server";
@@ -181,6 +182,31 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
     },
     snapshotStore,
   );
+  // Buyer-side tools: cart.*, checkout.confirm, order.get, seller.list_orders.
+  // Mirrors the HTTP routes the web UI uses so agents can place COD orders
+  // end-to-end via /mcp. Repos go through the same Drizzle code path; no
+  // domain logic forks between MCP and REST.
+  registerBuyerTools(mcpRegistry, {
+    carts: {
+      getOrCreate: (input) => opts.repos.carts.getOrCreate(input),
+      get: (id) => opts.repos.carts.get(id),
+      setLines: (id, lines) => opts.repos.carts.setLines(id, lines),
+      setCurrency: (id, c) => opts.repos.carts.setCurrency(id, c),
+      resolveLine: (vid, qty) => opts.repos.carts.resolveLine(vid, qty),
+      enrichLines: (ids) => opts.repos.carts.enrichLines(ids),
+    },
+    orders: {
+      create: (input) => opts.repos.orders.create(input),
+      get: (id) => opts.repos.orders.get(id),
+      listForSeller: (id) => opts.repos.orders.listForSeller(id),
+    },
+    sellers: {
+      get: async (id) => {
+        const s = await opts.repos.sellers.get(id);
+        return s ? { sellerId: s.sellerId, ownerAgentId: s.ownerAgentId } : undefined;
+      },
+    },
+  });
   await registerMcpTransport(app, {
     registry: mcpRegistry,
     buildContext: async (req): Promise<McpContext> => {
