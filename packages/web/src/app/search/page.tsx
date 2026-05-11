@@ -207,11 +207,21 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       // Brand/category/seller landings stay indexable because they have a
       // finite, curated URL space. follow=true so internal links from the
       // results still pass equity to product pages.
+      // Thin brand / seller landings: mirror the sitemap min-count floor
+      // (sitemap.ts MIN_FACET_COUNT=5). Even after dropping noisy brand
+      // entries from the sitemap, Google can still discover thin brand
+      // URLs via internal links (CategoryFooter chips, filter UI). A
+      // /search?brand=Acme page with 1 listing reads as soft-404 thin
+      // content. Categories stay indexable at any count (closed taxonomy,
+      // each slug has prose intro + structured data even with one item).
       hasNonIndexableParam ||
       isMultiFilter ||
       isMultiValuedSeller ||
       isMultiValuedCategory ||
       totalCount === 0 ||
+      ((Boolean(brand) || (Boolean(sellerId) && !isMultiValuedSeller)) &&
+        totalCount !== null &&
+        totalCount < 5) ||
       Boolean(q)
         ? { index: false, follow: true }
         : { index: true, follow: true },
