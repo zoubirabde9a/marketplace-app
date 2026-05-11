@@ -139,15 +139,28 @@ export default async function StorePage({ params }: { params: Promise<Params> })
       : seller.phone
         ? { telephone: seller.phone }
         : {}),
-    ...(seller.city || seller.countryCode
-      ? {
-          address: {
-            "@type": "PostalAddress",
-            ...(seller.city ? { addressLocality: seller.city } : {}),
-            ...(seller.countryCode ? { addressCountry: seller.countryCode } : {}),
-          },
-        }
-      : {}),
+    // PostalAddress only when we have a country code that maps to a
+    // legitimate region we serve. Raw fall-through previously emitted
+    // addressCountry='US' from the seller-table data bug (Algerian
+    // sellers tagged with US), telling Google's local-business graph
+    // every storefront is US-based. Now we mirror the frCountry
+    // whitelist: addressCountry is only emitted for DZ/FR/TN/MA. City
+    // alone (without a confirmed country) is still emitted as
+    // addressLocality — that field doesn't have the same regional
+    // bucketing weight.
+    ...((() => {
+      const knownCountries = new Set(["DZ", "FR", "TN", "MA"]);
+      const cc = seller.countryCode?.toUpperCase();
+      const validCountry = cc && knownCountries.has(cc) ? cc : undefined;
+      if (!seller.city && !validCountry) return {};
+      return {
+        address: {
+          "@type": "PostalAddress",
+          ...(seller.city ? { addressLocality: seller.city } : {}),
+          ...(validCountry ? { addressCountry: validCountry } : {}),
+        },
+      };
+    })()),
   };
 
   // ItemList of this seller's products. The /search?sellerId=... page (now
