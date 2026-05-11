@@ -196,7 +196,16 @@ export async function registerAuth(app: FastifyInstance, deps: AuthDeps): Promis
         const scopes = new Set(
           scopesHeader
             ? scopesHeader.split(",").map((s) => s.trim()).filter(Boolean)
-            : ["catalog:read", "seller:write", "seller:product:write"],
+            : [
+                "catalog:read",
+                "seller:write",
+                "seller:product:write",
+                "seller:order:read",
+                "buyer:cart:read",
+                "buyer:cart:write",
+                "buyer:checkout:write",
+                "buyer:order:read",
+              ],
         );
         req.principal = {
           agentId,
