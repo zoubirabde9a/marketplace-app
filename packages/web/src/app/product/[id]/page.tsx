@@ -575,8 +575,8 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           {p.shipsTo.length > 0 && (
             <section className="text-xs text-ink-mute">
               {p.shipsTo.length >= 50
-                ? "Ships worldwide"
-                : `Ships to ${p.shipsTo.slice(0, 6).join(", ")}${p.shipsTo.length > 6 ? ` +${p.shipsTo.length - 6} more` : ""}`}
+                ? "Livraison mondiale"
+                : `Livraison vers ${p.shipsTo.slice(0, 6).join(", ")}${p.shipsTo.length > 6 ? ` +${p.shipsTo.length - 6} autres` : ""}`}
             </section>
           )}
 

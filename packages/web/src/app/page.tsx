@@ -280,8 +280,8 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
       {recent.length > 0 && (
         <section className="mt-12" aria-labelledby="recent-heading">
           <div className="flex items-baseline justify-between mb-4">
-            <h2 id="recent-heading" className="text-xl font-semibold tracking-tight">Recently posted</h2>
-            <Link href="/search" className="text-sm text-ink-soft hover:text-ink transition">See all →</Link>
+            <h2 id="recent-heading" className="text-xl font-semibold tracking-tight">Annonces récentes</h2>
+            <Link href="/search" className="text-sm text-ink-soft hover:text-ink transition">Voir tout →</Link>
           </div>
           <ProductGrid hits={recent} />
         </section>
