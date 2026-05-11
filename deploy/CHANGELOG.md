@@ -517,3 +517,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — French seller-contact UI (phone aria-label 'Appeler', WhatsApp aria-label + prefilled message 'Bonjour, je suis intéressé(e)…', website link 'Site web' + aria-label); buyer→Algerian-seller messages now open in the seller's primary language
 
 2026-05-11 · vps-eu · web rebuild — sitemap MAX_PAGES 200 → 400; sitemap product URL count went 20,000 → 24,389 (was clipping the oldest ~4,500 products from Googlebot discovery; pagination is newest-first cursor so the tail is what got dropped)
+
+2026-05-11 · vps-eu · web rebuild — French breadcrumbs across product / search / about / seller (visible nav AND BreadcrumbList JSON-LD — Google surfaces breadcrumb labels directly in SERP URL row above the snippet)
