@@ -498,3 +498,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — /about + /seller body wrapped in lang=en (intentional English content nested in French-rooted document); fixes WCAG 3.1.2 language-of-parts + Google's HTML-level language classifier consistency check
 
 2026-05-11 · vps-eu · web rebuild — product page og:image upscaled from Ouedkniss /400/ to /1200/ (Facebook / LinkedIn / Twitter summary_large_image minimum 1200x630); visible gallery <img> still loads cheap /400/ thumbnails
+
+2026-05-11 · vps-eu · web rebuild — sitemap-image entries upscaled from /400/ to /1200/ Ouedkniss CDN variant (~14k product images now point at higher-resolution variants for Google Image Search ranking signal)
