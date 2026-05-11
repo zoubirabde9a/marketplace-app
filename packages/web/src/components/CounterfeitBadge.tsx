@@ -4,8 +4,8 @@ export function CounterfeitBadge({ risk }: { risk: "low" | "elevated" | "high" }
   if (risk === "low") return null;
   const explanation =
     risk === "high"
-      ? "High counterfeit risk — listing under review."
-      : "Elevated counterfeit risk — supply-chain documentation pending.";
+      ? "Risque de contrefaçon élevé — annonce en cours d'examen."
+      : "Risque de contrefaçon · documentation fournisseur en attente.";
   return (
     <span
       role="status"
@@ -19,7 +19,7 @@ export function CounterfeitBadge({ risk }: { risk: "low" | "elevated" | "high" }
       )}
     >
       <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-current" />
-      {risk === "high" ? "Suppressed" : "Under review"}
+      {risk === "high" ? "Suspendu" : "En examen"}
     </span>
   );
 }
