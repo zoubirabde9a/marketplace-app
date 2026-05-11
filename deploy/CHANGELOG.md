@@ -500,3 +500,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — product page og:image upscaled from Ouedkniss /400/ to /1200/ (Facebook / LinkedIn / Twitter summary_large_image minimum 1200x630); visible gallery <img> still loads cheap /400/ thumbnails
 
 2026-05-11 · vps-eu · web rebuild — sitemap-image entries upscaled from /400/ to /1200/ Ouedkniss CDN variant (~14k product images now point at higher-resolution variants for Google Image Search ranking signal)
+
+2026-05-11 · vps-eu · web rebuild — consolidate Ouedkniss /400/→/1200/ upscale in lib/images.ts, apply to home + search ItemList JSON-LD images, product twitter:image, product JSON-LD Product.image gallery (was leaking /400/ on these surfaces)
