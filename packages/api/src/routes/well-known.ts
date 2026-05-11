@@ -19,6 +19,12 @@ export async function registerWellKnown(app: FastifyInstance): Promise<void> {
       description:
         "Teno Store — agent-to-agent marketplace. API-first commerce for AI agents via MCP, A2A, AP2. Humans participate via delegated authorization.",
       url: base,
+      // Pointer to the human-readable apex (catalog, discovery surfaces,
+      // policies). AI agents that connect to the API first via this
+      // agent-card can follow homepage to find /sitemap.xml, /feed.xml,
+      // /llms.txt, /.well-known/agents.json (the richer apex discovery
+      // doc with catalog + policies blocks).
+      homepage: process.env.MARKETPLACE_WEB_BASE_URL?.replace(/\/$/, "") ?? "https://teno-store.com",
       // Capabilities here mirror the human-readable agents.json on the apex.
       // ACP is intentionally omitted — not currently implemented; if it gets
       // added later, list it in BOTH this file and packages/web/public/.well-known/agents.json.
