@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · web rebuild · SEO — /seller landing page French-ified (was English on a `<html lang="fr">` site); follow-up to iter-12 /about French-ification
+
+- `/seller` page was the last fully-English sitemapped surface (after iter-7 home and iter-12 /about): `<title>Sell</title>`, English meta description, H1 "Sell on Teno Store", three English value-prop bullets, English noscript copy. Sitemapped (`priority=0.5`, `index,follow`) and the destination of every "+ Vendre" CTA in the header — so its locale signal also affects every visitor who clicked through from a French page.
+- French copy across the page: `<title>Vendre</title>`, meta description (`Publiez vos annonces sur Teno Store et atteignez à la fois les acheteurs algériens et les agents IA…`), H1 (`Vendre sur Teno Store`), French lede (`Connectez-vous avec Google pour gérer votre profil vendeur, publier vos annonces et mettre à jour vos coordonnées.`), three French value-prop bullets (agent reach, anti-contrefaçon, DZD + per-variant pricing), French noscript fallback. The dropped `<section lang="en">` wrapper means the page now reads cleanly as French; only the dev-config error banner ("Google sign-in is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID…") stays English with its own `lang="en"` since it's a developer-targeted prod-misconfiguration message.
+- JSON-LD: WebPage `name` → `Vendre sur Teno Store`, French description, `inLanguage: ["fr", "en"]` (mirrors iter-12 /about pattern). OpenGraph locale set to `fr_DZ` with `en_US` as alternateLocale. Page snapshot test rewritten to assert the French strings instead of the English ones.
+- Verified live: `<title>Vendre · Teno Store</title>`, French meta description, `<h1>Vendre sur Teno Store</h1>`. Type-check clean; 108/108 web tests pass locally.
+- Standing iter-1 recommendation still open: Cache-Control middleware for anonymous HTML + Cloudflare Cache Rule (operator-side). Highest unrealized lever — all the locale + structured-data work is now broadly in place; remaining gains scale with crawl budget.
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO — /about page lede + headings now French (was fully English on a `<html lang="fr">` site); long-form developer copy stays English under a `<section lang="en">`
 
 - The `/about` page was fully English: `<title>About</title>`, English meta description, H1 "About Teno Store", all H2s, all body copy. Sitemapped (`priority=0.5`) and `index,follow`, so Google was getting an English topic signal at the apex of the entity-graph site (it cross-references `/#website` + `/#organization` JSON-LD). For French queries like `À propos Teno Store`, `marketplace algérien`, `agents IA Algérie`, the page was working against the site's French locale declaration.
@@ -775,3 +783,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — Access-Control-Allow-Origin: * on /.well-known/agents.json, /sitemap.xml, /feed.xml, /llms.txt, /robots.txt. Server-side crawlers (Googlebot, GPTBot, ClaudeBot) didn't care but browser-based tooling (SEO debuggers, agent-discovery validators, llms.txt parsers in tabs) got CORS errors fetching these public-by-design discovery surfaces
 
 2026-05-11 · vps-eu · web rebuild — sitemap MAX_PAGES 400→500. Was clipping again at 40,000 (catalog grew to 42,695); now serving 42,999 product URLs in the sitemap, no more oldest-product clipping. 500 is the Google per-file URL limit ceiling without needing a sitemap-index split
+
+2026-05-11 · vps-eu · api rebuild — added Cache-Control: private, no-store to /v1/sellers/{id}/orders; was missed in the previous user-state endpoint sweep; same auth-bypass-scale leak risk as the other user-scoped GETs
