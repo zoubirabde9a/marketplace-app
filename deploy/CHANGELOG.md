@@ -649,3 +649,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · api rebuild — /.well-known/agent-card.json base URL was leaking 'http://0.0.0.0:3100' (docker bind addr); now derived from req.protocol+host via trustProxy, all endpoints absolute https://api.teno-store.com URLs — agents can use the discovery doc without URL-joining
 
 2026-05-11 · vps-eu · api + web rebuild — agent-card.json adds rest capability (was missing from API-side discovery doc while apex agents.json declared it); Header Suspense fallbacks now French (Chargement de la recherche / du menu utilisateur)
+
+2026-05-11 · vps-eu · api rebuild — agent-card.json now has homepage pointing at https://teno-store.com so MCP/A2A agents connecting to the API first can discover the apex agents.json + sitemap/feed/llms.txt surfaces without already knowing the brand domain
