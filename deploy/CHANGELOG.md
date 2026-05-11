@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-11 — vps-eu · mcp+web · seller.create_account speaks the multi-phone shop model (phones[] with isWhatsapp/isViber/isPrimary)
+
+- Earlier the same day, a parallel change introduced a normalized `seller.seller_phones` table (migration 0008) and widened `repos.sellers.create` to accept either legacy single-`phone`/`whatsapp` or the new `phones: [...]` shape. The MCP write tool wasn't using it yet — multi-line shops (separate sales / support / after-sales numbers, which Ouedkniss returns natively) couldn't be created through the agent path.
+- `seller.create_account` MCP now accepts both shapes:
+  - **Single-line shorthand**: `phone: "+213…"` (+ optional `whatsapp: "+213…"`) — what we already had.
+  - **Multi-line shop**: `phones: [{ phone, isWhatsapp?, isViber?, isPrimary?, position? }, …]` — first-class. Numbers are normalised to Algerian E.164 (+213XXXXXXXXX) server-side, deduped per seller, and exactly one row is forced `is_primary` (the first if the caller marks none).
+- Validation: the schema requires at least one of `phone` or `phones[]` and refuses both-empty. Tool description now documents the two shapes explicitly so an agent gathers the right info from the human before invoking.
+- Response now carries `phones: [{phone, isWhatsapp, isViber, isPrimary}, …]` (primary first), in addition to the legacy `phone`/`whatsapp` convenience aliases (which mirror the primary + first-whatsapp).
+- Product output now echoes the agent-provided `description` so the snapshot page can render it.
+- Web `/s/[id]` seller-create renderer now shows the full phone list with per-line WhatsApp/Viber/primary tags, plus location (city + country) and bio. Product-create renderer now shows description + image previews (square thumbnails grid).
+- Deployed via tar + `docker compose build api web && up -d api web` + `db:migrate` (0008 applied — `seller.seller_phones` table created with backfill from `seller_profiles.phone` for legacy rows). Full test suite green (594 tests; +2 new mcp-server tests covering multi-phone create + empty-phone rejection).
+
 ## 2026-05-11 — vps-eu · db+api+web · raise seller/product create quality bar (phone+country required, description+image required, store location added)
 
 - Earlier the MCP write tools happily created stub sellers and image-less products from minimal input (just a display name and a SKU). That produced poor-quality storefronts and pushed the work of asking the human onto the agent's good intentions instead of the schema. Tightened both sides so the schema does the asking.
@@ -589,3 +601,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — deleted top-level loading.tsx (it was creating an implicit suspense around main and forcing the H1 ~110KB downstream of the CategoryFooter chips); source order now correct: <main> byte 5792, H1 byte 10450, <footer> byte 24164. TTFB unchanged ~240ms (page data fetch is warm-cached)
 
 2026-05-11 · vps-eu · web rebuild — refactored product page related-products into a Suspense child (independent streaming, no longer blocks main shell). Tried deleting product loading.tsx for source order but /v1/products/{id} takes 2.5-3.2s under load, so TTFB jumped from 240ms to 2.5s — restored loading.tsx, kept the Suspense refactor (still useful)
+
+2026-05-11 · vps-eu · api rebuild — /v1/products/{id} latency 2.0-2.7s → 250-400ms (~10x faster) by replacing repo.loadAll() with repo.loadSellers() in makeProductReader.getProduct. Detail endpoint was re-hydrating the entire 25k-product catalog just to read one seller's displayName. Web product page now 380-460ms warm (was 2.3s)
