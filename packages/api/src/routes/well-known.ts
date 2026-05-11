@@ -1,7 +1,15 @@
 import type { FastifyInstance } from "fastify";
 
 export async function registerWellKnown(app: FastifyInstance): Promise<void> {
-  app.get("/.well-known/agent-card.json", async (req) => {
+  app.get("/.well-known/agent-card.json", async (req, reply) => {
+    // 5-min edge cache + 24-hour SWR. Agent-card content changes only at
+    // deploy time (capabilities + endpoint URLs); without this every
+    // MCP/A2A SDK first-connect probe re-fetched from origin. Matches
+    // the apex .well-known/agents.json cache policy.
+    void reply.header(
+      "cache-control",
+      "public, max-age=300, s-maxage=300, stale-while-revalidate=86400",
+    );
     // Derive the absolute base URL from the incoming request. Previously
     // this fell back to `http://${HOST}:${PORT}` when PUBLIC_BASE_URL was
     // unset, which leaked the docker-internal bind address
