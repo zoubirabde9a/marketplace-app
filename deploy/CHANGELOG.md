@@ -448,3 +448,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — add Cache-Control 1h to /manifest.webmanifest (was Next default max-age=0); PWA installers + Lighthouse audits no longer hit origin per fetch
 
 2026-05-11 · vps-eu · web rebuild — <html lang=fr> + og:locale=fr_DZ (alt ar_DZ, en_US) — catalog content is overwhelmingly French (Ouedkniss source); en mismatched the actual language signal Google uses to match French queries
+
+2026-05-11 · vps-eu · web rebuild — product page: suppress 'price=0' from meta description (now 'Prix sur demande'), og:price/product:price, and JSON-LD Offer when no variant has a positive price (Ouedkniss 'Prix sur demande' listings, cars/real-estate/services)
