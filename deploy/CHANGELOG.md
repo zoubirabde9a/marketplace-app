@@ -535,3 +535,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 2026-05-11 · vps-eu · web rebuild — product page OG extension tags switched from <meta name='og:*'> to <meta property='og:*'> (Facebook spec requires property= and silently ignores name=; was missing og:type=product + product:* on every share card)
 
 2026-05-11 · vps-eu · web rebuild — og:country-name switched site-wide from <meta name=> to <meta property=> (Facebook required attribute; same bug class as yesterday's product OG-extension fix). Geo.region / geo.placename / ICBM stay name= per their own convention
+
+2026-05-11 · vps-eu · web rebuild — product meta description structured-fallback threshold raised from 0 → 40 chars (was passing tiny 16-char Arabic seller blurbs through to all three meta description channels for major listings like a Volkswagen T-Roc); fallback labels localised (marque/de instead of brand/from)
