@@ -8,10 +8,15 @@ import { requirePrincipal } from "../middleware/auth.js";
 import type { SellerRepo, SellerRecord } from "../repos/seller.js";
 
 const CreateSellerSchema = z.object({
-  displayName: z.string().min(1).max(120),
-  phone: sellerDomain.SellerPhoneSchema.optional(),
+  displayName: z.string().min(2).max(120),
+  // Phone + country are required at the API layer (best-practice marketplace minimums).
+  phone: sellerDomain.SellerPhoneSchema,
+  countryCode: z.string().length(2).transform((v) => v.toUpperCase()),
   whatsapp: sellerDomain.SellerWhatsappSchema.optional(),
   website: sellerDomain.SellerWebsiteSchema.optional(),
+  description: z.string().min(20).max(1000).optional(),
+  supportEmail: z.string().email().optional(),
+  city: z.string().min(1).max(120).optional(),
 });
 
 const UpdateSellerContactSchema = z.object({
@@ -33,9 +38,21 @@ function shapeSellerPublic(s: SellerRecord, productCount: number): Record<string
     displayName: s.displayName,
     ownerAgentId: s.ownerAgentId,
     productCount,
+    // Legacy single-value mirrors of the first/primary number. Kept so
+    // existing clients keep working; new clients should read `phones`.
     phone: s.phone ?? null,
     whatsapp: s.whatsapp ?? null,
+    phones: s.phones.map((p) => ({
+      phone: p.phoneE164,
+      isWhatsapp: p.isWhatsapp,
+      isViber: p.isViber,
+      isPrimary: p.isPrimary,
+    })),
     website: s.website ?? null,
+    description: s.description ?? null,
+    supportEmail: s.supportEmail ?? null,
+    city: s.city ?? null,
+    countryCode: s.countryCode ?? null,
     createdAt: new Date(s.createdAt).toISOString(),
   };
 }
@@ -47,20 +64,16 @@ export async function registerSellerRoutes(app: FastifyInstance, sellers: Seller
     const seller = await sellers.create({
       displayName: body.displayName,
       ownerAgentId: principal.agentId,
-      ...(body.phone !== undefined ? { phone: body.phone } : {}),
+      phone: body.phone,
+      countryCode: body.countryCode,
       ...(body.whatsapp !== undefined ? { whatsapp: body.whatsapp } : {}),
       ...(body.website !== undefined ? { website: body.website } : {}),
+      ...(body.description !== undefined ? { description: body.description } : {}),
+      ...(body.supportEmail !== undefined ? { supportEmail: body.supportEmail } : {}),
+      ...(body.city !== undefined ? { city: body.city } : {}),
     });
     void reply.code(201);
-    return {
-      sellerId: seller.sellerId,
-      displayName: seller.displayName,
-      ownerAgentId: seller.ownerAgentId,
-      phone: seller.phone ?? null,
-      whatsapp: seller.whatsapp ?? null,
-      website: seller.website ?? null,
-      createdAt: new Date(seller.createdAt).toISOString(),
-    };
+    return shapeSellerPublic(seller, 0);
   });
 
   app.patch<{ Params: { id: string } }>("/v1/sellers/:id", async (req) => {
@@ -76,7 +89,16 @@ export async function registerSellerRoutes(app: FastifyInstance, sellers: Seller
     return shapeSellerPublic(updated, await sellers.countProducts(updated.sellerId));
   });
 
-  app.get("/v1/sellers", async (req) => {
+  app.get("/v1/sellers", async (req, reply) => {
+    // Mirrors /v1/products cache policy. Sellers list is public-readable
+    // per agents.json; anonymous reads are edge-cacheable for 60s, auth'd
+    // calls stay private. See routes/products.ts for the rationale.
+    const agentId = req.principal?.agentId ?? "anonymous";
+    if (agentId === "anonymous") {
+      void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
+    } else {
+      void reply.header("cache-control", "private, no-store");
+    }
     const params = ListSellersQuerySchema.parse(req.query);
     const all = await sellers.list();
     let filtered = params.q
@@ -99,7 +121,13 @@ export async function registerSellerRoutes(app: FastifyInstance, sellers: Seller
     };
   });
 
-  app.get<{ Params: { id: string } }>("/v1/sellers/:id", async (req) => {
+  app.get<{ Params: { id: string } }>("/v1/sellers/:id", async (req, reply) => {
+    const agentId = req.principal?.agentId ?? "anonymous";
+    if (agentId === "anonymous") {
+      void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
+    } else {
+      void reply.header("cache-control", "private, no-store");
+    }
     const s = await sellers.get(req.params.id);
     if (!s) throw new NotFoundError("seller", req.params.id);
     return shapeSellerPublic(s, await sellers.countProducts(s.sellerId));

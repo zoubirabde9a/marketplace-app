@@ -411,7 +411,13 @@ export async function registerProductRoutes(
     return snap ? { ...body, ...snap } : body;
   });
 
-  app.get("/v1/products/_batch", async (req) => {
+  app.get("/v1/products/_batch", async (req, reply) => {
+    const agentId = req.principal?.agentId ?? "anonymous";
+    if (agentId === "anonymous") {
+      void reply.header("cache-control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
+    } else {
+      void reply.header("cache-control", "private, no-store");
+    }
     const params = BatchGetQuerySchema.parse(req.query);
     const found = await reader.getProductsByIds(params.id);
     const base = resolveBaseUrl(req as unknown as { protocol: string; hostname: string; headers: Record<string, unknown> });
