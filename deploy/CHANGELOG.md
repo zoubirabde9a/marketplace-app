@@ -436,3 +436,5 @@ Added human authentication to the marketplace observer plus an agent-issued one-
 - Outstanding bug: /product/<unknown-id> still returns HTTP 200 with the not-found body (Next.js 15.1.6 streaming-vs-notFound() known issue). Body is correct, only HTTP status is wrong.
 
 2026-05-11 · vps-eu · web rebuild — add Cache-Control: public, s-maxage=300, SWR=1800 to /sitemap.xml · was max-age=0 must-revalidate (Next dynamic-route default), every crawler hit reached origin; now Cloudflare can cache between crawls
+
+2026-05-11 · vps-eu · web rebuild — add Cache-Control 1h to /manifest.webmanifest (was Next default max-age=0); PWA installers + Lighthouse audits no longer hit origin per fetch
