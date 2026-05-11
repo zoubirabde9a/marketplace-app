@@ -46,7 +46,7 @@
     "robots_txt": "https://teno-store.com/robots.txt",
     "category_landing": "https://teno-store.com/search?category={slug}",
     "brand_landing": "https://teno-store.com/search?brand={brand}",
-    "seller_landing": "https://teno-store.com/search?sellerId={uuid}",
+    "seller_landing": "https://teno-store.com/store/{uuid}",
     "free_text_search": "https://teno-store.com/search?q={query}"
   },
   "protocols": {

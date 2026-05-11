@@ -38,8 +38,9 @@
   - Maison & Déco — `/search?category=maison`,
     `/search?category=decoration`, `/search?category=salon`
 - Brand landings: `/search?brand=<Brand>` (e.g. Apple, Samsung, Xiaomi, HP, LG).
-- Seller landings: `/search?sellerId=<uuid>` — each Algerian seller's full
-  storefront on one indexable URL.
+- Seller landings: `/store/<uuid>` — each Algerian seller's full storefront
+  on one indexable URL. The older `/search?sellerId=<uuid>` form 308-redirects
+  here for backward-compat (commit bb8be2a).
 - Free-text search results (`/search?q=<query>`) are noindex,follow — agents
   can use them but they are not surfaced as separate indexed landings.
 
