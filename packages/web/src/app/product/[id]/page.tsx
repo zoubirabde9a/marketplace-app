@@ -23,6 +23,43 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").r
 // Match feed.xml's MIN_REAL_PRICE_MINOR.
 const MIN_REAL_PRICE_MINOR = 10000;
 
+// Min length for the seller-provided description before we trust it as a
+// SERP/JSON-LD/social preview. Below this, fall back to the structured
+// French description built from validated catalog fields.
+const MIN_USEFUL_DESC_CHARS = 40;
+
+// Shared description builder — used both by generateMetadata (SERP +
+// social preview) and the page body's Product JSON-LD `description`
+// field. Without this, the JSON-LD payload was shipping the raw 4-word
+// Arabic seller body ("سيارة ماشاء الله") on a Volkswagen T-Roc page;
+// Google product rich-cards parse JSON-LD `description` directly.
+function buildProductDescription(args: {
+  fullTitle: string;
+  cleanedDesc: string;
+  brand: string | null | undefined;
+  sellerDisplayName: string | null | undefined;
+  variants: ReadonlyArray<{ priceMinor?: string; currency?: string }>;
+}): string {
+  if (args.cleanedDesc && args.cleanedDesc.length >= MIN_USEFUL_DESC_CHARS) {
+    return args.cleanedDesc;
+  }
+  const parts: string[] = [args.fullTitle];
+  if (args.brand) parts.push(`marque ${args.brand}`);
+  if (args.sellerDisplayName) parts.push(`de ${args.sellerDisplayName}`);
+  const lowest = [...args.variants].sort(
+    (a, b) => Number(a.priceMinor) - Number(b.priceMinor),
+  )[0];
+  if (lowest) {
+    const n = Number(lowest.priceMinor);
+    if (Number.isFinite(n) && n >= MIN_REAL_PRICE_MINOR) {
+      parts.push(`${(n / 100).toLocaleString("fr-DZ")} ${lowest.currency}`);
+    } else {
+      parts.push("Prix sur demande");
+    }
+  }
+  return `${parts.join(" · ")} — annonce sur Teno Store, marketplace algérien.`;
+}
+
 interface Params { id: string }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -63,45 +100,16 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     const space = cut.lastIndexOf(" ");
     return (space > 80 ? cut.slice(0, space) : cut).replace(/[\s\p{P}\p{S}]+$/u, "") + "…";
   })();
-  // Live probe found products that ship a too-short meta description: 0-char
-  // (seller posted no body, or body was nothing but emoji stripped by the
-  // punctuation regex) AND minimal short seller blurbs like "سيارة ماشاء الله"
-  // (16 chars, 'a car, mashallah') flowing through to <meta name=description>
-  // on a Volkswagen T-Roc page — Google SERP snippet ~155 chars, anything
-  // below ~40 looks like missing/broken data and Google falls back to
-  // scraping the page body (usually grabs the breadcrumb + footer chips).
-  // Threshold: 40 chars triggers the structured fallback. Below that,
-  // build a richer description from title/brand/seller/price — every word
-  // in this fallback is from validated catalog data.
-  const MIN_USEFUL_DESC_CHARS = 40;
-  const desc = cleanedDesc && cleanedDesc.length >= MIN_USEFUL_DESC_CHARS
-    ? cleanedDesc
-    : (() => {
-        const parts: string[] = [];
-        parts.push(fullTitle);
-        // French labels — document is lang=fr (DZD-priced products always
-        // have contentLang=fr below). 'marque' / 'de' match the SliceIntro
-        // and feed-summary phrasing.
-        if (p.brand) parts.push(`marque ${p.brand}`);
-        if (p.sellerDisplayName) parts.push(`de ${p.sellerDisplayName}`);
-        const lowest = [...p.variants].sort(
-          (a, b) => Number(a.priceMinor) - Number(b.priceMinor),
-        )[0];
-        if (lowest) {
-          // Ouedkniss often omits price ("Prix sur demande" / negotiate). Emitting
-          // "0 DZD" in the meta description suggests the item is free and makes
-          // for an embarrassing SERP snippet. Substitute the French convention
-          // when no real price exists.
-          const priceMinorNum = Number(lowest.priceMinor);
-          if (Number.isFinite(priceMinorNum) && priceMinorNum >= MIN_REAL_PRICE_MINOR) {
-            const price = (priceMinorNum / 100).toLocaleString("fr-DZ");
-            parts.push(`${price} ${lowest.currency}`);
-          } else {
-            parts.push("Prix sur demande");
-          }
-        }
-        return `${parts.join(" · ")} — annonce sur Teno Store, marketplace algérien.`;
-      })();
+  // Shared structured-description helper (module scope) — also consumed by
+  // ProductPage for the JSON-LD `description` field, so Google's product
+  // rich-card snippet doesn't ship the raw Arabic seller blurb either.
+  const desc = buildProductDescription({
+    fullTitle,
+    cleanedDesc: cleanedDesc ?? "",
+    brand: p.brand,
+    sellerDisplayName: p.sellerDisplayName,
+    variants: p.variants,
+  });
   // Resolve full hero metadata (width/height/alt) so social previews can size
   // the image without a round-trip and avoid Facebook "image too small" warnings.
   const heroImage = p.heroImageUrl
@@ -358,9 +366,36 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     productID: p.productId,
     url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
   };
-  if (p.description?.value) productJsonLd.description = p.description.value;
+  // JSON-LD description feeds Google product rich-cards. Use the same
+  // structured fallback we built for <meta description> when the seller
+  // body is too short / unhelpful (e.g. a 4-word Arabic blurb on a major
+  // listing). Compute via the shared buildProductDescription helper so
+  // SERP meta + JSON-LD stay aligned.
+  const ldCleanedDesc = p.description?.value
+    ?.replace(/^[\s\p{P}\p{S}]+/u, "")
+    .trim() ?? "";
+  productJsonLd.description = buildProductDescription({
+    fullTitle: p.title.value,
+    cleanedDesc: ldCleanedDesc,
+    brand: p.brand,
+    sellerDisplayName: p.sellerDisplayName,
+    variants: p.variants,
+  });
   if (p.images && p.images.length > 0) {
-    productJsonLd.image = p.images.map((img) => upscaleOuedknissForCrawler(img.url));
+    // Deduplicate by URL — the API often returns the hero as both
+    // p.heroImageUrl AND the first entry in p.images, so the gallery
+    // array starts with a duplicate of the hero. JSON-LD readers
+    // (Google's parser, AI agents) shouldn't see the same URL twice.
+    const seen = new Set<string>();
+    const urls: string[] = [];
+    for (const img of p.images) {
+      const u = upscaleOuedknissForCrawler(img.url);
+      if (!seen.has(u)) {
+        seen.add(u);
+        urls.push(u);
+      }
+    }
+    if (urls.length > 0) productJsonLd.image = urls;
   } else if (p.heroImageUrl) {
     productJsonLd.image = [upscaleOuedknissForCrawler(p.heroImageUrl)];
   }
