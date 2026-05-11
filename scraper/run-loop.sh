@@ -30,6 +30,13 @@
 # Options:
 #   --seller-id UUID         target seller (default: $SELLER_ID env)
 #   --category SLUG          Ouedkniss category (default: telephones)
+#   --categories LIST        Comma-separated category slugs to round-robin
+#                            across runs (one category per invocation). Picks
+#                            the next slug via a rotation counter stored in
+#                            the state file under "_rotation/<seller>". Each
+#                            category keeps its own next_start_page entry,
+#                            so progress is preserved across rotations.
+#                            Overrides --category if both are passed.
 #   --pages N                index pages to walk (default: 2)
 #   --max-listings N         hard cap on listings seeded per run (default: 50)
 #   --max-products N         after seeding, prune oldest products for this
@@ -85,6 +92,7 @@ PG_CONTAINER="marketplace-postgres"
 
 SELLER_ID_ARG=""
 CATEGORY_ARG=""
+CATEGORIES_ARG=""
 PAGES_ARG=""
 MAX_LISTINGS_ARG=""
 MAX_PRODUCTS_ARG=""
@@ -108,6 +116,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --seller-id)         SELLER_ID_ARG="$2"; shift 2 ;;
     --category)          CATEGORY_ARG="$2"; shift 2 ;;
+    --categories)        CATEGORIES_ARG="$2"; shift 2 ;;
     --pages)             PAGES_ARG="$2"; shift 2 ;;
     --max-listings)      MAX_LISTINGS_ARG="$2"; shift 2 ;;
     --max-products)      MAX_PRODUCTS_ARG="$2"; shift 2 ;;
@@ -149,6 +158,55 @@ fi
 if [[ -z "$SELLER_ID" ]]; then
   echo "fatal: --seller-id (or SELLER_ID env) is required" >&2
   exit 2
+fi
+
+# ─── category rotation ───────────────────────────────────────────────────
+# When --categories is passed (comma-separated list), round-robin one
+# category per run using a rotation counter in the state file. Counter is
+# stored under "_rotation/<seller>" (separate from per-category page state
+# so each category keeps its own next_start_page independently).
+CATEGORIES=()
+if [[ -n "$CATEGORIES_ARG" ]]; then
+  IFS=',' read -r -a CATEGORIES <<< "$CATEGORIES_ARG"
+  # Strip whitespace from each entry.
+  for i in "${!CATEGORIES[@]}"; do
+    CATEGORIES[$i]="$(echo "${CATEGORIES[$i]}" | tr -d '[:space:]')"
+  done
+  if (( ${#CATEGORIES[@]} == 0 )); then
+    echo "fatal: --categories was empty after parsing" >&2
+    exit 2
+  fi
+  mkdir -p "$(dirname "$STATE_FILE")"
+  ROT_INDEX="$(python3 -c "
+import json, sys
+path = '$STATE_FILE'
+seller = '$SELLER_ID'
+try:
+    d = json.load(open(path))
+except Exception:
+    d = {}
+rot = d.get('_rotation', {})
+print(int(rot.get(seller, 0)))
+")"
+  N="${#CATEGORIES[@]}"
+  PICK_INDEX=$(( ROT_INDEX % N ))
+  CATEGORY="${CATEGORIES[$PICK_INDEX]}"
+  NEXT_ROT=$(( (ROT_INDEX + 1) % N ))
+  python3 -c "
+import json, os
+path = '$STATE_FILE'
+seller = '$SELLER_ID'
+nxt = $NEXT_ROT
+try:
+    d = json.load(open(path))
+except Exception:
+    d = {}
+d.setdefault('_rotation', {})[seller] = nxt
+tmp = path + '.tmp'
+json.dump(d, open(tmp, 'w'))
+os.replace(tmp, path)
+"
+  echo "rotation: picked '$CATEGORY' (index $PICK_INDEX/$N, next=$NEXT_ROT)" >&2
 fi
 
 mkdir -p "$LOG_DIR"
