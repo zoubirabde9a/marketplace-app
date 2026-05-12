@@ -161,6 +161,37 @@ export default async function StorePage({ params }: { params: Promise<Params> })
         },
       };
     })()),
+    // Currency + region entity signals. Both are derived from
+    // seller.countryCode (the same whitelist as the PostalAddress block
+    // above) so we only assert what we actually know — never emit DZD for a
+    // seller whose country we couldn't validate, and never emit a
+    // Country areaServed for an unknown region. For Algerian sellers
+    // (the vast majority of the catalog) this gives Google's commerce
+    // graph + AI search engines a per-store hook to cluster Teno Store
+    // sellers under queries like "Algerian online stores / boutiques en
+    // ligne Algérie / vente en DZD" without depending on every individual
+    // Offer's priceCurrency being scanned.
+    ...((() => {
+      const ccPaired: Record<string, string> = {
+        DZ: "Algeria",
+        FR: "France",
+        TN: "Tunisia",
+        MA: "Morocco",
+      };
+      const ccCurrency: Record<string, string> = {
+        DZ: "DZD",
+        FR: "EUR",
+        TN: "TND",
+        MA: "MAD",
+      };
+      const cc = seller.countryCode?.toUpperCase();
+      const countryName = cc ? ccPaired[cc] : undefined;
+      const currency = cc ? ccCurrency[cc] : undefined;
+      const out: Record<string, unknown> = {};
+      if (currency) out.currenciesAccepted = currency;
+      if (countryName) out.areaServed = { "@type": "Country", name: countryName };
+      return out;
+    })()),
   };
 
   // ItemList of this seller's products. The /search?sellerId=... page (now
