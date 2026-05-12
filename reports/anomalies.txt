@@ -14,6 +14,50 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:19 UTC — fourth sweep
 ------------------------------------
 
+2026-05-12 10:25 UTC — fifth sweep
+-----------------------------------
+
+[12] PERF — Dead b-tree index + missing GIN on category jsonb (MEDIUM)
+   • catalog.products.category_id (uuid FK) is NULL for all 77,495 rows;
+     catalog.categories table is empty. The existing b-tree
+     products_category_idx therefore indexes nothing usable.
+   • Real category data lives in products.category_ids jsonb (e.g.
+     ["telephones"], ["informatique"]) and has no index. The category
+     distribution: 30,884 phones, 10,386 clothing, 10,001 electronics,
+     9,050 computing, 8,962 real estate — clearly indexable workload.
+   • FIX (applied locally): migration 0010_products_category_ids_gin.sql
+     drops the dead b-tree, adds GIN(category_ids jsonb_path_ops). Needs
+     operator to apply on prod with CONCURRENTLY:
+       CREATE INDEX CONCURRENTLY IF NOT EXISTS products_category_ids_gin
+         ON catalog.products USING gin (category_ids jsonb_path_ops);
+       DROP INDEX CONCURRENTLY IF EXISTS catalog.products_category_idx;
+
+[13] DATA — Every product has moderation_status='pending' (INFO)
+   • All 77,495 rows are moderation_status='pending', status='active'.
+     For a scraped catalog that's expected, but worth confirming that
+     "pending" doesn't hide listings in the UI through any filter. If
+     the storefront filters to moderation_status IN ('approved') it
+     would show 0 products — clearly it doesn't, since the home page
+     renders. But internal admin views may be misleading. Worth a doc
+     line in deploy/STATUS.md.
+
+[14] OPS — Intermittent SSH timeouts to vps-eu from this client (INFO)
+   • Two `ssh: connect to host 152.53.147.77 port 22: Connection
+     timed out` events seen this iteration; reconnect succeeded
+     immediately after. Could be local ISP, fail2ban backoff after
+     repeated bash quote errors, or netcup-side rate limiting. If it
+     repeats, check /var/log/auth.log and fail2ban-client status.
+
+[15] DATA — First product in DB is a real-estate (hangar) listing under
+     a "Smart Phone DZ" seller (INFO)
+   • SELECT id, title FROM catalog.products LIMIT 1; returned
+     "Location Hangar - Usine Boumerdès Boudouaou". The seller ID is
+     the smartphone one used by the scraper loop. Either the seller
+     also lists real-estate, the scraper mis-categorized once, or the
+     listing was created manually. Curiosity item, not a bug — flagging
+     because the seller's display name and the listing topic don't
+     match, which is the kind of thing buyers may notice.
+
 [10] PERF — Product detail steady-state 380–555ms with no warm path (HIGH)
    • Three sequential SSR fetches of https://teno-store.com/product/<id>
      measured 545ms, 381ms, 555ms — there's no warm path, every request

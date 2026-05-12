@@ -113,9 +113,15 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   // Fetch up to 60 listings for this seller. We rely on the same /v1/products
   // search surface the search page uses (sellerId filter); that means
   // counterfeit-risk, hero image, and price-range rendering match exactly.
-  const listings = await searchProducts({ sellerId: [seller.sellerId], limit: 60 }).catch(
-    () => null,
-  );
+  //
+  // Short-circuit when the seller has no products yet: the API's no-q +
+  // sellerId path falls through to a full catalog loadAll() (~77k products
+  // when cold), turning a fresh-seller storefront into a 13–20s render.
+  // Skipping the call drops that to a near-instant empty state. Measured
+  // 2026-05-12 on a new seller's first hit: 21s → ~250ms.
+  const listings = seller.productCount === 0
+    ? null
+    : await searchProducts({ sellerId: [seller.sellerId], limit: 60 }).catch(() => null);
   const hits = listings?.data ?? [];
   const totalEstimate = listings?.pagination.totalEstimate ?? 0;
 
