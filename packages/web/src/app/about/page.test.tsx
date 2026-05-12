@@ -30,6 +30,30 @@ describe("AboutPage", () => {
     expect(payload.about?.["@id"]).toMatch(/#organization$/);
   });
 
+  it("emits FAQPage JSON-LD whose Q&A pairs all appear verbatim in the rendered body", () => {
+    const { container } = render(AboutPage());
+    const scripts = Array.from(container.querySelectorAll('script[type="application/ld+json"]'));
+    const faq = scripts
+      .map((s) => JSON.parse(s.innerHTML))
+      .find((d) => d["@type"] === "FAQPage");
+    expect(faq).toBeDefined();
+    expect(faq.inLanguage).toBe("fr");
+    expect(faq.isPartOf?.["@id"]).toMatch(/#website$/);
+    expect(Array.isArray(faq.mainEntity)).toBe(true);
+    expect(faq.mainEntity.length).toBeGreaterThanOrEqual(4);
+    expect(faq.mainEntity.length).toBeLessThanOrEqual(8);
+    // Google requires every FAQ answer to be visible on the page. Verify by
+    // searching the rendered text — mismatched structured/visible content
+    // triggers manual actions.
+    const bodyText = container.textContent ?? "";
+    for (const entry of faq.mainEntity) {
+      expect(entry["@type"]).toBe("Question");
+      expect(entry.acceptedAnswer?.["@type"]).toBe("Answer");
+      expect(bodyText).toContain(entry.name);
+      expect(bodyText).toContain(entry.acceptedAnswer.text);
+    }
+  });
+
   it("includes internal links to /search and /seller", () => {
     const { container } = render(AboutPage());
     const links = Array.from(container.querySelectorAll("a")).map((a) => a.getAttribute("href"));

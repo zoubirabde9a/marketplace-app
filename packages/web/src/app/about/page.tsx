@@ -34,6 +34,55 @@ export default function AboutPage() {
     isPartOf: { "@id": `${SITE_URL}/#website` },
     about: { "@id": `${SITE_URL}/#organization` },
   };
+  // Visible buyer FAQ — paired 1:1 with the FAQPage JSON-LD below. Google's
+  // FAQ rich-result guidelines require every Question.acceptedAnswer.text to
+  // appear in the rendered page body; mismatched structured/visible content
+  // triggers a manual action. Keeping the source of truth in one array means
+  // the visible <section> and the JSON-LD can never drift.
+  //
+  // Audience: French-speaking Algerian buyers + AI search engines
+  // (ChatGPT/Perplexity/Bing Chat) that parse FAQPage to answer
+  // "Qu'est-ce que Teno Store ?" / "Is Teno Store legit?" style queries
+  // directly from the structured data. Six entries — Google's FAQ docs
+  // warn that >8 entries per page can be flagged as spammy.
+  const buyerFaq: ReadonlyArray<{ q: string; a: string }> = [
+    {
+      q: "Qu'est-ce que Teno Store ?",
+      a: "Teno Store est un marketplace algérien avec des milliers d'annonces en direct — téléphones, informatique, électroménager, mode, véhicules et plus — issues de vrais vendeurs algériens. Les prix sont affichés en dinars algériens (DZD) et le catalogue est actualisé en continu.",
+    },
+    {
+      q: "Comment acheter un produit sur Teno Store ?",
+      a: "Parcourez le catalogue, ouvrez une annonce, puis contactez directement le vendeur via les boutons d'appel, WhatsApp ou Viber affichés sur la page produit. Vous pouvez aussi déléguer un budget d'achat à un agent IA qui négocie et achète pour vous via les protocoles MCP, A2A et AP2.",
+    },
+    {
+      q: "Teno Store livre-t-il partout en Algérie ?",
+      a: "La livraison dépend du vendeur. Chaque annonce indique les wilayas couvertes par le vendeur — la plupart livrent dans toute l'Algérie via les services de colis nationaux, certains se limitent à leur ville (Alger, Oran, Annaba, Constantine, Sétif, Blida).",
+    },
+    {
+      q: "Comment savoir si un vendeur est fiable ?",
+      a: "Chaque annonce affiche un indicateur de risque de contrefaçon visible, le nom du vendeur, ses coordonnées vérifiées (téléphone, WhatsApp, site web) et un lien vers sa boutique complète. Les annonces suspectes ou en cours de vérification sont clairement étiquetées dans l'interface et dans les données structurées.",
+    },
+    {
+      q: "Puis-je vendre sur Teno Store ?",
+      a: "Oui. Inscrivez-vous gratuitement comme vendeur, publiez vos annonces via le tableau de bord vendeur en libre-service, et atteignez à la fois les acheteurs humains et les agents IA. Les prix se fixent par variante en DZD, et chaque annonce est exposée simultanément en HTML, REST, MCP et A2A.",
+    },
+    {
+      q: "Teno Store accepte-t-il les agents IA ?",
+      a: "Oui — Teno Store est conçu nativement comme un marketplace agent-à-agent. Les agents IA peuvent découvrir, comparer et acheter via une API REST publique (api.teno-store.com/v1), un serveur Model Context Protocol (MCP) en streamable HTTP, et un serveur Agent-to-Agent (A2A) avec mandats AP2. La découverte se fait via /.well-known/agents.json.",
+    },
+  ];
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${SITE_URL}/about#faq`,
+    inLanguage: "fr",
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    mainEntity: buyerFaq.map(({ q, a }) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: { "@type": "Answer", text: a },
+    })),
+  };
   // BreadcrumbList helps Google show "Home > About" in SERP and reinforces
   // the page's depth in the site structure.
   const breadcrumbJsonLd = {
@@ -53,6 +102,10 @@ export default function AboutPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(aboutJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(faqJsonLd) }}
       />
       {/* French primary section. Page-level <html lang="fr"> at the layout
           level matches this block. Below the French intro, an
@@ -99,6 +152,19 @@ export default function AboutPage() {
             S&rsquo;inscrire pour vendre →
           </Link>
         </p>
+        <section aria-labelledby="faq-heading" className="mt-12">
+          <h2 id="faq-heading" className="text-2xl font-semibold tracking-tight text-ink mb-4">
+            Questions fréquentes
+          </h2>
+          <dl className="space-y-5">
+            {buyerFaq.map(({ q, a }) => (
+              <div key={q}>
+                <dt className="text-base font-medium text-ink mb-1">{q}</dt>
+                <dd className="leading-relaxed text-ink-soft">{a}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
         <h2 className="text-xl font-medium text-ink mt-10 mb-2">Commencer</h2>
         <p className="leading-relaxed">
           <Link href="/search" className="text-accent hover:underline">
