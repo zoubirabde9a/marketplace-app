@@ -20,6 +20,33 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:30 UTC — sixth sweep
 -----------------------------------
 
+2026-05-12 10:35 UTC — seventh sweep
+-------------------------------------
+
+[20] SECURITY — Order access tokens compared with === (LOW; fixed)
+   • packages/api/src/routes/orders.ts:103 compared the X-Mp-Order-Token
+     header against the stored accessToken using `===`. String equality
+     leaks length+prefix-match information through timing. The token is
+     192-bit (24 random bytes, base64url) so remote brute-force is
+     impractical even with a clean timing oracle, but the safer compare
+     is a one-line standard fix.
+   • Same defect in packages/mcp-server/src/tools/buyer.ts:533 for the
+     order.get MCP tool path.
+   • FIX (applied): both call sites now use crypto.timingSafeEqual with
+     a length check first (timingSafeEqual throws on length mismatch,
+     which would itself be a timing oracle). Tests still green (42/42).
+
+[21] CHECK — Unauthenticated probe of write endpoints behaves correctly
+   • Quick black-box probe on prod:
+     POST /v1/products            → 401 (auth required ✓)
+     POST /v1/cart/items          → 400 (intentionally anonymous ✓)
+     POST /v1/checkout/confirm    → 400 (intentionally anonymous ✓)
+     POST /v1/sellers/:id/orders  → 401 (seller-scoped ✓)
+     GET  /v1/sellers/:id/orders  → 401 ✓
+   • Cart/checkout being anonymous is intentional: buyers don't log in.
+     The accessToken returned at checkout.confirm gates later order
+     reads. With [20] fixed, that gate is now best-practice-correct.
+
 [16] SEO — Sitemap.xml cold rebuild took 34 seconds (MEDIUM)
    • Caddy access log shows GET /sitemap.xml at 34.21s. Googlebot/Bingbot
      have ~30-60s timeouts on sitemap fetches; a 34s response is at the
