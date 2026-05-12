@@ -23,8 +23,50 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 11:18 UTC — fourteenth sweep
-----------------------------------------
+2026-05-12 11:24 UTC — fifteenth sweep
+---------------------------------------
+
+[41] UX / i18n — Checkout + order-confirmation pages localised (FIXED)
+   • Completed the second + third halves of [38]/[39]: the entire
+     buyer money path (/cart → /checkout → /order/:id) is now French.
+   • packages/web/src/app/checkout/page.tsx — translated form labels
+     (Nom complet / Téléphone / Région de livraison (wilaya)),
+     button labels (Passer la commande / Retour au panier),
+     error messages (the err=missing → "Veuillez renseigner votre
+     nom, téléphone et région."; generic backend error →
+     "Désolé, une erreur est survenue lors de la commande.
+     Veuillez réessayer."), COD blurb (single + multi-seller
+     variants), summary heading (Récapitulatif de commande), and
+     the delivery footnote. Added lang="fr" at section root.
+   • packages/web/src/app/order/[id]/page.tsx — operator translated
+     this in parallel during the iteration; the order confirmation
+     page now reads as "Commande passée #PN-…", "Contact de
+     livraison", "Articles", "Sous-total / Livraison / TVA / Total",
+     "Continuer mes achats". All consistent with my cart/checkout
+     copy.
+   • actions.ts has no hardcoded user-visible strings (it sets
+     err=missing or pipes raw backend errors into a URL query
+     param which page.tsx already translates to the user-friendly
+     French message above), so no changes needed there.
+
+[42] OPS — DB migrations 0009 + 0010 still not applied
+   • Re-probed: pg_indexes on catalog.products has 0 indexes matching
+     %seller_created% or %category_ids%. /search?category=maison cold
+     measured at 8.36s — still the seq-scan + jsonb-containment hit.
+   • Runbook (deploy/runbooks/07-deploy-changes.md:38) says the apply
+     command is:
+       docker compose exec api pnpm --filter @marketplace/db db:migrate
+     This is the only blocker on closing anomalies [1], [12], [17],
+     [33], [37]. Code wins from earlier iterations are limited by it.
+
+[43] OBS — Operator picked up cart i18n + checkout metadata
+   • Commits 641b170 (EmptyState), 8488aaa (cart/page), 6f2d96f
+     (checkout/page) confirm cart+empty-state French copy is live in
+     git, and the operator also translated /order/[id] in parallel.
+     With this iteration's checkout/page changes committed too, the
+     buyer-money-path i18n is end-to-end consistent.
+
+
 
 [38] UX / i18n — Cart page is 100% English on a French marketplace (FIXED)
    • The buyer's path to revenue (/cart, /checkout) is entirely in

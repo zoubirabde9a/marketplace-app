@@ -31,7 +31,10 @@ async function addAction(formData: FormData): Promise<void> {
 export function AddToCart({
   variantId,
   inStock,
-  label = "Add to cart",
+  // French default to match og:locale=fr_DZ. Callers (product card / detail /
+  // "Buy now" CTA on /product/[id]) can still override per surface — see
+  // [38]–[41] for the locale rationale and i18n audit.
+  label = "Ajouter au panier",
   redirectTo = "/cart",
   className,
 }: {
@@ -51,7 +54,7 @@ export function AddToCart({
         disabled={!inStock}
         className="inline-flex items-center justify-center h-10 px-5 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition"
       >
-        {inStock ? label : "Out of stock"}
+        {inStock ? label : "Rupture de stock"}
       </button>
     </form>
   );
