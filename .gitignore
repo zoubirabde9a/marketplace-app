@@ -45,3 +45,10 @@ yarn-error.log*
 # don't keep showing up in `git status`.
 /C[:\357][\200\272]Users*
 /UsersmahllAppDataLocalTemp*
+
+# Local scratch: downloaded HTML page dumps and copies of the live sitemap,
+# used for ad-hoc SEO/UX inspection. The canonical sitemap is generated
+# dynamically by packages/web/src/app/sitemap.ts.
+/*.html
+/sitemap.xml
+/packages/web/*.html
