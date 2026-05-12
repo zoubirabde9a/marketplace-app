@@ -17,6 +17,57 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:25 UTC — fifth sweep
 -----------------------------------
 
+2026-05-12 10:30 UTC — sixth sweep
+-----------------------------------
+
+[16] SEO — Sitemap.xml cold rebuild took 34 seconds (MEDIUM)
+   • Caddy access log shows GET /sitemap.xml at 34.21s. Googlebot/Bingbot
+     have ~30-60s timeouts on sitemap fetches; a 34s response is at the
+     edge of crawl-timeout territory.
+   • Cause is structural: packages/web/src/app/sitemap.ts paginates
+     /v1/products 500 pages × 100 IDs to build URL+image entries. Each
+     uncached page fetch lands on the loadAll path (see anomaly [5]).
+     The in-memory SWR cache (30 min fresh + 4 h stale) covers steady
+     state; the 34s is a cold start or a >4h-stale rebuild.
+   • The previous TTL bump from iteration 3 (BROWSE_TTL_MS 90s→300s)
+     reduces miss probability per page, but rebuilds at container start
+     remain expensive. Proper fix is a dedicated sitemap-IDs endpoint
+     that does one SQL query (SELECT id, posted_at, updated_at FROM
+     catalog.products) and skips the JS hydrate pipeline. Logged for
+     planning; not urgent given SWR.
+
+[17] PERF — Category search took 13.94s (HIGH; root cause already filed)
+   • GET /search?category=maison observed at 13.94s on Caddy.
+   • Same root as anomaly [12]: the route filters by category_ids @>
+     '["maison"]' but there is no index on category_ids, so PG seq-scans
+     77k rows + jsonb-containment-checks each. Migration 0010 (already
+     prepared this session) fixes this on apply.
+
+[18] OPS — API container restarted (intentional, not OOM)
+   • Inspect: RestartCount=0, OOMKilled=false, ExitCode=0. Started
+     ~7 min before the sweep. Memory dropped 82.7% → 76% post-restart,
+     consistent with cache/V8-heap accumulation (not a leak — restart
+     fully recovered).
+   • Two 502s on api.teno-store.com /mcp and two on teno-store.com
+     /store/<id> at the restart timestamp (ts 1778573619/30). Caddy's
+     lb_try_duration 30s is meant to absorb the recreate gap. These
+     four slipped through — possibly because the restart took longer
+     than 30s, or because the request landed in the brief window after
+     the old container exited but before Caddy's health probe had a
+     fresh upstream. Worth checking deploy/runbook for restart timing.
+
+[19] DATA — seller_phones only covers 1,490 of 19,849 sellers (INFO)
+   • Only ~7.5% of sellers have any phone record in seller.seller_phones.
+     The rest still have the legacy single phone in seller_profiles.phone.
+     Migration 0008 backfills from seller_profiles but only when the
+     legacy phone normalises cleanly to Algerian E.164 — confirms the
+     "non-canonical numbers stay only in the legacy column until the
+     next scraper run overwrites" comment in that migration.
+   • The product detail / store pages should read both sources so buyers
+     don't see "no phone" on a seller whose only number is in the legacy
+     column. Check projectOne in products.ts — sellerPhones falls back
+     to {phone, whatsapp}; verify the storefront UI surfaces those.
+
 [12] PERF — Dead b-tree index + missing GIN on category jsonb (MEDIUM)
    • catalog.products.category_id (uuid FK) is NULL for all 77,495 rows;
      catalog.categories table is empty. The existing b-tree
