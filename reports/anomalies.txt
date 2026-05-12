@@ -23,8 +23,53 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 11:24 UTC — fifteenth sweep
+2026-05-12 11:30 UTC — sixteenth sweep
 ---------------------------------------
+
+[44] UX / i18n — Highest-touch button "Add to cart" + product CTAs (FIXED)
+   • AddToCart is rendered on every product card on the home page,
+     every search/category result, every store storefront, and on
+     every product detail page (twice — primary "Add" + secondary
+     "Buy now"). All of those rendered English ("Add to cart" /
+     "Out of stock") on the French marketplace. Highest-touch
+     English button on the site.
+   • FIX (applied): packages/web/src/components/AddToCart.tsx — the
+     default `label` is now "Ajouter au panier" and the disabled
+     state is "Rupture de stock". Callers can still override per
+     surface.
+   • Product detail page fixed too (packages/web/src/app/product/
+     [id]/page.tsx):
+     - "Buy now" → "Acheter maintenant"
+     - "Add" (per-variant row button) → "Ajouter"
+     - "${n} variant${s} in stock" → "${n} variante${s} en stock"
+     - "Currently out of stock" → "Actuellement en rupture de stock"
+
+[45] i18n AUDIT — Survey of remaining English strings on user surfaces
+   • Run packages/web grep for capitalised English-looking strings:
+     - /login (sign-in page): "Sign in" — buyer-facing but rarely
+       used flow. Worth translating.
+     - /seller/* (entire seller dashboard, contact form, new product
+       form, edit product, products list): all English. Seller-facing
+       so less urgent; sellers are mostly Algerian shopkeepers but the
+       admin chrome being English doesn't break revenue.
+     - /s/[id] (agent snapshot viewer): "Agent result snapshot",
+       "What the agent saw", "What the agent created". This surface
+       is explicitly cross-audience — humans verifying what an AI did.
+       Worth keeping English given the technical context, but could
+       have French alternates.
+     - /not-found.tsx already French ("Page introuvable").
+     - / (home page): "How the agent observer works" section is
+       lang="en" by design (technical / agent audience). Confirmed
+       intentional in code (lang="en" on the section element).
+     - AgentActivity.tsx empty state ("No agent linked yet…"): is on
+       /agent — confirmed niche surface for AI agent integrators.
+       English appropriate.
+   • Buyer money path + browse / category / search / product detail
+     are now fully French. Remaining English is in surfaces aimed at
+     sellers and technically-fluent AI-agent integrators, both of
+     which have less locale sensitivity. Logged for completeness.
+
+
 
 [41] UX / i18n — Checkout + order-confirmation pages localised (FIXED)
    • Completed the second + third halves of [38]/[39]: the entire
