@@ -9,12 +9,18 @@ export const dynamic = "force-dynamic";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
 export const metadata: Metadata = {
-  // Layout template adds " · Teno Store" — "Sell on Teno Store" here
-  // would render as "Sell on Teno Store · Teno Store" (brand doubled).
-  title: "Sell",
+  // Layout template adds " · Teno Store" — bare "Vendre" avoids the brand-
+  // doubled "Vendre sur Teno Store · Teno Store" rendering. Switched from
+  // English "Sell" to French "Vendre" so the title aligns with the page's
+  // <html lang="fr"> declaration; mirrors the iter-12 /about French-ification.
+  title: "Vendre",
   description:
-    "List products on Teno Store and reach AI agents shopping on behalf of human buyers. Sign in with Google to start.",
+    "Publiez vos annonces sur Teno Store et atteignez à la fois les acheteurs algériens et les agents IA. Connectez-vous avec Google pour créer votre profil vendeur.",
   alternates: { canonical: "/seller" },
+  openGraph: {
+    locale: "fr_DZ",
+    alternateLocale: ["en_US"],
+  },
 };
 
 export default async function SellerLandingPage() {
@@ -28,10 +34,13 @@ export default async function SellerLandingPage() {
     "@type": "WebPage",
     "@id": `${SITE_URL}/seller`,
     url: `${SITE_URL}/seller`,
-    name: "Sell on Teno Store",
+    name: "Vendre sur Teno Store",
     description:
-      "Onboard as a seller on Teno Store — an agent-first Algerian marketplace. Sign in with Google to create a seller profile, list products, and have AI agents discover and transact on your inventory via MCP, A2A and AP2.",
-    inLanguage: "en",
+      "Vendez sur Teno Store, marketplace algérien agent-first. Connectez-vous avec Google pour créer votre profil vendeur, publier des annonces, et laisser les agents IA découvrir et acheter votre inventaire via MCP, A2A et AP2.",
+    // Page is now French-primary (title, H1, lede, CTA) with a small English
+    // dev-audience note kept inside a lang="en" span. Tag both so the
+    // bilingual signal lines up with the visible content.
+    inLanguage: ["fr", "en"],
     isPartOf: { "@id": `${SITE_URL}/#website` },
     about: { "@id": `${SITE_URL}/#organization` },
   };
@@ -45,7 +54,7 @@ export default async function SellerLandingPage() {
   };
 
   return (
-    <section lang="en" className="max-w-xl mx-auto pt-16 pb-24">
+    <section className="max-w-xl mx-auto pt-16 pb-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
@@ -55,26 +64,27 @@ export default async function SellerLandingPage() {
         dangerouslySetInnerHTML={{ __html: jsonLdString(sellerJsonLd) }}
       />
       <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-8 backdrop-blur">
-        <h1 className="text-3xl font-semibold tracking-tight">Sell on Teno Store</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Vendre sur Teno Store</h1>
         <p className="mt-3 text-ink-soft leading-relaxed">
-          Sign in with Google to manage your seller profile, list products, and
-          update contact details.
+          Connectez-vous avec Google pour gérer votre profil vendeur, publier
+          vos annonces et mettre à jour vos coordonnées.
         </p>
         {clientId ? (
           <div className="mt-6">
             <GoogleSignInButton clientId={clientId} />
             <noscript>
               <p className="mt-3 text-sm text-warn">
-                Sign-in requires JavaScript. Enable JavaScript or contact us at
+                La connexion nécessite JavaScript. Activez JavaScript ou
+                contactez-nous à
                 <a href="mailto:mahlledz@gmail.com" className="text-accent hover:underline ml-1">
                   mahlledz@gmail.com
                 </a>{" "}
-                to onboard manually.
+                pour vous inscrire manuellement.
               </p>
             </noscript>
           </div>
         ) : (
-          <div className="mt-6 rounded-xl border border-warn/40 bg-warn/10 p-4 text-sm text-warn">
+          <div className="mt-6 rounded-xl border border-warn/40 bg-warn/10 p-4 text-sm text-warn" lang="en">
             Google sign-in is not configured. Set{" "}
             <code className="font-mono">NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> in
             the web app environment to enable login.
@@ -84,15 +94,25 @@ export default async function SellerLandingPage() {
       <ul className="mt-8 space-y-3 text-sm text-ink-soft list-none p-0">
         <li className="flex items-start gap-3">
           <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-          <span>Reach AI agents shopping on behalf of real buyers — listings are exposed via MCP, A2A, and HTTP.</span>
+          <span>
+            Atteignez à la fois les acheteurs algériens et les agents IA qui
+            achètent pour le compte d&rsquo;humains — vos annonces sont
+            exposées via MCP, A2A et HTTP.
+          </span>
         </li>
         <li className="flex items-start gap-3">
           <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-          <span>Counterfeit-risk signals on every listing protect your brand alongside other trusted sellers.</span>
+          <span>
+            Signaux anti-contrefaçon visibles sur chaque annonce, aux côtés
+            d&rsquo;autres vendeurs de confiance.
+          </span>
         </li>
         <li className="flex items-start gap-3">
           <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-          <span>List in your own currency, set per-variant pricing, and update stock anytime from the dashboard.</span>
+          <span>
+            Prix en dinars algériens (DZD), tarification par variante, stock
+            modifiable à tout moment depuis le tableau de bord.
+          </span>
         </li>
       </ul>
     </section>

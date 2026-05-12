@@ -3,7 +3,26 @@ import type { SearchHit } from "@/lib/api";
 import { formatPrice, formatPriceRange, formatRating, formatRelativeTime } from "@/lib/format";
 import { CounterfeitBadge } from "./CounterfeitBadge";
 
-export function ProductCard({ hit, eager = false }: { hit: SearchHit; eager?: boolean }) {
+// `eager` controls loading=eager (image starts fetching immediately instead
+// of waiting for IntersectionObserver). `priority` separately controls
+// fetchPriority="high" (the browser allocates more bandwidth to this image
+// over other concurrent fetches). They were one prop before iter-23 — but
+// LCP measures the SINGLE largest visible element, so only ONE image per
+// page benefits from fetchPriority="high"; setting it on 4 cards (the
+// pre-iter-23 default for the recent strip on the home page) made the
+// browser multiplex bandwidth across 4 high-priority fetches, slowing
+// down the actual LCP candidate. Now eager spans the above-fold row
+// (loading them in parallel) but priority is reserved for the first
+// card only.
+export function ProductCard({
+  hit,
+  eager = false,
+  priority = false,
+}: {
+  hit: SearchHit;
+  eager?: boolean;
+  priority?: boolean;
+}) {
   const priceLabel = hit.priceMinor
     ? formatPrice(hit.priceMinor, hit.currency)
     : formatPriceRange(hit.priceFromMinor ?? null, hit.priceToMinor ?? null, hit.currency);
@@ -29,7 +48,7 @@ export function ProductCard({ hit, eager = false }: { hit: SearchHit; eager?: bo
             width={400}
             height={300}
             loading={eager ? "eager" : "lazy"}
-            fetchPriority={eager ? "high" : "auto"}
+            fetchPriority={priority ? "high" : "auto"}
             decoding="async"
             className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
           />

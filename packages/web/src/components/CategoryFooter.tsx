@@ -11,16 +11,9 @@ interface Facet {
   value: string;
   count: number;
 }
-interface SellerFacet {
-  sellerId?: string;
-  value?: string;
-  displayName?: string | null;
-  count: number;
-}
 interface FooterFacets {
   categories: Facet[];
   brands: Facet[];
-  sellers: SellerFacet[];
 }
 
 // Module-level in-memory cache. The original `next: { revalidate: 600 }`
@@ -49,12 +42,11 @@ async function getFooterFacets(): Promise<FooterFacets> {
         // cache around this is what actually rate-limits the API.
         cache: "no-store",
       });
-      if (!res.ok) return { categories: [], brands: [], sellers: [] };
+      if (!res.ok) return { categories: [], brands: [] };
       const body = (await res.json()) as {
         facets?: {
           categories?: Facet[];
           brands?: Facet[];
-          sellers?: SellerFacet[];
         };
       };
       const data: FooterFacets = {
@@ -66,19 +58,16 @@ async function getFooterFacets(): Promise<FooterFacets> {
           .filter((b) => b.value && b.count > 0)
           .sort((a, b) => b.count - a.count)
           .slice(0, 16),
-        sellers: (body.facets?.sellers ?? [])
-          .filter((s) => (s.sellerId ?? s.value) && s.count > 0)
-          .sort((a, b) => b.count - a.count),
       };
       // Only cache a non-empty payload — same iter-16/iter-29 lesson: don't
       // lock in a broken empty response just because the API hiccuped.
-      if (data.categories.length > 0 || data.brands.length > 0 || data.sellers.length > 0) {
+      if (data.categories.length > 0 || data.brands.length > 0) {
         footerCache = { data, ts: Date.now() };
       }
       return data;
     } catch (err) {
       console.error("[CategoryFooter] facet fetch failed:", err);
-      return { categories: [], brands: [], sellers: [] };
+      return { categories: [], brands: [] };
     } finally {
       footerInFlight = null;
     }
@@ -92,8 +81,8 @@ async function getFooterFacets(): Promise<FooterFacets> {
 // islands and Google's PageRank can't flow into them. Fetched once with a
 // 10-min Next data-cache TTL so layout stays effectively static.
 export async function CategoryFooter() {
-  const { categories, brands, sellers } = await getFooterFacets();
-  if (categories.length === 0 && brands.length === 0 && sellers.length === 0) return null;
+  const { categories, brands } = await getFooterFacets();
+  if (categories.length === 0 && brands.length === 0) return null;
 
   return (
     <details className="group border-b border-line-soft bg-bg-soft/30">
@@ -101,7 +90,7 @@ export async function CategoryFooter() {
         <span aria-hidden className="inline-block transition-transform group-open:rotate-90">▸</span>
         Parcourir le catalogue
         <span className="ml-2 normal-case tracking-normal text-ink-mute font-normal">
-          {categories.length} catégories · {brands.length} marques · {sellers.length} vendeurs
+          {categories.length} catégories · {brands.length} marques
         </span>
       </summary>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6 pt-1 space-y-5">
@@ -145,30 +134,6 @@ export async function CategoryFooter() {
                   </Link>
                 </li>
               ))}
-            </ul>
-          </section>
-        )}
-        {sellers.length > 0 && (
-          <section aria-label="Vendeurs sur Teno Store">
-            <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
-              Vendeurs
-            </h2>
-            <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
-              {sellers.map((s) => {
-                const id = s.sellerId ?? s.value!;
-                const name = s.displayName ?? "Storefront";
-                return (
-                  <li key={id}>
-                    <Link
-                      href={`/search?sellerId=${encodeURIComponent(id)}`}
-                      className="inline-flex items-center px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
-                    >
-                      {name}
-                      <span className="ml-1.5 text-ink-mute">{s.count}</span>
-                    </Link>
-                  </li>
-                );
-              })}
             </ul>
           </section>
         )}

@@ -1,65 +1,88 @@
 # SEO — current state and what's left
 
-Snapshot of teno-store.com's discoverability posture and the work needed to actually rank for relevant searches.
+Snapshot of teno-store.com's discoverability posture and the work needed to actually rank for relevant searches. Last refreshed 2026-05-11 evening (Algiers time) after a long run of iter-1..18 code-side changes; see `deploy/CHANGELOG.md` for every individual deploy in that window.
 
-## Foundation already in place (verified 2026-05-08)
+## Live crawler traffic (last 60 min, per Caddy access log)
 
-- **`<title>`** and **`<meta name="description">`** rendered server-side on every page (Next.js 15 metadata API, `packages/web/src/app/layout.tsx`).
-- **Open Graph + Twitter Cards** populated for the home page and inherited by product pages.
-- **Canonical URL** absolute (`https://teno-store.com`), rewritten correctly after the `NEXT_PUBLIC_SITE_URL` build-arg fix.
-- **`<link rel="canonical">`**, `robots: index, follow`.
-- **JSON-LD** on the home page: `WebSite` with `SearchAction` (qualifies us for Google's sitelinks search box once indexed).
-- **JSON-LD** on each `/product/{id}` page: `schema.org/Product` + `AggregateOffer` with brand, seller, availability — qualifies for Google rich-result product cards.
-- **`/sitemap.xml`** — auto-generated; pulls product URLs from `/v1/products` at request time.
-- **`/robots.txt`** — explicit allow-list for current AI crawlers: `GPTBot`, `OAI-SearchBot`, `ChatGPT-User`, `ClaudeBot`, `Claude-SearchBot`, `Claude-User`, `Google-Extended`, `PerplexityBot`, `Perplexity-User`, `Meta-ExternalAgent`, `CCBot`. The deprecated `anthropic-ai` and `Claude-Web` user-agents are intentionally omitted. `Disallow: /api/`, `/login`, `/seller/`, `/s/`.
-- **`/llms.txt`** — proposed [llmstxt.org](https://llmstxt.org/) convention; plain-text site summary for LLM crawlers.
-- **`/.well-known/agents.json`** — MCP / A2A / REST / AP2 endpoint discovery for AI agents.
-- **HSTS, X-Content-Type-Options, X-Frame-Options, Permissions-Policy** — set by Caddy (verified via `curl -I`).
-- **HTTP/3** advertised (`alt-svc: h3=":443"`).
+| Crawler | Requests | Notes |
+|---|---:|---|
+| **ClaudeBot** (Anthropic) | **753** | Heavy active crawl of `/product/*` and `/store/*` pages; the AI-discovery push (robots.txt allow-list, `llms.txt`, `agents.json`, French locale signals) is paying off. |
+| Bingbot | 1 (lifetime) | One probe to `/store/casaphone?lang=en` → 404 (we have `/store/<uuid>`, not slug). |
+| Googlebot | 2 (lifetime) | Both hits are to `/robots.txt` only — Google has discovered we exist but is NOT crawling any pages. This matches the seo.md note that `site:teno-store.com` returns 1 result. |
+| Yandex / Seznam / Naver | 0 | IndexNow is feeding them but no direct crawl visible yet. |
+| Real users + monitors | ~50 | UptimeRobot + curl probes + a handful of mobile/desktop UAs. |
 
-## Why Google isn't returning us yet (verified via web search 2026-05-10)
+**Bottleneck restated with fresh data: Googlebot is not crawling.** It's not a technical-SEO issue; it's discovery. All the code-side work below is the foundation that converts crawl visits into rankings — but Google has to start crawling first.
 
-`site:teno-store.com` returns exactly **one** result — the apex — and the cached snippet is in Arabic, almost certainly stale content from a prior owner of the domain ("تينو - أنشئ متجرك الإلكتروني مجانًا"). None of the ~3,200 product URLs are indexed. The bottleneck is no longer the catalog or technical SEO — both are solid. It's:
+## Foundation in place (verified 2026-05-11)
 
-1. **No Search Console submission.** Google's crawl rate for an unknown domain is 1–2 pages/month organically. Submitting the sitemap and requesting indexing on the apex cuts time-to-first-product-indexed from weeks to days, AND triggers a recrawl that replaces the stale Arabic snippet. **This is gated on the operator's Google login.**
-2. **Brand collision with TeNo Jewelry** (teno.com) on the bare term "teno store". Mitigated by always co-locating "agent" or "marketplace" in copy, and by the `Organization` JSON-LD on the home page that gives Google an explicit entity for *this* brand.
+### Discovery surfaces
+- **`/robots.txt`** — explicit AI-crawler allow-list (GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot, Claude-SearchBot, Claude-User, Google-Extended, PerplexityBot, Perplexity-User, Meta-ExternalAgent, CCBot). Cache-Control: `public, max-age=3600, s-maxage=3600, swr=86400`. `Disallow: /api/`, `/login`, `/seller/`, `/s/`.
+- **`/sitemap.xml`** — 43,990 URLs (43,886 product URLs + categories/brands/sellers/static). Cache-Control: `public, max-age=300, s-maxage=300, swr=1800`. Lastmod values now reflect ingestion time, not Ouedkniss source date (iter-16 — 19% of products previously had >6mo lastmods, now all in the last 3 days).
+- **`/feed.xml`** Atom feed — 50 latest entries, `xml:lang="fr"`, image enclosures at /1200/ CDN. `<updated>` per-entry uses ingestion time (iter-18); `<published>` preserves source date.
+- **`/llms.txt`** — plain-text catalog summary for LLM crawlers.
+- **`/.well-known/agents.json`** — MCP / A2A / REST / AP2 endpoint discovery.
+- **IndexNow** wired into the scrape-and-seed loop (`scraper/run-loop.sh` line 485+) — every batch of newly-seeded URLs gets pushed to Bing/Yandex/Seznam/Naver in real time. No manual re-submission needed.
 
-For the non-Google search world, IndexNow has been used to push all URLs to Bing/Yandex/Seznam/Naver as of 2026-05-10 — see the action checklist below.
+### Per-page SEO signals (every indexable page)
+- `<title>` + `<meta name="description">` rendered server-side (Next.js 15 metadata API).
+- `<link rel="canonical">` absolute, no trailing slash. Tracking-param-stripping at the canonical layer (iter-3 of an earlier session) so utm_*/fbclid/gclid don't collapse into the bare URL.
+- `<meta name="robots" content="index, follow">` on all indexable; `noindex, follow` on thin facet slices (count < 5).
+- `<link rel="alternate" type="application/atom+xml" href="/feed.xml">` for feed discovery.
+- `<link rel="alternate" type="application/json" href="/v1/products/<id>">` on product pages — points agent crawlers to the REST twin.
+- Open Graph: `og:locale=fr_DZ`, `og:type=product` on product pages, full price+brand+availability product-extension fields, image at /1200/ resolution.
+- Twitter Cards: `summary_large_image`.
 
-## Known concerns
+### Per-locale (French primary, English secondary for dev audience)
+- `<html lang="fr">` declared at layout level.
+- Home page H1 is French (`Marketplace algérien · annonces actualisées en temps réel`) since iter-7; English brand pitch (`Watch your agent shop, in real time.`) demoted to `<p role="doc-subtitle">` with identical visual treatment.
+- `/about` and `/seller` pages: French primary copy (title, H1, lede), with English developer deep-dive preserved under `<section lang="en">` (iter-12 + iter-13).
+- `/store/[id]` storefront: fully French — meta description, header chip, dt labels, CTAs, country names ("Alger, Algérie" not "Alger, DZ"); French preposition picker (`en Algérie` / `au Maroc`) for grammatically-correct meta descriptions (iter-11).
+- Product page meta description + JSON-LD `Product.description` strip leading Arabic boilerplate ("التوصيل متوفر لجميع الولايات…") so a French-locale page doesn't lead its SERP snippet with Arabic (iter-5; affected ~31% of long-description products).
+- Thin-content products (~26%, descriptions < 40 chars) get a humanized French category label injected into the meta description template (iter-3) — dilutes near-duplicate boilerplate across same-brand listings.
 
-### Brand collision: TeNo (jewelry)
+### Structured data graph
+- Home page: `WebSite` (with `SearchAction` for sitelinks search box) + `Organization` (with `address.addressCountry`, `areaServed: Algeria`, `currenciesAccepted: DZD`); both nodes share `inLanguage: ["fr", "ar", "en"]` and cross-reference via `@graph`.
+- Product page: `Product` (with `@id`, name, description, image[], category, sku, brand, offers, inLanguage) + `BreadcrumbList` (4-level since iter-9: Accueil → Catalogue → {French category} → Product). `Offer` carries price/currency/availability/priceValidUntil/areaServed/seller. `Brand` is now a clusterable entity with `@id` + `url` pointing at the brand-slice landing (iter-14).
+- `/about`: `AboutPage` cross-referencing `/#website` + `/#organization`; `inLanguage: ["fr", "en"]`.
+- `/seller`: `WebPage` cross-referencing same anchors; `inLanguage: ["fr", "en"]`.
+- `/store/[id]`: `Store` with address, telephone, sameAs, description.
+- Search slice landings: `CollectionPage` + `ItemList` with French names (iter-3 of an earlier session).
+- `priceValidUntil` set to +1 year (Google Merchant requires it; no real expiry on listings).
+- `itemCondition` intentionally omitted (deliberate per code comment at `product/[id]/page.tsx:337-344` — Ouedkniss inventory is a mix of new/used/refurbished and the API doesn't expose per-listing condition).
 
-A web search for "teno-store.com agent marketplace" surfaces **TeNo** ([teno.com](https://www.teno.com/)) — a jewelry retailer with substantial domain authority. Branded searches like "teno store" will likely bury us behind that brand for months unless we differentiate aggressively. Mitigations:
-- Always co-locate "agent" or "marketplace" in branded copy (already done).
-- Prioritize keyword pages around "agent marketplace", "MCP marketplace", "AP2 marketplace" — terms that don't compete with the jewelry brand.
-- Optional: register `tenostore.com` (no hyphen) as a defensive redirect.
+### Caching + freshness
+- **iter-15 Cache-Control middleware** (`packages/web/src/middleware.ts`): anonymous HTML requests on indexable routes (`/`, `/about`, `/seller`, `/search`, `/product/:id`, `/store/:id`) get `Cache-Control: public, max-age=0, s-maxage=60, stale-while-revalidate=300` + `Vary: Cookie`. Cookie-bearing (logged-in) requests keep the framework default `private, no-cache, no-store` — no personalization leak risk.
+- **Static files** (`robots.txt`, `llms.txt`, `manifest.webmanifest`, IndexNow key file, well-known files): public + 1h max-age + 24h swr via `next.config.mjs` headers().
+- **`/sitemap.xml`** + **`/s/:id`**: public, longer TTLs as documented in `next.config.mjs`.
 
-### Language mismatch (looming)
+### Internal linking
+- Product page brand chip → `/search?brand=X` (iter-10).
+- Product page breadcrumb category step → `/search?category=X` (iter-9).
+- Product page "Vendu par" → seller storefront (iter-10).
+- Header "+ Vendre" CTA → `/seller/products/new` from every page (iter-1 of layout work).
+- Top-of-page collapsible `<details>` with category + brand chips (iter-1 of layout work) — replaced the bottom CategoryFooter that was unreachable under infinite scroll.
 
-- The home page is in **English**, with `lang="en"` and `og:locale=en_US`.
-- The Algerian product catalog will be in **French** (titles, descriptions).
-- Google indexes per language. A French-language query like *"iPhone 15 Pro Max prix Alger"* will not match an English-locale page even if the body text is French.
+### Infrastructure
+- HSTS, X-Content-Type-Options, X-Frame-Options, Permissions-Policy set by Caddy.
+- HTTP/3 advertised (`alt-svc: h3=":443"`).
+- API at `api.teno-store.com` returns `noindex` robots and matching disallow on its own `/robots.txt`.
 
-Options when the catalog grows beyond a handful of items:
-1. **Per-product locale tagging** — emit `<meta property="og:locale" content="fr_DZ">` on `/product/{id}` pages whose content is French. Cheap.
-2. **Localized routes** — `/fr/product/{id}` with `hreflang` alternates. Heavier but correct.
-3. **Translate home page copy** — addresses the highest-traffic page, doesn't bloat routing.
+## What's left — operator actions (in priority order)
 
-None of these is urgent until the catalog is non-trivial; flagging now so it's not forgotten.
+1. **[CRITICAL] Submit sitemap to Google Search Console.** Every code-side iteration since 2026-05-10 has been polishing pages Google isn't crawling. This is THE remaining unblocked lever for getting any product into the index.
+   - `https://search.google.com/search-console` → add `teno-store.com` (Domain type) → verify via DNS TXT in Cloudflare → Sitemaps → submit `https://teno-store.com/sitemap.xml`.
+   - URL Inspection → "Request indexing" on `https://teno-store.com/` (forces apex recrawl, replaces the stale Arabic snippet from the prior domain owner within ~24h) and on 3-5 sample product URLs.
+2. **[HIGH] Add a Cloudflare Cache Rule for anonymous HTML.** Code-side middleware (iter-15) is emitting the right headers; Cloudflare just isn't acting on them. Without this, every Googlebot/ClaudeBot fetch hits origin — caddy logs show some responses taking 2-8 seconds, which throttles crawl rate.
+   - Cloudflare dashboard → Caching → Cache Rules → New: match `(http.host eq "teno-store.com") and (starts_with(http.request.uri.path, "/product/") or starts_with(http.request.uri.path, "/search") or starts_with(http.request.uri.path, "/store/") or http.request.uri.path in {"/" "/about" "/seller"}) and (not http.cookie contains "mp_session=")` → Cache eligibility: Eligible; Edge TTL: Respect origin (60s); Browser TTL: Respect origin.
+   - After deploy, verify with `curl -sI` that `cf-cache-status: HIT` appears on the second hit.
+3. **[MEDIUM] Submit to Bing Webmaster Tools.** Lower priority since IndexNow is feeding Bing daily, but the dashboard surfaces coverage stats IndexNow doesn't.
+4. **[MEDIUM] Run Google Rich Results Test on one product URL.** `https://search.google.com/test/rich-results` — confirms the `Product` + `BreadcrumbList` JSON-LD parses and previews. Note: we're eligible for "Product snippet" enhancement (name + image + offers), NOT "Merchant listing" (would need `itemCondition` + `hasMerchantReturnPolicy` + at least one of gtin/mpn/isbn, none of which Ouedkniss exposes per listing).
+5. **[LOW] Flip Cloudflare SSL/TLS to Full (strict).** Noted as TODO in `dns.md`.
+6. **[LOW] Defensive `tenostore.com` (no hyphen) registration** to redirect to the canonical hyphenated domain. Brand-collision mitigation against TeNo jewelry; not urgent until brand searches start mattering.
 
-### Cloudflare Bot Fight Mode
+## Known concerns (unchanged from earlier seo.md, still applicable)
 
-Bot Fight Mode is **on** (per `dns.md`). It blocks low-reputation crawlers. Confirm it does NOT block Googlebot, Bingbot, or the explicitly allow-listed AI bots — Cloudflare's defaults usually permit these, but worth a one-time check via Cloudflare's "Verified Bots" report after Search Console submission goes through.
-
-## Action checklist (in order)
-
-- [x] ~~**Seed the catalog**~~ Done — scrape-and-seed loop is producing real listings; ~3,200 products in the catalog as of 2026-05-10.
-- [x] ~~**Push URLs to Bing/Yandex/Seznam/Naver via IndexNow**~~ Done 2026-05-10 — `scripts/indexnow-submit.mjs` submitted all 3,206 sitemap URLs. Re-run after major catalog growth or pass URLs on stdin (`--stdin`) to push only newly seeded products. Host key: `81b0a3ff408a96ef5c0381a78aae7f58` at `https://teno-store.com/81b0a3ff408a96ef5c0381a78aae7f58.txt`.
-- [ ] **Submit sitemap to Google Search Console** — `https://search.google.com/search-console` → add property `teno-store.com` (Domain type) → verify via DNS TXT in Cloudflare → Sitemaps → submit `https://teno-store.com/sitemap.xml`. **This is the single biggest unblocked lever right now**: Google has only 1 page indexed (the apex, with stale Arabic snippet from a prior domain owner). Submission triggers a recrawl that fixes the snippet AND starts indexing the 3k+ products.
-- [ ] **In Search Console after submission**: URL Inspection → request indexing on `https://teno-store.com/` (forces apex recrawl, replaces stale Arabic snippet within ~24h) and on 3–5 sample product URLs (signals "this template has lots more like it").
-- [ ] **Submit to Bing Webmaster Tools** — same flow at `https://www.bing.com/webmasters/`. Lower priority since IndexNow is already feeding Bing, but the dashboard exposes coverage stats IndexNow doesn't.
-- [ ] **Run Google Rich Results Test** — `https://search.google.com/test/rich-results` on one product URL after seeding. Confirms the `Product` JSON-LD parses and shows the rich-card preview.
-- [ ] **Flip Cloudflare SSL/TLS to Full (strict)** — already noted as TODO in `dns.md`.
-- [x] ~~**Decide on French-language strategy** — either tag product pages with `og:locale=fr_DZ` or add `/fr` routes; punt until catalog ≥ 50 products.~~ Done — product page detects French content via the DZD-currency heuristic and tags with `og:locale=fr_DZ`, `<article lang="fr">`, and `inLanguage: "fr"` in the Product JSON-LD. Per-locale routing was rejected as overkill for the current catalog scale.
-- [x] ~~**Optional but cheap:** add a `/about` page with substantive plain-text content describing how the marketplace works for sellers and agents.~~ Done — `/about` is live, listed in `sitemap.xml`, allowed in `robots.txt` for both `*` and the AI-bot allow-list.
+- **Brand collision with TeNo Jewelry** (teno.com). Mitigations in place: always co-locate "agent" or "marketplace" with branded copy; `Organization` JSON-LD on the home page gives Google an explicit entity for *this* brand; iter-7 swap put `Marketplace algérien` in the H1.
+- **Cloudflare Bot Fight Mode** is on. Re-confirm after Search Console submission that it doesn't block Googlebot. Cloudflare's defaults usually permit verified bots, but worth a one-time check via the "Verified Bots" report.
+- **Merchant Listing eligibility ceiling**: without per-listing gtin/mpn data from Ouedkniss, we're eligible for Product snippet rich results but not Merchant Listing. That's the realistic ceiling for this catalog.

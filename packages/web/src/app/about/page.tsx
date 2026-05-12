@@ -5,12 +5,17 @@ import { jsonLdString } from "@/lib/jsonld";
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
 export const metadata: Metadata = {
-  // Layout template appends " · Teno Store" — bare "About" avoids the
-  // "About Teno Store · Teno Store" duplication this page used to render.
-  title: "About",
+  // Layout template appends " · Teno Store" — bare "À propos" avoids the
+  // "À propos · Teno Store" duplication this page used to render with the
+  // earlier English-only "About" title.
+  title: "À propos",
   description:
-    "Teno Store is an Algerian marketplace with thousands of live listings — phones, computing, home appliances, fashion and vehicles — priced in DZD.",
+    "Teno Store — marketplace algérien avec des milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA.",
   alternates: { canonical: "/about" },
+  openGraph: {
+    locale: "fr_DZ",
+    alternateLocale: ["en_US"],
+  },
 };
 
 export default function AboutPage() {
@@ -19,10 +24,13 @@ export default function AboutPage() {
     "@type": "AboutPage",
     "@id": `${SITE_URL}/about`,
     url: `${SITE_URL}/about`,
-    name: "About Teno Store",
+    name: "À propos de Teno Store",
     description:
-      "About Teno Store — an Algerian marketplace built API-first so AI agents and humans can browse, compare and transact on a real catalog of consumer goods. Built on MCP, A2A and AP2 with explicit trust signals for every listing.",
-    inLanguage: "en",
+      "À propos de Teno Store — marketplace algérien d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA (MCP, A2A, AP2) avec des signaux de confiance explicites sur chaque annonce.",
+    // Page now ships a French primary intro followed by an English deep-dive
+    // for the agent-developer audience. Tag both so Google's bilingual
+    // handling treats the page consistently with the visible content.
+    inLanguage: ["fr", "en"],
     isPartOf: { "@id": `${SITE_URL}/#website` },
     about: { "@id": `${SITE_URL}/#organization` },
   };
@@ -37,7 +45,7 @@ export default function AboutPage() {
     ],
   };
   return (
-    <article lang="en" className="max-w-3xl mx-auto pt-12 pb-24 prose-invert text-ink-soft">
+    <article className="max-w-3xl mx-auto pt-12 pb-24 prose-invert text-ink-soft">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
@@ -46,26 +54,72 @@ export default function AboutPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(aboutJsonLd) }}
       />
-      <h1 className="text-4xl font-semibold tracking-tight text-ink mb-3">
-        About Teno Store
-      </h1>
-      <p className="text-lg leading-relaxed">
-        Teno Store is an <strong>Algerian marketplace</strong> with thousands
-        of live listings — phones, computing, home appliances, fashion,
-        vehicles and more — sourced from real Algerian sellers in Algiers,
-        Oran, Annaba, Constantine, Sétif and other cities, and priced in
-        Algerian Dinars (DZD). The catalog is refreshed continuously, so the
-        listings you browse here mirror what&rsquo;s actually for sale right
-        now.
-      </p>
-      <p className="leading-relaxed mt-3">
-        Underneath, Teno Store is an{" "}
-        <strong>agent-to-agent marketplace</strong>: AI agents can discover,
-        compare, and transact for products on behalf of human buyers via MCP,
-        A2A and AP2. The website you&rsquo;re reading is a real-time,
-        human-readable mirror of that activity — so you can watch your agent
-        work, or browse the catalog yourself the same way the agents do.
-      </p>
+      {/* French primary section. Page-level <html lang="fr"> at the layout
+          level matches this block. Below the French intro, an
+          <section lang="en"> wraps the English deep-dive for the
+          agent-developer audience — same bilingual pattern the home page
+          uses (iter-7), keeping the dominant SEO signals (title, H1, lede)
+          in French while preserving the longer technical English copy. */}
+      <section lang="fr">
+        <h1 className="text-4xl font-semibold tracking-tight text-ink mb-3">
+          À propos de Teno Store
+        </h1>
+        <p className="text-lg leading-relaxed">
+          Teno Store est un <strong>marketplace algérien</strong> avec des
+          milliers d&rsquo;annonces en direct — téléphones, informatique,
+          électroménager, mode, véhicules et plus — issues de vrais vendeurs
+          algériens à Alger, Oran, Annaba, Constantine, Sétif et d&rsquo;autres
+          villes, avec des prix en dinars algériens (DZD). Le catalogue est
+          actualisé en continu, donc les annonces que vous parcourez ici
+          reflètent ce qui est réellement à vendre à l&rsquo;instant présent.
+        </p>
+        <p className="leading-relaxed mt-3">
+          Techniquement, Teno Store est aussi un{" "}
+          <strong>marketplace agent-à-agent</strong> : des agents IA peuvent
+          découvrir, comparer et acheter des produits pour le compte
+          d&rsquo;acheteurs humains via MCP, A2A et AP2. Le site que vous lisez
+          est un miroir lisible humain de cette activité — vous pouvez regarder
+          votre agent travailler en temps réel, ou parcourir le catalogue
+          vous-même de la même manière qu&rsquo;un agent.
+        </p>
+        <h2 className="text-xl font-medium text-ink mt-10 mb-2">Pour les acheteurs</h2>
+        <p className="leading-relaxed">
+          Parcourez le catalogue librement, ou connectez-vous avec Google pour
+          déléguer un budget d&rsquo;achat à un agent IA. Vous gardez le
+          contrôle (révocation, journal d&rsquo;activité, signaux de confiance
+          par annonce, snapshots horodatés de ce que l&rsquo;agent a vu).
+        </p>
+        <h2 className="text-xl font-medium text-ink mt-10 mb-2">Pour les vendeurs</h2>
+        <p className="leading-relaxed">
+          Publiez vos annonces sur Teno Store et atteignez à la fois les
+          acheteurs humains et les agents IA. Tableau de bord vendeur en libre
+          service, prix par variante en DZD, signaux anti-contrefaçon visibles
+          sur chaque annonce.{" "}
+          <Link href="/seller" className="text-accent hover:underline">
+            S&rsquo;inscrire pour vendre →
+          </Link>
+        </p>
+        <h2 className="text-xl font-medium text-ink mt-10 mb-2">Commencer</h2>
+        <p className="leading-relaxed">
+          <Link href="/search" className="text-accent hover:underline">
+            Parcourir le catalogue →
+          </Link>
+          {" · "}
+          <Link href="/seller" className="text-accent hover:underline">
+            Vendre sur Teno Store →
+          </Link>
+        </p>
+      </section>
+
+      <section lang="en" className="mt-16 pt-12 border-t border-line-soft">
+        <h2 className="text-2xl font-semibold tracking-tight text-ink mb-3">
+          For agents &amp; developers
+        </h2>
+        <p className="leading-relaxed">
+          The rest of this page is in English — it&rsquo;s the agent /
+          developer deep-dive on how Teno Store works as a machine-readable
+          marketplace.
+        </p>
 
       <h2 className="text-xl font-medium text-ink mt-10 mb-2">For buyers</h2>
       <p className="leading-relaxed">
@@ -152,6 +206,7 @@ export default function AboutPage() {
           Sell on Teno Store →
         </Link>
       </p>
+      </section>
     </article>
   );
 }

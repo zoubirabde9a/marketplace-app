@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCart } from "@/lib/cart";
 import { formatPrice } from "@/lib/format";
-import { goToCheckoutAction, removeLineAction, updateQtyAction } from "./actions";
+import { adjustQtyAction, goToCheckoutAction, removeLineAction, updateQtyAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -62,24 +62,46 @@ export default async function CartPage() {
                     {formatPrice(l.unitPriceMinor, cart!.currency)}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
-                    <form action={updateQtyAction} className="flex items-center">
-                      <input type="hidden" name="variantId" value={l.variantId} />
-                      <input
-                        type="number"
-                        name="qty"
-                        defaultValue={l.qty}
-                        min={0}
-                        max={99}
-                        className="w-16 h-8 px-2 rounded border border-line bg-bg-elev text-sm text-center"
-                        aria-label="Quantity"
-                      />
-                      <button
-                        type="submit"
-                        className="ml-2 h-8 px-3 rounded border border-line text-xs text-ink-soft hover:text-ink hover:border-accent/40 transition"
-                      >
-                        Update
-                      </button>
-                    </form>
+                    <div className="inline-flex items-center rounded border border-line overflow-hidden">
+                      <form action={adjustQtyAction}>
+                        <input type="hidden" name="variantId" value={l.variantId} />
+                        <input type="hidden" name="currentQty" value={l.qty} />
+                        <input type="hidden" name="delta" value={-1} />
+                        <button
+                          type="submit"
+                          aria-label="Decrease quantity"
+                          className="w-8 h-8 text-sm text-ink-soft hover:bg-bg-elev disabled:opacity-30 transition"
+                          disabled={l.qty <= 1}
+                        >
+                          −
+                        </button>
+                      </form>
+                      <form action={updateQtyAction} className="contents">
+                        <input type="hidden" name="variantId" value={l.variantId} />
+                        <input
+                          type="number"
+                          name="qty"
+                          defaultValue={l.qty}
+                          min={0}
+                          max={99}
+                          className="w-12 h-8 bg-bg-elev text-sm text-center border-x border-line focus:outline-none focus:bg-bg-elev/60"
+                          aria-label="Quantity"
+                        />
+                      </form>
+                      <form action={adjustQtyAction}>
+                        <input type="hidden" name="variantId" value={l.variantId} />
+                        <input type="hidden" name="currentQty" value={l.qty} />
+                        <input type="hidden" name="delta" value={1} />
+                        <button
+                          type="submit"
+                          aria-label="Increase quantity"
+                          className="w-8 h-8 text-sm text-ink-soft hover:bg-bg-elev disabled:opacity-30 transition"
+                          disabled={l.qty >= 99}
+                        >
+                          +
+                        </button>
+                      </form>
+                    </div>
                     <form action={removeLineAction}>
                       <input type="hidden" name="variantId" value={l.variantId} />
                       <button
@@ -113,12 +135,12 @@ export default async function CartPage() {
               </div>
               <div className="flex justify-between">
                 <dt className="text-ink-soft">Delivery</dt>
-                <dd className="text-ink-mute">Calculated at checkout</dd>
+                <dd className="text-ink-mute">Free (cash on delivery)</dd>
               </div>
             </dl>
             <div className="mt-4 pt-4 border-t border-line-soft flex justify-between text-base font-medium">
               <span>Total</span>
-              <span>{formatPrice(cart!.totals.subtotalMinor, cart!.currency)}</span>
+              <span>{formatPrice(cart!.totals.totalMinor, cart!.currency)}</span>
             </div>
             <form action={goToCheckoutAction}>
               <button
@@ -128,7 +150,13 @@ export default async function CartPage() {
                 Checkout
               </button>
             </form>
-            <p className="mt-3 text-xs text-ink-mute leading-relaxed">
+            <Link
+              href="/search"
+              className="mt-3 block text-center text-xs text-ink-mute hover:text-ink-soft transition"
+            >
+              ← Continue shopping
+            </Link>
+            <p className="mt-4 text-xs text-ink-mute leading-relaxed">
               Cash on delivery. You&rsquo;ll be asked for your phone number and
               delivery region on the next step.
             </p>

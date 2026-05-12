@@ -19,8 +19,11 @@ describe("AboutPage", () => {
       .find((d) => d["@type"] === "AboutPage")!;
     expect(payload).toBeDefined();
     expect(payload["@type"]).toBe("AboutPage");
-    expect(payload.name).toBe("About Teno Store");
-    expect(payload.inLanguage).toBe("en");
+    expect(payload.name).toBe("À propos de Teno Store");
+    // Page now ships French primary content + English deep-dive (iter-12);
+    // inLanguage updated to reflect both. Order matters for some validators
+    // — French first since it's the primary signal.
+    expect(payload.inLanguage).toEqual(["fr", "en"]);
     // Must reference the homepage's WebSite/#website and Organization/#organization
     // anchors so Google can resolve all three documents into a single entity graph.
     expect(payload.isPartOf?.["@id"]).toMatch(/#website$/);

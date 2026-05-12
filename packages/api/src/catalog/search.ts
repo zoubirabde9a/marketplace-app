@@ -31,6 +31,15 @@ export interface SearchHit {
   variantCount: number;
   categoryIds?: string[];
   postedAt?: string; // ISO 8601 — from attributes.sourcePostedAt, else product createdAt
+  // Distinct from postedAt: this is when WE last ingested/refreshed the
+  // product, regardless of the seller's original post date on the source
+  // marketplace. The web sitemap consumes this as the `<lastmod>` value so
+  // Google's freshness algorithms see a recent timestamp for URLs we just
+  // surfaced, instead of a 2017/2020 Ouedkniss post date that makes the
+  // page look abandoned. UI rendering keeps using `postedAt` for the
+  // "Posté il y a N jours" relative-time line (the seller's perspective is
+  // what's meaningful to a human buyer).
+  updatedAt?: string; // ISO 8601 — product.createdAt (ingestion time)
 }
 
 export interface SearchResult {
@@ -74,6 +83,10 @@ function projectHit(p: StoredProduct, ctx: FilterContext, sellers: Map<string, S
     imageCount: p.media.length,
     ...(p.categoryIds && p.categoryIds.length > 0 ? { categoryIds: [...p.categoryIds] } : {}),
     postedAt: p.attributes?.sourcePostedAt ?? new Date(p.createdAt).toISOString(),
+    // Always our ingestion time — sitemap lastmod consumes this so URLs
+    // freshly added to the catalog don't carry a years-old Ouedkniss
+    // `sourcePostedAt` as their freshness signal to Google.
+    updatedAt: new Date(p.createdAt).toISOString(),
   };
 }
 

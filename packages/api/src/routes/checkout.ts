@@ -91,7 +91,12 @@ export async function registerCheckoutRoutes(
 
     const quote = checkoutDomain.priceQuote({
       cart: { cartId: c.cartId, currency: c.currency, lines: c.lines },
-      shippingOptions: FLAT_SHIPPING_OPTIONS,
+      // priceQuote auto-selects shippingOptions[0] when no preferredShipping is
+      // passed. The web checkout never surfaces a shipping picker (seller-call
+      // confirmation flow, no carrier integration), so passing the FLAT list
+      // here would silently add a fee the buyer never saw on the cart/checkout
+      // page. Only include options when the client explicitly picked one.
+      shippingOptions: body.shipping ? FLAT_SHIPPING_OPTIONS : [],
       ...(body.shipping ? { preferredShipping: body.shipping } : {}),
       taxBreakdown: [],
       classifications: [],

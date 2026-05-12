@@ -124,15 +124,26 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // — broken grammar reads as low-quality content to search-engine quality
   // signals AND to the human readers of SERP snippets. French side is
   // covered in SliceIntro/below.
-  const listingWord = totalCount === 1 ? "listing" : "listings";
+  // French pluralization for the noun used in meta descriptions.
+  // Was "listing"/"listings" (English) — left over from a pre-iter-25
+  // pass and threaded into the French-language sentence templates below,
+  // producing mixed-language SERP snippets like "200 listings
+  // correspondant à « iphone »…" on the /search?q= page.
+  const listingWord = totalCount === 1 ? "annonce" : "annonces";
 
   let title: string;
   let description: string;
   if (q) {
-    title = `Search: ${q}`;
+    // iter-25: French primary on a `<html lang="fr">` page — `Recherche : `
+    // (non-breaking-space before colon is French typography) instead of
+    // English `Search: `. These pages are noindex'd but the title still
+    // shows in browser tabs, OG share previews on Facebook/Discord/X,
+    // and Bing's Webmaster Tools listing — all of which were leaking
+    // English copy on what's otherwise a French-locale site.
+    title = `Recherche : ${q}`;
     description = fmtCount
-      ? `${fmtCount} ${listingWord} matching “${q}” on Teno Store — phones, computing and more from Algerian sellers, prices in DZD.`
-      : `Marketplace results matching “${q}” on Teno Store.`;
+      ? `${fmtCount} ${listingWord} correspondant à « ${q} » sur Teno Store — téléphones, informatique et plus de vendeurs algériens, prix en dinars (DZD).`
+      : `Résultats du marketplace correspondant à « ${q} » sur Teno Store.`;
   } else if (brand) {
     // Brand title is just "{brand}" — the layout template appends " · Teno
     // Store" so "{brand} products" would duplicate the brand context.

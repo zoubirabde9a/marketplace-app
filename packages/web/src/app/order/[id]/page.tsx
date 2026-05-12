@@ -73,7 +73,27 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             </li>
           ))}
         </ul>
-        <div className="mt-4 pt-4 border-t border-line-soft flex justify-between text-base font-medium">
+        <dl className="mt-4 pt-4 border-t border-line-soft space-y-1.5 text-sm">
+          <div className="flex justify-between">
+            <dt className="text-ink-soft">Subtotal</dt>
+            <dd>{formatPrice(order.totals.subtotalMinor, order.currency)}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-ink-soft">Delivery</dt>
+            <dd className="text-ink-mute">
+              {BigInt(order.totals.shippingMinor) > 0n
+                ? formatPrice(order.totals.shippingMinor, order.currency)
+                : "Free (cash on delivery)"}
+            </dd>
+          </div>
+          {BigInt(order.totals.taxMinor) > 0n && (
+            <div className="flex justify-between">
+              <dt className="text-ink-soft">Tax</dt>
+              <dd>{formatPrice(order.totals.taxMinor, order.currency)}</dd>
+            </div>
+          )}
+        </dl>
+        <div className="mt-3 pt-3 border-t border-line-soft flex justify-between text-base font-medium">
           <span>Total</span>
           <span>{formatPrice(order.totals.totalMinor, order.currency)}</span>
         </div>

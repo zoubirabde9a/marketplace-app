@@ -23,7 +23,15 @@ interface FeedHit {
   title?: { value?: string } | null;
   brand?: string;
   heroImageUrl?: string | null;
+  // Source publication date (Ouedkniss original-post date for scraped
+  // listings, else our DB createdAt). Used as the entry's <published>.
   postedAt?: string | null;
+  // Our DB ingestion time (always product.createdAt — see iter-16 sitemap
+  // fix). Used as the entry's <updated> so feed readers see a recent
+  // last-modified signal even when the Ouedkniss source date is years
+  // old. Falls back to postedAt when the API doesn't ship it (older
+  // builds prior to iter-16).
+  updatedAt?: string | null;
   sellerDisplayName?: string | null;
   priceMinor?: string;
   priceFromMinor?: string;
@@ -96,8 +104,15 @@ async function getFeedHits(): Promise<FeedHit[]> {
 
 export async function GET(req: NextRequest) {
   const hits = await getFeedHits();
-  const updated =
-    hits.length > 0 && hits[0].postedAt ? hits[0].postedAt : new Date().toISOString();
+  // Top-level feed <updated> = the newest entry's ingestion time. The hits
+  // array is sorted "newest" by the API (which sorts on createdAt DESC since
+  // iter-3 of an earlier session), so hits[0].updatedAt is the most recent
+  // ingestion timestamp across the whole feed. Falls through to postedAt
+  // when updatedAt is missing (pre-iter-16 API builds), then to now() as
+  // last resort. Same precedence as the per-entry <updated> below.
+  const updated = hits.length > 0
+    ? (hits[0].updatedAt ?? hits[0].postedAt ?? new Date().toISOString())
+    : new Date().toISOString();
   // Last-Modified in RFC 7231 IMF-fixdate format (the only format the spec
   // permits). Lets RSS/Atom readers do conditional GET — they send
   // If-Modified-Since and we return 304 when the feed hasn't changed,
@@ -136,7 +151,13 @@ export async function GET(req: NextRequest) {
     .map((h) => {
       const url = `${SITE_URL}/product/${encodeURIComponent(h.productId)}`;
       const title = h.title!.value!;
+      // <published> uses the source's perspective (Ouedkniss original post
+      // date or our createdAt fallback). <updated> uses our ingestion time
+      // so feed readers' "last modified" UI accurately reflects when the
+      // entry appeared in OUR feed, not when the source originally posted.
+      // Pre-iter-16 API builds didn't ship updatedAt — fall back to posted.
       const posted = h.postedAt ?? new Date().toISOString();
+      const lastUpdated = h.updatedAt ?? posted;
       const price = fmtPrice(h.priceMinor ?? h.priceFromMinor, h.currency);
       const summaryParts = [
         h.brand ? `Marque : ${h.brand}` : null,
@@ -148,7 +169,7 @@ export async function GET(req: NextRequest) {
     <title>${escapeXml(title)}</title>
     <link rel="alternate" type="text/html" href="${escapeXml(url)}"/>
     <id>${escapeXml(url)}</id>
-    <updated>${escapeXml(posted)}</updated>
+    <updated>${escapeXml(lastUpdated)}</updated>
     <published>${escapeXml(posted)}</published>
     <author><name>${escapeXml(h.sellerDisplayName ?? "Teno Store")}</name></author>
     <summary>${escapeXml(summary)}</summary>${

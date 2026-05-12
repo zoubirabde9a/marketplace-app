@@ -63,7 +63,15 @@ describe("ProductPage", () => {
     expect(payload["@type"]).toBe("Product");
     expect(payload.name).toBe("Test Widget 9000");
     expect(payload.productID).toBe("p-123");
-    expect(payload.brand).toEqual({ "@type": "Brand", name: "Acme" });
+    // iter-14: brand is a stable entity with @id + url pointing at the
+    // brand-slice landing, so all listings for the same brand cluster under
+    // one Brand entity in Google's knowledge graph.
+    expect(payload.brand).toEqual({
+      "@type": "Brand",
+      "@id": "http://localhost:3200/search?brand=Acme",
+      name: "Acme",
+      url: "http://localhost:3200/search?brand=Acme",
+    });
 
     // Seller contact links render.
     const phone = container.querySelector('a[href="tel:+15551234567"]');

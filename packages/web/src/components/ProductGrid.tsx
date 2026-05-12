@@ -9,7 +9,13 @@ export function ProductGrid({ hits }: { hits: SearchHit[] }) {
     >
       {hits.map((h, i) => (
         <li key={h.productId}>
-          <ProductCard hit={h} eager={i < 4} />
+          {/* First 4 cards eager-load in parallel (above-the-fold on the
+              recent strip + most search-result viewports). Only the FIRST
+              card gets fetchPriority="high" — that's the LCP candidate.
+              Marking 4 cards as priority pre-iter-23 had the browser
+              splitting bandwidth across 4 concurrent high-priority
+              fetches, which slowed down the actual LCP element. */}
+          <ProductCard hit={h} eager={i < 4} priority={i === 0} />
         </li>
       ))}
     </ul>

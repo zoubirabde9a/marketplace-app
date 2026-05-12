@@ -26,6 +26,8 @@ describe("manifest()", () => {
 
   it("declares the shopping category and lang for app-store / Android categorization", () => {
     expect(m.categories).toContain("shopping");
-    expect(m.lang).toBe("en");
+    // iter-24: switched to French primary so the manifest matches the
+    // <html lang="fr"> declaration and the rest of the site's locale.
+    expect(m.lang).toBe("fr");
   });
 });

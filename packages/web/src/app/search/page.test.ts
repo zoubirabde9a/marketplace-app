@@ -43,7 +43,9 @@ describe("search page generateMetadata", () => {
     const m = await M({ q: "phone" });
     expect(m.alternates?.canonical).toBe("/search?q=phone");
     expect(m.robots).toEqual({ index: false, follow: true });
-    expect(m.title).toBe("Search: phone");
+    // iter-25: switched to French primary ("Recherche : <q>" with French
+    // non-breaking-space colon convention) to match the lang=fr page.
+    expect(m.title).toBe("Recherche : phone");
   });
 
   it("?brand=Acme alone → indexable as a brand page", async () => {
@@ -92,6 +94,8 @@ describe("search page generateMetadata", () => {
     const m = await M({ q: "phone", brand: "Acme" });
     expect(m.alternates?.canonical).toBe("/search?q=phone");
     expect(m.robots).toEqual({ index: false, follow: true });
-    expect(m.title).toBe("Search: phone");
+    // iter-25: switched to French primary ("Recherche : <q>" with French
+    // non-breaking-space colon convention) to match the lang=fr page.
+    expect(m.title).toBe("Recherche : phone");
   });
 });

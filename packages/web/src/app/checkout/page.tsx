@@ -128,8 +128,9 @@ export default async function CheckoutPage({
           </ul>
           <div className="mt-4 pt-4 border-t border-line-soft flex justify-between text-base font-medium">
             <span>Total</span>
-            <span>{formatPrice(cart.totals.subtotalMinor, cart.currency)}</span>
+            <span>{formatPrice(cart.totals.totalMinor, cart.currency)}</span>
           </div>
+          <p className="mt-3 text-xs text-ink-mute">Delivery: free (cash on delivery).</p>
         </aside>
       </div>
     </section>

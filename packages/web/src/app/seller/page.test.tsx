@@ -32,7 +32,7 @@ describe("SellerLandingPage (signed-out)", () => {
       .find((d) => d["@type"] === "WebPage")!;
     expect(payload).toBeDefined();
     expect(payload["@type"]).toBe("WebPage");
-    expect(payload.name).toBe("Sell on Teno Store");
+    expect(payload.name).toBe("Vendre sur Teno Store");
     expect(payload.isPartOf?.["@id"]).toMatch(/#website$/);
     expect(payload.about?.["@id"]).toMatch(/#organization$/);
   });
@@ -41,11 +41,11 @@ describe("SellerLandingPage (signed-out)", () => {
     const tree = await SellerLandingPage();
     const { container } = render(tree as React.ReactElement);
     const text = container.textContent ?? "";
-    // Three bullets from iteration 47, asserted on substantive substrings so
-    // copy can evolve without breaking the test entirely.
-    expect(text).toMatch(/MCP, A2A, and HTTP/i);
-    expect(text).toMatch(/[Cc]ounterfeit/);
-    expect(text).toMatch(/own currency/i);
+    // Three bullets translated to French in iter-13; assert on substantive
+    // substrings so copy can evolve without breaking the test entirely.
+    expect(text).toMatch(/MCP, A2A/i);
+    expect(text).toMatch(/[Cc]ontrefa/);
+    expect(text).toMatch(/dinars/i);
   });
 
   it("redirects signed-in sessions to the dashboard", async () => {

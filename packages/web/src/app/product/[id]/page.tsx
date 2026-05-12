@@ -588,7 +588,14 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
       )}
       {p.brand && <meta property="product:brand" content={p.brand} />}
       {p.categoryIds[0] && (
-        <meta property="product:category" content={p.categoryIds[0].replace(/[-_]/g, " ")} />
+        // Use the humanized French category label so Facebook / Pinterest /
+        // Discord product cards display "Téléphones" or "Électronique &
+        // Électroménager" instead of the raw slug "telephones" /
+        // "electronique electromenager". Same FR_CATEGORY map already
+        // feeds JSON-LD Product.category, the breadcrumb category step,
+        // and the buildProductDescription fallback — single source of
+        // truth for the French taxonomy label.
+        <meta property="product:category" content={humanizeCategorySlug(p.categoryIds[0])} />
       )}
       <script
         type="application/ld+json"
