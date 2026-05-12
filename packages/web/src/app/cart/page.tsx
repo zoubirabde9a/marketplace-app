@@ -7,7 +7,10 @@ import { adjustQtyAction, removeLineAction, updateQtyAction } from "./actions";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Your cart",
+  // Cart/checkout chrome is in French to match og:locale=fr_DZ and the rest
+  // of the buyer-facing site (header, footer, product detail). The path to
+  // revenue can't be the only surface in English. See anomaly report [38].
+  title: "Votre panier",
   robots: { index: false, follow: false },
 };
 
@@ -16,17 +19,17 @@ export default async function CartPage() {
   const lines = cart?.lines ?? [];
 
   return (
-    <section className="pt-10 pb-24 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-semibold tracking-tight">Your cart</h1>
+    <section className="pt-10 pb-24 max-w-4xl mx-auto" lang="fr">
+      <h1 className="text-3xl font-semibold tracking-tight">Votre panier</h1>
 
       {lines.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-line-soft bg-bg-soft/60 p-8 text-center">
-          <p className="text-ink-soft">Your cart is empty.</p>
+          <p className="text-ink-soft">Votre panier est vide.</p>
           <Link
             href="/search"
             className="mt-4 inline-flex items-center px-4 py-2 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 transition"
           >
-            Browse products
+            Parcourir les produits
           </Link>
         </div>
       ) : (
@@ -69,7 +72,7 @@ export default async function CartPage() {
                         <input type="hidden" name="delta" value={-1} />
                         <button
                           type="submit"
-                          aria-label="Decrease quantity"
+                          aria-label="Diminuer la quantité"
                           className="w-8 h-8 text-sm text-ink-soft hover:bg-bg-elev disabled:opacity-30 transition"
                           disabled={l.qty <= 1}
                         >
@@ -85,7 +88,7 @@ export default async function CartPage() {
                           min={0}
                           max={99}
                           className="w-12 h-8 bg-bg-elev text-sm text-center border-x border-line focus:outline-none focus:bg-bg-elev/60"
-                          aria-label="Quantity"
+                          aria-label="Quantité"
                         />
                       </form>
                       <form action={adjustQtyAction}>
@@ -94,7 +97,7 @@ export default async function CartPage() {
                         <input type="hidden" name="delta" value={1} />
                         <button
                           type="submit"
-                          aria-label="Increase quantity"
+                          aria-label="Augmenter la quantité"
                           className="w-8 h-8 text-sm text-ink-soft hover:bg-bg-elev disabled:opacity-30 transition"
                           disabled={l.qty >= 99}
                         >
@@ -108,7 +111,7 @@ export default async function CartPage() {
                         type="submit"
                         className="h-8 px-3 rounded border border-line text-xs text-ink-mute hover:text-bad hover:border-bad/40 transition"
                       >
-                        Remove
+                        Retirer
                       </button>
                     </form>
                   </div>
@@ -127,15 +130,15 @@ export default async function CartPage() {
           </ul>
 
           <aside className="rounded-2xl border border-line-soft bg-bg-soft/60 p-6 h-fit">
-            <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Summary</h2>
+            <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Récapitulatif</h2>
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between">
-                <dt className="text-ink-soft">Subtotal</dt>
+                <dt className="text-ink-soft">Sous-total</dt>
                 <dd>{formatPrice(cart!.totals.subtotalMinor, cart!.currency)}</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-ink-soft">Delivery</dt>
-                <dd className="text-ink-mute">Free (cash on delivery)</dd>
+                <dt className="text-ink-soft">Livraison</dt>
+                <dd className="text-ink-mute">Gratuite (paiement à la livraison)</dd>
               </div>
             </dl>
             <div className="mt-4 pt-4 border-t border-line-soft flex justify-between text-base font-medium">
@@ -147,17 +150,18 @@ export default async function CartPage() {
               prefetch
               className="mt-6 w-full h-11 inline-flex items-center justify-center rounded-md bg-accent text-bg text-sm font-semibold hover:brightness-110 transition"
             >
-              Checkout
+              Commander
             </Link>
             <Link
               href="/search"
               className="mt-3 block text-center text-xs text-ink-mute hover:text-ink-soft transition"
             >
-              ← Continue shopping
+              ← Continuer mes achats
             </Link>
             <p className="mt-4 text-xs text-ink-mute leading-relaxed">
-              Cash on delivery. You&rsquo;ll be asked for your phone number and
-              delivery region on the next step.
+              Paiement à la livraison. Votre numéro de téléphone et votre
+              région de livraison vous seront demandés à l&rsquo;étape
+              suivante.
             </p>
           </aside>
         </div>

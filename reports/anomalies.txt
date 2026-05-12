@@ -23,8 +23,52 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 11:11 UTC — thirteenth sweep
+2026-05-12 11:18 UTC — fourteenth sweep
 ----------------------------------------
+
+[38] UX / i18n — Cart page is 100% English on a French marketplace (FIXED)
+   • The buyer's path to revenue (/cart, /checkout) is entirely in
+     English while the rest of the site (header, footer, FAQ, About,
+     home, product detail, og:locale=fr_DZ) is French. A French-
+     speaking buyer who clicks "Add to cart" then hits a /cart page
+     titled "Your cart" with "Your cart is empty.", "Browse products",
+     "Remove", "Summary", "Subtotal", "Delivery", "Free (cash on
+     delivery)", "Checkout", "← Continue shopping", "Cash on delivery.
+     You'll be asked…" — language whiplash at the moment of conversion.
+   • Plus the quantity-button aria-labels ("Decrease quantity",
+     "Increase quantity", "Quantity") leak English to French screen-
+     reader users.
+   • FIX (applied): translated every user-visible string + aria-label
+     in packages/web/src/app/cart/page.tsx, and added lang="fr" on the
+     section root. Confirmed via grep that EmptyState is not used here
+     (cart has its own inline empty-state copy).
+     Strings now: "Votre panier", "Votre panier est vide.",
+     "Parcourir les produits", "Récapitulatif", "Sous-total",
+     "Livraison", "Gratuite (paiement à la livraison)", "Total",
+     "Commander", "← Continuer mes achats", "Paiement à la
+     livraison. Votre numéro de téléphone et votre région…",
+     "Retirer", and the three aria-labels.
+
+[39] UX / i18n — Checkout page also English (NOT YET FIXED)
+   • Same problem one click deeper: packages/web/src/app/checkout/
+     page.tsx has "← Back to cart", "Checkout", "Full name", "Phone
+     (the seller will call this number)", error messages ("Please
+     fill in your name, phone, and region.", "Sorry, something went
+     wrong placing the order. Try again."), the COD blurb in two
+     forms, and presumably more in the form fields below line 80.
+   • Not done this iteration — checkout has more strings + an
+     actions.ts file with server-side messages that need matching
+     translations. Worth a dedicated pass.
+   • This is the second half of [38]; until both ship the locale
+     experience around money is still split.
+
+[40] OPS — Operator deploy confirmed for feed.xml fix + search i18n
+   • Commits f91670d (feed.xml) and e7f6e29 (search/page.tsx)
+     landed, web container Up 30 min so the rebuild covered both.
+   • Recheck of /feed.xml will show whether <updated> tracks
+     ingestion now — depends on cache warm-up.
+
+
 
 [35] UX / i18n — Search empty-state was English on a French site (FIXED)
    • Site og:locale is fr_DZ; the chrome (header, footer, category names,
