@@ -104,15 +104,34 @@ async function getFeedHits(): Promise<FeedHit[]> {
 
 export async function GET(req: NextRequest) {
   const hits = await getFeedHits();
-  // Top-level feed <updated> = the newest entry's ingestion time. The hits
-  // array is sorted "newest" by the API (which sorts on createdAt DESC since
-  // iter-3 of an earlier session), so hits[0].updatedAt is the most recent
-  // ingestion timestamp across the whole feed. Falls through to postedAt
-  // when updatedAt is missing (pre-iter-16 API builds), then to now() as
-  // last resort. Same precedence as the per-entry <updated> below.
-  const updated = hits.length > 0
-    ? (hits[0].updatedAt ?? hits[0].postedAt ?? new Date().toISOString())
-    : new Date().toISOString();
+  // Top-level feed <updated> = the MAX ingestion time across all entries
+  // (Atom RFC 4287: "the most recent instant in time when an entry or feed
+  // was modified in a way the publisher considers significant").
+  //
+  // Hits come back sorted by source postedAt (what buyers mean by "newest"
+  // — see catalog/sort.ts), NOT by ingestion time. Using hits[0].updatedAt
+  // therefore lags arbitrarily: a freshly-ingested listing whose seller
+  // originally posted it weeks ago has a newer updatedAt than the current
+  // hits[0]'s updatedAt, so the feed legitimately changed — but
+  // hits[0].updatedAt didn't move and feed readers see the same Atom
+  // <updated>, the same ETag, the same Last-Modified, and never re-pull.
+  // Live probe 2026-05-12: the feed's <updated> was 14h stale even though
+  // the catalog kept ingesting through that window. Taking max(updatedAt)
+  // tracks ingestion correctly without changing what entries appear or how
+  // they're ordered.
+  let maxUpdated: number | null = null;
+  let maxUpdatedIso: string | null = null;
+  for (const h of hits) {
+    const iso = h.updatedAt ?? h.postedAt ?? null;
+    if (!iso) continue;
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) continue;
+    if (maxUpdated === null || t > maxUpdated) {
+      maxUpdated = t;
+      maxUpdatedIso = iso;
+    }
+  }
+  const updated = maxUpdatedIso ?? new Date().toISOString();
   // Last-Modified in RFC 7231 IMF-fixdate format (the only format the spec
   // permits). Lets RSS/Atom readers do conditional GET — they send
   // If-Modified-Since and we return 304 when the feed hasn't changed,

@@ -23,8 +23,49 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 10:52 UTC — tenth sweep
------------------------------------
+2026-05-12 10:58 UTC — eleventh sweep
+--------------------------------------
+
+[30] BUG — feed.xml top-level <updated> lags ingestion by ~14h (FIXED)
+   • Probe at 10:58 UTC: GET https://teno-store.com/feed.xml returned
+     <updated>2026-05-11T18:09:18.419Z</updated> — exactly 14 hours
+     before the request. Meanwhile catalog.products has rows ingested
+     as recently as 2026-05-12T08:37:18Z (minutes before the probe).
+   • Root cause: hits are sorted by source postedAt (the seller's
+     original posting date — what buyers want for "newest"). The feed
+     used hits[0].updatedAt as the feed-level Atom <updated>. But when
+     today's ingestions all have source postedAt OLDER than yesterday's
+     hits[0] postedAt, hits[0].updatedAt doesn't move, so the feed's
+     <updated>, ETag, and Last-Modified all stay frozen. Conditional
+     GET (If-None-Match / If-Modified-Since) returns 304 indefinitely
+     and feed readers stop seeing the new listings.
+   • FIX (applied): take max(updatedAt) across all hits instead of
+     reading hits[0]. Same ordering, same entries — only the feed-
+     level freshness signal changes. Per Atom RFC 4287, <updated>
+     should be "the most recent instant the feed was modified", which
+     this matches; hits[0].updatedAt was the previous (incorrect)
+     interpretation.
+   • Operator action: deploy web image to pick up the change.
+
+[31] PERF — feed.xml cold-cache hit measured at 9.12 seconds
+   • Same root as [5]/[16]/[24]: the harvest fetches /v1/products
+     which hits the loadAll path on cold cache. The feed has a 5-min
+     in-memory TTL inside the Next route + 300s revalidate, so steady
+     state is fine; cold-restart and >5-min-idle hits eat 9s.
+   • No separate fix needed — the storefront fast path and SWR
+     bumps from earlier iterations + a proper sitemap/feed-IDs SQL
+     endpoint (future) would resolve this. Logged for completeness.
+
+[32] DATA — Cart volume snapshot (INFO)
+   • 86 carts total, only 4 with items, 0 stale (>7d). 74 orders in
+     last 24h, all distinct cart_ids (no double-orders — confirms
+     the [29] idempotency fix is the right shape, no historic
+     evidence of repeated successful confirms per cart).
+   • Cart hygiene is fine for now. Worth adding a periodic prune
+     (carts older than 30 days with no items) before the table
+     accumulates noise. Not urgent.
+
+
 
 [29] FIX APPLIED — Checkout idempotent retry (closes [11] + [28])
    • Confirmed root cause exactly: packages/api/src/server.ts:139 exempts
