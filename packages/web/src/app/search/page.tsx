@@ -601,16 +601,22 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
       )}
       <ActiveFilters sp={sp} sellerDisplayNames={sellerDisplayNames} />
       {result.data.length === 0 ? (
+        // Site default locale is fr_DZ (see og:locale on the layout); the
+        // search empty-state can't infer contentLang from the result rows
+        // because there are none, so default to French. English-speaking
+        // visitors hit this rarely (most live catalog is French DZD
+        // listings) and it preserves locale consistency with the rest of
+        // the chrome (header, footer, category names).
         Object.keys(input).length === 0 ? (
           <EmptyState
-            title="Catalog is empty"
-            hint="No listings yet. If you sell products, you can be the first."
+            title="Catalogue vide"
+            hint="Aucune annonce pour le moment. Si vous êtes vendeur, vous pouvez être le premier."
             showSellCta
           />
         ) : (
           <EmptyState
-            title="No products matched"
-            hint="Try a broader query, enable fuzzy matching, or remove a filter chip above."
+            title="Aucun produit trouvé"
+            hint="Essayez une requête plus large, activez la recherche approximative, ou retirez un filtre ci-dessus."
             q={input.q}
             hasFilters
             fuzzyAlreadyOn={input.fuzzy}
