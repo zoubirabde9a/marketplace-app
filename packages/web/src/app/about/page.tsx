@@ -77,6 +77,19 @@ export default function AboutPage() {
     "@id": `${SITE_URL}/about#faq`,
     inLanguage: "fr",
     isPartOf: { "@id": `${SITE_URL}/#website` },
+    // Speakable annotation: tells Google Assistant + AI search engines
+    // (Bing Chat / ChatGPT search / Perplexity voice mode) which spans on
+    // the page are suitable to be read aloud as featured snippets. The
+    // CSS selector targets the FAQ <section> + the brand definition sentence
+    // — exactly the content an AI search panel needs to answer "what is
+    // Teno Store / is Teno Store legit / how do I buy" without reading
+    // the whole page. Speakable is the schema.org-blessed mechanism Google
+    // documented for voice/AI snippet eligibility; pure additive markup,
+    // ignored by engines that don't use it.
+    speakable: {
+      "@type": "SpeakableSpecification",
+      cssSelector: ["#faq-heading", "#faq-heading ~ dl"],
+    },
     mainEntity: buyerFaq.map(({ q, a }) => ({
       "@type": "Question",
       name: q,

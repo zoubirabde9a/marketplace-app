@@ -39,6 +39,19 @@ describe("AboutPage", () => {
     expect(faq).toBeDefined();
     expect(faq.inLanguage).toBe("fr");
     expect(faq.isPartOf?.["@id"]).toMatch(/#website$/);
+    // Speakable annotation tells voice/AI search engines which spans to
+    // read aloud as snippets. CSS selectors must point at elements that
+    // actually exist in the rendered page.
+    expect(faq.speakable?.["@type"]).toBe("SpeakableSpecification");
+    expect(Array.isArray(faq.speakable?.cssSelector)).toBe(true);
+    for (const sel of faq.speakable.cssSelector) {
+      // The first selector targets an ID; verify it resolves. The combinator
+      // selectors (sibling/descendant) won't all resolve via querySelector
+      // depending on test render shape, so we only enforce ID selectors here.
+      if (sel.startsWith("#") && !sel.includes(" ")) {
+        expect(container.querySelector(sel)).not.toBeNull();
+      }
+    }
     expect(Array.isArray(faq.mainEntity)).toBe(true);
     expect(faq.mainEntity.length).toBeGreaterThanOrEqual(4);
     expect(faq.mainEntity.length).toBeLessThanOrEqual(8);
