@@ -139,12 +139,19 @@ export async function checkoutConfirm(input: {
   cartId: string;
   customer: { name: string; phone: string; region: string };
 }): Promise<OrderConfirmation> {
+  // Deterministic per (cart, customer payload): if the user accidentally
+  // double-submits the checkout form (slow network, refresh-then-submit),
+  // the second call reuses the first call's key. The idempotency middleware
+  // replays the first response, so the second submit lands the buyer on
+  // the same order page instead of failing with "cart empty" after the
+  // first call already drained it.
+  const idemKey = await deterministicCheckoutKey(input.cartId, input.customer);
   const res = await fetch(`${API_URL}/v1/checkout/confirm`, {
     method: "POST",
     headers: {
       accept: "application/json",
       "content-type": "application/json",
-      "idempotency-key": cryptoRandomKey(),
+      "idempotency-key": idemKey,
     },
     body: JSON.stringify({ cartId: input.cartId, customer: input.customer }),
     cache: "no-store",
@@ -210,4 +217,20 @@ export async function getOrder(orderId: string): Promise<OrderView | null> {
 function cryptoRandomKey(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return `web-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+// Stable idempotency key for /v1/checkout/confirm. Hashing (rather than
+// concatenating raw fields) keeps phone/name out of the key sent on the wire.
+async function deterministicCheckoutKey(
+  cartId: string,
+  customer: { name: string; phone: string; region: string },
+): Promise<string> {
+  const seed = `${cartId}\x1f${customer.name.trim()}\x1f${customer.phone.trim()}\x1f${customer.region.trim()}`;
+  if (typeof crypto !== "undefined" && "subtle" in crypto) {
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(seed));
+    return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  // Cold fallback — server runtime always has WebCrypto, but keep the wire
+  // shape consistent if it ever isn't there.
+  return `web-${cartId}-${seed.length}`;
 }
