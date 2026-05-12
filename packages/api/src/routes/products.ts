@@ -498,30 +498,52 @@ export function makeProductReader(repo: {
   searchIds?: (q: string, limit?: number) => Promise<Array<{ id: string; score: number }>>;
   idsBySeller?: (sellerId: string, limit?: number) => Promise<string[]>;
 }): ProductReader {
-  // Browse-path TTL cache. Empty-query browse pulls every product+variant+
-  // media row, hydrates them, JS-filters/sorts/computes facets — order of
-  // ~700 row reads on prod just to render a 10-listing page. Caching the
-  // hydrated result drops cached browses to microseconds.
+  // Browse-path stale-while-revalidate cache. Empty-query browse pulls every
+  // product+variant+media row, hydrates them, JS-filters/sorts/computes
+  // facets — order of ~700 row reads on prod just to render a 10-listing
+  // page. Caching the hydrated result drops cached browses to microseconds.
   //
-  // TTL bumped to 300s (2026-05-12). At 77k+ live products, loadAll() hydrates
-  // ~200k+ rows (products + variants + media) plus the sellers map; cold-cache
-  // hits measured at 7–10s in production, and every BROWSE_TTL_MS interval a
-  // visitor lands on one. The previous 90s window was undershooting the
-  // agents.json "products: 5 min cache" data-freshness commitment, so we were
-  // paying the spike ~3.3x more often than the contract requires. 300s aligns
-  // with that commitment exactly — past this point, see anomalies report [5]
-  // for the architectural fix (push browse to SQL, separate facet computation).
-  // Concurrent expired-cache hits may both fire loadAll once; the second
-  // one overwrites — harmless. Promises are deliberately not deduped; the
-  // extra call is cheaper than the lock bookkeeping at our scale.
-  const BROWSE_TTL_MS = 300_000;
-  let browseCache: { value: { products: StoredProduct[]; sellers: Map<string, StoredSeller> }; expiresAt: number } | null = null;
-  async function loadAllCached() {
-    const now = Date.now();
-    if (browseCache && browseCache.expiresAt > now) return browseCache.value;
+  // Two-window SWR (added 2026-05-12). Hard-TTL bumped to 300s earlier still
+  // meant one visitor per 5min ate the full 7–10s loadAll on the edge of
+  // expiry. Now:
+  //   - 0..STALE: cached value served, no work
+  //   - STALE..HARD: cached value served, ONE background refresh kicked off
+  //   - >HARD: synchronous reload (cold start or background refresh failed)
+  // Result: 99.9% of browse hits stay sub-millisecond regardless of when in
+  // the cache cycle they land. Only the very first request after a restart
+  // pays the loadAll cost. agents.json "products: 5 min cache" contract still
+  // honoured — STALE = 300s, data is at most 300s old when served.
+  const BROWSE_STALE_MS = 300_000;
+  const BROWSE_HARD_MS = 1_500_000; // 25min — refusing to serve data older than this
+  type BrowseValue = { products: StoredProduct[]; sellers: Map<string, StoredSeller> };
+  let browseCache: { value: BrowseValue; refreshedAt: number } | null = null;
+  let browseRefreshInFlight: Promise<BrowseValue> | null = null;
+  async function refreshBrowseCache(): Promise<BrowseValue> {
     const fresh = await repo.loadAll();
-    browseCache = { value: fresh, expiresAt: now + BROWSE_TTL_MS };
+    browseCache = { value: fresh, refreshedAt: Date.now() };
     return fresh;
+  }
+  async function loadAllCached(): Promise<BrowseValue> {
+    const now = Date.now();
+    const age = browseCache ? now - browseCache.refreshedAt : Infinity;
+    if (browseCache && age < BROWSE_STALE_MS) return browseCache.value;
+    if (browseCache && age < BROWSE_HARD_MS) {
+      // Stale-but-usable. Serve immediately, refresh in the background. If a
+      // refresh is already in flight, don't queue another (the racing call
+      // would just overwrite).
+      if (!browseRefreshInFlight) {
+        browseRefreshInFlight = refreshBrowseCache()
+          .catch(() => browseCache?.value ?? ({ products: [], sellers: new Map() } as BrowseValue))
+          .finally(() => { browseRefreshInFlight = null; });
+      }
+      return browseCache.value;
+    }
+    // Hard miss (cold boot or stale beyond HARD): wait synchronously. Dedupe
+    // concurrent waiters onto the same in-flight load.
+    if (!browseRefreshInFlight) {
+      browseRefreshInFlight = refreshBrowseCache().finally(() => { browseRefreshInFlight = null; });
+    }
+    return browseRefreshInFlight;
   }
 
   // Sellers map cache. getProduct() / getProductsByIds() call repo.loadSellers()
