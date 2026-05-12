@@ -153,7 +153,21 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
       {
         "@type": "Organization",
         "@id": `${SITE_URL}/#organization`,
+        // Declare the e-commerce nature of the entity via additionalType.
+        // schema.org/OnlineStore is the subtype Google + AI commerce panels
+        // (Bing Shopping, ChatGPT shopping, Perplexity buy-mode) recognise
+        // for "online merchants". Keeping the primary @type as Organization
+        // preserves the existing publisher backref in WebSite.publisher
+        // and the cross-page isPartOf/about anchors that already resolve
+        // to #organization; additionalType is the schema.org-blessed
+        // mechanism for adding a secondary type without breaking refs.
+        additionalType: "https://schema.org/OnlineStore",
         name: "Teno Store",
+        // Short brand pitch, surfaced in Google knowledge-graph cards and
+        // AI search entity summaries when the engine wants a one-liner
+        // rather than the full description. Mirrors the French H1 visible
+        // on the homepage so the slogan and the rendered hero align.
+        slogan: "Marketplace algérien · annonces actualisées en temps réel",
         // Organization description for Google's knowledge-graph brand
         // entity. Parallel to WebSite.description above so both nodes in
         // the @graph paint the same picture. Without this Google's brand
@@ -164,6 +178,20 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         logo: {
           "@type": "ImageObject",
           url: `${SITE_URL}/icon.svg`,
+        },
+        // Structured customer-service contact. Google's knowledge-graph
+        // brand panel renders contactPoint as a dedicated "Contact" row
+        // when present — without it, the entity is reachable only via the
+        // bare email field at the bottom of the node. contactType +
+        // areaServed + availableLanguage are the three fields Google's
+        // structured-data docs single out as ranking-relevant for the
+        // commerce-panel "Contact" enrichment.
+        contactPoint: {
+          "@type": "ContactPoint",
+          contactType: "customer service",
+          email: "mahlledz@gmail.com",
+          areaServed: "DZ",
+          availableLanguage: ["French", "Arabic", "English"],
         },
         // Regional entity signals for Google's knowledge graph. The catalog
         // serves Algerian buyers and sellers exclusively (currency=DZD,
