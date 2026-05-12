@@ -23,8 +23,35 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 10:46 UTC — ninth sweep
+2026-05-12 10:52 UTC — tenth sweep
 -----------------------------------
+
+[29] FIX APPLIED — Checkout idempotent retry (closes [11] + [28])
+   • Confirmed root cause exactly: packages/api/src/server.ts:139 exempts
+     /mcp from the HTTP idempotency middleware. MCP/agent clients retry
+     POST checkout.confirm through /mcp (not /v1/checkout/confirm) and
+     bypass the dedup. Same X-Request-Id is honored by Fastify's default
+     genReqId, which is why both attempts appear with the same reqId.
+   • FIX (applied this iteration):
+     - Added OrderRepo.findRecentByCartId(cartId, withinMs) to the
+       interface and Drizzle implementation (cart_id has no dedicated
+       index but the query is bounded to a 10-minute window, so it's
+       effectively a small range scan; revisit if profiling shows hot).
+     - /v1/checkout/confirm now looks up a recent order for the cart on
+       the cart-empty path and replays its payload (HTTP 200,
+       replayed:true) instead of throwing cart:empty.
+     - Mirror in packages/mcp-server/src/tools/buyer.ts checkout.confirm:
+       same lookup, returns the shaped order via the existing helper.
+     - server.ts wires the new method into the MCP-side OrderRepo
+       adapter.
+   • Tests (packages/api/test/checkout-idempotent.test.ts, 2 cases):
+     "first confirm creates the order, second confirm replays it" and
+     "rejects an empty-cart confirm without a recent order". 48/48 green.
+   • Operator action: deploy api image to pick up the change. Confirm
+     dashboards: this should take the recurring HTTP-500 line on
+     POST /v1/checkout/confirm in caddy access logs to zero.
+
+
 
 [27] OBS — Operator is integrating recommendations (INFO)
    • Recent commits show 0009 + 0010 migrations landed, idsBySeller
