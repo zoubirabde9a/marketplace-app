@@ -797,7 +797,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             const posted = formatRelativeTime(postedIso);
             return posted ? (
               <time dateTime={postedIso ?? undefined} className="text-xs text-ink-mute">
-                Posted {posted}
+                Publié {posted}
               </time>
             ) : null;
           })()}
