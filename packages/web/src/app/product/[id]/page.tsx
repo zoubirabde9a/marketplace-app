@@ -761,7 +761,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           <div className="flex items-baseline gap-4">
             <div className="text-3xl font-semibold tracking-tight">{priceLabel}</div>
             <div className={`text-xs uppercase tracking-widest font-medium ${inStockVariants.length ? "text-ok" : "text-ink-mute"}`}>
-              {inStockVariants.length ? `${inStockVariants.length} variant${inStockVariants.length === 1 ? "" : "s"} in stock` : "Currently out of stock"}
+              {inStockVariants.length
+                ? `${inStockVariants.length} variante${inStockVariants.length === 1 ? "" : "s"} en stock`
+                : "Actuellement en rupture de stock"}
             </div>
           </div>
 
@@ -782,7 +784,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 <AddToCart
                   variantId={target.id}
                   inStock={inStock}
-                  label="Buy now"
+                  label="Acheter maintenant"
                   redirectTo="/checkout"
                   className="[&>button]:bg-transparent [&>button]:border [&>button]:border-accent/60 [&>button]:text-accent [&>button]:hover:bg-accent/10 [&>button]:hover:brightness-100"
                 />
@@ -840,7 +842,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <AddToCart variantId={v.id} inStock={v.inStock} label="Add" />
+                          <AddToCart variantId={v.id} inStock={v.inStock} label="Ajouter" />
                         </td>
                       </tr>
                     ))}
