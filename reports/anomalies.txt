@@ -23,8 +23,38 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 21:18 UTC — forty-third sweep
------------------------------------------
+2026-05-12 21:33 UTC — forty-fifth sweep (deploy verify)
+---------------------------------------------------------
+
+[84] CLOSURES — Operator deploy of session fixes verified live
+   • Commit 7f8df24 ("chore: dep bumps, React-19 form-pending
+     refactor, redis policy persisted, operator polish") just
+     deployed: marketplace-web + marketplace-api both Up <1 min,
+     healthy after the health-probe handshake.
+   • Verified post-deploy:
+     - /readyz now returns real check results instead of "skipped":
+         {"status":"ready","checks":{"db":{"ok":true,"latencyMs":2},
+                                     "redis":{"ok":true,"latencyMs":2}}}
+       Closes [77]. The endpoint will now legitimately return 503
+       if either dep is unreachable — orchestrators get the right
+       drain signal, the iter-22 incident class can't sneak past
+       a green-light health probe again.
+     - /v1/products?category=immobilier cold = 57.9 ms (was 950ms
+       via JS-side filtering through loadAllCached). Closes [78].
+     - pg_stat_user_indexes.products_category_ids_gin.idx_scan: 0 → 1
+       (verified the GIN is now actually being hit). Counter will
+       grow as category traffic flows.
+   • Also live in this deploy:
+     - Security patches: next 15.5.18 + drizzle-orm 0.45.2 + fast-uri
+       >=3.1.2 + postcss >=8.5.10 + ip-address >=10.1.1 (closes [83])
+     - Startup cache warm-up (closes [71])
+     - React-19 useFormStatus refactor for cart/checkout submit
+       buttons (operator's pending-state UX, complements [29])
+     - Redis allkeys-lru baked into compose so next-restart survives
+   • 626 tests green per the commit message; 0 api errors post-
+     deploy. Session work complete.
+
+
 
 [83] SECURITY — Dependency vulnerability sweep (FIXED, 4 HIGH cleared)
    • `pnpm audit` found 10 advisories: 4 HIGH, 6 MODERATE, 1 LOW.
