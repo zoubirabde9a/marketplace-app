@@ -16,7 +16,9 @@ import { LogoutButton } from "./LogoutButton";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Seller dashboard",
+  // French chrome to match the buyer money path (cart/checkout/order),
+  // the buyer-facing /seller/products/new and og:locale=fr_DZ.
+  title: "Tableau de bord vendeur",
   robots: { index: false, follow: false },
 };
 
@@ -29,12 +31,12 @@ export default async function DashboardPage() {
   const sellers = sellersResp.data;
 
   return (
-    <section className="pt-10 pb-24 max-w-5xl mx-auto">
+    <section className="pt-10 pb-24 max-w-5xl mx-auto" lang="fr">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Seller dashboard</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Tableau de bord vendeur</h1>
           <p className="mt-2 text-sm text-ink-soft">
-            Signed in as <span className="text-ink">{session.user.email}</span>
+            Connecté en tant que <span className="text-ink">{session.user.email}</span>
             {session.user.displayName ? ` (${session.user.displayName})` : ""}.
           </p>
         </div>
@@ -43,10 +45,9 @@ export default async function DashboardPage() {
 
       {sellers.length === 0 ? (
         <div className="mt-10 rounded-2xl border border-line-soft bg-bg-soft/60 p-8">
-          <h2 className="text-xl font-medium">Create your seller profile</h2>
+          <h2 className="text-xl font-medium">Créez votre boutique</h2>
           <p className="mt-2 text-sm text-ink-soft">
-            You don&apos;t have a seller profile yet. Set a display name to get
-            started — you can add contact info and products afterwards.
+            Vous n’avez pas encore de boutique. Indiquez un nom pour commencer — vous pourrez ajouter les coordonnées et les produits ensuite.
           </p>
           <div className="mt-6">
             <CreateSellerForm />
@@ -101,24 +102,24 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
             href={`/seller/contact?sellerId=${encodeURIComponent(seller.sellerId)}`}
             className="text-sm px-3 py-1.5 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
           >
-            Edit contact info
+            Modifier les coordonnées
           </Link>
           <Link
             href={`/seller/products/new?sellerId=${encodeURIComponent(seller.sellerId)}`}
             className="text-sm px-3 py-1.5 rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition"
           >
-            New product
+            Nouveau produit
           </Link>
         </div>
       </header>
       <div className="p-6 border-b border-line-soft">
         <h3 className="text-sm font-medium text-ink-soft mb-3">
-          Orders ({orders.length})
+          Commandes ({orders.length})
         </h3>
         {ordersError ? (
-          <p className="text-sm text-bad">Failed to load orders: {ordersError}</p>
+          <p className="text-sm text-bad">Impossible de charger les commandes.</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-ink-mute">No orders yet.</p>
+          <p className="text-sm text-ink-mute">Aucune commande pour le moment.</p>
         ) : (
           <ul className="divide-y divide-line-soft">
             {orders.map((o) => (
