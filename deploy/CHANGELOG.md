@@ -6,6 +6,24 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-12 — vps-eu · api+web rebuild · home-page perf, French error banner, SEO title alignment
+
+- API perf: home-page "recent listings" strip now goes through a `noFacets=true` query param that bypasses the catalog-wide `loadAll` and runs `recentIds()` — an indexed `ORDER BY created_at DESC LIMIT N` SQL query. Was the main cause of 11s+ cold home-page TTFB on the 77k-product catalog.
+- DB: migration 0011 adds `catalog.media(product_id)` btree. Product-detail lookups were running 372k-row parallel seq-scans to find ~5 media rows (~99.99% miss rate against the only existing index). Pre-applied with `CREATE INDEX CONCURRENTLY` to avoid the write-lock window; drizzle migration then ran with `IF NOT EXISTS` no-op.
+- UX: /search "Marketplace API unreachable" dev-text banner replaced with French "Catalogue momentanément indisponible" — technical message routed to server log only. Was leaking developer copy onto the buyer-facing search page during API hiccups.
+- SEO: homepage `<title>` rewritten from "Teno Store — the agent-to-agent marketplace" (English dev pitch on a `<html lang="fr">` page) to "Teno Store — Marketplace algérien : téléphones, électroménager, mode et véhicules en DZD". Aligns with the rendered French H1 and meta description; the agent-marketplace angle stays on og:title for socials and in keywords.
+- Operator: misc edits to seller dashboard, seller/products/new form, cart route, auth middleware, header cart, sign-out, error page.
+- Deploy: tar+ssh, `docker compose build api web` + `up -d api web caddy`, ~3 min. Verified `/livez` ok, homepage 200 with new title, sitemap intact.
+
+## 2026-05-12 — vps-eu · redis · maxmemory-policy volatile-lru → allkeys-lru (incident response)
+
+- Symptom: marketplace-redis container had restarted **32 times**; api logs showed 58 `MaxRetriesPerRequestError` from ioredis in 6 h; Caddy slow paths showed /sitemap.xml at 194 s, /feed.xml 174 s, / at 65 s, /product/* at 55 s. When Redis was unreachable, every API call that wrote a snapshot or checked idempotency timed out and cascaded into the SSR layer.
+- Root cause: keyspace held 56,236 `snap:*` keys (+1 `pcache:*`) totalling 1.49 GiB of the 2 GiB ceiling — all with valid 24 h TTLs, but write rate × accumulated lifespan kept Redis pinned at maxmemory. `volatile-lru` happened to evict 0 keys in that window (`evicted_keys: 0` on inspect), so any new write hit `OOM command not allowed when used memory > 'maxmemory'`, ioredis exhausted retries, and the container cycled.
+- Fix: `redis-cli config set maxmemory-policy allkeys-lru` (runtime, no restart) + edit `docker-compose.prod.yml` redis block so the policy survives the next `compose up -d redis`. Bumping the 2 GiB cap was explicitly NOT done — the keyspace is already 100% ephemeral snapshots so an eviction-friendly policy is the right shape, not more memory.
+- The original comment in the compose file argued `volatile-lru` protected "future durable session keys"; updated comment notes the rationale no longer holds at the current keyspace + LRU recency keeps hot session keys cached regardless.
+- Verified live: policy now `allkeys-lru`, used_memory 1.51 GiB, evicted_keys 0 (still under ceiling; eviction will trigger when next write pushes us over). Post-change: 1 api error from the restart window, then 0 errors. Cold home cache rebuild 13 s once, warm hits 100–170 ms.
+- Reference: reports/anomalies.txt [56].
+
 ## 2026-05-12 — vps-eu · api+web rebuild · SEO entity enrichment batch + operator cart/checkout polish
 
 - SEO: /about now ships FAQPage JSON-LD (6 French buyer Q&A pairs) + Speakable annotation for AI voice/search snippets (`#faq-heading` + sibling `<dl>`).
