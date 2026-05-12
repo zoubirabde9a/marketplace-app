@@ -502,26 +502,46 @@ export function makeProductReader(repo: {
   // ~700 row reads on prod just to render a 10-listing page. Caching the
   // hydrated result drops cached browses to microseconds.
   //
-  // TTL bumped from 30s to 90s (2026-05-11). Live probe found cold-cache
-  // /v1/products?sort=newest&limit=8 — the query the home page hits on
-  // every fresh visit — took 5-7s while warm hits were ~200ms (loadAll
-  // hydrates 43k+ products + variants + media). The 30s window was
-  // narrower than the scrape loop's seed cadence (~1/min per category),
-  // and Googlebot/agent crawler timing didn't always fall inside it, so
-  // cold rebuilds were firing maybe 1–2/min in production. 90s tracks the
-  // scrape-loop's actual unique-product yield: the cache only needs to
-  // refresh when newest-N changes substantively, and 90s of stale-recent
-  // is well within agents.json's '5 min cache' data-freshness commitment.
+  // TTL bumped to 300s (2026-05-12). At 77k+ live products, loadAll() hydrates
+  // ~200k+ rows (products + variants + media) plus the sellers map; cold-cache
+  // hits measured at 7–10s in production, and every BROWSE_TTL_MS interval a
+  // visitor lands on one. The previous 90s window was undershooting the
+  // agents.json "products: 5 min cache" data-freshness commitment, so we were
+  // paying the spike ~3.3x more often than the contract requires. 300s aligns
+  // with that commitment exactly — past this point, see anomalies report [5]
+  // for the architectural fix (push browse to SQL, separate facet computation).
   // Concurrent expired-cache hits may both fire loadAll once; the second
   // one overwrites — harmless. Promises are deliberately not deduped; the
   // extra call is cheaper than the lock bookkeeping at our scale.
-  const BROWSE_TTL_MS = 90_000;
+  const BROWSE_TTL_MS = 300_000;
   let browseCache: { value: { products: StoredProduct[]; sellers: Map<string, StoredSeller> }; expiresAt: number } | null = null;
   async function loadAllCached() {
     const now = Date.now();
     if (browseCache && browseCache.expiresAt > now) return browseCache.value;
     const fresh = await repo.loadAll();
     browseCache = { value: fresh, expiresAt: now + BROWSE_TTL_MS };
+    return fresh;
+  }
+
+  // Sellers map cache. getProduct() / getProductsByIds() call repo.loadSellers()
+  // on every single request, and loadSellers does SELECT * FROM seller_profiles
+  // + SELECT * FROM seller_phones each time (no LIMIT). Live measurement: this
+  // pushed warm product-detail TTFB to a steady 380–555ms — there was no warm
+  // path at all, every request paid the full sellers scan. 60s tracks how
+  // often seller profile data actually changes (almost never via UI; the
+  // scraper loop refreshes contact info opportunistically), and a 60s stale
+  // window on a phone number / display name is invisible to buyers.
+  const SELLERS_TTL_MS = 60_000;
+  let sellersCache: { value: Map<string, StoredSeller>; expiresAt: number } | null = null;
+  async function loadSellersCached(): Promise<Map<string, StoredSeller>> {
+    const now = Date.now();
+    if (sellersCache && sellersCache.expiresAt > now) return sellersCache.value;
+    if (!repo.loadSellers) {
+      // Legacy repo without a sellers-only path; fall back to loadAll.
+      return (await repo.loadAll()).sellers;
+    }
+    const fresh = await repo.loadSellers();
+    sellersCache = { value: fresh, expiresAt: now + SELLERS_TTL_MS };
     return fresh;
   }
   function projectOne(p: StoredProduct, sellers: Map<string, StoredSeller>) {
@@ -561,19 +581,20 @@ export function makeProductReader(repo: {
       // Fast path: when there's a query and the repo can shortlist via SQL
       // (FTS + pg_trgm, migration 0003), skip loadAll entirely and only
       // hydrate the candidates we actually need plus the small sellers map.
-      // Cuts per-search DB cost dramatically — for a 290-listing catalog with
-      // a typical query matching <50 candidates, this trades ~700 row reads
-      // (loadAll: products+variants+media) for ~150 (candidates only).
+      // Cuts per-search DB cost dramatically — at 77k live products a typical
+      // query matching <50 candidates trades ~200k row reads (loadAll:
+      // products+variants+media) for ~150 (candidates only). The browse path
+      // below still pays the loadAll cost; see anomalies report [5].
       if (q.length > 0 && repo.searchIds && repo.loadSellers) {
         const ranked = await repo.searchIds(q);
         if (ranked.length === 0) {
-          const sellers = await repo.loadSellers();
+          const sellers = await loadSellersCached();
           return searchProducts([], sellers, query, new Map());
         }
         const ids = ranked.map((r) => r.id);
         const [productsResult, sellers] = await Promise.all([
           repo.getProductsByIds(ids),
-          repo.loadSellers(),
+          loadSellersCached(),
         ]);
         const scoreMap = new Map(ranked.map((r) => [r.id, r.score]));
         const candidates = productsResult.filter((p): p is StoredProduct => p !== null);
@@ -588,23 +609,17 @@ export function makeProductReader(repo: {
     async getProduct(id) {
       const p = await repo.loadOne(id);
       if (!p) return null;
-      // Use loadSellers() instead of loadAll() — we only need the sellers
-      // map for projectOne, not the 25k-product catalog. Probed live: this
-      // detail endpoint was running ~2.5s vs ~170ms for the list endpoint
-      // (which uses loadAllCached). Without loadSellers fallback, detail
-      // was effectively re-hydrating the entire catalog on every single
-      // product lookup. Falls back to loadAll for repos that don't expose
-      // loadSellers (older test fixtures).
-      const sellers = repo.loadSellers
-        ? await repo.loadSellers()
-        : (await repo.loadAll()).sellers;
+      // Use loadSellersCached() instead of loadAll() — we only need the sellers
+      // map for projectOne, not the 77k+ product catalog. Live measurement
+      // 2026-05-12: uncached loadSellers ran on every request and held warm
+      // detail TTFB at 380–555ms (no warm path at all). The cached path drops
+      // that to ~5ms once the 60s seller cache is hot.
+      const sellers = await loadSellersCached();
       return projectOne(p, sellers);
     },
     async getProductsByIds(ids) {
       const found = await repo.getProductsByIds(ids);
-      const sellers = repo.loadSellers
-        ? await repo.loadSellers()
-        : (await repo.loadAll()).sellers;
+      const sellers = await loadSellersCached();
       return found.map((p) => (p ? projectOne(p, sellers) : null));
     },
   };

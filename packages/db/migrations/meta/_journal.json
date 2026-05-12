@@ -64,6 +64,13 @@
       "when": 1778979000000,
       "tag": "0008_seller_phones",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1778979600000,
+      "tag": "0009_products_seller_created_idx",
+      "breakpoints": true
     }
   ]
 }

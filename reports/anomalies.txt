@@ -1,0 +1,150 @@
+Anomalies — live server observations
+=====================================
+Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
+
+2026-05-12 10:05 UTC — first sweep
+-----------------------------------
+
+2026-05-12 10:09 UTC — second sweep
+------------------------------------
+
+2026-05-12 10:14 UTC — third sweep
+-----------------------------------
+
+2026-05-12 10:19 UTC — fourth sweep
+------------------------------------
+
+[10] PERF — Product detail steady-state 380–555ms with no warm path (HIGH)
+   • Three sequential SSR fetches of https://teno-store.com/product/<id>
+     measured 545ms, 381ms, 555ms — there's no warm path, every request
+     pays the same cost.
+   • Root cause: packages/api/src/routes/products.ts getProduct() calls
+     repo.loadSellers() on every request, which runs:
+       SELECT * FROM seller.seller_profiles
+       SELECT * FROM seller.seller_phones ORDER BY ...
+     with no LIMIT and no cache. Across thousands of sellers this is the
+     dominant cost of the detail endpoint.
+   • FIX (applied): added loadSellersCached() with a 60s TTL alongside
+     the existing loadAllCached() in makeProductReader. Wired all three
+     call sites (search/getProduct/getProductsByIds) through it.
+     Expected impact: warm detail TTFB drops from ~500ms to ~5ms; cold
+     hits unchanged. The seller map changes infrequently (manual edits
+     are rare, scraper refreshes are opportunistic), so 60s of staleness
+     on a phone number / display name is invisible to buyers.
+
+[11] BUG — Checkout emits "Promise errored, but reply.sent" after 201 (LOW)
+   • 5 HTTP-500 lines in caddy log in the last hour: 4× POST /mcp, 1×
+     POST /v1/checkout/confirm. The checkout one is the loud one:
+     same reqId emits {statusCode:201} then 5ms later throws
+     ValidationError "cart: empty" with msg "Promise errored, but
+     reply.sent = true was set". Buyer sees a successful 201 — order
+     was created — but the log line surfaces as a 500 at the edge.
+   • Hypothesis: a concurrent retry from Caddy's lb_try_duration (30s
+     window on api block) hits the same handler after the cart has
+     already been cleared on line 118. Needs deeper trace to confirm.
+     Not fixed this iteration — UX is unaffected, log noise only.
+   • Action: leave a TODO in checkout.ts and confirm with structured
+     log query next sweep. The 4× POST /mcp 500s also need a look.
+
+[6] SECURITY — No rate limiting on the public API (HIGH)
+   • 20 rapid-fire requests to /v1/products?limit=1 all returned 200, no
+     headers indicating throttling, no upstream limiter in Caddyfile, no
+     @fastify/rate-limit (or any rate-limit plugin) registered in the API.
+   • Cloudflare is the only line of defence; with Bot Fight Mode tunable
+     in the dashboard, baseline app-level throttling is still expected.
+   • Suggested fix: add @fastify/rate-limit with conservative defaults
+     (e.g., 60 req/min/IP for unauthenticated, 600/min for principals;
+     skip /livez and /readyz). Surface the limit in 429 response with a
+     Retry-After header. Operator action: install dep + review limits.
+
+[7] SECURITY — Web frontend missing CSP and cross-origin isolation headers
+   • teno-store.com/ response headers: no Content-Security-Policy, no
+     Cross-Origin-Opener-Policy, no Cross-Origin-Resource-Policy.
+   • The API subdomain has helmet defaults; the web origin (where users
+     log in and check out) does not — that is the more important origin.
+   • Suggested first move: add `Content-Security-Policy-Report-Only` in
+     the Caddyfile teno-store.com block to learn what we'd block before
+     enforcing. Then graduate to enforce. Operator action: Caddyfile edit
+     + reload. Documented here, not applied — Caddyfile changes require
+     operator consent per CLAUDE.md.
+
+[8] UX — Cold home page renders in 9.9 seconds
+   • Measured 3 sequential SSR fetches of https://teno-store.com/:
+     first 9.9s, then 126ms, 84ms. First-visitor-after-cache-expiry is
+     the worst experience on the site. Same root cause as [5] — the SSR
+     fetches /v1/products?sort=newest&limit=8 which falls through to
+     loadAll().
+   • FIX (applied): bumped BROWSE_TTL_MS from 90s → 300s in
+     packages/api/src/routes/products.ts. This is documented in
+     agents.json as "products: 5 min cache" so 300s matches the
+     freshness contract exactly. Cuts spike frequency 3.3x without
+     breaking the data-freshness commitment.
+   • This is a band-aid; the architectural fix in [5] still stands.
+
+[9] LINT — robots.txt has overlapping /seller rules
+   • packages/web/public/robots.txt: `Allow: /seller` followed by
+     `Disallow: /seller/`. Modern crawlers pick the more specific match
+     (Google does; some agents won't), so this works but is confusing.
+     Worth a one-line cleanup: choose Allow OR Disallow and apply it
+     consistently to /seller and /seller/.
+
+[5] PERF — Browse path hydrates the entire catalog on every cold cache (CRITICAL)
+   • In the last 15 minutes, 15 requests to /v1/products took >7s; the slowest
+     was 9.8s. Every endpoint variant is affected, including limit=1.
+   • Root cause: packages/api/src/routes/products.ts line 518 `BROWSE_TTL_MS`.
+     The no-query browse path calls `repo.loadAll()` which pulls all products
+     + variants + media + the full sellers map. With 77k live products this
+     is 200k+ row reads on each cache miss, hydrated into JS objects.
+   • Code comment at line 565 still describes the catalog as ~290 listings.
+     Reality is 270x larger; the in-memory pipeline is past its design point.
+   • The 90s TTL means every 90s a cold request eats the full hydrate cost
+     while the rest queue behind it. The seq scan from [1] is one component
+     of this cost (the variants/media joins are the others).
+   • Suggested fix (not applied yet — needs proper review):
+       a) Push the common no-q browse shape (sort=newest, optional sellerId,
+          optional brand/category) straight to SQL on catalog.products using
+          the (seller_id, created_at DESC) index from migration 0009, and
+          fetch images/variants only for the LIMIT rows returned.
+       b) Compute facets either separately (cheaper count-distinct queries)
+          or asynchronously refreshed at low cadence — they don't need to be
+          recomputed per request.
+       c) Reserve the loadAll JS pipeline for the tiny dev/demo dataset and
+          the with-query path (which is already shortlisted via searchIds).
+   • Until then, applying migration 0009 + a TTL bump to 300s would reduce
+     spike frequency from ~1/90s to ~1/300s — a band-aid, not a fix.
+
+   Status: documented; deeper rewrite belongs in a planned PR, not a /loop
+   iteration. Flagging for operator decision.
+
+[1] PERF — Sequential scan on catalog.products for seller listings (HIGH)
+   • Endpoint: GET /v1/products?sellerId=<uuid>&sort=newest&limit=N
+   • One observed request took 7,445ms (api log, reqId b59d2321).
+   • EXPLAIN ANALYZE shows Seq Scan on catalog.products
+     filtering 77,059 rows down to 23,426, then top-N sort.
+   • Existing indexes don't cover (seller_id, created_at).
+   • FIX (applied locally): added migration 0009_products_seller_created_idx.sql
+     creating CREATE INDEX products_seller_created_idx
+       ON catalog.products (seller_id, created_at DESC).
+   • Needs operator to apply migration on production (DB write — confirm before
+     running). Suggested non-blocking apply:
+       docker exec marketplace-postgres psql -U marketplace -d marketplace \
+         -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS products_seller_created_idx \
+             ON catalog.products (seller_id, created_at DESC);"
+     (CONCURRENTLY avoids locking writes during build.)
+
+[2] CAPACITY — Host memory at 81%
+   • free -m: 6,417 MiB used / 7,929 MiB total / 809 MiB free / 0 swap.
+   • marketplace-api 2.51 GiB, marketplace-redis 1.64 GiB.
+   • No swap configured — any further growth (build, scraper batch) risks OOM.
+   • Recommend: add a small swap file (1–2 GiB) as safety net, and review Redis
+     maxmemory/eviction policy. Operator action required.
+
+[3] INFO — Stale product references hitting 404
+   • GET /v1/products/019e0e58-6ee5-74f2-826a-40dbe30be9e5 → 404
+     (likely a product pruned by the 14.2k catalog cap; client (web/SSR) still
+     referenced it. Worth verifying we revalidate /sitemap and product pages
+     after each prune cycle.)
+
+[4] INFO — Stray docker container observed once: determined_volhard (17 MiB).
+   • Disappeared by inspect time — almost certainly an ephemeral node:22-alpine
+     spawned by run-loop.sh. Not an anomaly. Mentioned for context only.
