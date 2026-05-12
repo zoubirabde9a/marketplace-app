@@ -17,7 +17,11 @@ export function EmptyState({
   fuzzyAlreadyOn?: boolean;
 }) {
   const showReset = Boolean(q) || Boolean(hasFilters);
-  const resetLabel = q ? "Clear search" : "Clear filters";
+  // Site default locale is fr_DZ; chrome stays in French for consistency
+  // with the rest of the page. Search empty-states are the only place
+  // this shared component renders today (see EmptyState consumer audit
+  // 2026-05-12 — only /search uses it).
+  const resetLabel = q ? "Effacer la recherche" : "Effacer les filtres";
   // When the visitor searched for something with no results, offer a fuzzy
   // retry — the underlying API's text matcher misses non-ASCII queries
   // (e.g. "téléphone" returns 0 even though "phone" returns 2 with fuzzy).
@@ -31,7 +35,7 @@ export function EmptyState({
       <p className="text-sm text-ink-soft max-w-md mx-auto">{hint}</p>
       {q && (
         <p className="text-xs text-ink-mute mt-4 font-mono">
-          query: <span className="text-ink-soft">{q}</span>
+          requête : <span className="text-ink-soft">{q}</span>
         </p>
       )}
       <div className="mt-6 flex flex-wrap gap-2 justify-center">
@@ -40,7 +44,7 @@ export function EmptyState({
             href={`/search?q=${encodeURIComponent(q!)}&fuzzy=true`}
             className="inline-flex px-4 h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition"
           >
-            Try fuzzy match
+            Essayer la recherche approximative
           </Link>
         )}
         {showReset && (
@@ -50,7 +54,7 @@ export function EmptyState({
         )}
         {showSellCta && (
           <Link href="/seller" className="inline-flex px-4 h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition">
-            Sell on Teno Store →
+            Vendre sur Teno Store →
           </Link>
         )}
       </div>

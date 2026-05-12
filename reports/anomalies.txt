@@ -23,8 +23,42 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 11:04 UTC — twelfth sweep
--------------------------------------
+2026-05-12 11:11 UTC — thirteenth sweep
+----------------------------------------
+
+[35] UX / i18n — Search empty-state was English on a French site (FIXED)
+   • Site og:locale is fr_DZ; the chrome (header, footer, category names,
+     About, FAQ) is in French. But /search empty-state copy was in
+     English: "No products matched / Try a broader query, enable fuzzy
+     matching, or remove a filter chip above." plus the buttons (Clear
+     search, Clear filters, Try fuzzy match, Sell on Teno Store →).
+   • Tracked back to packages/web/src/app/search/page.tsx lines 605-617
+     (hardcoded English) plus the shared EmptyState component
+     (packages/web/src/components/EmptyState.tsx) — confirmed via grep
+     that EmptyState has exactly one consumer (search/page), so
+     localising it freely is safe.
+   • FIX (applied): translated both the title/hint props passed from
+     search/page and the embedded labels inside EmptyState ("Effacer la
+     recherche", "Effacer les filtres", "Essayer la recherche
+     approximative", "Vendre sur Teno Store →", "requête : …", etc.).
+     contentLang can't be inferred when results = 0, so this is a
+     site-wide French default; documented in code comments next to
+     the strings so a future i18n rework can find them quickly.
+
+[36] OPS — Zero level50 errors in 28 minutes of api uptime (INFO)
+   • Post-deploy sanity check: docker compose logs api | grep
+     '"level":50' → 0 entries since restart. The recurring 500 on
+     POST /v1/checkout/confirm from [11]/[28]/[29] is gone in the
+     current production image. Will keep an eye over the next hour
+     to confirm steady state.
+
+[37] PERF — Category `maison` cold still ~8s (CONFIRMS [33])
+   • /search?category=telephones&limit=5 cold = 8.41s.
+   • Same root as [12]: GIN index on category_ids jsonb not applied
+     yet. The deployed code can't fix this — operator needs to apply
+     migration 0010 on the live DB.
+
+
 
 [33] DEPLOY STATUS — code shipped, DB migrations still pending
    • Live probes against api.teno-store.com (Caddy → api on 127.0.0.1):
