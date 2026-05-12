@@ -23,8 +23,53 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 11:30 UTC — sixteenth sweep
----------------------------------------
+2026-05-12 11:37 UTC — seventeenth sweep
+-----------------------------------------
+
+[46] HEALTH — Production stable, 0 errors in 38 min uptime (INFO)
+   • Smoke check of buyer-facing surfaces:
+       /          200  1.23s  (cold; was 9.9s in iter 3)
+       /search    200  1.23s  (cold)
+       /cart      200  0.05s  (warm)
+       /about     200  0.06s  (warm)
+       /feed.xml  200  1.12s  (cold; was 9.12s in iter 11)
+     → all the perf wins from earlier iterations (TTL bumps, sellers
+       cache, storefront fast path, feed-freshness fix) are live and
+       holding. Memory dropped to 74% (was 81–82% on the first sweep
+       before restarts; the api restart cycle clears accumulated
+       cache + V8 heap).
+   • level:50 lines in api logs since restart: 0. The recurring 500
+     on POST /v1/checkout/confirm from [11]/[28]/[29] is fully gone.
+
+[47] SECURITY — /.env scanner probes get 401 instead of 404 (LOW)
+   • 6h of caddy logs: ~120 requests to api.teno-store.com /.env
+     receiving HTTP 401. Same root cause as [34] (/v1/carts/items):
+     the auth middleware (onRequest hook) checks PUBLIC_MATCHERS
+     before Fastify's route layer can 404 a nonexistent path, so
+     any unknown URL + write/sensitive method returns 401.
+   • The 401 doesn't leak file contents (no .env is exposed) — just
+     confirms the host is alive and running an auth layer. Standard
+     internet noise; not a vulnerability.
+   • Optional cleanup: change auth.ts so the unknown-path branch
+     emits NotFoundError instead of UnauthorizedError for non-
+     mutating verbs. Out of scope this iteration.
+
+[48] OBS — Host: secfo.org probes (INFO)
+   • ~120 requests in 6h with Host: secfo.org hitting :80 — Caddy
+     308-redirects to https://secfo.org/<path>, which our TLS cert
+     doesn't cover, so the scanner gets a TLS handshake failure on
+     the next hop. Working as intended; no action needed.
+
+[49] DEPLOY STATUS — migrations 0009 + 0010 still pending (UNCHANGED)
+   • Re-probed pg_indexes: 7 indexes on catalog.products (none of
+     them are the new ones we shipped). /v1/products?category=maison
+     cold = 9.54s — still the seq-scan-on-jsonb case from [12].
+   • This is now the single remaining blocker on closing [1], [12],
+     [17], [33], [37], [42]. One-line command from runbook 07-
+     deploy-changes.md:
+       docker compose exec api pnpm -F @marketplace/db db:migrate
+
+
 
 [44] UX / i18n — Highest-touch button "Add to cart" + product CTAs (FIXED)
    • AddToCart is rendered on every product card on the home page,
