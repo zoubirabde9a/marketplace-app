@@ -78,6 +78,13 @@
       "when": 1778980200000,
       "tag": "0010_products_category_ids_gin",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1778980800000,
+      "tag": "0011_media_product_idx",
+      "breakpoints": true
     }
   ]
 }

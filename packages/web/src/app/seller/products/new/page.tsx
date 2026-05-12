@@ -8,7 +8,10 @@ import { NewProductForm } from "./NewProductForm";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "New product",
+  // French chrome on the seller-facing money path to match the buyer side
+  // (cart/checkout/order) and og:locale=fr_DZ. The "Vendre" button in the
+  // global header lands here; English copy here read as half-finished.
+  title: "Nouveau produit",
   robots: { index: false, follow: false },
 };
 
@@ -27,12 +30,12 @@ export default async function NewProductPage({
 
   if (sellers.length === 0) {
     return (
-      <section className="pt-10 pb-24 max-w-2xl mx-auto">
-        <h1 className="text-2xl font-semibold">New product</h1>
+      <section className="pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
+        <h1 className="text-2xl font-semibold">Nouveau produit</h1>
         <p className="mt-4 text-sm text-ink-soft">
-          You need a seller profile first.{" "}
+          Vous devez d’abord créer une boutique.{" "}
           <Link href="/seller/dashboard" className="text-accent hover:underline">
-            Go to dashboard
+            Aller au tableau de bord
           </Link>
           .
         </p>
@@ -45,14 +48,13 @@ export default async function NewProductPage({
     : sellers[0]!.sellerId;
 
   return (
-    <section className="pt-10 pb-24 max-w-2xl mx-auto">
+    <section className="pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
       <Link href="/seller/dashboard" className="text-sm text-ink-soft hover:text-ink">
-        ← Back to dashboard
+        ← Retour au tableau de bord
       </Link>
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight">New product</h1>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight">Nouveau produit</h1>
       <p className="mt-2 text-sm text-ink-soft">
-        Add a new product listing. You can set one initial variant; more
-        variants can be added later from the product edit page.
+        Ajoutez une annonce. Vous pouvez définir une variante initiale ; d’autres variantes pourront être ajoutées plus tard depuis la page d’édition du produit.
       </p>
       <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
         <NewProductForm

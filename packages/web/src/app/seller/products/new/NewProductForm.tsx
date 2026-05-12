@@ -31,15 +31,19 @@ export function NewProductForm({
         const category = String(f.get("category") ?? "").trim();
         const sku = String(f.get("sku") ?? "").trim();
         const priceMajor = String(f.get("priceMajor") ?? "").trim();
-        const currency = String(f.get("currency") ?? "USD").trim().toUpperCase();
+        // DZD is the catalog default — virtually all live listings are in
+        // Algerian dinars. Sellers were defaulting to USD and shipping
+        // mis-priced listings before noticing. Operator can still type any
+        // other ISO code.
+        const currency = String(f.get("currency") ?? "DZD").trim().toUpperCase();
 
-        if (!title) return setError("Title is required.");
-        if (!sku) return setError("SKU is required.");
+        if (!title) return setError("Le titre est obligatoire.");
+        if (!sku) return setError("Le SKU est obligatoire.");
         if (!/^\d+(\.\d{1,2})?$/.test(priceMajor)) {
-          return setError("Price must be a positive number with up to 2 decimals.");
+          return setError("Le prix doit être un nombre positif avec au plus 2 décimales.");
         }
         if (!/^[A-Z]{3}$/.test(currency)) {
-          return setError("Currency must be a 3-letter ISO code (e.g. USD).");
+          return setError("La devise doit être un code ISO de 3 lettres (ex. DZD).");
         }
         // Convert price to minor units (e.g. cents) — assumes 2dp currencies.
         // Good enough for the dashboard; JPY-style 0dp currencies aren't yet
@@ -63,7 +67,7 @@ export function NewProductForm({
           });
           if (!r.ok) {
             const j = (await r.json().catch(() => ({}))) as { error?: string; detail?: string };
-            setError(j.detail || j.error || `Failed (HTTP ${r.status})`);
+            setError(j.detail || j.error || `Échec (HTTP ${r.status})`);
             return;
           }
           const j = (await r.json()) as { ok: true; product: { productId: string } };
@@ -71,10 +75,11 @@ export function NewProductForm({
         });
       }}
       className="grid gap-4"
+      lang="fr"
     >
       {sellers.length > 1 ? (
         <label className="text-sm">
-          <span className="block text-ink-soft mb-1">Seller</span>
+          <span className="block text-ink-soft mb-1">Boutique</span>
           <select
             name="sellerId"
             defaultValue={defaultSellerId}
@@ -90,8 +95,8 @@ export function NewProductForm({
       ) : (
         <input type="hidden" name="sellerId" value={defaultSellerId} />
       )}
-      <Field label="Title" name="title" required maxLength={300} />
-      <Field label="Brand" name="brand" maxLength={120} />
+      <Field label="Titre" name="title" required maxLength={300} />
+      <Field label="Marque" name="brand" maxLength={120} />
       <label className="text-sm">
         <span className="block text-ink-soft mb-1">Description</span>
         <textarea
@@ -101,12 +106,12 @@ export function NewProductForm({
           className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
         />
       </label>
-      <Field label="Category" name="category" placeholder="e.g. tools" />
+      <Field label="Catégorie" name="category" placeholder="ex. telephones" />
       <fieldset className="grid grid-cols-3 gap-3">
-        <legend className="text-sm text-ink-soft mb-1 col-span-3">Initial variant</legend>
+        <legend className="text-sm text-ink-soft mb-1 col-span-3">Variante initiale</legend>
         <Field label="SKU" name="sku" required maxLength={64} />
-        <Field label="Price" name="priceMajor" required placeholder="29.99" />
-        <Field label="Currency" name="currency" defaultValue="USD" maxLength={3} />
+        <Field label="Prix" name="priceMajor" required placeholder="29999.00" />
+        <Field label="Devise" name="currency" defaultValue="DZD" maxLength={3} />
       </fieldset>
       {error && (
         <p className="text-sm text-bad" role="alert">
@@ -118,7 +123,7 @@ export function NewProductForm({
         disabled={pending}
         className="self-start inline-flex h-10 px-4 items-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
       >
-        {pending ? "Creating…" : "Create product"}
+        {pending ? "Création…" : "Créer le produit"}
       </button>
     </form>
   );

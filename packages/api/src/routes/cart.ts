@@ -120,4 +120,25 @@ export async function registerCartRoutes(app: FastifyInstance, carts: CartRepo):
     void reply.header("x-mp-cart-id", updated.cartId);
     return shapeCart(updated);
   });
+
+  // Backwards-compat alias: clients (likely an MCP / agent client) have been
+  // observed in production logs POSTing to /v1/carts/items (note the plural)
+  // and getting a misleading 401 from the auth middleware, which doesn't see
+  // /v1/carts/* in PUBLIC_MATCHERS. The 401 sends them down a credential-
+  // troubleshooting path that never works because the path doesn't exist —
+  // the real fix is "drop the s". Issue a 308 (permanent + preserve method
+  // + body) so the request is reissued at /v1/cart/items by clients that
+  // honour 308, AND set the matcher in auth.ts to public so the redirect
+  // actually reaches this handler instead of being short-circuited by the
+  // auth onRequest hook. See anomalies [34], [55].
+  app.all("/v1/carts/*", async (req, reply) => {
+    const rewritten = req.url.replace(/^\/v1\/carts(\/|\?|$)/, "/v1/cart$1");
+    void reply.code(308).header("location", rewritten);
+    return null;
+  });
+  // The bare /v1/carts (no trailing path) similarly redirects to /v1/cart.
+  app.all("/v1/carts", async (_req, reply) => {
+    void reply.code(308).header("location", "/v1/cart");
+    return null;
+  });
 }

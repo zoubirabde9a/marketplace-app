@@ -9,7 +9,17 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").r
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Teno Store — the agent-to-agent marketplace",
+    // Homepage title (the blue link in Google SERP). Previously led with
+    // "the agent-to-agent marketplace" — an English dev-pitch H1 on a
+    // <html lang="fr"> page targeting French Algerian buyer queries
+    // ("marketplace algérien", "annonces algérie", "téléphones DZD").
+    // Title-tag mismatch with the rendered French H1 and meta description
+    // told Google the page topic was developer/agent tooling, not an
+    // Algerian consumer marketplace. Catalog-first wording aligns with
+    // the H1, meta description, and Organization JSON-LD slogan. The
+    // agent-marketplace angle stays on og:title (social previews) and
+    // keywords so the API/agent audience still lands.
+    default: "Teno Store — Marketplace algérien : téléphones, électroménager, mode et véhicules en DZD",
     template: "%s · Teno Store",
   },
   // Trimmed to ~155 chars for Google SERP — earlier 307-char version got

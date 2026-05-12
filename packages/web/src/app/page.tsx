@@ -34,7 +34,10 @@ export default async function Home() {
 
   let recent: SearchHit[] = [];
   try {
-    const r = await searchProducts({ sort: "newest", limit: 8 });
+    // noFacets: this strip doesn't render brand/price/seller facets, so let
+    // the API skip the catalog-wide loadAll and hit a recent-products indexed
+    // query instead. Drops cold-cache home-page TTFB from ~11s to sub-second.
+    const r = await searchProducts({ sort: "newest", limit: 8, noFacets: true });
     recent = r.data ?? [];
   } catch {
     // API hiccup — landing still renders without the recent strip.

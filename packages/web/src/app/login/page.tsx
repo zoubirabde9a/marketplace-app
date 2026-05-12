@@ -51,19 +51,20 @@ export default async function LoginPage({
   if (me && !code) redirect(next);
 
   return (
-    <div className="pt-16 pb-24 max-w-md mx-auto">
-      <h1 className="text-3xl font-semibold tracking-tight mb-2 text-center">Sign in</h1>
+    <div className="pt-16 pb-24 max-w-md mx-auto" lang="fr">
+      <h1 className="text-3xl font-semibold tracking-tight mb-2 text-center">Connexion</h1>
       <p className="text-ink-soft text-center mb-8">
-        See what your agent searched, compared and bought.
+        Consultez ce que votre agent a cherché, comparé et acheté.
       </p>
 
       {code ? (
         <div className="rounded-2xl border border-accent/40 bg-accent/5 p-5 mb-6">
-          <h2 className="font-medium text-accent mb-1">An agent invited you</h2>
+          <h2 className="font-medium text-accent mb-1">Un agent vous a invité</h2>
           <p className="text-sm text-ink-soft mb-4">
-            One of your AI agents generated this link. Click below to claim your session.
+            L’un de vos agents IA a généré ce lien. Cliquez ci-dessous
+            pour réclamer votre session.
           </p>
-          <Suspense fallback={<p className="text-sm text-ink-mute">Exchanging…</p>}>
+          <Suspense fallback={<p className="text-sm text-ink-mute">Échange en cours…</p>}>
             <ExchangeLinkClient code={code} next={next} />
           </Suspense>
         </div>
@@ -71,7 +72,7 @@ export default async function LoginPage({
 
       {reason === "session-required" ? (
         <p className="rounded-xl border border-line-soft bg-bg-soft/60 px-4 py-3 text-sm text-ink-soft mb-6">
-          That page needs a sign-in.
+          Cette page nécessite une connexion.
         </p>
       ) : null}
 
@@ -85,8 +86,8 @@ export default async function LoginPage({
             />
             <noscript>
               <p className="mt-3 text-sm text-warn">
-                Sign-in requires JavaScript. Public catalog browsing works without
-                it — try{" "}
+                La connexion nécessite JavaScript. La navigation publique
+                du catalogue fonctionne sans — essayez{" "}
                 <a href="/search" className="text-accent hover:underline">
                   /search
                 </a>
@@ -96,7 +97,7 @@ export default async function LoginPage({
           </>
         ) : (
           <p className="text-sm text-bad" role="alert">
-            Sign-in is misconfigured. Please reach out to the operator.
+            La connexion est mal configurée. Merci de contacter l’opérateur.
           </p>
         )}
       </div>
@@ -105,8 +106,8 @@ export default async function LoginPage({
 }
 
 export const metadata = {
-  title: "Sign in",
-  description: "Sign in to Teno Store — the agent-to-agent marketplace.",
+  title: "Connexion",
+  description: "Connectez-vous à Teno Store — le marketplace d’agent à agent.",
   alternates: { canonical: "/login" },
   robots: { index: false, follow: false },
 };

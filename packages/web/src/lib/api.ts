@@ -111,6 +111,10 @@ export interface SearchInput {
   limit?: number;
   sort?: "relevance" | "price_asc" | "price_desc" | "newest" | "rating";
   attributes?: Record<string, string>;
+  /** Caller doesn't render a facet sidebar — server may skip the full-catalog
+   *  loadAll on no-q queries. Saves 7–11s of cold-cache TTFB on the home
+   *  page's "recent listings" strip and similar recommendation lists. */
+  noFacets?: boolean;
 }
 
 export function buildSearchQuery(input: SearchInput): string {
@@ -126,6 +130,7 @@ export function buildSearchQuery(input: SearchInput): string {
   if (input.minRating != null) p.set("minRating", String(input.minRating));
   if (input.includeOutOfStock) p.set("includeOutOfStock", "true");
   if (input.fuzzy) p.set("fuzzy", "true");
+  if (input.noFacets) p.set("noFacets", "true");
   if (input.cursor) p.set("cursor", input.cursor);
   if (input.limit != null) p.set("limit", String(input.limit));
   if (input.sort) p.set("sort", input.sort);

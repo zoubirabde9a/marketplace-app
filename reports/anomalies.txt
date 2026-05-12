@@ -23,8 +23,112 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 11:37 UTC — seventeenth sweep
------------------------------------------
+2026-05-12 12:06 UTC — twenty-first sweep
+------------------------------------------
+
+[55] UX / DX — /v1/carts/items typo now 308s instead of misleading 401 (FIXED)
+   • Re-probed traffic: 24h api logs show
+       7 POST /v1/cart/items      (real endpoint)
+       6 POST /v1/carts/items     (plural typo)
+     Real clients (likely an MCP/agent client) are typoing the URL at
+     ~half the rate of the real one and getting 401 instead of any
+     useful signal — same root as [34]. Their 401 → credential
+     troubleshooting → still 401 loop never resolves.
+   • FIX (applied, code):
+     - packages/api/src/routes/cart.ts: added a wildcard
+       app.all("/v1/carts/*", …) handler that 308-redirects to the
+       singular path, preserving method + body. Plus a bare
+       /v1/carts → /v1/cart variant.
+     - packages/api/src/middleware/auth.ts:95: relaxed the public
+       matcher to `^/v1/carts?(/.*)?$` so the alias paths fall
+       through to the route layer instead of being short-circuited
+       by the auth onRequest hook.
+   • Tests still green (48/48). Net effect post-deploy: clients
+     POSTing /v1/carts/items get a 308 with Location: /v1/cart/items,
+     which curl/node-fetch/most modern HTTP clients follow correctly
+     with the body intact. The misleading-401 / wasted-call pattern
+     in the logs drops to zero.
+
+
+
+[53] PERF — catalog.media has only PK index, hot seq scans (HIGH; FIX SHIPPED)
+   • pg_stat_user_tables snapshot:
+       catalog.media   371,699 rows   238,991 seq scans   27 idx scans
+     99.99% of lookups miss the only available index (media_pkey on id).
+   • EXPLAIN ANALYZE of a typical product-detail media lookup:
+       Parallel Seq Scan on media (rows=2 width=365)
+       Filter: (product_id = …)  Rows Removed by Filter: 123,898 per
+       worker, 3 workers, Execution Time: 158.539 ms
+   • Every product-detail page (storefront + /v1/products/<id>) carries
+     this 158ms in steady state. With the iter-4 sellers cache warm,
+     this seq scan is the dominant remaining cost in detail TTFB.
+   • FIX (shipped as migration 0011_media_product_idx.sql):
+       CREATE INDEX IF NOT EXISTS media_product_id_idx
+         ON catalog.media (product_id);
+     Plain b-tree, equality lookup, low cardinality per key (~4 media/
+     product average). Operator: apply CONCURRENTLY on prod:
+       docker exec marketplace-postgres psql -U marketplace -d marketplace \
+         -c "CREATE INDEX CONCURRENTLY IF NOT EXISTS media_product_id_idx
+             ON catalog.media (product_id);"
+   • Expected impact post-apply: product-detail warm TTFB ~320ms →
+     ~30–50ms. Same 7–8× win as the empty-browse fix in iter 12.
+
+[54] OBS — seller_phones also seq-scan-heavy (INFO)
+   • 45,494 seq scans vs 24,657 idx scans on 1,624 rows. Less dramatic
+     than [53] because the table is small. Cause: loadSellers() in
+     packages/db/src/repos/product.ts does a global ORDER BY across the
+     whole table, which seq-scans by design. The iter-4 60s cache
+     (loadSellersCached) makes most calls cheap, so this is benign.
+
+
+
+[52] UX / i18n — Header chrome i18n cleanup (FIXED)
+   • Header.tsx + HeaderUserMenu.tsx already French (operator
+     localised earlier). Two leftover English strings on
+     persistent header components:
+     - HeaderCart.tsx aria-label: "Cart (3 items)" / "Cart (empty)"
+       → "Panier (3 articles)" / "Panier (vide)". Screen-reader-
+       only string but the cart icon is on every single page in
+       the site shell, so it's the highest-touch a11y string.
+     - SignOutButton.tsx button label: "Sign out" / "Signing out…"
+       → "Se déconnecter" / "Déconnexion…". Visible when signed
+       in (mostly seller-dashboard users today).
+   • FIX (applied).
+   • Other header text already French: "Se connecter" link,
+     "Publier une annonce" / "Chargement de la recherche" / etc.
+     aria-labels in Header.tsx itself.
+
+
+
+[50] UX / i18n — /login page localised (FIXED)
+   • Per the i18n audit in [45]: /login was the last user-facing
+     buyer surface still in English. It's reached from any
+     session-required redirect and from agent-issued one-time
+     login links — both can come from French-speaking buyers.
+   • FIX (applied): packages/web/src/app/login/page.tsx —
+     translated h1 ("Connexion"), subtitle ("Consultez ce que
+     votre agent a cherché, comparé et acheté."), agent-invite
+     card ("Un agent vous a invité" / "L'un de vos agents IA…"),
+     session-required notice ("Cette page nécessite une
+     connexion."), noscript fallback, misconfig fallback, and
+     metadata.title + description. Added lang="fr" on the
+     section root.
+   • /s/[id] (agent snapshot viewer) intentionally kept English
+     — it's the same audience as the home-page "How the agent
+     observer works" section (lang="en") and the agents.json
+     consumers. Mixed-audience but technical English is right.
+
+[51] HEALTH — Production stable, low traffic period (INFO)
+   • api + web containers Up 9 hours — recent restart cycle
+     ended; both services in healthy state. Orders in last
+     hour: 1 (vs ~3/h average earlier — likely a quiet window;
+     74 orders in 24h is the headline figure).
+   • Migrations 0009 + 0010 still pending. pg_indexes on
+     catalog.products = same 7 indexes as initial sweep. The
+     visible canary, /search?category=maison cold ~9.5s,
+     remains the slow path until the GIN index is built.
+
+
 
 [46] HEALTH — Production stable, 0 errors in 38 min uptime (INFO)
    • Smoke check of buyer-facing surfaces:

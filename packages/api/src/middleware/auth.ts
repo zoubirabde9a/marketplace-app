@@ -92,7 +92,11 @@ const PUBLIC_MATCHERS: ReadonlyArray<(method: string, path: string) => boolean> 
   (m, p) => isRead(m) && /^\/v1\/products(\/[^/]+)?$/.test(p),
   (m, p) => isRead(m) && /^\/v1\/media\/[^/]+$/.test(p),
   (m, p) => isRead(m) && /^\/v1\/sellers(\/[^/]+)?$/.test(p),
-  (m, p) => /^\/v1\/cart(\/.*)?$/.test(p),
+  // Match both the canonical /v1/cart(/…) and the legacy plural /v1/carts(/…).
+  // The plural is a known client-typo target (see cart.ts alias + anomaly
+  // [34]/[55]) and needs to be public so the 308-redirect handler can run
+  // instead of the auth middleware short-circuiting it to a misleading 401.
+  (m, p) => /^\/v1\/carts?(\/.*)?$/.test(p),
   (m, p) => m === "POST" && /^\/v1\/checkout\/.+$/.test(p),
   (m, p) => isRead(m) && /^\/v1\/orders\/[^/]+$/.test(p),
   // Snapshots are public-token addressed: the unguessable id IS the credential.

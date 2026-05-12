@@ -26,7 +26,7 @@ export function SignOutButton() {
       }}
       className="px-3 py-1.5 rounded-md text-sm text-ink-soft hover:text-ink hover:bg-bg-elev transition disabled:opacity-50"
     >
-      <span aria-live="polite">{busy ? "Signing out…" : "Sign out"}</span>
+      <span aria-live="polite">{busy ? "Déconnexion…" : "Se déconnecter"}</span>
     </button>
   );
 }

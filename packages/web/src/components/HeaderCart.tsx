@@ -11,7 +11,11 @@ export async function HeaderCart() {
   return (
     <Link
       href="/cart"
-      aria-label={count > 0 ? `Cart (${count} item${count === 1 ? "" : "s"})` : "Cart (empty)"}
+      aria-label={
+        count > 0
+          ? `Panier (${count} article${count === 1 ? "" : "s"})`
+          : "Panier (vide)"
+      }
       className="relative inline-flex items-center px-3 py-1.5 rounded-md hover:text-ink hover:bg-bg-elev transition"
     >
       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden>

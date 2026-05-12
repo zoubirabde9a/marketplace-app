@@ -23,7 +23,7 @@ export interface ProductMedia {
 
 export interface ProductReader {
   search(
-    query: catalog.SearchQuery & { fuzzy?: boolean },
+    query: catalog.SearchQuery & { fuzzy?: boolean; noFacets?: boolean },
     ctx: { agentId: string },
   ): Promise<SearchResult>;
   getProduct(productId: string, ctx: { agentId: string }): Promise<{
@@ -69,6 +69,15 @@ const SearchQueryParamsSchema = z.object({
     .transform((v) => v === true || v === "true")
     .optional(),
   fuzzy: z
+    .union([z.boolean(), z.enum(["true", "false"])])
+    .transform((v) => v === true || v === "true")
+    .optional(),
+  // Opt-out for callers that don't render facet sidebars (home page "recent
+  // listings" strip, internal recommendation strips, agent integrations only
+  // wanting hits). Lets the API skip the catalog-wide loadAll when there's
+  // also no q/sellerId — at 77k products that was the main source of 11s+
+  // cold home-page TTFB spikes measured 2026-05-12.
+  noFacets: z
     .union([z.boolean(), z.enum(["true", "false"])])
     .transform((v) => v === true || v === "true")
     .optional(),
@@ -312,7 +321,7 @@ export async function registerProductRoutes(
     applyPublicReadCacheHeaders(reply, agentId);
     const params = SearchQueryParamsSchema.parse(req.query);
     const attributes = extractAttributeFilters(req.query);
-    const query: catalog.SearchQuery & { fuzzy?: boolean } = {
+    const query: catalog.SearchQuery & { fuzzy?: boolean; noFacets?: boolean } = {
       query: params.q ?? "",
       filters: {
         ...((params.category || params.categoryId)
@@ -332,6 +341,7 @@ export async function registerProductRoutes(
       limit: params.limit,
       ...(params.cursor ? { cursor: params.cursor } : {}),
       ...(params.fuzzy !== undefined ? { fuzzy: params.fuzzy } : {}),
+      ...(params.noFacets ? { noFacets: true } : {}),
       embeddingsMode: "hybrid",
     };
     const t0 = Date.now();
@@ -497,6 +507,7 @@ export function makeProductReader(repo: {
   getProductsByIds: (ids: string[]) => Promise<Array<StoredProduct | null>>;
   searchIds?: (q: string, limit?: number) => Promise<Array<{ id: string; score: number }>>;
   idsBySeller?: (sellerId: string, limit?: number) => Promise<string[]>;
+  recentIds?: (limit?: number) => Promise<string[]>;
 }): ProductReader {
   // Browse-path stale-while-revalidate cache. Empty-query browse pulls every
   // product+variant+media row, hydrates them, JS-filters/sorts/computes
@@ -648,9 +659,40 @@ export function makeProductReader(repo: {
         const candidates = productsResult.filter((p): p is StoredProduct => p !== null);
         return searchProducts(candidates, sellers, query);
       }
-      // Browse path (no query): loadAll with a 30s TTL cache (see top of
-      // makeProductReader). Empty-query callers want to see the whole
-      // catalog's facet space, not a SQL-shortlisted subset.
+      // Recent-listings fast path: caller explicitly opted out of facets,
+      // wants sort=newest, no q, no filter narrowing. Home page "recent
+      // listings" strip is the dominant caller — see anomaly [42]. Pulls just
+      // the N newest product rows via an indexed SQL query instead of paying
+      // for the full catalog hydration. Facets returned are empty by
+      // construction since the caller said it didn't need them.
+      const wantNewestNoFilters =
+        query.noFacets === true &&
+        query.sort === "newest" &&
+        sellerIds.length === 0 &&
+        !query.filters?.brand &&
+        !query.filters?.categoryIds?.length &&
+        !query.filters?.priceMinMinor &&
+        !query.filters?.priceMaxMinor &&
+        !query.filters?.currency &&
+        !query.filters?.shipsTo &&
+        !query.filters?.minRating &&
+        !query.filters?.attributes;
+      if (wantNewestNoFilters && repo.recentIds && repo.loadSellers) {
+        const ids = await repo.recentIds(query.limit ?? 25);
+        if (ids.length === 0) {
+          const sellers = await loadSellersCached();
+          return searchProducts([], sellers, query);
+        }
+        const [productsResult, sellers] = await Promise.all([
+          repo.getProductsByIds(ids),
+          loadSellersCached(),
+        ]);
+        const candidates = productsResult.filter((p): p is StoredProduct => p !== null);
+        return searchProducts(candidates, sellers, query);
+      }
+      // Browse path (no query): loadAll via the SWR cache. Empty-query callers
+      // want to see the whole catalog's facet space, not a SQL-shortlisted
+      // subset.
       const { products, sellers } = await loadAllCached();
       return searchProducts(products, sellers, query);
     },

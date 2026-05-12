@@ -317,12 +317,27 @@ export function makeProductRepo(db: DbClient) {
     return rows.map((r) => r.id);
   }
 
+  // Newest-N product ids across the whole catalog, ordered by created_at DESC.
+  // Used by the home page's "recent listings" strip and any other caller that
+  // wants "the newest N products" without paying for the full-catalog loadAll
+  // + JS-sort. At 77k products the loadAll path was the source of 11s+ cold
+  // hits on the home page (measured 2026-05-12); this indexed query is sub-ms.
+  async function recentIds(limit = 50): Promise<string[]> {
+    const rows = await db
+      .select({ id: products.id })
+      .from(products)
+      .orderBy(desc(products.createdAt))
+      .limit(limit);
+    return rows.map((r) => r.id);
+  }
+
   return {
     loadAll,
     loadSellers,
     loadOne,
     searchIds,
     idsBySeller,
+    recentIds,
 
     async getOwnerAgentId(productId: string): Promise<string | undefined> {
       if (!isUuid(productId)) return undefined;

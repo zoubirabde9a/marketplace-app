@@ -327,7 +327,7 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
     return (
       <div>
         <ResultsHeader q={input.q} total={0} />
-        <ApiErrorBanner message={error ?? "Could not reach the marketplace API."} />
+        <ApiErrorBanner message={error ?? "fetch_failed"} />
       </div>
     );
   }
@@ -787,13 +787,20 @@ function canonicalSlicePath(input: ReturnType<typeof parseSearchParams>): string
   return "/search";
 }
 
+// User-facing fallback when the catalog API is unreachable. Previous copy
+// ("Marketplace API unreachable / Check that MARKETPLACE_API_URL is set")
+// was developer text that landed on the buyer-facing /search page during
+// outages — caught 2026-05-12. Server log gets the technical `message`;
+// the rendered surface stays buyer-friendly French.
 function ApiErrorBanner({ message }: { message: string }) {
+  if (typeof console !== "undefined") {
+    console.error("[search] api_error", message);
+  }
   return (
-    <div className="rounded-xl border border-bad/30 bg-bad/10 px-5 py-4">
-      <div className="text-bad font-medium text-sm">Marketplace API unreachable</div>
-      <div className="text-xs text-ink-soft mt-1 font-mono break-all">{message}</div>
-      <div className="text-xs text-ink-mute mt-2">
-        Check that <code className="text-ink-soft">MARKETPLACE_API_URL</code> is set and the API is running.
+    <div className="rounded-xl border border-bad/30 bg-bad/10 px-5 py-4" lang="fr">
+      <div className="text-bad font-medium text-sm">Catalogue momentanément indisponible</div>
+      <div className="text-xs text-ink-soft mt-1">
+        Le service est temporairement injoignable. Réessayez dans un instant — nos vendeurs sont toujours là.
       </div>
     </div>
   );
