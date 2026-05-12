@@ -23,6 +23,56 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
+2026-05-12 10:40 UTC — eighth sweep
+------------------------------------
+
+[22] DATA — 2,945 products (3.8% of catalog) have no media (MEDIUM, UX)
+   • 74,836 of 77,781 products have at least one image; 2,945 don't.
+     Total media rows: 300,356 (~4 images/product among those with any).
+   • Cards for image-less products render as empty placeholders on the
+     home page and search/category pages — visible quality hit.
+   • Options: (a) prune image-less products in scraper pipeline; (b) hide
+     them from default browse and only surface when explicitly searched;
+     (c) auto-derive a placeholder from category + brand.
+   • Recommendation (b): cheapest, reversible — add a default filter
+     `imageCount > 0` to the browse path in search.ts and let users
+     opt-in to see image-less via an explicit toggle. Not applied this
+     iteration (changes default search behavior — operator call).
+
+[23] DATA — 12 picsum.photos placeholder images still in production
+   • Five "Tor merchandise" demo products (Tor Classic T-Shirt, Tor Onion
+     Hoodie, Tor Privacy Sticker Pack, …) have placeholder images from
+     https://picsum.photos/seed/tor-*/800/800.jpg. These appear to be
+     demo/seed data from before the scraper pipeline went live and are
+     indexable, in the sitemap, and on the home-page newest feed.
+   • Action: delete these demo products from production (operator call —
+     this is a DB write). Their seller record can be retained or pruned
+     based on whether you keep the demo account.
+
+[24] PERF — Empty-query browse measured at 8.26s again
+   • Direct probe just now: GET /v1/products?q=&limit=3 → 8.26s.
+     The TTL bump + sellers cache from iterations 3–4 are committed in
+     code but not yet deployed; this confirms the symptom is still live
+     until the next api image build.
+
+[25] INDEX HEALTH — Several near-zero-usage indexes (INFO)
+   • pg_stat_user_indexes idx_scan counts:
+     - products_category_idx: 2 scans (dead column — migration 0010
+       drops this; confirmed essentially unused).
+     - products_canonical_idx: 0 scans, 800kB. Likely intentional for
+       a future canonical-dedup batch job that isn't running yet.
+       Don't drop without checking the canonical pipeline owner.
+     - seller_phones_primary_unique: 0 scans, 56kB. Partial unique
+       index — small, keep (functional constraint, not a perf index).
+
+[26] OBS — Image CDN CORS limited to dev.ouedkniss.com (INFO)
+   • Ouedkniss CDN images return access-control-allow-origin set to
+     dev.ouedkniss.com. Doesn't affect <img> tags (which don't require
+     CORS), but any JS-side canvas/fetch of those URLs from
+     teno-store.com would be blocked. Currently the storefront only
+     uses <img>/Next Image, so this is benign — flag if any client-side
+     image manipulation is added later.
+
 [20] SECURITY — Order access tokens compared with === (LOW; fixed)
    • packages/api/src/routes/orders.ts:103 compared the X-Mp-Order-Token
      header against the stored accessToken using `===`. String equality
