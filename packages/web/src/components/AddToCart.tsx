@@ -6,11 +6,20 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { addToCart } from "@/lib/cart";
 
+// Whitelist of post-add destinations. Anything else (including protocol-
+// relative `//evil.com`, absolute `https://...`, or a back-navigation `..`)
+// falls back to /cart. Defense-in-depth: Next server actions already require
+// same-origin POSTs, but a same-origin form could still pass a hostile value
+// here. Keeping the set small and explicit means open-redirect mistakes can't
+// sneak in via a future call site.
+const ALLOWED_REDIRECTS = new Set(["/cart", "/checkout"]);
+
 async function addAction(formData: FormData): Promise<void> {
   "use server";
   const variantId = String(formData.get("variantId") ?? "");
   const qty = Math.max(1, Math.min(99, Number(formData.get("qty") ?? 1)));
-  const redirectTo = String(formData.get("redirectTo") ?? "/cart");
+  const requested = String(formData.get("redirectTo") ?? "/cart");
+  const redirectTo = ALLOWED_REDIRECTS.has(requested) ? requested : "/cart";
   if (!variantId) throw new Error("missing_variant");
   await addToCart(variantId, qty);
   // Header cart badge is rendered on every layout — bust the layout cache so
