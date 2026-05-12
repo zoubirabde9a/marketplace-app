@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-12 — vps-eu · api+web rebuild · SEO entity enrichment batch + operator cart/checkout polish
+
+- SEO: /about now ships FAQPage JSON-LD (6 French buyer Q&A pairs) + Speakable annotation for AI voice/search snippets (`#faq-heading` + sibling `<dl>`).
+- SEO: /store/{id} Store JSON-LD now conditionally emits `currenciesAccepted` + `areaServed` for sellers with a validated `countryCode` (DZ/FR/TN/MA whitelist). Currently dormant for the scraped Ouedkniss seller catalog (no `countryCode` set per row) — follow-up will default to DZ given the prod catalog is all-Algerian.
+- SEO: homepage Organization @graph node gains `additionalType: OnlineStore`, `slogan`, structured `contactPoint` (areaServed=DZ, availableLanguage=[fr, ar, en]).
+- Operator: cart/checkout/order/product page polish + api filter (catalog/filter.ts + new filter.test.ts) + format lib expansion. All typechecks + 119 web tests + 37 api tests green pre-deploy.
+- Deploy: full tar+ssh sync, `docker compose build api web` + `up -d api web caddy`. ~3 min, ~15s traffic blip on container recreate.
+- Verified live: `https://teno-store.com/about` carries FAQPage + Speakable; `https://teno-store.com/` carries Organization with OnlineStore + slogan + ContactPoint. api `/livez` ok.
+
 ## 2026-05-11 — vps-eu · web rebuild · SEO — PWA manifest now French (lang+description); was English on a `<html lang="fr">` site
 
 - `/manifest.webmanifest` was emitting `"lang":"en"` with an English `description` even though every other surface on the site is French primary (HTML root, home H1, JSON-LD inLanguage, OpenGraph locale, all sitemapped pages). Lighthouse PWA audits, browser "Install app" surfaces, and the few search-engine pipelines that consume the manifest were seeing English copy on a French-locale page.
