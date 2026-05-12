@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-12 — vps-eu · api+web rebuild · dep bumps + React-19 form-pending refactor
+
+- Deps: next 15.1.6 → 15.5.18, drizzle-orm 0.44 → 0.45; pnpm.overrides pin fast-uri >=3.1.2, postcss >=8.5.10, ip-address >=10.1.1 (security advisories on transitive deps). Full typecheck + 626 tests green pre-deploy.
+- Web: new PendingButton + AddToCartSubmit + PlaceOrderSubmit components built on React 19 useFormStatus; cart/checkout actions and pages wired through them.
+- Compose: redis maxmemory-policy persisted as allkeys-lru in docker-compose.prod.yml (was applied at runtime during today's incident). Compose did not recreate the redis container on `up -d` — the command-flag change wasn't enough to trigger recreation, so the live keyspace was preserved. Next manual restart will pick up the policy.
+- API/DB: catalog/sort, /healthz, products route, server bootstrap, db client + product repo cleanups.
+- Deploy: tar+ssh sync, `docker compose build api web` + `up -d api web caddy redis` (redis no-op). Verified `/livez` ok, homepage 200 with the new French title, sitemap 18,944 URLs.
+
 ## 2026-05-12 — vps-eu · api+web rebuild · home-page perf, French error banner, SEO title alignment
 
 - API perf: home-page "recent listings" strip now goes through a `noFacets=true` query param that bypasses the catalog-wide `loadAll` and runs `recentIds()` — an indexed `ORDER BY created_at DESC LIMIT N` SQL query. Was the main cause of 11s+ cold home-page TTFB on the 77k-product catalog.
