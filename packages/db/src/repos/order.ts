@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { uuidv7 } from "@marketplace/shared/ids";
 import { order as orderDomain, type cart as cartDomain } from "@marketplace/domain";
 import { orders, orderItems } from "../schema/order.js";
@@ -139,6 +139,18 @@ export function makeOrderRepo(db: DbClient) {
         .where(and(eq(orders.ownerKind, "user"), eq(orders.buyerUserId, userId)))
         .orderBy(desc(orders.createdAt));
       return Promise.all(rows.map((r) => shape(db, r)));
+    },
+
+    async findRecentByCartId(cartId: string, withinMs: number): Promise<StoredOrder | undefined> {
+      if (!isUuid(cartId)) return undefined;
+      const cutoff = new Date(Date.now() - withinMs);
+      const rows = await db
+        .select()
+        .from(orders)
+        .where(and(eq(orders.cartId, cartId), gte(orders.createdAt, cutoff)))
+        .orderBy(desc(orders.createdAt))
+        .limit(1);
+      return rows[0] ? shape(db, rows[0]) : undefined;
     },
 
     async listForSeller(sellerId: string): Promise<StoredOrder[]> {

@@ -50,6 +50,12 @@ export interface BuyerAdapter {
     }): Promise<OrderRecord>;
     get(orderId: string): Promise<OrderRecord | undefined>;
     listForSeller(sellerId: string): Promise<OrderRecord[]>;
+    /**
+     * Idempotency helper: most recent order for a cart within the window.
+     * Used by checkout.confirm to dedupe MCP retries — /mcp is exempt from
+     * the HTTP idempotency middleware, so the handler dedupes itself.
+     */
+    findRecentByCartId(cartId: string, withinMs: number): Promise<OrderRecord | undefined>;
   };
   sellers: {
     get(sellerId: string): Promise<{ sellerId: string; ownerAgentId: string } | undefined>;

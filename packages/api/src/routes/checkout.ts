@@ -83,11 +83,53 @@ export async function registerCheckoutRoutes(
     };
   });
 
+  // Window for treating a confirm-on-empty-cart as an idempotent replay rather
+  // than a validation error. Sized to cover MCP/agent retry windows (seconds
+  // to a few minutes) without papering over legitimate "user emptied cart
+  // manually then tried to confirm" cases, which would have a much longer gap.
+  const CONFIRM_IDEMPOTENCY_WINDOW_MS = 10 * 60 * 1000;
+
   app.post("/v1/checkout/confirm", async (req, reply) => {
     const body = ConfirmSchema.parse(req.body);
     const c = await deps.carts.get(body.cartId);
     if (!c) throw new NotFoundError("cart", body.cartId);
-    if (c.lines.length === 0) throw new ValidationError([{ path: "cart", message: "empty" }]);
+    if (c.lines.length === 0) {
+      // The HTTP idempotency middleware (preHandler) dedupes retries that
+      // carry the same Idempotency-Key, but /mcp is exempt — so an MCP client
+      // that internally retries checkout.confirm hits the cart-is-empty case
+      // after the first attempt already cleared it. Treat that case as an
+      // idempotent replay: return the most recent order for this cart within
+      // a short window. Outside the window, fall through to the original
+      // validation error so a buyer who deletes everything from a stale cart
+      // doesn't silently confirm an empty order.
+      const prior = await deps.orders.findRecentByCartId(body.cartId, CONFIRM_IDEMPOTENCY_WINDOW_MS);
+      if (prior) {
+        void reply.code(200);
+        return {
+          orderId: prior.orderId,
+          publicNumber: prior.publicNumber,
+          status: prior.status,
+          currency: prior.currency,
+          totals: {
+            subtotalMinor: prior.subtotalMinor.toString(),
+            shippingMinor: prior.shippingMinor.toString(),
+            taxMinor: prior.taxMinor.toString(),
+            totalMinor: prior.totalMinor.toString(),
+          },
+          lines: prior.lines.map((l) => ({
+            variantId: l.variantId,
+            sellerId: l.sellerId,
+            qty: l.qty,
+            unitPriceMinor: l.unitPriceMinor.toString(),
+          })),
+          ownerKind: prior.ownerKind,
+          orderToken: prior.accessToken,
+          createdAt: new Date(prior.createdAt).toISOString(),
+          replayed: true,
+        };
+      }
+      throw new ValidationError([{ path: "cart", message: "empty" }]);
+    }
 
     const quote = checkoutDomain.priceQuote({
       cart: { cartId: c.cartId, currency: c.currency, lines: c.lines },
