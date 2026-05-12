@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-12 — vps-eu · web rebuild · robots.txt `/seller$` anchor
+
+- Closes anomaly [9]: `Allow: /seller` overlapped `Disallow: /seller/`, which modern crawlers resolve correctly via most-specific match but is ambiguous to older agents.
+- Fix in `packages/web/src/app/robots.ts`: changed the `/seller` allow entry to `/seller$` (Google end-of-URL anchor) in both the wildcard rule and the per-UA rules. Intent is now explicit: index `/seller` (public onboarding), keep `/seller/*` (auth-required dashboard pages) out.
+- Web image rebuilt, recreated container. Verified live: `curl https://teno-store.com/robots.txt` shows `Allow: /seller$` on every rule block.
+
 ## 2026-05-12 — vps-eu · api+web rebuild · edge-cacheable / + /search, next/image with AVIF
 
 - `/` was force-dynamic with a per-request `getCurrentUser()` cookie read; same for `/search` with no real per-user state. Both routes are the highest-SEO-value entry points (home + slice landings for category/brand/seller). Without ISR, every Googlebot / Bingbot / ChatGPT-User / PerplexityBot hit paid full SSR cost on origin even with the anonymous-cache middleware in front (the cookie touch tainted the whole render).

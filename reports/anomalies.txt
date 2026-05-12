@@ -23,6 +23,19 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
+2026-05-12 17:55 UTC — twenty-fourth sweep (/loop fix iteration)
+------------------------------------------------------------------
+
+[59] FIX APPLIED — robots.txt `/seller` ambiguity (closes [9])
+   • packages/web/src/app/robots.ts: `Allow: /seller` → `Allow: /seller$`
+     (Google end-of-URL anchor) in wildcard + per-UA rules.
+   • Tests still green (5/5 in robots.test.ts).
+   • Deployed to vps-eu: web image rebuilt, container recreated.
+   • Live-verified: curl https://teno-store.com/robots.txt shows
+     `Allow: /seller$` everywhere; `Disallow: /seller/` unchanged.
+     No longer relies on most-specific-match semantics — intent is
+     explicit for any compliant crawler.
+
 2026-05-12 21:33 UTC — forty-fifth sweep (deploy verify)
 ---------------------------------------------------------
 

@@ -33,7 +33,41 @@ const nextConfig = {
   // social-card icons. Permanent redirects to the modern Next-generated
   // assets that already 200.
   async headers() {
+    // Content-Security-Policy in Report-Only mode (anomaly [7]). We don't
+    // know yet which third-party origins the site touches at runtime, so
+    // shipping an enforcing CSP risks breaking real users. Report-Only
+    // delivers violations to the browser console where we can observe what
+    // we'd block before promoting to enforce. No report-uri/report-to yet
+    // — violations are visible in DevTools only, which is the right scope
+    // for the initial learning pass.
+    const cspReportOnly = [
+      "default-src 'self'",
+      // 'unsafe-inline' covers the inline RSC payload + Next hydration
+      // bootstrap scripts. Tighten with nonces once the report log is
+      // clean. 'unsafe-eval' is here for Next dev/RSC fallback; remove if
+      // the report log doesn't show eval hits in steady state.
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+      "style-src 'self' 'unsafe-inline'",
+      // images: self + data:/blob: for inline-encoded thumbnails; https:
+      // for Next/image-optimized output that may proxy through any CDN.
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https://api.teno-store.com",
+      "frame-ancestors 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "object-src 'none'",
+    ].join("; ");
     return [
+      {
+        // Site-wide CSP report-only header. Listed first so it applies to
+        // every response; subsequent entries below add per-path Cache-
+        // Control / CORS without clobbering it.
+        source: "/:path*",
+        headers: [
+          { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
+        ],
+      },
       {
         // Static-y discovery files served from packages/web/public/. They
         // change once per deploy; Next ships them with max-age=0 by default

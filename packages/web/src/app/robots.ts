@@ -69,10 +69,11 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         // /store/ is the canonical seller-storefront URL (commit d62bd2f).
-        // Explicit Allow signals indexability intent to crawlers that
-        // walk robots before sitemap, even though default-allow would
-        // also let them through.
-        allow: ["/", "/search", "/product/", "/store/", "/seller", "/about"],
+        // `/seller$` (end-of-URL anchor) is the public onboarding page;
+        // the trailing-slash variant below disallows /seller/dashboard etc.
+        // Without the `$` the two rules overlapped and crawlers had to
+        // fall back to most-specific-match semantics to do the right thing.
+        allow: ["/", "/search", "/product/", "/store/", "/seller$", "/about"],
         // /api/ is internal; /login is the auth ceremony page; /seller/ subpaths
         // (dashboard/contact/products) are auth-required and have no SEO value;
         // /s/ are private snapshot links that are public-token addressed.
@@ -80,7 +81,7 @@ export default function robots(): MetadataRoute.Robots {
       },
       ...[...AI_USER_AGENTS, ...SOCIAL_SHARE_USER_AGENTS].map((ua) => ({
         userAgent: ua,
-        allow: ["/", "/search", "/product/", "/store/", "/seller", "/about"],
+        allow: ["/", "/search", "/product/", "/store/", "/seller$", "/about"],
         disallow: ["/api/", "/login", "/seller/", "/s/"],
       })),
     ],
