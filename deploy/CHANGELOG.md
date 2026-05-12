@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-12 — vps-eu · api+web rebuild · edge-cacheable / + /search, next/image with AVIF
+
+- `/` was force-dynamic with a per-request `getCurrentUser()` cookie read; same for `/search` with no real per-user state. Both routes are the highest-SEO-value entry points (home + slice landings for category/brand/seller). Without ISR, every Googlebot / Bingbot / ChatGPT-User / PerplexityBot hit paid full SSR cost on origin even with the anonymous-cache middleware in front (the cookie touch tainted the whole render).
+- Refactor: signed-in agent-activity view moved to a dedicated `/dashboard` route (force-dynamic). `/` is now ISR with `revalidate=60`; always renders the marketing landing. Middleware redirects signed-in users from `/` → `/dashboard`; `/dashboard` clears an invalid `mp_session` cookie before redirecting to `/login` so a stale cookie can't trap a user in `/` ↔ `/dashboard`. Login default `next` changed `/` → `/dashboard`; header user-name now links to `/dashboard`.
+- `/search` drops `force-dynamic` → `revalidate=60` (reads only URL params, no cookies/headers).
+- next/image: ProductCard + Gallery (hero + thumbnails + lightbox) routed through Next's image optimizer. Live verification — hero thumb at w=384 returns `Content-Type: image/avif`, 13.6 KB (was ~40-50 KB JPEG from the Ouedkniss CDN, 2-3x smaller). `Cache-Control: public, max-age=2592000, must-revalidate` (30 days). next.config.mjs gains `formats: ["image/avif", "image/webp"]` + `minimumCacheTTL: 30 days`.
+- Untracked operator test files `packages/api/src/catalog/{cursor,facets,fuzzy,search,sort}.test.ts` integrated; `search.test.ts` had `SearchQuery` fixtures missing required fields — added a `q()` helper. 697 tests + typecheck green pre-deploy.
+- Verified live: `/livez` ok; `/` returns 200 with `Cache-Control: public, s-maxage=300, swr=1800` (was no-store under force-dynamic); `/dashboard` 307s to /login for anonymous; `/search?category=telephones` returns 200 with the same edge-cache headers; `/_next/image` proxy serves AVIF.
+
 ## 2026-05-12 — vps-eu · api+web rebuild · dep bumps + React-19 form-pending refactor
 
 - Deps: next 15.1.6 → 15.5.18, drizzle-orm 0.44 → 0.45; pnpm.overrides pin fast-uri >=3.1.2, postcss >=8.5.10, ip-address >=10.1.1 (security advisories on transitive deps). Full typecheck + 626 tests green pre-deploy.
