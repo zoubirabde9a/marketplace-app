@@ -7,7 +7,7 @@
 // the same storage code path. Agents passing a cartId across calls keep
 // continuity the way an anonymous browser does with the mp_cart_id cookie.
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { NotFoundError, ValidationError } from "@marketplace/shared/errors";
 import { cart as cartDomain, checkout as checkoutDomain } from "@marketplace/domain";
@@ -530,7 +530,14 @@ export function registerBuyerTools(reg: McpRegistry, deps: BuyerAdapter): void {
       if (!o) throw new NotFoundError("order", input.orderId);
       // Mirror /v1/orders/:id auth: owner-by-user OR matching token.
       const isOwner = o.ownerKind === "user" && o.ownerId === ctx.ownerId;
-      const tokenOk = Boolean(input.orderToken) && input.orderToken === o.accessToken;
+      // Constant-time compare — mirrors the REST handler at /v1/orders/:id.
+      // `===` leaks length/prefix-match info via timing; with 192-bit tokens
+      // this isn't practically exploitable but the safe pattern is cheap.
+      const provided = input.orderToken ?? "";
+      const tokenOk =
+        provided.length > 0 &&
+        provided.length === o.accessToken.length &&
+        timingSafeEqual(Buffer.from(provided), Buffer.from(o.accessToken));
       if (!isOwner && !tokenOk) {
         throw new ValidationError([{ path: "orderToken", message: "order_access_denied" }]);
       }

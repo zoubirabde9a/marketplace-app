@@ -1,11 +1,26 @@
 // Order read endpoints.
 
 import type { FastifyInstance } from "fastify";
+import { timingSafeEqual } from "node:crypto";
 import { NotFoundError, UnauthorizedError } from "@marketplace/shared/errors";
 import { requirePrincipal, requireUser } from "../middleware/auth.js";
 import type { OrderRepo, OrderRecord } from "../repos/order.js";
 import type { SellerRepo } from "../repos/seller.js";
 import type { CartLineInfo, CartRepo } from "../repos/cart.js";
+
+// Constant-time token comparison. `===` leaks length+prefix-match info via
+// timing; with the 192-bit token here a remote attacker can't realistically
+// exploit that, but using timingSafeEqual is the cheap, conventional fix and
+// removes the class of defect from this code path entirely. The byte-length
+// check is required because timingSafeEqual throws on mismatched lengths,
+// and that exception itself would leak length info if reached.
+function tokensEqual(provided: string, expected: string): boolean {
+  if (provided.length !== expected.length) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 function withLineInfo(
   lines: OrderRecord["lines"],
@@ -100,7 +115,7 @@ export async function registerOrderRoutes(
     const userId = req.userPrincipal?.userId;
     const token = typeof req.headers["x-mp-order-token"] === "string" ? req.headers["x-mp-order-token"] : "";
     const isOwner = o.ownerKind === "user" && o.ownerId === userId;
-    const tokenOk = token === o.accessToken;
+    const tokenOk = token.length > 0 && tokensEqual(token, o.accessToken);
     if (!isOwner && !tokenOk) {
       throw new UnauthorizedError("order_access_denied");
     }
