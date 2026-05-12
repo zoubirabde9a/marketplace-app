@@ -28,7 +28,7 @@ describe("ActiveFilters", () => {
     const c = chips(container);
     expect(c).toHaveLength(1);
     expect(c[0].text).toContain("phone");
-    expect(c[0].label).toBe('Remove filter: “phone”');
+    expect(c[0].label).toBe('Retirer le filtre : “phone”');
     expect(c[0].href).toBe("/search");
   });
 
@@ -54,7 +54,7 @@ describe("ActiveFilters", () => {
     const c = chips(container);
     expect(c).toHaveLength(1);
     expect(c[0].text).toBe("Acme Widgets");
-    expect(c[0].label).toBe("Remove filter: Acme Widgets");
+    expect(c[0].label).toBe("Retirer le filtre : Acme Widgets");
   });
 
   it("falls back to a short-suffix label when no display name is available", () => {
@@ -62,15 +62,15 @@ describe("ActiveFilters", () => {
       <ActiveFilters sp={{ sellerId: "0a1b2c3d-1111-2222-3333-444444444444" }} />,
     );
     const c = chips(container);
-    expect(c[0].text).toMatch(/seller \w{6}$/);
+    expect(c[0].text).toMatch(/vendeur \w{6}$/);
   });
 
-  it("emits a 'clear all' link when more than one filter is active", () => {
+  it("emits a 'tout effacer' link when more than one filter is active", () => {
     const { container } = render(
       <ActiveFilters sp={{ q: "phone", brand: "Acme" }} />,
     );
     const clearAll = Array.from(container.querySelectorAll("a")).find(
-      (a) => a.textContent?.trim() === "clear all",
+      (a) => a.textContent?.trim() === "tout effacer",
     );
     expect(clearAll).toBeDefined();
     expect(clearAll!.getAttribute("href")).toBe("/search");

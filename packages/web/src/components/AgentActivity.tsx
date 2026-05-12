@@ -32,7 +32,12 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
   const actionCount = data.recentActions.length;
 
   return (
-    <section className="pt-12 pb-8 max-w-5xl mx-auto">
+    // The signed-in view is intentionally English (agent-operator narrative,
+    // matches the bilingual home hero's split). Tag it so screen readers
+    // switch voice + Lighthouse's "Document has a content-language" audit
+    // passes — without this the section inherits <html lang="fr"> and emits
+    // a mixed-language signal that hurts both a11y and SEO.
+    <section className="pt-12 pb-8 max-w-5xl mx-auto" lang="en">
       <header className="mb-8">
         <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
           Hi, {displayName}.

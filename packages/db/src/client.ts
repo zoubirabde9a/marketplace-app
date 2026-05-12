@@ -1,8 +1,19 @@
 import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { sql } from "drizzle-orm";
 import postgres from "postgres";
 import * as schema from "./schema/index.js";
 
 export type DbClient = PostgresJsDatabase<typeof schema>;
+
+/**
+ * Lightweight readiness probe for the db. Cheap roundtrip (Postgres parses,
+ * executes, returns one row); no table access so a vacuum or table-level
+ * lock can't block it. Used by the api's /readyz endpoint — see
+ * packages/api/src/routes/health.ts.
+ */
+export async function dbPing(db: DbClient): Promise<void> {
+  await db.execute(sql`SELECT 1`);
+}
 
 export interface DbConfig {
   url: string;

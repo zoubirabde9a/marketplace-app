@@ -30,8 +30,15 @@ export async function placeOrderAction(formData: FormData): Promise<void> {
     });
     orderId = order.orderId;
   } catch (e) {
-    const msg = encodeURIComponent((e as Error).message.slice(0, 80));
-    redirect(`/checkout?err=${msg}`);
+    // Log the technical error server-side but redirect the buyer with a
+    // clean `failed` flag — the previous code URL-encoded the raw exception
+    // message into `?err=…`, which leaked internals into browser history
+    // (and shareable URLs) while the renderer only special-cases `missing`
+    // anyway and falls back to a generic message for anything else.
+    if (typeof console !== "undefined") {
+      console.error("[checkout] place_order_failed", (e as Error).message);
+    }
+    redirect(`/checkout?err=failed`);
   }
   const jar = await cookies();
   jar.set(BUYER_COOKIE, JSON.stringify({ name, phone, region }), {

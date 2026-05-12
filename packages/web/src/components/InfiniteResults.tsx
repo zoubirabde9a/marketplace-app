@@ -41,7 +41,13 @@ export function InfiniteResults({ initialHits, initialCursor, baseQuery }: Infin
       });
       setCursor(json.cursor);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      // Log technically, render generically — the user-visible error text
+      // doesn't need to include the raw HTTP code or network stack snippet
+      // (and on a French-locale page, an English error.message is jarring).
+      if (typeof console !== "undefined") {
+        console.error("[infinite-results] load_more_failed", (e as Error).message);
+      }
+      setError("error");
     } finally {
       setLoading(false);
       inFlightRef.current = false;
@@ -67,7 +73,7 @@ export function InfiniteResults({ initialHits, initialCursor, baseQuery }: Infin
     <>
       <ul
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 list-none p-0 m-0"
-        aria-label={`${hits.length} product${hits.length === 1 ? "" : "s"}`}
+        aria-label={`${hits.length} annonce${hits.length === 1 ? "" : "s"}`}
       >
         {hits.map((h, i) => (
           <li key={h.productId}>
@@ -76,10 +82,10 @@ export function InfiniteResults({ initialHits, initialCursor, baseQuery }: Infin
         ))}
       </ul>
       {cursor && (
-        <div ref={sentinelRef} className="mt-8 flex items-center justify-center" aria-hidden={!loading}>
+        <div ref={sentinelRef} className="mt-8 flex items-center justify-center" aria-hidden={!loading} lang="fr">
           {loading ? (
             <div className="text-xs text-ink-mute" role="status" aria-live="polite">
-              Loading more…
+              Chargement…
             </div>
           ) : error ? (
             <button
@@ -87,7 +93,7 @@ export function InfiniteResults({ initialHits, initialCursor, baseQuery }: Infin
               onClick={() => void loadMore()}
               className="text-xs text-bad underline-offset-4 hover:underline"
             >
-              Couldn’t load more — retry
+              Impossible de charger la suite — réessayer
             </button>
           ) : (
             // Reserve some height so the sentinel is observable even before
@@ -97,8 +103,8 @@ export function InfiniteResults({ initialHits, initialCursor, baseQuery }: Infin
         </div>
       )}
       {!cursor && hits.length > initialHits.length && (
-        <div className="mt-8 text-center text-xs text-ink-mute pt-6 border-t border-line-soft">
-          End of catalog · {hits.length.toLocaleString()} item{hits.length === 1 ? "" : "s"}
+        <div className="mt-8 text-center text-xs text-ink-mute pt-6 border-t border-line-soft" lang="fr">
+          Fin du catalogue · {hits.length.toLocaleString()} annonce{hits.length === 1 ? "" : "s"}
         </div>
       )}
     </>

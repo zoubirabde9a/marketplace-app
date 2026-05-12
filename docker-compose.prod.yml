@@ -121,16 +121,21 @@ services:
     image: redis:7.4-alpine
     container_name: marketplace-redis
     restart: unless-stopped
-    # maxmemory 2gb / volatile-lru:
-    #   Snapshots are ~100 KB each (full search-result blobs) and accumulate at
-    #   the rate scraper-driven catalog.search fires, so 24h × that rate × 100 KB
-    #   hits the multi-GB scale. The prior 256 MB cap filled inside an hour and
-    #   `allkeys-lru` then evicted active snapshots well before their 24h TTL —
-    #   share-links broke the same day they were issued. 2 GB fits comfortably
-    #   on the 8 GB VPS. volatile-lru means only TTL-bearing keys are eviction
-    #   candidates, so any durable key (future sessions, etc.) is preserved
-    #   while snapshots and other ephemeral keys take the eviction hit first.
-    command: ["redis-server", "--save", "300", "10", "--appendonly", "no", "--maxmemory", "2gb", "--maxmemory-policy", "volatile-lru"]
+    # maxmemory 2gb / allkeys-lru (changed 2026-05-12):
+    #   Snapshots are ~26 KB each (full search-result blobs) and accumulate at
+    #   the rate scraper-driven catalog.search fires. Live measurement
+    #   2026-05-12: 56,236 snap:* keys totalling 1.49 GB at the 2 GB ceiling
+    #   despite all having a valid 24h TTL — volatile-lru wasn't keeping up
+    #   with the write rate vs the 24h decay window, redis hit maxmemory,
+    #   ioredis exhausted retries, and the container OOM-cycled 32 times.
+    #   Switching to allkeys-lru lets redis evict ANY key (including non-TTL
+    #   ones) under memory pressure — at our current keyspace (effectively
+    #   100% snapshots, one pcache:* key) the original "protect durable
+    #   session keys" rationale doesn't apply, and any future session
+    #   workload will keep its hot keys in cache via LRU recency anyway.
+    #   See deploy/CHANGELOG.md 2026-05-12 + reports/anomalies.txt [56] for
+    #   the incident.
+    command: ["redis-server", "--save", "300", "10", "--appendonly", "no", "--maxmemory", "2gb", "--maxmemory-policy", "allkeys-lru"]
     volumes:
       - /var/lib/marketplace/redis:/data
     expose:

@@ -56,7 +56,7 @@ export function GoogleSignInButton({
         client_id: clientId,
         callback: async (resp) => {
           if (!resp.credential) {
-            setError("No credential returned from Google.");
+            setError("Aucune information reçue de Google. Réessayez.");
             return;
           }
           setBusy(true);
@@ -69,14 +69,24 @@ export function GoogleSignInButton({
             });
             const json = (await r.json()) as { ok: boolean; error?: string };
             if (!r.ok || !json.ok) {
-              setError(json.error ?? `Sign-in failed (HTTP ${r.status})`);
+              // Log the technical error code/message server-side for ops,
+              // show the buyer a clean French line instead of dumping the
+              // raw API error string ("user_revoked", "token_expired", etc.)
+              // into a form they're trying to retry on.
+              if (typeof console !== "undefined") {
+                console.error("[google-signin] api_failed", { status: r.status, error: json.error });
+              }
+              setError("Connexion impossible. Réessayez dans un instant.");
               setBusy(false);
               return;
             }
             router.push(nextHref);
             router.refresh();
           } catch (e) {
-            setError((e as Error).message || "network_error");
+            if (typeof console !== "undefined") {
+              console.error("[google-signin] network_error", (e as Error).message);
+            }
+            setError("Connexion impossible. Vérifiez votre réseau, puis réessayez.");
             setBusy(false);
           }
         },
@@ -123,7 +133,7 @@ export function GoogleSignInButton({
   return (
     <div>
       <div ref={buttonRef} aria-busy={busy} />
-      {busy && <p className="mt-3 text-sm text-ink-soft">Completing sign-in…</p>}
+      {busy && <p className="mt-3 text-sm text-ink-soft">Connexion en cours…</p>}
       {error && (
         <p className="mt-3 text-sm text-bad" role="alert">
           {error}

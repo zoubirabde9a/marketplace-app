@@ -45,6 +45,7 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ ok: true, seller });
   } catch (e) {
     const err = e as ApiError;
+    console.error("[api/seller/sellers] create_failed", err.status, err.message);
     return NextResponse.json(
       { ok: false, error: err.message || "create_failed", detail: err.detail },
       { status: err.status ?? 500 },

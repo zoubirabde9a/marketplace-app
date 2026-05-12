@@ -86,7 +86,7 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
 
   if (!snap) {
     return (
-      <article className="max-w-3xl mx-auto p-6">
+      <article className="max-w-3xl mx-auto p-6" lang="en">
         <h1 className="text-2xl font-semibold mb-2">Snapshot not found</h1>
         <p className="text-ink-soft mb-4">
           This isn’t a valid snapshot link. Snapshot tokens look like{" "}
@@ -100,7 +100,7 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
 
   if ("unauthorized" in snap) {
     return (
-      <article className="max-w-3xl mx-auto p-6">
+      <article className="max-w-3xl mx-auto p-6" lang="en">
         <h1 className="text-2xl font-semibold mb-2">Snapshot access denied</h1>
         <p className="text-ink-soft">
           This snapshot exists but isn’t accessible from this link. The token
@@ -113,7 +113,7 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
 
   if ("expired" in snap) {
     return (
-      <article className="max-w-3xl mx-auto p-6">
+      <article className="max-w-3xl mx-auto p-6" lang="en">
         <h1 className="text-2xl font-semibold mb-2">Snapshot unavailable</h1>
         <p className="text-ink-soft mb-4">
           This snapshot is no longer stored. Snapshots are kept for 24 hours after
@@ -143,7 +143,7 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
       : "What the agent saw";
 
   return (
-    <article className="max-w-5xl mx-auto p-6">
+    <article className="max-w-5xl mx-auto p-6" lang="en">
       <header className="mb-6 border-b border-line-soft pb-4">
         <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold">
           Agent {kindLabel[snap.kind]} snapshot

@@ -8,7 +8,9 @@ import { ContactForm } from "./ContactForm";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Seller contact",
+  // French chrome to match the rest of the seller surface (dashboard,
+  // products/new) and the buyer money path.
+  title: "Coordonnées de la boutique",
   robots: { index: false, follow: false },
 };
 
@@ -31,12 +33,12 @@ export default async function ContactPage({
 
   if (!seller) {
     return (
-      <section className="pt-10 pb-24 max-w-2xl mx-auto">
-        <h1 className="text-2xl font-semibold">Edit contact info</h1>
+      <section className="pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
+        <h1 className="text-2xl font-semibold">Modifier les coordonnées</h1>
         <p className="mt-4 text-sm text-ink-soft">
-          No seller profile found.{" "}
+          Aucune boutique trouvée.{" "}
           <Link href="/seller/dashboard" className="text-accent hover:underline">
-            Back to dashboard
+            Retour au tableau de bord
           </Link>
           .
         </p>
@@ -45,13 +47,13 @@ export default async function ContactPage({
   }
 
   return (
-    <section className="pt-10 pb-24 max-w-2xl mx-auto">
+    <section className="pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
       <Link href="/seller/dashboard" className="text-sm text-ink-soft hover:text-ink">
-        ← Back to dashboard
+        ← Retour au tableau de bord
       </Link>
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight">Edit contact info</h1>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight">Modifier les coordonnées</h1>
       <p className="mt-2 text-sm text-ink-soft">
-        Updating <span className="text-ink">{seller.displayName}</span>{" "}
+        Boutique : <span className="text-ink">{seller.displayName}</span>{" "}
         <span className="text-ink-mute font-mono text-xs">({seller.sellerId})</span>
       </p>
       <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
@@ -65,10 +67,7 @@ export default async function ContactPage({
         />
       </div>
       <p className="mt-4 text-xs text-ink-mute">
-        Note: the API supports phone, WhatsApp, and website only. Display-name
-        renames and supportEmail/supportUrl are not currently exposed by{" "}
-        <code className="font-mono">PATCH /v1/sellers/:id</code> and are
-        skipped here.
+        Seuls le téléphone, le WhatsApp et le site web sont modifiables ici. Le renom de la boutique et l’e-mail de support ne sont pas encore exposés par l’API.
       </p>
     </section>
   );

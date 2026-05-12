@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation";
 export function ExchangeLinkClient({ code, next }: { code: string; next: string }) {
   const router = useRouter();
   const [status, setStatus] = useState<"working" | "ok" | "error">("working");
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -25,7 +24,9 @@ export function ExchangeLinkClient({ code, next }: { code: string; next: string 
         if (cancelled) return;
         const json = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
         if (!r.ok || !json.ok) {
-          setErrorMsg(json.error ?? `Exchange failed (HTTP ${r.status})`);
+          if (typeof console !== "undefined") {
+            console.error("[exchange-link] api_failed", { status: r.status, error: json.error });
+          }
           setStatus("error");
           return;
         }
@@ -34,7 +35,9 @@ export function ExchangeLinkClient({ code, next }: { code: string; next: string 
         router.refresh();
       } catch (e) {
         if (cancelled) return;
-        setErrorMsg((e as Error).message || "network_error");
+        if (typeof console !== "undefined") {
+          console.error("[exchange-link] network_error", (e as Error).message);
+        }
         setStatus("error");
       }
     })();
@@ -43,12 +46,15 @@ export function ExchangeLinkClient({ code, next }: { code: string; next: string 
     };
   }, [code, next, router]);
 
-  if (status === "working") return <p className="text-sm text-ink-soft">Exchanging your agent&rsquo;s link…</p>;
-  if (status === "ok") return <p className="text-sm text-ok">Signed in — redirecting…</p>;
+  if (status === "working") return <p className="text-sm text-ink-soft">Échange du lien en cours…</p>;
+  if (status === "ok") return <p className="text-sm text-ok">Connecté — redirection…</p>;
+  // Generic message — the technical reason ("expired", "already_used",
+  // "network_error", a fetch stack) goes to the browser/server console.
+  // Showing the raw API error to the buyer just told them what they already
+  // know (it failed) while exposing internals.
   return (
     <p className="text-sm text-bad" role="alert">
-      Couldn&rsquo;t sign you in: {errorMsg}. The link may have expired (10 min
-      TTL) or already been used. Use Google sign-in below instead.
+      Impossible de vous connecter avec ce lien. Il a peut-être expiré (10 min) ou déjà été utilisé. Utilisez la connexion Google ci-dessous.
     </p>
   );
 }

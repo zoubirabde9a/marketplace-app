@@ -7,12 +7,15 @@
 
 import { ImageResponse } from "next/og";
 import { getProduct } from "@/lib/api";
-import { formatPrice, formatPriceRange } from "@/lib/format";
+import { cleanProductTitle, formatPrice, formatPriceRange } from "@/lib/format";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export const alt = "Teno Store product";
+// French alt text — the OG image is the first thing a French-locale buyer
+// sees when this URL is shared on Facebook / Discord / Slack / iMessage,
+// and accessibility tools read this alt aloud.
+export const alt = "Annonce Teno Store";
 
 export default async function OG({ params }: { params: { id: string } }) {
   const p = await getProduct(params.id).catch(() => null);
@@ -44,15 +47,23 @@ export default async function OG({ params }: { params: { id: string } }) {
   const variants = [...p.variants].sort((a, b) => Number(a.priceMinor) - Number(b.priceMinor));
   const minPrice = variants[0]?.priceMinor;
   const maxPrice = variants[variants.length - 1]?.priceMinor;
-  const currency = variants[0]?.currency ?? "USD";
+  // DZD is the marketplace default — 100% of live listings price in dinars.
+  // The previous USD fallback would have rendered `$0.00` style strings on
+  // any variantless edge case, which is exactly the social-share preview a
+  // French buyer DOESN'T want to see.
+  const currency = variants[0]?.currency ?? "DZD";
   const priceLabel =
     variants.length > 1
       ? formatPriceRange(minPrice ?? null, maxPrice ?? null, currency)
       : formatPrice(minPrice ?? null, currency);
 
   // Truncate long titles to fit the card; ImageResponse can wrap text but
-  // keeping a hard ceiling keeps the layout predictable.
-  const title = p.title.value.slice(0, 80);
+  // keeping a hard ceiling keeps the layout predictable. Run through the
+  // cleanProductTitle helper first so brand-duplicated scraped titles
+  // ("Samsung Samsung a31" / "Iphone11 Iphone11") don't leak into the
+  // share-card image — that's the first thing a Facebook/Twitter visitor
+  // sees and the most expensive surface to fix once it's cached.
+  const title = cleanProductTitle(p.title.value).slice(0, 80);
   const brand = p.brand?.slice(0, 24);
 
   return new ImageResponse(

@@ -5,6 +5,7 @@ import { getCart } from "@/lib/cart";
 import { cleanProductTitle, formatPrice } from "@/lib/format";
 import { ALGERIAN_WILAYAS } from "./wilayas";
 import { placeOrderAction, readSavedBuyerInfo } from "./actions";
+import { PlaceOrderSubmit } from "./PlaceOrderSubmit";
 
 export const dynamic = "force-dynamic";
 
@@ -111,12 +112,7 @@ export default async function CheckoutPage({
             </select>
           </div>
 
-          <button
-            type="submit"
-            className="mt-4 w-full h-11 rounded-md bg-accent text-bg text-sm font-semibold hover:brightness-110 transition"
-          >
-            Passer la commande
-          </button>
+          <PlaceOrderSubmit />
         </form>
 
         <aside className="rounded-2xl border border-line-soft bg-bg-soft/60 p-6 h-fit">

@@ -13,17 +13,29 @@ export type SortKey = { v: bigint; isBig: true } | { v: number; isBig: false };
 
 function relevanceScore(p: StoredProduct, ctx: FilterContext): number {
   if (ctx.q.length === 0) return 0;
-  if (ctx.textScores) return ctx.textScores.get(p.productId) ?? 0;
-  const t = p.titleSanitized.toLowerCase();
-  const b = (p.brand ?? "").toLowerCase();
-  // Substring matches outweigh fuzzy matches; title outweighs brand.
-  let s = 0;
-  if (t.includes(ctx.q)) s += 4;
-  if (b.includes(ctx.q)) s += 2;
-  if (s === 0 && ctx.fuzzy) {
-    s += fuzzyMatch(ctx.q, p.titleSanitized) * 2;
-    s += fuzzyMatch(ctx.q, p.brand ?? "");
+  let s: number;
+  if (ctx.textScores) {
+    s = ctx.textScores.get(p.productId) ?? 0;
+  } else {
+    const t = p.titleSanitized.toLowerCase();
+    const b = (p.brand ?? "").toLowerCase();
+    // Substring matches outweigh fuzzy matches; title outweighs brand.
+    s = 0;
+    if (t.includes(ctx.q)) s += 4;
+    if (b.includes(ctx.q)) s += 2;
+    if (s === 0 && ctx.fuzzy) {
+      s += fuzzyMatch(ctx.q, p.titleSanitized) * 2;
+      s += fuzzyMatch(ctx.q, p.brand ?? "");
+    }
   }
+  // Image-presence tie-breaker. 3.8% of the catalog (~2,945 products today —
+  // anomalies report [22]) has no media; left alone they sometimes outrank
+  // imaged listings by tiny FTS deltas (live probe 2026-05-12: q=samsung put
+  // a 0-image "Samsung Samsung a31" at rank 1 with score 6.236 ahead of an
+  // image-bearing listing at 6.211). The 0.5 nudge breaks those near-ties
+  // without changing macro ranking — a real text-match difference of even
+  // 0.6 still wins, and any score-0 listing stays at 0.
+  if (s > 0 && p.media.length > 0) s += 0.5;
   return s;
 }
 

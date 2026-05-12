@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCart } from "@/lib/cart";
 import { cleanProductTitle, formatPrice } from "@/lib/format";
+import { PendingButton } from "@/components/PendingButton";
 import { adjustQtyAction, removeLineAction, updateQtyAction } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -70,14 +71,13 @@ export default async function CartPage() {
                         <input type="hidden" name="variantId" value={l.variantId} />
                         <input type="hidden" name="currentQty" value={l.qty} />
                         <input type="hidden" name="delta" value={-1} />
-                        <button
-                          type="submit"
-                          aria-label="Diminuer la quantité"
+                        <PendingButton
+                          ariaLabel="Diminuer la quantité"
                           className="w-8 h-8 text-sm text-ink-soft hover:bg-bg-elev disabled:opacity-30 transition"
                           disabled={l.qty <= 1}
                         >
                           −
-                        </button>
+                        </PendingButton>
                       </form>
                       <form action={updateQtyAction} className="contents">
                         <input type="hidden" name="variantId" value={l.variantId} />
@@ -95,24 +95,20 @@ export default async function CartPage() {
                         <input type="hidden" name="variantId" value={l.variantId} />
                         <input type="hidden" name="currentQty" value={l.qty} />
                         <input type="hidden" name="delta" value={1} />
-                        <button
-                          type="submit"
-                          aria-label="Augmenter la quantité"
+                        <PendingButton
+                          ariaLabel="Augmenter la quantité"
                           className="w-8 h-8 text-sm text-ink-soft hover:bg-bg-elev disabled:opacity-30 transition"
                           disabled={l.qty >= 99}
                         >
                           +
-                        </button>
+                        </PendingButton>
                       </form>
                     </div>
                     <form action={removeLineAction}>
                       <input type="hidden" name="variantId" value={l.variantId} />
-                      <button
-                        type="submit"
-                        className="h-8 px-3 rounded border border-line text-xs text-ink-mute hover:text-bad hover:border-bad/40 transition"
-                      >
+                      <PendingButton className="h-8 px-3 rounded border border-line text-xs text-ink-mute hover:text-bad hover:border-bad/40 transition disabled:opacity-60">
                         Retirer
-                      </button>
+                      </PendingButton>
                     </form>
                   </div>
                 </div>

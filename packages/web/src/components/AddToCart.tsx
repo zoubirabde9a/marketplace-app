@@ -5,6 +5,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { addToCart } from "@/lib/cart";
+import { AddToCartSubmit } from "./AddToCartSubmit";
 
 // Whitelist of post-add destinations. Anything else (including protocol-
 // relative `//evil.com`, absolute `https://...`, or a back-navigation `..`)
@@ -44,18 +45,22 @@ export function AddToCart({
   redirectTo?: string;
   className?: string;
 }) {
+  // The "Buy now" caller redirects to /checkout, so the in-flight verbiage
+  // should match the user's intent ("Achat en cours…", not "Ajout en cours…"
+  // which would tell them they just landed an item in the cart).
+  const pendingLabel = redirectTo === "/checkout" ? "Achat en cours…" : "Ajout en cours…";
   return (
     <form action={addAction} className={className}>
       <input type="hidden" name="variantId" value={variantId} />
       <input type="hidden" name="qty" value="1" />
       <input type="hidden" name="redirectTo" value={redirectTo} />
-      <button
-        type="submit"
-        disabled={!inStock}
-        className="inline-flex items-center justify-center h-10 px-5 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition"
-      >
-        {inStock ? label : "Rupture de stock"}
-      </button>
+      {/* Client-side submit button reads useFormStatus() so we can disable
+          + relabel while the server action is in flight. Before this, a slow
+          add-to-cart (Algerian mobile network) gave the buyer zero feedback
+          for the seconds between click and redirect — a real "did it click?"
+          smell that caused duplicate adds. The no-JS fallback still works:
+          when JS is off, AddToCartSubmit hydrates as a regular <button>. */}
+      <AddToCartSubmit inStock={inStock} label={label} pendingLabel={pendingLabel} />
     </form>
   );
 }

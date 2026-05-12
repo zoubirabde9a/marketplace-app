@@ -10,7 +10,7 @@ import cluster from "node:cluster";
 import { availableParallelism } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createDb, createRepos } from "@marketplace/db";
+import { createDb, createRepos, dbPing } from "@marketplace/db";
 import { Redis as IORedis } from "ioredis";
 import { catalog } from "@marketplace/domain";
 import { buildServer } from "./server.js";
@@ -152,6 +152,34 @@ async function main(): Promise<void> {
       webOrigin: process.env.WEB_ORIGIN ?? "https://teno-store.com",
       now: () => Date.now(),
     },
+    // Readiness probes wired into GET /readyz. /livez stays cheap (process
+    // up = green); /readyz fails open with 503 when a dep is unreachable so
+    // an orchestrator can drain traffic — the iter-22 Redis incident showed
+    // the cost of /readyz lying ("ready" even when ioredis was timing out).
+    healthProbes: {
+      db: async () => {
+        const t0 = Date.now();
+        try {
+          await dbPing(db);
+          return { ok: true, latencyMs: Date.now() - t0 };
+        } catch (e) {
+          return { ok: false, latencyMs: Date.now() - t0, msg: (e as Error).message };
+        }
+      },
+      ...(redis
+        ? {
+            redis: async () => {
+              const t0 = Date.now();
+              try {
+                const pong = await redis.ping();
+                return { ok: pong === "PONG", latencyMs: Date.now() - t0 };
+              } catch (e) {
+                return { ok: false, latencyMs: Date.now() - t0, msg: (e as Error).message };
+              }
+            },
+          }
+        : {}),
+    },
   });
 
   // Response cache for read-heavy public endpoints. Only anonymous traffic
@@ -180,6 +208,31 @@ async function main(): Promise<void> {
   await app.listen({ host: HOST, port: PORT });
   app.log.info(`Marketplace API ready at http://${HOST}:${PORT}`);
   app.log.info(`Issuer kid: ${keys.kid}. Google client: ${googleClientId.slice(0, 16)}…`);
+
+  // Background cache warm-up. The loadAllCached / loadSellersCached path
+  // costs ~8s on a cold catalog (live iter-25 measurement: 8.8s for the
+  // first /v1/products hit after restart), and every container recreate
+  // makes one unlucky visitor wait that out. Fire one local search now
+  // (no HTTP overhead — call the reader directly) so the in-mem caches
+  // are hot by the time real traffic arrives. Don't await: startup
+  // doesn't need to block on this. Errors are logged but never fatal —
+  // a warm-up failure must NEVER prevent the api from serving requests.
+  // Each cluster worker runs this independently because each has its
+  // own in-process cache; with API_WORKERS=auto (capped at 4) that's
+  // up to 4× the DB load for ~1.5s once per restart, negligible vs the
+  // ongoing benefit.
+  void (async () => {
+    const t0 = Date.now();
+    try {
+      await productReader.search(
+        { query: "", filters: { includeOutOfStock: false }, sort: "newest", limit: 1, embeddingsMode: "hybrid" },
+        { agentId: "warmup" },
+      );
+      app.log.info(`browse cache warmed in ${Date.now() - t0}ms`);
+    } catch (err) {
+      app.log.warn({ err }, "browse_cache_warmup_failed");
+    }
+  })();
 }
 
 // Multi-core scaling via Node's built-in cluster module. The primary process

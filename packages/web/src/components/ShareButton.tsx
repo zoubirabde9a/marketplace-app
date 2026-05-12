@@ -29,7 +29,7 @@ export function ShareButton({ title, url: urlProp }: { title: string; url?: stri
       }
     }
     if (typeof window !== "undefined") {
-      window.prompt("Copy this link:", url);
+      window.prompt("Copier ce lien :", url);
     }
   }
 

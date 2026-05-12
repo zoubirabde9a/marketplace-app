@@ -331,12 +331,36 @@ export function makeProductRepo(db: DbClient) {
     return rows.map((r) => r.id);
   }
 
+  // Indexed lookup of one category's product ids, newest first. Mirrors
+  // idsBySeller(): when the storefront filters on a single category slug
+  // with no text query, skip the catalog-wide loadAll() + JS-sort and let
+  // Postgres do it via the GIN index on products.category_ids (migration
+  // 0010, jsonb_path_ops).
+  //
+  // pg_stat_user_indexes 2026-05-12 showed products_category_ids_gin sitting
+  // at 0 scans — the index is ready, but the route layer has no SQL path
+  // that uses it. This function is that SQL path. Categories are stored
+  // as a jsonb array of slugs (e.g. ["telephones"]); containment via @>
+  // is the GIN's sweet spot.
+  async function idsByCategory(slug: string, limit = 200): Promise<string[]> {
+    if (!slug || typeof slug !== "string") return [];
+    if (slug.length > 120) return [];
+    const rows = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(sql`${products.categoryIds} @> ${JSON.stringify([slug])}::jsonb`)
+      .orderBy(desc(products.createdAt))
+      .limit(limit);
+    return rows.map((r) => r.id);
+  }
+
   return {
     loadAll,
     loadSellers,
     loadOne,
     searchIds,
     idsBySeller,
+    idsByCategory,
     recentIds,
 
     async getOwnerAgentId(productId: string): Promise<string | undefined> {

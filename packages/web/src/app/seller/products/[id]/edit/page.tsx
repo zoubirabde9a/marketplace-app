@@ -7,7 +7,9 @@ import { getProduct, listMySellers } from "@/lib/api";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Edit product",
+  // French chrome to match the rest of the seller surface (dashboard,
+  // products/new, contact) and the buyer money path.
+  title: "Modifier le produit",
   robots: { index: false, follow: false },
 };
 
@@ -23,12 +25,12 @@ export default async function EditProductPage({
   const product = await getProduct(id);
   if (!product) {
     return (
-      <section className="pt-10 pb-24 max-w-3xl mx-auto">
-        <h1 className="text-2xl font-semibold">Edit product</h1>
+      <section className="pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
+        <h1 className="text-2xl font-semibold">Modifier le produit</h1>
         <p className="mt-4 text-sm text-ink-soft">
-          Product not found.{" "}
+          Produit introuvable.{" "}
           <Link href="/seller/dashboard" className="text-accent hover:underline">
-            Back to dashboard
+            Retour au tableau de bord
           </Link>
           .
         </p>
@@ -43,41 +45,41 @@ export default async function EditProductPage({
   const owns = sellersResp.data.some((s) => s.sellerId === product.sellerId);
   if (!owns) {
     return (
-      <section className="pt-10 pb-24 max-w-3xl mx-auto">
-        <h1 className="text-2xl font-semibold">Edit product</h1>
+      <section className="pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
+        <h1 className="text-2xl font-semibold">Modifier le produit</h1>
         <p className="mt-4 text-sm text-bad">
-          You don&apos;t own this product.
+          Vous n’êtes pas propriétaire de ce produit.
         </p>
         <Link href="/seller/dashboard" className="mt-3 inline-block text-accent hover:underline">
-          Back to dashboard
+          Retour au tableau de bord
         </Link>
       </section>
     );
   }
 
   return (
-    <section className="pt-10 pb-24 max-w-3xl mx-auto">
+    <section className="pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
       <Link href="/seller/dashboard" className="text-sm text-ink-soft hover:text-ink">
-        ← Back to dashboard
+        ← Retour au tableau de bord
       </Link>
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight">Edit product</h1>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight">Modifier le produit</h1>
       <p className="mt-2 text-xs text-ink-mute font-mono">{product.productId}</p>
 
       <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-6 space-y-4">
-        <Field label="Title" value={product.title.value} />
-        <Field label="Brand" value={product.brand ?? ""} />
+        <Field label="Titre" value={product.title.value} />
+        <Field label="Marque" value={product.brand ?? ""} />
         <Field
           label="Description"
           value={product.description?.value ?? ""}
           multiline
         />
-        <Field label="Categories" value={product.categoryIds.join(", ")} />
+        <Field label="Catégories" value={product.categoryIds.join(", ")} />
       </div>
 
       <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
-        <h2 className="text-lg font-medium">Variants</h2>
+        <h2 className="text-lg font-medium">Variantes</h2>
         {product.variants.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-mute">No variants.</p>
+          <p className="mt-3 text-sm text-ink-mute">Aucune variante.</p>
         ) : (
           <ul className="mt-3 divide-y divide-line-soft">
             {product.variants.map((v) => (
@@ -95,7 +97,7 @@ export default async function EditProductPage({
                       : "border-line text-ink-mute")
                   }
                 >
-                  {v.inStock ? "in stock" : "out of stock"}
+                  {v.inStock ? "en stock" : "rupture de stock"}
                 </span>
               </li>
             ))}
@@ -106,7 +108,7 @@ export default async function EditProductPage({
       <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
         <h2 className="text-lg font-medium">Images</h2>
         {product.images.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-mute">No images.</p>
+          <p className="mt-3 text-sm text-ink-mute">Aucune image.</p>
         ) : (
           <ul className="mt-3 grid grid-cols-3 gap-3">
             {product.images.map((m) => (
@@ -117,7 +119,7 @@ export default async function EditProductPage({
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={m.url}
-                  alt={m.altText ?? "product image"}
+                  alt={m.altText ?? "Image du produit"}
                   className="w-full h-full object-cover"
                 />
               </li>
@@ -127,13 +129,7 @@ export default async function EditProductPage({
       </div>
 
       <div className="mt-6 rounded-2xl border border-warn/30 bg-warn/5 p-4 text-sm text-ink-soft">
-        <strong className="text-warn">Stubbed:</strong> editing existing
-        products, adding/editing variants, and uploading or deleting images
-        are not yet exposed by the API. The relevant endpoints (
-        <code className="font-mono">PATCH /v1/products/:id</code>,{" "}
-        <code className="font-mono">POST /v1/products/:id/media</code>,
-        delete) don&apos;t exist on this build, so this page is read-only for
-        now. Recreate the product to change its fields.
+        <strong className="text-warn">Lecture seule :</strong> la modification des produits, l’ajout/édition de variantes et la gestion des images ne sont pas encore disponibles. Pour changer un champ, recréez le produit.
       </div>
     </section>
   );

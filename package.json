@@ -35,6 +35,11 @@
     "vitest": "^3.0.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "sharp"]
+    "onlyBuiltDependencies": ["esbuild", "sharp"],
+    "overrides": {
+      "fast-uri": ">=3.1.2",
+      "postcss": ">=8.5.10",
+      "ip-address": ">=10.1.1"
+    }
   }
 }

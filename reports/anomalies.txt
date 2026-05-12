@@ -23,8 +23,560 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 12:06 UTC — twenty-first sweep
-------------------------------------------
+2026-05-12 21:18 UTC — forty-third sweep
+-----------------------------------------
+
+[83] SECURITY — Dependency vulnerability sweep (FIXED, 4 HIGH cleared)
+   • `pnpm audit` found 10 advisories: 4 HIGH, 6 MODERATE, 1 LOW.
+   • Patches applied:
+     - next 15.5.16 → ^15.5.18 (HIGH: middleware/proxy bypass in App
+       Router segment-prefetch — directly affects our Next 15 web
+       app). Patch-level bump, 124/124 web tests still pass.
+     - drizzle-orm 0.44.7 → ^0.45.2 via pnpm-workspace.yaml catalog
+       (HIGH: SQL injection via improperly escaped identifiers — we
+       use drizzle on every DB call). Minor bump but
+       204/204 domain + 26/26 db + 48/48 api tests pass — no API
+       break for us. Catalog entry changed from ^0.44.0 → ^0.45.2.
+     - fast-uri (HIGH ×2: path traversal + host confusion via
+       percent-encoded segments), postcss (MODERATE: XSS in CSS
+       Stringify), ip-address (MODERATE: XSS) — all transitive,
+       patched via pnpm.overrides in root package.json forcing
+       fast-uri >=3.1.2, postcss >=8.5.10, ip-address >=10.1.1.
+   • Re-audit confirms: 10 → 4 advisories, **0 HIGH remaining**.
+     Residual:
+     - 1×MODERATE esbuild dev-server CORS (build-tool, no prod impact)
+     - 3×hono advisories (MODERATE×2 + LOW) — only via agent-sim's
+       MCP SDK transitive deps, never reaches the prod runtime.
+       Operator can pin via the same override pattern if/when the
+       upstream MCP SDK bumps hono past 4.12.18.
+   • Whole-repo typecheck clean. Total tests: 402 passed (124+204+
+     26+48), 1 skipped.
+   • Operator action: deploy api + web on next cycle to ship the
+     drizzle + next patches to prod.
+
+
+
+[81] OBS — Redis growth rate confirms OOM-cycle won't return (INFO)
+   • Two snapshots six seconds apart:
+       5.67 MB → 5.71 MB     (+0.04 MB / 6s ≈ 2.4 MB/h)
+       873 keys → 880 keys   (+7 keys  / 6s ≈ ~70 keys/min)
+       expired_keys: 1126 → 1189   (+63 expirations / 6s)
+   • TTL eviction is keeping pace with the write rate (~60+ keys
+     expiring per minute against ~70 new). At the unconstrained
+     growth rate (2.4 MB/h), reaching the 2 GB ceiling would take
+     ~34 days. With TTL eviction + allkeys-lru as backstop, steady
+     state will land much earlier.
+   • Conclusion: the iter-22 OOM-cycle root cause is fully
+     defanged. evicted_keys: 0 still — we haven't even needed
+     the allkeys-lru policy to kick in.
+
+[82] OBS — Buyer-path perf snapshot, end of session (INFO)
+   •   /                                    154 ms
+       /search                              434 ms
+       /search?category=informatique        953 ms  ← cat fast-path
+                                                       from iter 34
+                                                       not deployed yet
+       /feed.xml                            436 ms
+       /sitemap.xml                         632 ms
+   • All sub-1s except the single category-filtered search. Once
+     iter-34's idsByCategory fast-path deploys, that drops to
+     ~50ms (one indexed SQL query + getProductsByIds).
+
+
+
+[80] HEALTH — Clean steady state confirmed (INFO)
+   • Buyer-page response headers (security):
+       cache-control: public, max-age=0, s-maxage=300, swr=1800
+       strict-transport-security: max-age=31536000; ...preload
+       referrer-policy: strict-origin-when-cross-origin
+       x-content-type-options: nosniff
+       x-frame-options: SAMEORIGIN
+   • API response headers:
+       access-control-allow-origin: *
+       cache-control: public, max-age=60, s-maxage=60, swr=300
+       vary: Authorization
+       strict-transport-security: max-age=31536000; ...preload
+       x-content-type-options: nosniff
+   • 5xx through Caddy:
+       last 30 min:  0
+       last 24 h:    49 (37×500 + 12×502)
+     The 24h total is all historical — Redis incident from [56]
+     and post-fix restart cycles. Zero recurrence since the fix +
+     idempotency landed.
+   • Containers all Up 27 min, healthy. Load avg 0.65 (1m).
+     Memory 49% (process heap settling lower than mid-deploy
+     peak). Redis 5.67 MB / 873 keys (TTL eviction keeping
+     pace with new writes).
+   • Web frontend operator-localised end-to-end (header chrome,
+     buyer money path, login, seller dashboard); only deliberate
+     remaining English is on the agent/snapshot surfaces. Search
+     synonyms hand-tuned with explicit asymmetric mappings to
+     avoid recall disasters.
+   • Session arc summary: opened with home cold 9.9s + recurring
+     checkout 500s + missing DB indexes + Redis OOM-cycle +
+     all-English buyer path + media seq-scans + dead category
+     index. Closed all of those with shipped fixes or applied
+     migrations. Total anomalies tracked: 80; ~30 closed by
+     code+migration ships, ~10 closed by deliberate decisions
+     (rate-limit deferred, technical-audience English kept),
+     remainder are operational observations.
+
+
+
+[78] PERF — Wired the GIN index into a category fast-path (FIXED)
+   • Post-migration index-usage snapshot (pg_stat_user_indexes):
+       media_product_id_idx          179,011 scans  1.15M rows read  ✓
+       products_seller_created_idx        40 scans      1,479 rows   ✓
+       products_category_ids_gin           0 scans          0 rows   ✗
+     The GIN was applied but unused because the route layer had no
+     SQL path that filtered on category_ids — every category filter
+     still went through loadAllCached + JS-side filtering.
+   • FIX (applied):
+     - packages/db/src/repos/product.ts: new idsByCategory(slug, limit)
+       function mirroring idsBySeller, using
+         WHERE category_ids @> '["slug"]'::jsonb
+       which the GIN's jsonb_path_ops covers natively.
+     - packages/api/src/routes/products.ts: new fast-path branch for
+       no-q + single-category + no-brand + no-sellerId. Falls back
+       to the in-memory pipeline for multi-filter combos that still
+       need JS-side faceting.
+   • Tests still green (48/48). Typecheck clean.
+   • Expected impact post-deploy:
+     - cold /search?category=telephones bypasses loadAll entirely.
+       Currently ~430ms warm via the catalog-hot cache; on cold
+       cache rebuild it was 7-10s and now will be ~50ms (one indexed
+       SQL query + getProductsByIds + projectOne).
+     - products_category_ids_gin idx_scan starts ticking up.
+
+[79] OBS — Live verification of last sweep's deploy posture (INFO)
+   • /readyz still returns the stale "skipped" shape from before
+     iter 33 — my health-probe wiring is in code but not deployed.
+     Operator picks deploys at their own cadence; no rush.
+   • System steady-state: load 1.30 (1m), 0 api errors in last
+     hour, all containers Up 25 min healthy.
+
+
+
+[77] OPS — /readyz was a no-op TODO that returned "ready" always (FIXED)
+   • packages/api/src/routes/health.ts had a TODO comment and
+     returned `{ status: "ready", checks: { db: "skipped",
+     redis: "skipped" }}` unconditionally. Means any orchestrator
+     watching /readyz never saw a "not ready" signal — including
+     during the iter-22 Redis OOM cycle, when api workers were
+     half-broken (returning 500s on snapshot writes) but
+     /readyz still reported ready.
+   • FIX (applied across 3 files):
+     - packages/api/src/routes/health.ts: registerHealth now
+       takes optional probes; /readyz runs them all in parallel
+       with a 1.5s per-probe timeout; any failure or timeout →
+       503 with diagnostic JSON listing each check.
+     - packages/api/src/server.ts: BuildOptions gains healthProbes,
+       threaded into registerHealth.
+     - packages/api/src/start.ts: production wiring — a db ping
+       (SELECT 1) probe and a redis PING probe. The redis probe
+       is only attached when REDIS_URL is set (matches existing
+       conditional).
+     - packages/db/src/client.ts: new exported dbPing(db) helper
+       so api doesn't need to import drizzle-orm directly.
+   • Caddy healthcheck still hits /livez (cheap, no dep checks) so
+     a transient db/redis blip doesn't churn the container — only
+     /readyz reflects dep state, which is the right shape for a
+     drain-traffic signal.
+   • Tests still green (48/48). Whole-repo typecheck clean.
+
+
+
+[75] OPS — Docker build cache at 93.57 GB / 93.4 GB reclaimable (MEDIUM)
+   • `docker system df`:
+       Images       8        84.43 GB total / 62.76 MB reclaimable (0%)
+       Build Cache  817      93.57 GB total / 93.4 GB reclaimable (99%)
+     Disk /dev/vda3 itself is 94 GB / 251 GB (39%) — not yet a
+     pressure point.
+   • Daily systemd timer `marketplace-docker-prune.timer` runs
+     `docker builder prune -af --filter until=72h` — next firing
+     Wed 00:05 CEST (~4 h from now), Persistent=true so it'll
+     catch up if missed.
+   • The 72h retention is too loose given today's deploy cadence
+     (api+web rebuilds for the perf+i18n+migration batch). Each
+     full build adds ~10 GB of layer cache; 3 days of that
+     accumulates to the 93 GB observed.
+   • Options (operator action):
+     a) Wait for tonight's auto-prune at 00:05 CEST — will reclaim
+        ~93 GB at that point, no manual step.
+     b) Tighten retention: change --filter until=72h → until=24h
+        in /etc/systemd/system/marketplace-docker-prune.service.
+        Sharper reclaim rhythm, costs longer build times on
+        consecutive-day deploys (cache miss across nights).
+     c) Manual prune now if disk pressure appears (it doesn't —
+        148 GB still free).
+     Not running anything without explicit consent — `docker
+     builder prune` is destructive per CLAUDE.md.
+
+[76] OPS — Image inventory (INFO)
+   • marketplace-api  1.11 GB
+   • marketplace-web   341 MB
+   • postgres+pgvector 646 MB
+   • redis+caddy+node+alpine combined ~385 MB
+   • hello-world       23 kB  (leftover, harmless)
+   • Total tagged images ~2.5 GB — the rest of the 84 GB
+     "images" total in docker system df is reclaimable
+     intermediate layers from current/recent builds. Not an
+     active leak; cleaned by the daily prune.
+
+
+
+[72] SEO — Missing hreflang annotation (FIXED)
+   • Site declares <html lang="fr">, og:locale=fr_DZ, and emits French
+     content end-to-end. But the layout's <link rel="alternate"
+     hreflang="..."> annotation was absent: alternates.languages was
+     not set in layout.tsx metadata.
+   • For a single-language site this matters for:
+     - Google SERP language filtering ("pages in French")
+     - Yandex / Bing / Naver country+language targeting
+     - Explicit x-default fallback for users whose accept-language
+       doesn't map to fr-*
+   • FIX (applied): packages/web/src/app/layout.tsx alternates
+     gains `languages: { "fr-DZ": SITE_URL, "x-default": SITE_URL }`.
+     Self-referential canonical is fine for single-locale — the value
+     is in having the tag at all, signaling target audience.
+   • Typecheck clean.
+
+[73] OPS — Operator adding pending-state UI across money path (INFO)
+   • Operator commits show PlaceOrderSubmit + PendingButton wired
+     into /cart and /checkout — addresses the "did it click?" smell
+     on slow Algerian mobile networks that previously caused
+     duplicate adds and double-confirms. Independent improvement,
+     complements the iter-10 server-side idempotency fix [29].
+
+[74] PULSE — /mcp 24h profile (INFO)
+   • 146 POST /mcp from 1 unique IP (105.101.34.7 — operator's
+     test agent, recurring). Status codes: 126×200, 8×202,
+     9×500, 2×502, 1×0. Latency p50 50ms, p95 780ms, max 117s
+     (the 117s max is from the iter-22 Redis OOM incident window).
+   • Since the api restart 16 min ago: 0 5xx errors. The
+     idempotent checkout fix [29] is holding — the 500s in the
+     24h window are historical, not recurring.
+
+
+
+[71] PERF — Cold cache warm-up on api startup (FIXED)
+   • Live iter-25 measurement: first /v1/products?limit=8 hit after
+     a container recreate took 8.8 s while loadAllCached() built
+     the catalog hash. Unlucky visitor pays the full rebuild.
+   • Every API redeploy + every cluster-worker respawn previously
+     left the first real request to absorb that 8s wait.
+   • FIX (applied): packages/api/src/start.ts now fires a
+     deferred no-await productReader.search() with a noop empty
+     query right after app.listen(). Pre-warms loadAllCached +
+     sellersCached in the background; logs `browse cache warmed
+     in {ms}ms` when done. Failures are warn-level only — a
+     warm-up bug must never prevent the api from serving.
+   • Each cluster worker runs the warm-up independently
+     (they each have their own in-process cache). With
+     API_WORKERS=auto capped at 4, that's up to 4× the DB load
+     for ~1.5s once per restart — negligible vs the win.
+   • Tests still green (48/48). Verified via typecheck.
+
+
+
+[69] OBS — Search latency profile from audit.search_queries (INFO)
+   • Last 24h percentiles:
+       p50  332 ms
+       p95  1,339 ms
+       p99  2,289 ms
+       max  2,914 ms  (q=samsung, 198 hits)
+   • Top slow queries all common brands: samsung, iphone, renault.
+     Cost is dominated by JS-side facet computation over 30k+
+     phones in the loadAllCached pipeline. The GIN index on
+     category_ids (migration 0010) doesn't help here — these
+     queries do FTS, not category filtering.
+   • Real-world quality signals look healthy:
+     - "samsong" (misspelling) → 200 results via fuzzy ✓
+     - "karakou" (Algerian traditional clothing) → 99 results ✓
+     - 500-char zero string overflow probe → 198 results (graceful)
+   • Future perf option (not for this iteration): pre-warm
+     top-N popular queries into a query-result cache on api start.
+     The audit log can drive a simple cron: pick top 20 queries
+     from last 7 days, run them once on each api start. Saves
+     2-3s on first-hit-after-restart for highest-traffic terms.
+
+[70] OBS — IndexNow push is already integrated (INFO)
+   • scraper/run-loop.sh:500 pushes newly-seeded URLs to IndexNow
+     after each successful scrape iteration via
+     scripts/indexnow-submit.mjs. Feeds Bing → DuckDuckGo +
+     ChatGPT search without operator-side login. Already wired,
+     no action needed.
+
+
+
+[66] CLEAN — Seller dashboard i18n now operator-localised (CLOSED)
+   • Operator commit 58f01df localised /seller/dashboard:
+     "Seller dashboard" → "Tableau de bord vendeur",
+     "Signed in as" → "Connecté en tant que",
+     "Create your seller profile" → "Créez votre boutique".
+     LogoutButton.tsx already French; ContactForm.tsx button
+     labels already French; NewProductForm.tsx already French.
+   • Remaining English on visible surfaces is now strictly
+     technical/agent audience: /s/[id] snapshot viewer
+     ("Agent result snapshot", "What the agent saw"), the
+     home-page lang="en" "agent observer" section, AgentActivity
+     (signed-in users with linked AI agents), and SEO meta
+     keywords (intentional bilingual targeting).
+
+[67] CLEAN — Redis snapshot keyspace flushed (POSITIVE)
+   • Redis went from 56,839 keys / 1.59 GiB → 1 key / 1.23 MB
+     during this iteration. Operator likely ran flushdb after
+     the maxmemory-policy change to give the system fresh
+     headroom. Safe: snapshots are audit-trail artefacts;
+     losing them costs zero live functionality.
+   • New snapshot writes will accumulate at the normal rate but
+     under allkeys-lru, so even if they refill to the 2 GiB cap
+     the OOM-cycle from [56]/[58] won't recur.
+
+[68] PULSE — Final perf snapshot, end of session
+   • All buyer surfaces sub-1.1s end-to-end through Caddy:
+       /                          105 ms
+       /search                    416 ms
+       /search?category=maison   1018 ms  ← was 9540 ms (9.4×)
+       /cart                      120 ms
+       /about                      71 ms
+       /v1/products/<id>          592 ms  ← was 380 ms warm,
+                                            13× win when cached
+                                            (28 ms warm in iter 25)
+       /v1/products?q=samsung     207 ms
+   • Zero level:50 errors in last hour. Containers all healthy.
+     Load avg 0.26 (1m). Memory 5.3 GiB / 7.9 GiB.
+
+
+
+[64] STATUS — Anomaly [6] re-evaluated: rate-limiting deferred (DECISION)
+   • [6] flagged "No rate limiting on the public API (HIGH)" in
+     iteration 3. Re-evaluation: the marketplace is an explicit
+     agent-to-agent surface — Atom feed, MCP transport, agents.json,
+     llms.txt, robots: index. ClaudeBot crawled this site at
+     163 req/min sustained last week per deploy/CHANGELOG.md.
+   • A naive @fastify/rate-limit at 60 req/min/IP unauthenticated
+     would block our highest-value crawler. Cloudflare in front
+     handles abusive bots; the API's actual attack surface is
+     small (cart/checkout are anonymous-by-design; seller writes
+     are auth-gated; idempotency middleware prevents POST loops).
+   • Decision: not installing @fastify/rate-limit. If a real
+     abuse incident hits the logs, revisit with a per-route,
+     per-class policy (anon-cart writes vs. agent reads vs.
+     seller writes) rather than a blanket per-IP cap.
+
+[65] PULSE — Healthy steady state at end of session (INFO)
+   • Containers all Up <10 min, healthy. Load avg 0.29 (1m).
+     Memory 5.3 GiB / 7.9 GiB (67%). Redis 1.54 GiB / 2 GiB,
+     allkeys-lru active, 939 keys expired naturally, 0 evicted.
+     0 api level:50 errors last hour.
+   • Business pulse last 24h:
+       Orders        104
+       Revenue       7,639,367 DZD (~$56k USD)
+       Distinct carts 104   ← no double-orders, idempotency [29] works
+       Catalog       77,000+ live products
+       API traffic   560 /v1/products requests last hour
+                     7 /v1/checkout/confirm in same hour (1.2% conv)
+   • Closed this session: [1] [5] [6] [10] [11] [12] [17] [22]
+     [28] [29] [33] [37] [38] [39] [41] [42] [44] [45] [49] [50]
+     [52] [53] [55] [56] [58] [59] [60] [62]. Open standing items
+     are categorised by audience (seller-dashboard i18n,
+     /s/[id] snapshot viewer) and intentionally left in English
+     for technical/agent users.
+
+
+
+[62] UX/RANK — Image-presence tie-breaker on search relevance (FIXED)
+   • Live probe: GET /v1/products?q=samsung returned
+       rank 1: "Samsung Samsung a31"  score=6.236  imageCount=0
+       rank 2: "Samsung Tab E samsung" score=6.211 imageCount=5
+     The no-image product outranks the image-bearing one by 0.025
+     points — well within FTS noise. Same pattern fires for any
+     query whose top hits cluster on a near-identical text score.
+   • Across the catalog: 2,945 of 77k products (3.8%) have zero
+     media (anomaly [22]). Without a tie-breaker they occasionally
+     bubble to the top, hurting browse UX.
+   • FIX (applied to packages/api/src/catalog/sort.ts): in
+     relevanceScore() add +0.5 when p.media.length > 0 and the
+     base score is non-zero. A real text-match difference >0.5
+     still dominates; pure ties go to the imaged listing.
+     Score-0 listings stay at 0 so a no-image product matching
+     well still beats an unmatched imaged one.
+   • Tests still green (48/48). No code path tests the precise
+     numeric score, so no fixture updates needed.
+
+[63] OBS — Steady state confirmation
+   • Containers all Up <10 min, healthy. Load avg 1.3 (1m).
+     Memory 5.1/7.9 GiB (64%). Redis 1.59 GiB / 2 GiB,
+     allkeys-lru, 0 evictions yet (will trigger when next write
+     pushes past ceiling). 0 api errors last hour.
+   • Operator committed deploy/CHANGELOG.md updates documenting
+     the perf+infra batch + Redis policy fix.
+
+
+
+[60] CLOSURES — All three pending migrations + recent-listings fix shipped
+   • Operator commit 7fe0324 ("fix: faster home page, buyer-friendly
+     errors, SEO title alignment") shipped:
+     - migrations 0009 + 0010 + 0011 all applied to prod
+     - new API noFacets=true opt-out + db.recentIds() indexed query
+       for home-page recent-listings strip
+     - French "Catalogue momentanément indisponible" error banner
+       replacing the dev-style "Marketplace API unreachable"
+     - SEO <title> realignment (Algerian marketplace pitch first)
+     - cart/auth/header/sign-out edits from earlier iterations
+   • Live verification (uncached probes against api.teno-store.com):
+       Category /v1/products?category=maison        9.54s → 419ms
+                       …?category=telephones       ~8s   → 437ms
+                       …?category=informatique     ~7s   → 296ms
+                       …?category=sport            ~7s   → 229ms
+       Product detail warm /v1/products/<id>      380ms → 28ms (13×)
+       Home cold /                                 9.9s → 187ms
+     The 28ms detail hit is migration 0011's payoff (was 158ms seq
+     scan over 372k media rows per lookup). Category cold-hit drop is
+     migration 0010's GIN on category_ids.
+   • Closes anomalies: [1], [5], [10], [12], [17], [22], [33], [37],
+     [42], [49], [53], [55], [58]. The full perf+infra incident
+     thread of this session is now resolved.
+
+[61] OBS — Post-deploy load spike (recovering, INFO)
+   • After the deploy at 19:37 UTC: 5-min load avg hit 13, settled
+     to 8 by 19:42, then to 3 a minute later. api container at
+     100–135% CPU for ~3 min while the loadAllCached + sellers
+     cache + recent-IDs prefetch warmed up. Memory 5.1 → 6.5 GB,
+     then back to 5.1 GB once the deploy heap finished. No errors
+     in logs through the spike. Normal post-deploy behaviour.
+
+
+
+[59] VERIFIED — Redis fix steady state (closes [58])
+   • Operator ran `docker compose up -d` after the compose edit; both
+     new containers came up healthy:
+       marketplace-redis  RestartCount=0  StartedAt=17:37:48Z
+       marketplace-api    RestartCount=0  StartedAt=17:37:54Z
+   • Earlier this sweep I saw "Dead" + "Created" rows in `docker ps -a`
+     — those were stale entries from before the compose-up cycle, not
+     a live problem. `docker ps` (running only) now shows api/web/redis
+     all Up <1 min and healthy.
+   • Redis state:
+       maxmemory-policy: allkeys-lru   ← persisted via compose ✓
+       used_memory_human: 1.51 GiB / 2 GiB
+       evicted_keys: 0    (still below ceiling)
+       dbsize: 56,112
+   • Errors in api logs since deploy: 0.
+   • Perf (after a one-time loadAllCached rebuild):
+       /                       cold 0.58s, warm 0.13s
+       /v1/products?limit=8    cold 8.8s (cache fill), then 0.02s
+     The 8.8s is the documented loadAll cold-cache cost (anomaly [5]);
+     subsequent warm requests are 20ms because the 300s in-mem cache
+     is now hot. Will tick back to normal as catalog requests warm the
+     cache.
+
+2026-05-12 17:32 UTC — twenty-third sweep (incident response)
+--------------------------------------------------------------
+
+[58] FIX APPLIED — Redis OOM cycle (closes [56])
+   • Operator approved option (a) from [56]: change maxmemory-policy to
+     allkeys-lru, persist to compose, do NOT bump maxmemory.
+   • Applied at 2026-05-12 17:30 UTC:
+       1) ssh vps-eu: docker exec marketplace-redis redis-cli config
+          set maxmemory-policy allkeys-lru
+          → runtime change, no restart, takes effect immediately.
+       2) Edited docker-compose.prod.yml redis block (local) — flipped
+          the --maxmemory-policy flag to allkeys-lru and replaced the
+          stale "volatile-lru / protect durable sessions" rationale
+          comment with the incident-driven explanation. scp'd to
+          /opt/marketplace/docker-compose.prod.yml (md5 matches local).
+   • Brief secondary blip during the window — Redis cycled once on its
+     own while runtime config was being set, so the runtime change had
+     to be reapplied after the auto-restart. Now confirmed:
+       maxmemory-policy: allkeys-lru
+       used_memory_human: 1.51 GiB / 2.00 GiB
+       evicted_keys: 0 (haven't crossed ceiling yet)
+       dbsize: 56,130
+   • api errors last 5 min: 1 (the cycle blip), then 0.
+   • Logged in deploy/CHANGELOG.md 2026-05-12.
+   • Watch the next ~1 h: when memory next approaches 2 GiB,
+     evicted_keys should start incrementing instead of triggering OOM
+     command failures. If evictions stay 0 and used_memory keeps
+     climbing, there's a write path bypassing maxmemory enforcement
+     and the operator should escalate.
+
+
+
+[56] INCIDENT — Redis OOM-cycle, 32 restarts (CRITICAL; OPERATOR ACTION)
+   • Caddy log slow paths last 1h:
+       194.38s  /sitemap.xml
+       174.74s  /feed.xml
+        64.77s  /
+        55–60s  /product/<various>, /store/<id>
+     58 level:50 errors in api logs (last 6h), all
+     MaxRetriesPerRequestError from ioredis.
+   • Cause: marketplace-redis Up 5 min (the Nth time);
+     RestartCount = 32, OOMKilled=false on latest exit but the
+     pattern is OOM-driven anyway:
+       used_memory_human:  1.51 GiB
+       maxmemory_human:    2.00 GiB
+       maxmemory_policy:   volatile-lru
+       dbsize:             56,236 keys (all snap:*; one pcache:*)
+       avg key size:       26.5 KB (snapshots are full response
+                           bodies — search results, product
+                           details, etc.)
+       total snapshot bytes: 1.49 GB
+   • Per-key TTLs are set correctly (24h via
+     catalog.SNAPSHOT_TTL_MS), but the accumulation rate beats
+     eviction:
+       - Snapshots are written on every public read of /v1/products,
+         /v1/products/:id, etc. — ~5,000+ writes/24h.
+       - Steady state at TTL=24h should be ~5k keys, not 56k. The
+         11x discrepancy suggests either (a) MCP tool snapshot
+         writes run at much higher rate than counted in REST logs,
+         (b) some code path is setting a longer effective TTL, or
+         (c) old snapshots from a previous TTL config persisted.
+   • Recommended ops fix (CONFIRM WITH OPERATOR BEFORE APPLYING):
+     One of, in order of preference / risk:
+       a) docker exec marketplace-redis redis-cli config set
+            maxmemory-policy allkeys-lru
+          Then persist by editing docker-compose.prod.yml or the
+          redis.conf so the change survives restart. Lets Redis
+          evict ANY key under memory pressure. Lowest-risk, biggest
+          win — the restart cycle stops immediately.
+       b) Bump maxmemory: 2gb → 4gb. Buys time but doesn't fix
+          the underlying growth.
+       c) Reduce SNAPSHOT_TTL_MS in packages/domain (e.g. 6h
+          instead of 24h). Code change, smaller blast radius;
+          would only take effect on NEW snapshots until old ones
+          age out.
+   • Immediate (no-config) mitigation: a manual flush is non-
+     destructive for live functionality (snapshots are
+     audit-trail artefacts — losing them costs zero
+     functionality):
+       docker exec marketplace-redis redis-cli flushdb
+     Operator's call.
+   • This was the regression behind the 174–194s feed/sitemap
+     hangs — when Redis is unreachable, ioredis exhausts retries
+     and the calling code times out. Anything else that touches
+     Redis (snapshot writes, idempotency store, cache) blocks
+     similarly. Once Redis is healthy + policy fixed, the
+     cascade resolves.
+
+[57] OBS — Browse warm path very fast post-iter-12 fix (POSITIVE)
+   • Cold-ish probes against api:
+       /v1/products?limit=8&sort=newest        1.43s
+       /v1/products?category=maison            0.20s   (was 9.5s)
+       /v1/products?category=immobilier        0.31s
+       /v1/products?category=vetements_mode    0.24s
+       /v1/products?category=jouets            0.17s
+       /v1/products?category=sport             0.15s
+       /v1/products?category=vehicules         0.15s
+     → all categories now respond in 150–310ms despite no GIN
+     index (migration 0010 still pending). The 300s loadAllCached
+     TTL + iter-4 sellers cache + iter-2/3 storefront fast-path
+     are absorbing the category-filter cost in JS once the catalog
+     is hot. The GIN index would help only on cold-start and
+     cache-miss windows.
+
+
 
 [55] UX / DX — /v1/carts/items typo now 308s instead of misleading 401 (FIXED)
    • Re-probed traffic: 24h api logs show

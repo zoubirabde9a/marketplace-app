@@ -9,9 +9,26 @@ import {
   type SellerOrder,
   type SellerRecord,
 } from "@/lib/api";
-import { formatPrice } from "@/lib/format";
+import { cleanProductTitle, formatPrice } from "@/lib/format";
 import { CreateSellerForm } from "./CreateSellerForm";
 import { LogoutButton } from "./LogoutButton";
+
+// Maps the domain order-status enum (packages/domain/src/order/state-machine.ts)
+// to French labels for the seller dashboard badge. The raw enum is English
+// ("paid" / "shipped" / "delivered" / "cancelled" / "refunded" / "disputed"
+// / "fulfilling" / "authorized" / "created") because it's a code identifier,
+// but the dashboard is French and a seller seeing "PAID" mid-page is jarring.
+const ORDER_STATUS_FR: Record<string, string> = {
+  created: "créée",
+  authorized: "autorisée",
+  paid: "payée",
+  fulfilling: "préparation",
+  shipped: "expédiée",
+  delivered: "livrée",
+  cancelled: "annulée",
+  refunded: "remboursée",
+  disputed: "litige",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -131,6 +148,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                       {new Date(o.createdAt).toLocaleString("fr-DZ")}
                     </span>
                     <span
+                      title={o.status}
                       className={
                         "text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border " +
                         (o.status === "paid"
@@ -138,7 +156,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                           : "border-line text-ink-mute")
                       }
                     >
-                      {o.status}
+                      {ORDER_STATUS_FR[o.status] ?? o.status}
                     </span>
                   </div>
                   {o.customer && (
@@ -155,7 +173,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                     {o.lines.map((l) => (
                       <li key={l.variantId} className="truncate">
                         × {l.qty}{" "}
-                        <span className="untrusted">{l.title ?? l.sku ?? l.variantId}</span>
+                        <span className="untrusted">{l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}</span>
                       </li>
                     ))}
                   </ul>
@@ -172,18 +190,18 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
       </div>
       <div className="p-6">
         <h3 className="text-sm font-medium text-ink-soft mb-3">
-          Products ({seller.productCount})
+          Produits ({seller.productCount})
         </h3>
         {productsError ? (
-          <p className="text-sm text-bad">Failed to load products: {productsError}</p>
+          <p className="text-sm text-bad">Impossible de charger les produits.</p>
         ) : products.length === 0 ? (
-          <p className="text-sm text-ink-mute">No products yet.</p>
+          <p className="text-sm text-ink-mute">Aucun produit pour le moment.</p>
         ) : (
           <ul className="divide-y divide-line-soft">
             {products.map((p) => (
               <li key={p.productId} className="py-3 flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="text-ink truncate">{p.title}</div>
+                  <div className="text-ink truncate">{cleanProductTitle(p.title)}</div>
                   <div className="text-xs text-ink-mute font-mono">{p.productId}</div>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-ink-soft">
@@ -196,13 +214,13 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                         : "border-line text-ink-mute")
                     }
                   >
-                    {p.inStock ? "in stock" : "out of stock"}
+                    {p.inStock ? "en stock" : "rupture de stock"}
                   </span>
                   <Link
                     href={`/seller/products/${encodeURIComponent(p.productId)}/edit`}
                     className="px-2 py-1 rounded-md border border-line hover:border-accent/40 hover:text-ink transition"
                   >
-                    Edit
+                    Modifier
                   </Link>
                 </div>
               </li>
@@ -216,19 +234,19 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
 
 function ContactSummary({ seller }: { seller: SellerRecord }) {
   const items: Array<[string, string | null]> = [
-    ["phone", seller.phone],
-    ["whatsapp", seller.whatsapp],
-    ["website", seller.website],
+    ["Téléphone", seller.phone],
+    ["WhatsApp", seller.whatsapp],
+    ["Site web", seller.website],
   ];
   const set = items.filter(([, v]) => v);
   if (set.length === 0) {
-    return <p className="mt-2 text-xs text-ink-mute">No contact info set.</p>;
+    return <p className="mt-2 text-xs text-ink-mute">Aucune coordonnée renseignée.</p>;
   }
   return (
     <ul className="mt-2 text-xs text-ink-soft space-y-0.5">
       {set.map(([k, v]) => (
         <li key={k}>
-          <span className="text-ink-mute">{k}:</span> {v}
+          <span className="text-ink-mute">{k} :</span> {v}
         </li>
       ))}
     </ul>

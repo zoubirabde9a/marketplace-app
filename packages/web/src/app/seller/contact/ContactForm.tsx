@@ -42,18 +42,21 @@ export function ContactForm({ sellerId, initial }: Props) {
               error?: string;
               detail?: string;
             };
-            setError(j.detail || j.error || `Failed (HTTP ${r.status})`);
+            setError(j.detail || j.error || `Échec (HTTP ${r.status})`);
             return;
           }
-          setSuccess("Saved.");
+          setSuccess("Enregistré.");
           router.refresh();
         });
       }}
       className="grid gap-4"
+      lang="fr"
     >
-      <Field label="Phone" name="phone" defaultValue={initial.phone} placeholder="+1 555 123 4567" />
-      <Field label="WhatsApp" name="whatsapp" defaultValue={initial.whatsapp} placeholder="+15551234567" />
-      <Field label="Website" name="website" defaultValue={initial.website} placeholder="https://example.com" type="url" />
+      {/* Placeholders use an Algerian-shaped number on a DZ-primary marketplace
+          — US examples ("+1 555 ...") were confusing for sellers in Alger. */}
+      <Field label="Téléphone" name="phone" defaultValue={initial.phone} placeholder="+213 555 12 34 56" />
+      <Field label="WhatsApp" name="whatsapp" defaultValue={initial.whatsapp} placeholder="+213555123456" />
+      <Field label="Site web" name="website" defaultValue={initial.website} placeholder="https://exemple.dz" type="url" />
       {error && <p className="text-sm text-bad" role="alert">{error}</p>}
       {success && <p className="text-sm text-ok">{success}</p>}
       <button
@@ -61,7 +64,7 @@ export function ContactForm({ sellerId, initial }: Props) {
         disabled={pending}
         className="self-start inline-flex h-10 px-4 items-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Save changes"}
+        {pending ? "Enregistrement…" : "Enregistrer"}
       </button>
     </form>
   );

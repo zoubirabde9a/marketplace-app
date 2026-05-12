@@ -106,6 +106,15 @@ export async function getCart(): Promise<CartView | null> {
   const existing = await readCartCookie();
   if (!existing) return null;
   const res = await cartFetch("/v1/cart");
+  // Stale-cookie case: a cartId was set on the cookie but the server no longer
+  // knows it (catalog rebuild, DB rotation, dev reset, server-side cleanup).
+  // Treat the same as "no cart" AND drop the cookie so we don't keep firing
+  // the dead lookup on every page load — and so the next add-to-cart starts
+  // a fresh cart cleanly instead of trying to attach to a tombstoned id.
+  if (res.status === 404) {
+    await clearCartCookie();
+    return null;
+  }
   return readCartFromResponse(res);
 }
 

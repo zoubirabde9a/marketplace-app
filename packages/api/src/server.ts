@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { MarketplaceError, ValidationError } from "@marketplace/shared/errors";
-import { registerHealth } from "./routes/health.js";
+import { registerHealth, type HealthCheck } from "./routes/health.js";
 import { registerWellKnown } from "./routes/well-known.js";
 import { registerAuth, type AuthDeps } from "./middleware/auth.js";
 import { registerAudit } from "./middleware/audit.js";
@@ -82,6 +82,8 @@ export interface BuildOptions {
   snapshotStore?: catalog.SnapshotStore;
   /** Required when wiring auth routes — Google login + passport issuance. */
   authRouteDeps?: Omit<AuthRouteDeps, "users">;
+  /** Optional readiness probes wired into GET /readyz. Failures → 503. */
+  healthProbes?: Record<string, HealthCheck>;
 }
 
 export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> {
@@ -127,7 +129,7 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
     exposedHeaders: ["x-mp-cart-id", "x-request-id"],
   });
 
-  await registerHealth(app);
+  await registerHealth(app, { ...(opts.healthProbes ? { probes: opts.healthProbes } : {}) });
   await registerWellKnown(app);
   await registerAuth(app, opts.authDeps);
   await registerAudit(app, { users: opts.repos.users });

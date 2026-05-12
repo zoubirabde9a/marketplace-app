@@ -507,6 +507,7 @@ export function makeProductReader(repo: {
   getProductsByIds: (ids: string[]) => Promise<Array<StoredProduct | null>>;
   searchIds?: (q: string, limit?: number) => Promise<Array<{ id: string; score: number }>>;
   idsBySeller?: (sellerId: string, limit?: number) => Promise<string[]>;
+  idsByCategory?: (slug: string, limit?: number) => Promise<string[]>;
   recentIds?: (limit?: number) => Promise<string[]>;
 }): ProductReader {
   // Browse-path stale-while-revalidate cache. Empty-query browse pulls every
@@ -648,6 +649,35 @@ export function makeProductReader(repo: {
         sellerIds[0] !== undefined
       ) {
         const ids = await repo.idsBySeller(sellerIds[0], query.limit ?? 60);
+        if (ids.length === 0) {
+          const sellers = await loadSellersCached();
+          return searchProducts([], sellers, query);
+        }
+        const [productsResult, sellers] = await Promise.all([
+          repo.getProductsByIds(ids),
+          loadSellersCached(),
+        ]);
+        const candidates = productsResult.filter((p): p is StoredProduct => p !== null);
+        return searchProducts(candidates, sellers, query);
+      }
+      // Category fast path: no query, exactly one category filter, no other
+      // narrowing. Mirrors the storefront idsBySeller path — pulls just the
+      // matching product rows via the GIN index on category_ids (migration
+      // 0010, jsonb_path_ops) instead of paying for catalog-wide loadAll().
+      // pg_stat_user_indexes 2026-05-12 showed products_category_ids_gin at
+      // 0 scans because no SQL path was using it; this branch is that path.
+      // Two-category combinations and category+brand combos still go through
+      // the in-memory pipeline because faceting across them is JS-side.
+      const categoryIds = query.filters?.categoryIds ?? [];
+      if (
+        repo.idsByCategory &&
+        repo.loadSellers &&
+        categoryIds.length === 1 &&
+        categoryIds[0] !== undefined &&
+        sellerIds.length === 0 &&
+        !query.filters?.brand
+      ) {
+        const ids = await repo.idsByCategory(categoryIds[0], query.limit ?? 60);
         if (ids.length === 0) {
           const sellers = await loadSellersCached();
           return searchProducts([], sellers, query);

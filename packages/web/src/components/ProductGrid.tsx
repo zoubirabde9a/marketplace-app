@@ -5,7 +5,7 @@ export function ProductGrid({ hits }: { hits: SearchHit[] }) {
   return (
     <ul
       className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 list-none p-0 m-0"
-      aria-label={`${hits.length} product${hits.length === 1 ? "" : "s"}`}
+      aria-label={`${hits.length} annonce${hits.length === 1 ? "" : "s"}`}
     >
       {hits.map((h, i) => (
         <li key={h.productId}>

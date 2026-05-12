@@ -36,6 +36,7 @@ export async function POST(req: Request): Promise<Response> {
     return res;
   } catch (e) {
     const err = e as ApiError;
+    console.error("[api/auth/exchange-link] exchange_failed", err.status, err.message);
     return NextResponse.json(
       { ok: false, error: err.message || "exchange_failed", detail: err.detail },
       { status: err.status ?? 500 },

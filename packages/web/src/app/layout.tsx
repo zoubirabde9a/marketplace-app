@@ -89,6 +89,18 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: SITE_URL,
+    // hreflang annotations. Site is single-language (fr-DZ) — declaring it
+    // explicitly tells Google/Yandex/Bing the target audience for SERP
+    // language filters ("pages in French") and country targeting. The
+    // x-default fallback covers users whose accept-language doesn't match
+    // fr-* (Google routes them here rather than guessing). Self-referential
+    // canonical is fine for a single-locale site; the value point is having
+    // the tag at all, not having multiple translations. See og:locale and
+    // <html lang="fr"> in body.tsx for the matching signals.
+    languages: {
+      "fr-DZ": SITE_URL,
+      "x-default": SITE_URL,
+    },
     // Atom feed alternate link is rendered inline in the <head> below
     // instead of here — when child pages (/search, /product) override
     // their own alternates.types, Next.js replaces the layout-level
@@ -154,7 +166,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link
           rel="alternate"
           type="application/atom+xml"
-          title="Teno Store — Recent listings"
+          title="Teno Store — Annonces récentes"
           href="/feed.xml"
         />
       </head>

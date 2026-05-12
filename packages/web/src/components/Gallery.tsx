@@ -35,7 +35,7 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
         <span aria-hidden className="text-7xl font-semibold tracking-tight text-ink-mute select-none opacity-50">
           {initial}
         </span>
-        <span className="text-xs">No photos provided by the seller</span>
+        <span className="text-xs">Aucune photo fournie par le vendeur</span>
       </div>
     );
   }
@@ -79,7 +79,7 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
               )}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt={img.altText ?? `${alt} thumbnail ${i + 1}`} width={img.width ?? 200} height={img.height ?? 200} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+              <img src={img.url} alt={img.altText ?? `${alt} — vignette ${i + 1}`} width={img.width ?? 200} height={img.height ?? 200} loading="lazy" decoding="async" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
