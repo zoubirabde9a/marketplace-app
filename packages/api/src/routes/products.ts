@@ -496,6 +496,7 @@ export function makeProductReader(repo: {
   loadOne: (id: string) => Promise<StoredProduct | undefined>;
   getProductsByIds: (ids: string[]) => Promise<Array<StoredProduct | null>>;
   searchIds?: (q: string, limit?: number) => Promise<Array<{ id: string; score: number }>>;
+  idsBySeller?: (sellerId: string, limit?: number) => Promise<string[]>;
 }): ProductReader {
   // Browse-path TTL cache. Empty-query browse pulls every product+variant+
   // media row, hydrates them, JS-filters/sorts/computes facets — order of
@@ -599,6 +600,31 @@ export function makeProductReader(repo: {
         const scoreMap = new Map(ranked.map((r) => [r.id, r.score]));
         const candidates = productsResult.filter((p): p is StoredProduct => p !== null);
         return searchProducts(candidates, sellers, query, scoreMap);
+      }
+      // Storefront fast path: no query, one sellerId filter, and the repo
+      // supports an indexed lookup. Pulls just that seller's product rows
+      // instead of forcing a catalog-wide loadAll() (~77k rows in prod). The
+      // wider browse path below loads everything because empty-query callers
+      // also want facet coverage across the full catalog — a storefront
+      // doesn't (it scopes facets to one seller anyway).
+      const sellerIds = query.filters?.sellerIds ?? [];
+      if (
+        repo.idsBySeller &&
+        repo.loadSellers &&
+        sellerIds.length === 1 &&
+        sellerIds[0] !== undefined
+      ) {
+        const ids = await repo.idsBySeller(sellerIds[0], query.limit ?? 60);
+        if (ids.length === 0) {
+          const sellers = await loadSellersCached();
+          return searchProducts([], sellers, query);
+        }
+        const [productsResult, sellers] = await Promise.all([
+          repo.getProductsByIds(ids),
+          loadSellersCached(),
+        ]);
+        const candidates = productsResult.filter((p): p is StoredProduct => p !== null);
+        return searchProducts(candidates, sellers, query);
       }
       // Browse path (no query): loadAll with a 30s TTL cache (see top of
       // makeProductReader). Empty-query callers want to see the whole

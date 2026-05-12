@@ -302,11 +302,27 @@ export function makeProductRepo(db: DbClient) {
     });
   }
 
+  // Indexed lookup of one seller's product ids, newest first. Used by the
+  // storefront and any "by seller, no query" caller so they can skip the
+  // catalog-wide loadAll(). A small shop with 5 products doesn't need a
+  // 77k-row scan to render its storefront.
+  async function idsBySeller(sellerId: string, limit = 200): Promise<string[]> {
+    if (!isUuid(sellerId)) return [];
+    const rows = await db
+      .select({ id: products.id })
+      .from(products)
+      .where(eq(products.sellerId, sellerId))
+      .orderBy(desc(products.createdAt))
+      .limit(limit);
+    return rows.map((r) => r.id);
+  }
+
   return {
     loadAll,
     loadSellers,
     loadOne,
     searchIds,
+    idsBySeller,
 
     async getOwnerAgentId(productId: string): Promise<string | undefined> {
       if (!isUuid(productId)) return undefined;
