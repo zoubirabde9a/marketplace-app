@@ -492,6 +492,13 @@ export function registerBuyerTools(reg: McpRegistry, deps: BuyerAdapter): void {
       const cart = await deps.carts.get(input.cartId);
       if (!cart) throw new NotFoundError("cart", input.cartId);
       if (cart.lines.length === 0) {
+        // /mcp is exempt from HTTP-level idempotency, so retry an MCP
+        // checkout.confirm after a successful one would hit this branch with
+        // the cart already cleared. Treat that as an idempotent replay: return
+        // the original order if one exists for this cart in the last 10 min.
+        // See the REST route at /v1/checkout/confirm for the mirror.
+        const prior = await deps.orders.findRecentByCartId(input.cartId, 10 * 60 * 1000);
+        if (prior) return shapeOrder(deps, prior, { includeToken: true });
         throw new ValidationError([{ path: "cart", message: "empty" }]);
       }
       const quote = checkoutDomain.priceQuote({

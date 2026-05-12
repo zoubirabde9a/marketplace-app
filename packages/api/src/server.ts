@@ -253,6 +253,7 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
       create: (input) => opts.repos.orders.create(input),
       get: (id) => opts.repos.orders.get(id),
       listForSeller: (id) => opts.repos.orders.listForSeller(id),
+      findRecentByCartId: (cartId, withinMs) => opts.repos.orders.findRecentByCartId(cartId, withinMs),
     },
     sellers: {
       get: async (id) => {
