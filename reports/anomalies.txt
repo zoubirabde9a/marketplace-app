@@ -23,8 +23,49 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
-2026-05-12 10:58 UTC — eleventh sweep
---------------------------------------
+2026-05-12 11:04 UTC — twelfth sweep
+-------------------------------------
+
+[33] DEPLOY STATUS — code shipped, DB migrations still pending
+   • Live probes against api.teno-store.com (Caddy → api on 127.0.0.1):
+     - /v1/products?limit=8&sort=newest → 12 ms (was 8.26s) — 685× faster
+     - / (home) cold → 1.2s (was 9.9s); warm 50ms
+     - /v1/products/<id> warm → ~320ms (was ~500ms)
+     → confirms BROWSE_TTL_MS bump, sellers cache, and storefront fast
+       path are all live in prod.
+   • Still slow: /v1/products?category=maison → 7.87s.
+     `pg_indexes` on catalog.products shows the original 7 indexes —
+     neither products_seller_created_idx (migration 0009) nor
+     products_category_ids_gin (migration 0010) has been applied, and
+     the dead products_category_idx is still present.
+   • Suggested apply (paste-safe, runs CONCURRENTLY so no write lock):
+       docker exec marketplace-postgres psql -U marketplace -d marketplace -c "
+         CREATE INDEX CONCURRENTLY IF NOT EXISTS products_seller_created_idx
+           ON catalog.products (seller_id, created_at DESC);
+         CREATE INDEX CONCURRENTLY IF NOT EXISTS products_category_ids_gin
+           ON catalog.products USING gin (category_ids jsonb_path_ops);
+         DROP INDEX CONCURRENTLY IF EXISTS catalog.products_category_idx;
+       "
+     CONCURRENTLY needs to be its own transaction, so if pasted as a
+     block, run each statement separately or wrap with -c per stmt.
+
+[34] LINT — Misleading 401 on /v1/carts/items (plural, INFO)
+   • 6 hits/hour in caddy logs to POST /v1/carts/items (plural — the
+     real route is singular /v1/cart/items). All return 401 instead of
+     the expected 404, because the auth public-matcher for cart
+     (auth.ts:95) uses ^\/v1\/cart(\/.*)?$, which doesn't match the
+     plural typo. Non-public + write method + no auth → 401.
+     The 401 misleads the client into retrying with credentials they
+     don't have, while the real fix is "fix the URL".
+   • Low impact (likely a misconfigured agent client; only 6/hr) but
+     surfacing a 404 here would help debugging. Two clean options:
+       a) Add the same public matcher for /v1/carts/* and let it
+          fall through to the route layer's natural 404.
+       b) Register a Fastify setNotFoundHandler that returns 404 with
+          a "did you mean: /v1/cart/items" hint for /v1/carts/*.
+     Neither applied — minor.
+
+
 
 [30] BUG — feed.xml top-level <updated> lags ingestion by ~14h (FIXED)
    • Probe at 10:58 UTC: GET https://teno-store.com/feed.xml returned
