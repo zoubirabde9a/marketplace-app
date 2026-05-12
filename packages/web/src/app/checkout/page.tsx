@@ -9,7 +9,9 @@ import { placeOrderAction, readSavedBuyerInfo } from "./actions";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Checkout",
+  // French-locale chrome for the buyer money path — matches /cart and the
+  // rest of og:locale=fr_DZ surfaces. See anomaly [38]/[39].
+  title: "Commande",
   robots: { index: false, follow: false },
 };
 
@@ -28,23 +30,23 @@ export default async function CheckoutPage({
   const errLabel = !errCode
     ? null
     : errCode === "missing"
-      ? "Please fill in your name, phone, and region."
-      : "Sorry, something went wrong placing the order. Try again.";
+      ? "Veuillez renseigner votre nom, téléphone et région."
+      : "Désolé, une erreur est survenue lors de la commande. Veuillez réessayer.";
   // Multi-seller carts produce one COD call per seller — saying "the seller"
   // in the singular sets the wrong expectation and surprises buyers when the
   // second call comes in. Count distinct sellers and tweak the copy.
   const sellerCount = new Set(cart.lines.map((l) => l.sellerId)).size;
   const codBlurb =
     sellerCount > 1
-      ? `Cash on delivery. Each of the ${sellerCount} sellers in this order will call you separately to confirm before shipping their items.`
-      : "Cash on delivery. The seller will call to confirm before shipping.";
+      ? `Paiement à la livraison. Chacun des ${sellerCount} vendeurs de cette commande vous appellera séparément pour confirmer avant l’expédition.`
+      : "Paiement à la livraison. Le vendeur vous appellera pour confirmer avant l’expédition.";
 
   return (
-    <section className="pt-10 pb-24 max-w-3xl mx-auto">
+    <section className="pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
       <Link href="/cart" className="text-xs text-ink-mute hover:text-ink-soft">
-        ← Back to cart
+        ← Retour au panier
       </Link>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight">Checkout</h1>
+      <h1 className="mt-3 text-3xl font-semibold tracking-tight">Commande</h1>
       <p className="mt-2 text-sm text-ink-soft">{codBlurb}</p>
 
       {errLabel && (
@@ -58,7 +60,7 @@ export default async function CheckoutPage({
           <input type="hidden" name="cartId" value={cart.cartId} />
           <div>
             <label htmlFor="name" className="block text-xs uppercase tracking-widest text-ink-mute font-semibold mb-1">
-              Full name
+              Nom complet
             </label>
             <input
               id="name"
@@ -72,7 +74,7 @@ export default async function CheckoutPage({
           </div>
           <div>
             <label htmlFor="phone" className="block text-xs uppercase tracking-widest text-ink-mute font-semibold mb-1">
-              Phone (the seller will call this number)
+              Téléphone (le vendeur appellera ce numéro)
             </label>
             <input
               id="phone"
@@ -89,7 +91,7 @@ export default async function CheckoutPage({
           </div>
           <div>
             <label htmlFor="region" className="block text-xs uppercase tracking-widest text-ink-mute font-semibold mb-1">
-              Delivery region (wilaya)
+              Région de livraison (wilaya)
             </label>
             <select
               id="region"
@@ -99,7 +101,7 @@ export default async function CheckoutPage({
               className="w-full h-11 px-3 rounded-md border border-line bg-bg-elev text-sm"
             >
               <option value="" disabled>
-                Select a wilaya…
+                Sélectionnez une wilaya…
               </option>
               {ALGERIAN_WILAYAS.map((w) => (
                 <option key={w} value={w}>
@@ -113,12 +115,12 @@ export default async function CheckoutPage({
             type="submit"
             className="mt-4 w-full h-11 rounded-md bg-accent text-bg text-sm font-semibold hover:brightness-110 transition"
           >
-            Place order
+            Passer la commande
           </button>
         </form>
 
         <aside className="rounded-2xl border border-line-soft bg-bg-soft/60 p-6 h-fit">
-          <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Order summary</h2>
+          <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Récapitulatif de commande</h2>
           <ul className="mt-4 space-y-3 text-sm">
             {cart.lines.map((l) => (
               <li key={l.variantId} className="flex justify-between gap-4">
@@ -139,7 +141,7 @@ export default async function CheckoutPage({
             <span>Total</span>
             <span>{formatPrice(cart.totals.totalMinor, cart.currency)}</span>
           </div>
-          <p className="mt-3 text-xs text-ink-mute">Delivery: free (cash on delivery).</p>
+          <p className="mt-3 text-xs text-ink-mute">Livraison : gratuite (paiement à la livraison).</p>
         </aside>
       </div>
     </section>

@@ -7,7 +7,9 @@ import { cleanProductTitle, formatPrice } from "@/lib/format";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Order confirmation",
+  // French-locale chrome for the buyer money path — matches /cart, /checkout,
+  // and og:locale=fr_DZ. See anomaly [38]/[39].
+  title: "Confirmation de commande",
   robots: { index: false, follow: false },
 };
 
@@ -21,36 +23,36 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const sellerCount = new Set(order.lines.map((l) => l.sellerId)).size;
   const codBlurb =
     sellerCount > 1
-      ? `Each of the ${sellerCount} sellers in this order will call you separately to confirm before shipping their items.`
-      : "The seller will call to confirm before shipping.";
+      ? `Chacun des ${sellerCount} vendeurs de cette commande vous appellera séparément pour confirmer avant l’expédition.`
+      : "Le vendeur vous appellera pour confirmer avant l’expédition.";
 
   return (
-    <section className="pt-10 pb-24 max-w-3xl mx-auto">
+    <section className="pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
       <div className="rounded-2xl border border-ok/40 bg-ok/5 p-6">
-        <div className="text-xs uppercase tracking-widest text-ok font-semibold">Order placed</div>
+        <div className="text-xs uppercase tracking-widest text-ok font-semibold">Commande passée</div>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">
           #{order.publicNumber}
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
-          {codBlurb} Keep this page open or take a screenshot — your order number is{" "}
+          {codBlurb} Gardez cette page ouverte ou prenez une capture d’écran — votre numéro de commande est{" "}
           <span className="font-mono">{order.publicNumber}</span>.
         </p>
       </div>
 
       {order.customer && (
         <section className="mt-8 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
-          <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Delivery contact</h2>
+          <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Contact de livraison</h2>
           <dl className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
-              <dt className="text-xs text-ink-mute">Name</dt>
+              <dt className="text-xs text-ink-mute">Nom</dt>
               <dd className="mt-0.5">{order.customer.name}</dd>
             </div>
             <div>
-              <dt className="text-xs text-ink-mute">Phone</dt>
+              <dt className="text-xs text-ink-mute">Téléphone</dt>
               <dd className="mt-0.5 font-mono">{order.customer.phone}</dd>
             </div>
             <div>
-              <dt className="text-xs text-ink-mute">Region</dt>
+              <dt className="text-xs text-ink-mute">Wilaya</dt>
               <dd className="mt-0.5">{order.customer.region}</dd>
             </div>
           </dl>
@@ -58,7 +60,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       )}
 
       <section className="mt-8 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
-        <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Items</h2>
+        <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Articles</h2>
         <ul className="mt-3 divide-y divide-line-soft">
           {order.lines.map((l) => (
             <li key={l.variantId} className="py-3 flex justify-between gap-4">
@@ -71,7 +73,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                   <span className="text-sm text-ink-soft">{l.sku ?? l.variantId}</span>
                 )}
                 <div className="text-xs text-ink-mute mt-0.5">
-                  × {l.qty} · {formatPrice(l.unitPriceMinor, order.currency)} each
+                  × {l.qty} · {formatPrice(l.unitPriceMinor, order.currency)} l’unité
                 </div>
               </div>
               <div className="shrink-0 text-sm font-medium">
@@ -82,20 +84,20 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         </ul>
         <dl className="mt-4 pt-4 border-t border-line-soft space-y-1.5 text-sm">
           <div className="flex justify-between">
-            <dt className="text-ink-soft">Subtotal</dt>
+            <dt className="text-ink-soft">Sous-total</dt>
             <dd>{formatPrice(order.totals.subtotalMinor, order.currency)}</dd>
           </div>
           <div className="flex justify-between">
-            <dt className="text-ink-soft">Delivery</dt>
+            <dt className="text-ink-soft">Livraison</dt>
             <dd className="text-ink-mute">
               {BigInt(order.totals.shippingMinor) > 0n
                 ? formatPrice(order.totals.shippingMinor, order.currency)
-                : "Free (cash on delivery)"}
+                : "Gratuite (paiement à la livraison)"}
             </dd>
           </div>
           {BigInt(order.totals.taxMinor) > 0n && (
             <div className="flex justify-between">
-              <dt className="text-ink-soft">Tax</dt>
+              <dt className="text-ink-soft">TVA</dt>
               <dd>{formatPrice(order.totals.taxMinor, order.currency)}</dd>
             </div>
           )}
@@ -111,7 +113,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           href="/search"
           className="inline-flex items-center px-4 py-2 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 transition"
         >
-          Continue shopping
+          Continuer mes achats
         </Link>
       </div>
     </section>
