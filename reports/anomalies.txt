@@ -23,6 +23,56 @@ Server: vps-eu (152.53.147.77)  /  Started: 2026-05-12
 2026-05-12 10:35 UTC — seventh sweep
 -------------------------------------
 
+2026-05-12 10:46 UTC — ninth sweep
+-----------------------------------
+
+[27] OBS — Operator is integrating recommendations (INFO)
+   • Recent commits show 0009 + 0010 migrations landed, idsBySeller
+     fast-path added (matches the storefront fix proposed in [5] and
+     [10]), timing-safe token compare landed (orders + mcp-server),
+     new tests added (browse-swr-cache 4, storefront-fastpath 5 → 46
+     tests total, all green).
+   • API container still running pre-change image (last restart 7 min
+     before iteration 6). Until the next api image rebuild + deploy,
+     the spike measurements in [5], [8], [10], [16], [17], [24] will
+     continue. Deploy is the operator's call.
+
+[28] BUG — Checkout cart-empty-after-201 root cause likely identified
+     (refines [11]; HIGH for log noise / dashboards, LOW for UX)
+   • Confirmed Caddyfile only retries on dial errors, NOT on a 200/201
+     response. So this is not a Caddy-retry artefact.
+   • Refined theory: an MCP/agent client retries POST /v1/checkout/
+     confirm with the same X-Request-Id header. Fastify's default
+     genReqId honors X-Request-Id if present, which is why the
+     "Promise errored, but reply.sent" line shares the same reqId as
+     the successful 201 — they are TWO physical request attempts
+     unified into one Pino log thread by the client-supplied id.
+   • Evidence: 5 errors in 1h, 4 of which were POST /mcp (the MCP
+     transport endpoint). MCP clients are the most likely source of
+     deterministic-retry semantics here.
+   • PROPER FIX (recommended, not applied — needs new repo method):
+     make /v1/checkout/confirm idempotent on cart-empty. The shape:
+       a) Add OrderRepo.findRecentByCartId(cartId, withinMs=600_000)
+       b) In the route, when c.lines.length === 0, look up a recent
+          order for this cartId. If one exists with a matching
+          customer.phone (or no customer mismatch), return it as if
+          it were freshly created. Otherwise fall through to the
+          existing 400-validation throw.
+       c) Same pattern in packages/mcp-server/src/tools/buyer.ts
+          checkout.confirm handler.
+     Idempotency keyed on cartId + recency window is correct because
+     /v1/checkout/confirm itself clears the cart on success (line 118
+     of checkout.ts), so a "second confirm with empty cart" can ONLY
+     happen for a request that already succeeded. Returning the
+     prior order body is the spec-correct response.
+
+   • WORKAROUND OPTION (one-line, applicable today): suppress the
+     ValidationError into a 409 with a clear "order_already_confirmed"
+     code, so the log noise drops and clients get a stable error
+     contract for their retry path. Not great UX (clients still see
+     an error code on a flow they thought succeeded), but kills the
+     500s at the edge.
+
 2026-05-12 10:40 UTC — eighth sweep
 ------------------------------------
 
