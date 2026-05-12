@@ -221,7 +221,8 @@ function cryptoRandomKey(): string {
 
 // Stable idempotency key for /v1/checkout/confirm. Hashing (rather than
 // concatenating raw fields) keeps phone/name out of the key sent on the wire.
-async function deterministicCheckoutKey(
+// Exported for unit tests — not part of the public lib surface.
+export async function deterministicCheckoutKey(
   cartId: string,
   customer: { name: string; phone: string; region: string },
 ): Promise<string> {
