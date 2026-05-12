@@ -21,12 +21,13 @@ export async function HeaderUserMenu() {
   const display = me.user.displayName ?? me.user.email;
   return (
     <div className="flex items-center gap-2">
-      <span
-        className="text-xs text-ink-soft hidden sm:inline truncate max-w-[20ch]"
+      <Link
+        href="/dashboard"
+        className="text-xs text-ink-soft hidden sm:inline truncate max-w-[20ch] hover:text-ink transition"
         title={me.user.email}
       >
         {display}
-      </span>
+      </Link>
       <SignOutButton />
     </div>
   );

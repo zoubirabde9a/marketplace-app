@@ -79,29 +79,29 @@ describe("formatRelativeTime", () => {
     expect(formatRelativeTime("not-a-date", fixedNow)).toBeNull();
   });
 
-  it("returns 'just now' for sub-minute and future timestamps", () => {
+  it("returns 'à l’instant' for sub-minute and future timestamps", () => {
     const future = new Date(fixedNow.getTime() + 60_000).toISOString();
-    expect(formatRelativeTime(future, fixedNow)).toBe("just now");
+    expect(formatRelativeTime(future, fixedNow)).toBe("à l’instant");
     const recent = new Date(fixedNow.getTime() - 30_000).toISOString();
-    expect(formatRelativeTime(recent, fixedNow)).toBe("just now");
+    expect(formatRelativeTime(recent, fixedNow)).toBe("à l’instant");
   });
 
-  it("scales to minutes, hours, days, weeks, months, years", () => {
+  it("scales to minutes, hours, days, weeks, months, years (French)", () => {
     const t = (offsetMs: number) => new Date(fixedNow.getTime() - offsetMs).toISOString();
-    expect(formatRelativeTime(t(2 * 60_000), fixedNow)).toBe("2 minutes ago");
-    expect(formatRelativeTime(t(60_000), fixedNow)).toBe("1 minute ago");
-    expect(formatRelativeTime(t(3 * 3_600_000), fixedNow)).toBe("3 hours ago");
-    expect(formatRelativeTime(t(2 * 86_400_000), fixedNow)).toBe("2 days ago");
-    expect(formatRelativeTime(t(2 * 7 * 86_400_000), fixedNow)).toBe("2 weeks ago");
-    expect(formatRelativeTime(t(60 * 86_400_000), fixedNow)).toBe("2 months ago");
-    expect(formatRelativeTime(t(2 * 365 * 86_400_000), fixedNow)).toBe("2 years ago");
+    expect(formatRelativeTime(t(2 * 60_000), fixedNow)).toBe("il y a 2 minutes");
+    expect(formatRelativeTime(t(60_000), fixedNow)).toBe("il y a 1 minute");
+    expect(formatRelativeTime(t(3 * 3_600_000), fixedNow)).toBe("il y a 3 heures");
+    expect(formatRelativeTime(t(2 * 86_400_000), fixedNow)).toBe("il y a 2 jours");
+    expect(formatRelativeTime(t(2 * 7 * 86_400_000), fixedNow)).toBe("il y a 2 semaines");
+    expect(formatRelativeTime(t(60 * 86_400_000), fixedNow)).toBe("il y a 2 mois");
+    expect(formatRelativeTime(t(2 * 365 * 86_400_000), fixedNow)).toBe("il y a 2 ans");
   });
 });
 
 describe("formatRating", () => {
-  it("returns 'No reviews yet' when rating is null/undefined", () => {
-    expect(formatRating(null)).toBe("No reviews yet");
-    expect(formatRating(undefined)).toBe("No reviews yet");
+  it("returns 'Pas encore d’avis' when rating is null/undefined", () => {
+    expect(formatRating(null)).toBe("Pas encore d’avis");
+    expect(formatRating(undefined)).toBe("Pas encore d’avis");
   });
 
   it("renders rating with one decimal and optional count", () => {

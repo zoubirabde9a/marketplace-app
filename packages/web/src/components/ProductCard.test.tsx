@@ -82,7 +82,7 @@ describe("ProductCard", () => {
 
   it("shows an out-of-stock indicator when inStock is false", () => {
     const { container } = render(<ProductCard hit={baseHit({ inStock: false })} />);
-    expect(container.textContent?.toLowerCase()).toContain("out of stock");
+    expect(container.textContent?.toLowerCase()).toContain("rupture de stock");
   });
 
   it("renders a price for a single-variant hit using formatPrice", () => {

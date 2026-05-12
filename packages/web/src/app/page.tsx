@@ -1,37 +1,35 @@
-// Home page. Two states:
-//   - signed in:  personalized "Hi, <name>" header + agent list + activity feed
-//   - signed out: marketing landing with WebSite JSON-LD + sign-in CTA
+// Home page — the SEO landing. Always renders the marketing/catalog view; no
+// per-request auth check, so Next.js + Cloudflare can fully edge-cache it.
 //
-// Auth state is read from the mp_session cookie via getCurrentUser(). The home
-// page is always dynamic (cookies are per-request).
+// Signed-in users get redirected to `/dashboard` by middleware (which sees
+// the `mp_session` cookie and rewrites). The dashboard lives at its own
+// route so `/` itself can be ISR-cached: a single 60s revalidation window
+// serves every crawler hit, every cold visitor, and every signed-out
+// browsing session from one rendered HTML.
+//
+// Why this matters: with force-dynamic + per-request `getCurrentUser()`,
+// every Googlebot / Bingbot / ChatGPT-User / PerplexityBot hit on `/` paid
+// full SSR cost on origin even with the anonymous-cache middleware in
+// front (because the page was tainted by `cookies()` access). Decoupling
+// the auth check moves `/` into Next's full ISR path — origin renders
+// once per minute; everything else is served from cache.
 
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/sellerSession";
-import { getMyActivity, searchProducts } from "@/lib/api";
+import { searchProducts } from "@/lib/api";
 import type { SearchHit } from "@/lib/api";
-import { AgentActivity } from "@/components/AgentActivity";
 import { ProductGrid } from "@/components/ProductGrid";
 import { jsonLdString } from "@/lib/jsonld";
 import { upscaleOuedknissForCrawler } from "@/lib/images";
 
-export const dynamic = "force-dynamic";
+// 60s ISR window. The catalog seed loop runs at minute cadence so the
+// "Annonces récentes" strip's freshness budget aligns with how fast new
+// listings actually arrive. Crawler-facing edge cache (5 min s-maxage in
+// middleware.ts) sits on top of this.
+export const revalidate = 60;
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
 export default async function Home() {
-  const me = await getCurrentUser();
-
-  if (me) {
-    let activity;
-    try {
-      activity = await getMyActivity(me.jwt);
-    } catch {
-      // API hiccup — degrade gracefully to the empty-state view rather than crashing the home page.
-      activity = { user: { id: me.user.id, email: me.user.email, displayName: me.user.displayName, picture: me.user.picture }, agents: [], recentActions: [] };
-    }
-    return <AgentActivity data={activity} />;
-  }
-
   let recent: SearchHit[] = [];
   try {
     // noFacets: this strip doesn't render brand/price/seller facets, so let

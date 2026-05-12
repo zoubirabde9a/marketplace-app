@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { SearchHit } from "@/lib/api";
 import { cleanProductTitle, formatPrice, formatPriceRange, formatRating, formatRelativeTime } from "@/lib/format";
 import { CounterfeitBadge } from "./CounterfeitBadge";
@@ -35,22 +36,33 @@ export function ProductCard({
     >
       <div className="aspect-[4/3] relative bg-gradient-to-br from-bg-elev to-bg overflow-hidden">
         {hit.heroImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          // next/image: routes the upstream Ouedkniss CDN URL through Next's
+          // image optimizer (configured with remotePatterns: { hostname: "**" }
+          // in next.config.mjs), which transcodes to AVIF/WebP at request time
+          // and serves a responsive srcset. AVIF is typically 2-4x smaller
+          // than the JPEG the CDN ships at the same perceptual quality;
+          // direct LCP win on product-grid pages where the first row of
+          // hero images is the Largest Contentful Paint candidate.
+          //
+          // sizes maps the grid's CSS breakpoints (Tailwind defaults: sm 640,
+          // md 768, lg 1024) so the browser picks the smallest srcset entry
+          // that satisfies the rendered card width — avoids fetching the 3x
+          // DPR variant on a 1x mobile device.
+          //
+          // priority={priority} hooks Next's automatic preload + fetchPriority
+          // high for the single LCP candidate (first card on home / search).
+          // Without it, eager+fetchPriority would be set on the underlying
+          // <img>; with it, Next ALSO emits a <link rel="preload" as="image">
+          // in <head> so the browser starts the fetch before the parser
+          // reaches the body — measurable LCP improvement.
+          <Image
             src={hit.heroImageUrl}
             alt={hit.heroImage?.altText ?? displayTitle}
-            // Width/height honour the parent's 4:3 aspect-ratio so the
-            // browser reserves layout space before the image loads.
-            // Without these, every card forces a reflow when its hero
-            // arrives — a Cumulative Layout Shift hit that Lighthouse
-            // (and Google's Core Web Vitals ranking signal) penalises.
-            // The values are intrinsic ratio anchors, not display sizes;
-            // the className still stretches the img to fit the parent.
             width={400}
             height={300}
-            loading={eager ? "eager" : "lazy"}
-            fetchPriority={priority ? "high" : "auto"}
-            decoding="async"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            loading={eager && !priority ? "eager" : undefined}
+            priority={priority}
             className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
           />
         ) : (
@@ -70,7 +82,7 @@ export function ProductCard({
           <CounterfeitBadge risk={hit.counterfeitRisk} />
           {!hit.inStock && (
             <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium bg-bg/80 text-ink-soft border border-line">
-              Out of stock
+              Rupture de stock
             </span>
           )}
         </div>
@@ -93,7 +105,7 @@ export function ProductCard({
               dateTime={hit.postedAt ?? undefined}
               className="text-[11px] text-ink-mute"
             >
-              Posted {posted}
+              Publié {posted}
             </time>
           ) : null;
         })()}

@@ -31,8 +31,13 @@ function one(v: string | string[] | undefined): string | undefined {
 }
 
 function safeNext(raw: string | undefined): string {
-  if (!raw) return "/";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+  // Default destination after sign-in is /dashboard (the agent-activity
+  // view). Previously defaulted to /, which is now a static marketing
+  // landing — landing a freshly-signed-in user on the marketing page
+  // would feel wrong. Callers that pass an explicit `next` (e.g. links
+  // from gated pages) override this default.
+  if (!raw) return "/dashboard";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/dashboard";
   return raw;
 }
 

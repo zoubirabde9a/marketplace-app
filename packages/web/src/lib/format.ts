@@ -42,31 +42,35 @@ export function formatPriceRange(
 }
 
 export function formatRating(rating?: number | null, count?: number | null): string {
-  if (rating == null) return "No reviews yet";
+  if (rating == null) return "Pas encore d’avis";
   const stars = rating.toFixed(1);
   return count != null ? `${stars} ★ (${count.toLocaleString()})` : `${stars} ★`;
 }
 
+// French relative-time labels — the home page recent strip, every product card,
+// and the product detail page render these. Previously English ("2 hours ago")
+// on a French-locale catalog. Keeps the same bucketing logic; just the
+// rendered words change.
 export function formatRelativeTime(iso: string | null | undefined, now: Date = new Date()): string | null {
   if (!iso) return null;
   const t = new Date(iso).getTime();
   if (Number.isNaN(t)) return null;
   const diffMs = now.getTime() - t;
-  if (diffMs < 0) return "just now";
+  if (diffMs < 0) return "à l’instant";
   const sec = Math.floor(diffMs / 1000);
-  if (sec < 60) return "just now";
+  if (sec < 60) return "à l’instant";
   const min = Math.floor(sec / 60);
-  if (min < 60) return min === 1 ? "1 minute ago" : `${min} minutes ago`;
+  if (min < 60) return min === 1 ? "il y a 1 minute" : `il y a ${min} minutes`;
   const hr = Math.floor(min / 60);
-  if (hr < 24) return hr === 1 ? "1 hour ago" : `${hr} hours ago`;
+  if (hr < 24) return hr === 1 ? "il y a 1 heure" : `il y a ${hr} heures`;
   const day = Math.floor(hr / 24);
-  if (day < 7) return day === 1 ? "1 day ago" : `${day} days ago`;
+  if (day < 7) return day === 1 ? "il y a 1 jour" : `il y a ${day} jours`;
   const wk = Math.floor(day / 7);
-  if (wk < 5) return wk === 1 ? "1 week ago" : `${wk} weeks ago`;
+  if (wk < 5) return wk === 1 ? "il y a 1 semaine" : `il y a ${wk} semaines`;
   const mo = Math.floor(day / 30);
-  if (mo < 12) return mo === 1 ? "1 month ago" : `${mo} months ago`;
+  if (mo < 12) return mo === 1 ? "il y a 1 mois" : `il y a ${mo} mois`;
   const yr = Math.floor(day / 365);
-  return yr === 1 ? "1 year ago" : `${yr} years ago`;
+  return yr === 1 ? "il y a 1 an" : `il y a ${yr} ans`;
 }
 
 // Scraped product titles from Ouedkniss often duplicate the leading word

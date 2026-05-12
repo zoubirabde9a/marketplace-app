@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import clsx from "clsx";
 
 interface Img { id: string; url: string; altText?: string; width?: number; height?: number }
@@ -47,18 +48,18 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
         className="block w-full aspect-square rounded-2xl border border-line-soft bg-bg-soft overflow-hidden group relative"
         aria-label="Ouvrir l'image en plein écran"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        {/* Product-detail hero. priority emits <link rel="preload"> in <head>
+            so the browser starts the AVIF/WebP fetch before parsing past
+            the HTML. sizes hints the optimizer: full viewport on mobile,
+            half on tablet, then a fixed max (the gallery is capped by the
+            product page's two-column grid at lg breakpoints). */}
+        <Image
           src={active!.url}
           alt={active!.altText ?? alt}
-          // CLS reservation. Prefer the API-supplied dimensions when the
-          // hero media carries them; otherwise fall back to a square at
-          // the gallery's display aspect (1:1, see aspect-square parent).
           width={active!.width ?? 800}
           height={active!.height ?? 800}
-          decoding="async"
-          loading="eager"
-          fetchPriority="high"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 60vw, 600px"
+          priority
           className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
         />
         <span className="absolute bottom-3 right-3 px-2 py-1 rounded-md text-[11px] font-mono bg-bg/80 text-ink-soft border border-line-soft opacity-0 group-hover:opacity-100 transition">
@@ -78,8 +79,10 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
                 i === idx ? "border-accent shadow-glow" : "border-line-soft hover:border-line",
               )}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt={img.altText ?? `${alt} — vignette ${i + 1}`} width={img.width ?? 200} height={img.height ?? 200} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+              {/* Thumbnail strip — small images so the optimizer emits a
+                  tight AVIF/WebP. sizes is fixed at the thumbnail's
+                  rendered width (5 or 6 cols of the gallery width). */}
+              <Image src={img.url} alt={img.altText ?? `${alt} — vignette ${i + 1}`} width={img.width ?? 200} height={img.height ?? 200} sizes="120px" loading="lazy" className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -113,12 +116,17 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
               >›</button>
             </>
           )}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          {/* Lightbox full-resolution view. Don't constrain via fixed
+              width/height — let the optimizer pick a size that fits the
+              viewport. unoptimized={false} (default) still routes through
+              the Next image proxy for AVIF/WebP transcoding. */}
+          <Image
             src={active!.url}
             alt={active!.altText ?? alt}
-            decoding="async"
-            className="max-w-full max-h-full object-contain rounded-lg"
+            width={active!.width ?? 1600}
+            height={active!.height ?? 1600}
+            sizes="100vw"
+            className="max-w-full max-h-full object-contain rounded-lg w-auto h-auto"
             onClick={(e) => e.stopPropagation()}
           />
           <span className="absolute bottom-4 left-1/2 -translate-x-1/2 text-xs text-ink-soft font-mono">

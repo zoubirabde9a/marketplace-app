@@ -42,8 +42,21 @@ const CACHEABLE_PATHS = [
 ];
 
 export function middleware(req: NextRequest): NextResponse {
-  const res = NextResponse.next();
   const path = req.nextUrl.pathname;
+
+  // Signed-in users hitting `/` get bounced to their dashboard. `/` itself
+  // is now a fully ISR-cached SEO landing with no per-request auth — the
+  // signed-in agent-activity view lives at /dashboard. Without this
+  // redirect, a returning logged-in user would see the marketing landing
+  // on their bookmarked `/`, which is wrong UX. Cookie presence alone
+  // gates the redirect; /dashboard handles the "cookie present but
+  // invalid" case by clearing the cookie before sending to /login, so
+  // a stale cookie can't trap a user in `/` ↔ `/dashboard`.
+  if (path === "/" && req.cookies.has(SESSION_COOKIE)) {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  const res = NextResponse.next();
   if (!CACHEABLE_PATHS.some((re) => re.test(path))) return res;
   if (req.cookies.has(SESSION_COOKIE)) return res;
   // s-maxage=300 (5 min edge cache) + swr=1800 (30 min stale-while-revalidate

@@ -13,6 +13,18 @@ const nextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }, { protocol: "http", hostname: "**" }],
+    // AVIF first (smaller payload at the same perceptual quality — typically
+    // 20-30% under WebP), WebP as the fallback for browsers without AVIF
+    // (older Safari, niche envs). Default is just WebP, which already beats
+    // the JPEG the Ouedkniss CDN ships; layering AVIF on top is free at the
+    // optimizer + bigger LCP/CWV win at the edge.
+    formats: ["image/avif", "image/webp"],
+    // Cache transcoded variants on origin for 30 days. The catalog images
+    // don't change once a product is listed; long minimumCacheTTL means a
+    // cold image-optimizer request only pays the transcode cost once per
+    // (source URL, size, format) tuple per month, dramatically reducing
+    // CPU on origin for the long tail of crawler hits.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   // Legacy favicon and apple-touch-icon URLs that browsers / RSS readers /
   // social-share scrapers (FB, Slack, X, iOS Safari) probe regardless of

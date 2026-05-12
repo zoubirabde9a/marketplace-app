@@ -806,4 +806,14 @@ function ApiErrorBanner({ message }: { message: string }) {
   );
 }
 
-export const dynamic = "force-dynamic";
+// /search reads only URL search params — no cookies, no per-user state — so
+// the page is safe to ISR-cache per URL combination. Previously force-dynamic,
+// which made every Googlebot / Bingbot hit on the high-value slice landings
+// (?category=, ?brand=, ?sellerId=, ?q=) pay full SSR on origin even though
+// the rendered output is identical for every anonymous visitor with the same
+// URL. With revalidate=60 the page is cached at Next's render layer for 60s
+// per param combination; the anonymous-cache middleware (s-maxage=300 + 30min
+// swr) then sits on top so the bulk of crawler traffic is served from
+// Cloudflare's edge in MENA. Cookie-bearing requests bypass the edge cache
+// via the existing Vary: Cookie / middleware gate.
+export const revalidate = 60;
