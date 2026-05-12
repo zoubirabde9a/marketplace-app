@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getCart } from "@/lib/cart";
-import { formatPrice } from "@/lib/format";
-import { adjustQtyAction, goToCheckoutAction, removeLineAction, updateQtyAction } from "./actions";
+import { cleanProductTitle, formatPrice } from "@/lib/format";
+import { adjustQtyAction, removeLineAction, updateQtyAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,7 @@ export default async function CartPage() {
                       href={`/product/${encodeURIComponent(l.productId)}`}
                       className="text-sm font-medium text-ink hover:text-accent line-clamp-2 untrusted"
                     >
-                      {l.title ?? l.sku ?? l.variantId}
+                      {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
                     </Link>
                   ) : (
                     <span className="text-sm font-medium text-ink-soft">{l.sku ?? l.variantId}</span>
@@ -142,14 +142,13 @@ export default async function CartPage() {
               <span>Total</span>
               <span>{formatPrice(cart!.totals.totalMinor, cart!.currency)}</span>
             </div>
-            <form action={goToCheckoutAction}>
-              <button
-                type="submit"
-                className="mt-6 w-full h-11 rounded-md bg-accent text-bg text-sm font-semibold hover:brightness-110 transition"
-              >
-                Checkout
-              </button>
-            </form>
+            <Link
+              href="/checkout"
+              prefetch
+              className="mt-6 w-full h-11 inline-flex items-center justify-center rounded-md bg-accent text-bg text-sm font-semibold hover:brightness-110 transition"
+            >
+              Checkout
+            </Link>
             <Link
               href="/search"
               className="mt-3 block text-center text-xs text-ink-mute hover:text-ink-soft transition"

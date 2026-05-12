@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { removeCartLine, updateCartQty } from "@/lib/cart";
 
 const MAX_QTY = 99;
@@ -38,6 +37,3 @@ export async function removeLineAction(formData: FormData): Promise<void> {
   revalidatePath("/cart");
 }
 
-export async function goToCheckoutAction(): Promise<void> {
-  redirect("/checkout");
-}

@@ -51,7 +51,12 @@ export interface ProductReader {
 
 const SearchQueryParamsSchema = z.object({
   q: z.string().max(500).optional(),
+  // Accept both `category` (web/sitemap canonical) and `categoryId` (matches
+  // the field name in product responses, so agents reading a result back and
+  // re-querying by `categoryIds[0]` "just work" instead of getting silent
+  // empty filters). Either or both can be present; values are merged.
   category: z.union([z.string(), z.array(z.string())]).optional().transform((v) => (v === undefined ? undefined : Array.isArray(v) ? v : [v])),
+  categoryId: z.union([z.string(), z.array(z.string())]).optional().transform((v) => (v === undefined ? undefined : Array.isArray(v) ? v : [v])),
   brand: z.string().optional(),
   sellerId: z.union([z.string(), z.array(z.string())]).optional().transform((v) => (v === undefined ? undefined : Array.isArray(v) ? v : [v])),
   priceMin: z.coerce.bigint().optional(),
@@ -310,7 +315,9 @@ export async function registerProductRoutes(
     const query: catalog.SearchQuery & { fuzzy?: boolean } = {
       query: params.q ?? "",
       filters: {
-        ...(params.category ? { categoryIds: params.category } : {}),
+        ...((params.category || params.categoryId)
+          ? { categoryIds: [...(params.category ?? []), ...(params.categoryId ?? [])] }
+          : {}),
         ...(params.sellerId ? { sellerIds: params.sellerId } : {}),
         ...(params.brand ? { brand: params.brand } : {}),
         ...(attributes ? { attributes } : {}),

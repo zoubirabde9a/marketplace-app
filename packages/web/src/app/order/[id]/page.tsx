@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getOrder } from "@/lib/cart";
-import { formatPrice } from "@/lib/format";
+import { cleanProductTitle, formatPrice } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,14 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const order = await getOrder(id).catch(() => null);
   if (!order) notFound();
 
+  // Match checkout-page wording: multi-seller orders produce one COD call per
+  // seller, so the buyer needs to expect more than one phone call.
+  const sellerCount = new Set(order.lines.map((l) => l.sellerId)).size;
+  const codBlurb =
+    sellerCount > 1
+      ? `Each of the ${sellerCount} sellers in this order will call you separately to confirm before shipping their items.`
+      : "The seller will call to confirm before shipping.";
+
   return (
     <section className="pt-10 pb-24 max-w-3xl mx-auto">
       <div className="rounded-2xl border border-ok/40 bg-ok/5 p-6">
@@ -24,8 +32,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           #{order.publicNumber}
         </h1>
         <p className="mt-2 text-sm text-ink-soft">
-          The seller will call to confirm before shipping. Keep this page open or
-          take a screenshot — your order number is{" "}
+          {codBlurb} Keep this page open or take a screenshot — your order number is{" "}
           <span className="font-mono">{order.publicNumber}</span>.
         </p>
       </div>
@@ -58,7 +65,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               <div className="min-w-0">
                 {l.productId ? (
                   <Link href={`/product/${encodeURIComponent(l.productId)}`} className="text-sm text-ink hover:text-accent untrusted">
-                    {l.title ?? l.sku ?? l.variantId}
+                    {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
                   </Link>
                 ) : (
                   <span className="text-sm text-ink-soft">{l.sku ?? l.variantId}</span>

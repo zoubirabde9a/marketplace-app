@@ -25,6 +25,53 @@ import {
   type McpContext,
 } from "@marketplace/mcp-server";
 
+// Pure classifier for the global error handler. Extracted from setErrorHandler
+// so unit tests can exercise the branches without booting Fastify.
+//   - `marketplace` → MarketplaceError instances expose their own status+problem
+//   - `zod` → Zod validation errors become 400 ValidationError
+//   - `fastify` → Fastify-native errors (e.g. FST_ERR_CTP_INVALID_CONTENT_LENGTH)
+//                 carry their own 4xx statusCode; we preserve it instead of
+//                 collapsing every malformed-body case into a 500 outage signal
+//   - `internal` → everything else; logged + 500 problem+json
+export type ErrorClassification =
+  | { kind: "marketplace" | "zod" | "fastify" | "internal"; status: number; body: Record<string, unknown> };
+
+export function classifyError(err: unknown, instance: string): ErrorClassification {
+  if (err instanceof MarketplaceError) {
+    return { kind: "marketplace", status: err.status, body: err.toProblem(instance) as Record<string, unknown> };
+  }
+  const maybeZod = err as { name?: string; issues?: Array<{ path: Array<string | number>; message: string }> };
+  if (maybeZod?.name === "ZodError" && Array.isArray(maybeZod.issues)) {
+    const ve = new ValidationError(
+      maybeZod.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+    );
+    return { kind: "zod", status: ve.status, body: ve.toProblem(instance) as Record<string, unknown> };
+  }
+  const fastifyStatus = (err as { statusCode?: number }).statusCode;
+  if (typeof fastifyStatus === "number" && fastifyStatus >= 400 && fastifyStatus < 500) {
+    return {
+      kind: "fastify",
+      status: fastifyStatus,
+      body: {
+        type: `https://marketplace.dev/errors/${(err as { code?: string }).code ?? "bad-request"}`,
+        title: (err as { message?: string }).message || "Bad Request",
+        status: fastifyStatus,
+        instance,
+      },
+    };
+  }
+  return {
+    kind: "internal",
+    status: 500,
+    body: {
+      type: "https://marketplace.dev/errors/internal",
+      title: "Internal Server Error",
+      status: 500,
+      instance,
+    },
+  };
+}
+
 export interface BuildOptions {
   authDeps: AuthDeps;
   productReader: ProductReader;
@@ -58,34 +105,11 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
   });
 
   app.setErrorHandler((err, req, reply) => {
-    if (err instanceof MarketplaceError) {
-      void reply
-        .code(err.status)
-        .header("content-type", "application/problem+json")
-        .send(err.toProblem(req.url));
-      return;
+    const c = classifyError(err, req.url);
+    if (c.kind === "internal") {
+      req.log.error({ err }, "unhandled_error");
     }
-    const maybeZod = err as { name?: string; issues?: Array<{ path: Array<string | number>; message: string }> };
-    if (maybeZod?.name === "ZodError" && Array.isArray(maybeZod.issues)) {
-      const ve = new ValidationError(
-        maybeZod.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-      );
-      void reply
-        .code(ve.status)
-        .header("content-type", "application/problem+json")
-        .send(ve.toProblem(req.url));
-      return;
-    }
-    req.log.error({ err }, "unhandled_error");
-    void reply
-      .code(500)
-      .header("content-type", "application/problem+json")
-      .send({
-        type: "https://marketplace.dev/errors/internal",
-        title: "Internal Server Error",
-        status: 500,
-        instance: req.url,
-      });
+    void reply.code(c.status).header("content-type", "application/problem+json").send(c.body);
   });
 
   await app.register(import("@fastify/sensible"));

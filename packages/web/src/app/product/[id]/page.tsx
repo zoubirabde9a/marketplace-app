@@ -4,7 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProduct, type SearchHit } from "@/lib/api";
 import { searchProductsCached } from "@/lib/searchCache";
-import { formatPrice, formatPriceRange, formatRelativeTime } from "@/lib/format";
+import { cleanProductTitle, formatPrice, formatPriceRange, formatRelativeTime } from "@/lib/format";
 import { Gallery } from "@/components/Gallery";
 import { CounterfeitBadge } from "@/components/CounterfeitBadge";
 import { ShareButton } from "@/components/ShareButton";
@@ -114,7 +114,11 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { id } = await params;
   const p = await getProduct(id).catch(() => null);
   if (!p) notFound();
+  // Visible UI (H1, breadcrumb, gallery alt) gets the de-duplicated title;
+  // SEO surfaces (JSON-LD name, OG, <title>) keep the raw `fullTitle` so we
+  // don't quietly diverge from what Google has indexed.
   const fullTitle = p.title.value;
+  const displayTitle = cleanProductTitle(fullTitle);
   // Sellers routinely paste 100+ char titles full of spec strings:
   // "SAMSUNG GALAXY TAB A11 4G LTE - 4GB - 64GB - 8.7" LED WXGA - WI-FI - BLUETOOTH - 8 MPXL - 5100MAH - GRIS SM-X135G"
   // Google truncates SERP titles at ~55-65 chars; everything past the
@@ -299,6 +303,10 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     throw err;
   });
   if (!p) notFound();
+  // Visible UI uses the de-duplicated title; SEO surfaces (JSON-LD `name`,
+  // OG image, breadcrumb structured data) keep `p.title.value` so we don't
+  // diverge from what Google has indexed.
+  const displayTitle = cleanProductTitle(p.title.value);
 
   // Pull a small grid of related listings from the same seller for crawl-path
   // density and human discovery. With ~5,000 products and Googlebot's crawl
@@ -606,13 +614,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
       />
       <Breadcrumbs
-        title={p.title.value}
+        title={displayTitle}
         categorySlug={breadcrumbCategorySlug ?? null}
         categoryLabel={breadcrumbCategoryLabel}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-6">
-        <Gallery images={p.images} alt={p.title.value} brand={p.brand} />
+        <Gallery images={p.images} alt={displayTitle} brand={p.brand} />
 
         <div className="space-y-6">
           <div>
@@ -637,7 +645,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               )}
               <CounterfeitBadge risk={p.counterfeitRisk} />
             </div>
-            <h1 dir="auto" className="text-3xl font-semibold tracking-tight leading-tight untrusted">{p.title.value}</h1>
+            <h1 dir="auto" className="text-3xl font-semibold tracking-tight leading-tight untrusted">{displayTitle}</h1>
             <div className="mt-3 text-sm text-ink-soft">
               Vendu par{" "}
               <Link
@@ -764,9 +772,20 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             // variants table below.
             const target = inStockVariants[0] ?? variants[0];
             if (!target) return null;
+            const inStock = inStockVariants.length > 0;
             return (
-              <div>
-                <AddToCart variantId={target.id} inStock={inStockVariants.length > 0} />
+              // Primary action: Add to cart (lands on /cart for multi-item
+              // shoppers). Secondary: Buy now goes straight to /checkout,
+              // skipping the cart page for the common one-product COD path.
+              <div className="flex flex-wrap items-center gap-2">
+                <AddToCart variantId={target.id} inStock={inStock} />
+                <AddToCart
+                  variantId={target.id}
+                  inStock={inStock}
+                  label="Buy now"
+                  redirectTo="/checkout"
+                  className="[&>button]:bg-transparent [&>button]:border [&>button]:border-accent/60 [&>button]:text-accent [&>button]:hover:bg-accent/10 [&>button]:hover:brightness-100"
+                />
               </div>
             );
           })()}

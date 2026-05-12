@@ -79,6 +79,11 @@ export function passes(p: StoredProduct, ctx: FilterContext, skip?: FacetDim): b
   });
   if (inRange.length === 0) return false;
   if (!f.includeOutOfStock && !inRange.some((v) => v.inStock)) return false;
+  // Hide listings with no real price set (priceMinor=0 across every viable
+  // variant). The scraper occasionally yields these when Ouedkniss publishes
+  // an announcement without a price field; surfacing them as "inStock" with
+  // a 0 DZD tag is a UX trap — a buyer taps thinking it's free.
+  if (inRange.every((v) => v.priceMinor === 0n)) return false;
   return true;
 }
 

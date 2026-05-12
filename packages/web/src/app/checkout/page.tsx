@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCart } from "@/lib/cart";
-import { formatPrice } from "@/lib/format";
+import { cleanProductTitle, formatPrice } from "@/lib/format";
 import { ALGERIAN_WILAYAS } from "./wilayas";
-import { placeOrderAction } from "./actions";
+import { placeOrderAction, readSavedBuyerInfo } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,7 @@ export default async function CheckoutPage({
   if (!cart || cart.lines.length === 0) {
     redirect("/cart");
   }
+  const savedBuyer = await readSavedBuyerInfo();
   const params = await searchParams;
   const errCode = params.err;
   const errLabel = !errCode
@@ -29,6 +30,14 @@ export default async function CheckoutPage({
     : errCode === "missing"
       ? "Please fill in your name, phone, and region."
       : "Sorry, something went wrong placing the order. Try again.";
+  // Multi-seller carts produce one COD call per seller — saying "the seller"
+  // in the singular sets the wrong expectation and surprises buyers when the
+  // second call comes in. Count distinct sellers and tweak the copy.
+  const sellerCount = new Set(cart.lines.map((l) => l.sellerId)).size;
+  const codBlurb =
+    sellerCount > 1
+      ? `Cash on delivery. Each of the ${sellerCount} sellers in this order will call you separately to confirm before shipping their items.`
+      : "Cash on delivery. The seller will call to confirm before shipping.";
 
   return (
     <section className="pt-10 pb-24 max-w-3xl mx-auto">
@@ -36,9 +45,7 @@ export default async function CheckoutPage({
         ← Back to cart
       </Link>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">Checkout</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        Cash on delivery. The seller will call to confirm before shipping.
-      </p>
+      <p className="mt-2 text-sm text-ink-soft">{codBlurb}</p>
 
       {errLabel && (
         <div className="mt-6 rounded-md border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">
@@ -59,6 +66,7 @@ export default async function CheckoutPage({
               required
               maxLength={120}
               autoComplete="name"
+              defaultValue={savedBuyer?.name ?? ""}
               className="w-full h-11 px-3 rounded-md border border-line bg-bg-elev text-sm"
             />
           </div>
@@ -75,6 +83,7 @@ export default async function CheckoutPage({
               maxLength={32}
               autoComplete="tel"
               placeholder="0555 12 34 56"
+              defaultValue={savedBuyer?.phone ?? ""}
               className="w-full h-11 px-3 rounded-md border border-line bg-bg-elev text-sm font-mono"
             />
           </div>
@@ -86,7 +95,7 @@ export default async function CheckoutPage({
               id="region"
               name="region"
               required
-              defaultValue=""
+              defaultValue={savedBuyer?.region && ALGERIAN_WILAYAS.includes(savedBuyer.region) ? savedBuyer.region : ""}
               className="w-full h-11 px-3 rounded-md border border-line bg-bg-elev text-sm"
             >
               <option value="" disabled>
@@ -114,7 +123,7 @@ export default async function CheckoutPage({
             {cart.lines.map((l) => (
               <li key={l.variantId} className="flex justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="truncate untrusted">{l.title ?? l.sku ?? l.variantId}</div>
+                  <div className="truncate untrusted">{l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}</div>
                   <div className="text-xs text-ink-mute">× {l.qty}</div>
                 </div>
                 <div className="shrink-0 text-right">

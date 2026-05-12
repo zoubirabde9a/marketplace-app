@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { SearchHit } from "@/lib/api";
-import { formatPrice, formatPriceRange, formatRating, formatRelativeTime } from "@/lib/format";
+import { cleanProductTitle, formatPrice, formatPriceRange, formatRating, formatRelativeTime } from "@/lib/format";
 import { CounterfeitBadge } from "./CounterfeitBadge";
 
 // `eager` controls loading=eager (image starts fetching immediately instead
@@ -26,6 +26,7 @@ export function ProductCard({
   const priceLabel = hit.priceMinor
     ? formatPrice(hit.priceMinor, hit.currency)
     : formatPriceRange(hit.priceFromMinor ?? null, hit.priceToMinor ?? null, hit.currency);
+  const displayTitle = cleanProductTitle(hit.title.value);
 
   return (
     <Link
@@ -37,7 +38,7 @@ export function ProductCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={hit.heroImageUrl}
-            alt={hit.heroImage?.altText ?? hit.title.value}
+            alt={hit.heroImage?.altText ?? displayTitle}
             // Width/height honour the parent's 4:3 aspect-ratio so the
             // browser reserves layout space before the image loads.
             // Without these, every card forces a reflow when its hero
@@ -61,7 +62,7 @@ export function ProductCard({
                 supplied an image — beats a wall of identical placeholder
                 icons for customers browsing the grid. */}
             <span className="text-3xl font-semibold tracking-tight text-ink-mute select-none">
-              {(hit.brand ?? hit.title.value).trim().charAt(0).toUpperCase() || "·"}
+              {(hit.brand ?? displayTitle).trim().charAt(0).toUpperCase() || "·"}
             </span>
           </div>
         )}
@@ -83,7 +84,7 @@ export function ProductCard({
             (footer chip blocks + every product card) which buried the
             page's actual H1 ("Telephones · Teno Store") in the noise. */}
         <h3 dir="auto" className="text-sm font-medium text-ink line-clamp-2 leading-snug untrusted">
-          {hit.title.value}
+          {displayTitle}
         </h3>
         {(() => {
           const posted = formatRelativeTime(hit.postedAt ?? null);

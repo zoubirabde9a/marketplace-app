@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cleanProductTitle,
   formatPrice,
   formatPriceRange,
   formatRating,
@@ -106,5 +107,36 @@ describe("formatRating", () => {
   it("renders rating with one decimal and optional count", () => {
     expect(formatRating(4)).toBe("4.0 ★");
     expect(formatRating(4.567, 1234)).toBe("4.6 ★ (1,234)");
+  });
+});
+
+describe("cleanProductTitle", () => {
+  it("drops a duplicated leading word", () => {
+    expect(cleanProductTitle("Samsung Samsung a31")).toBe("Samsung a31");
+    expect(cleanProductTitle("Iphone11 Iphone11")).toBe("Iphone11");
+    expect(cleanProductTitle("Karakou Karakou")).toBe("Karakou");
+  });
+
+  it("is case-insensitive", () => {
+    expect(cleanProductTitle("Samsung samsung galaxy")).toBe("samsung galaxy");
+    expect(cleanProductTitle("KARAKOU karakou")).toBe("karakou");
+  });
+
+  it("leaves legitimate titles untouched", () => {
+    expect(cleanProductTitle("Samsung Galaxy S22")).toBe("Samsung Galaxy S22");
+    expect(cleanProductTitle("iPhone 13 Pro Max")).toBe("iPhone 13 Pro Max");
+    expect(cleanProductTitle("Robe traditionnelle Karakou brodée main")).toBe(
+      "Robe traditionnelle Karakou brodée main",
+    );
+  });
+
+  it("handles single-word, empty, and whitespace inputs without throwing", () => {
+    expect(cleanProductTitle("")).toBe("");
+    expect(cleanProductTitle("   ")).toBe("");
+    expect(cleanProductTitle("Samsung")).toBe("Samsung");
+  });
+
+  it("collapses leading whitespace after the trim", () => {
+    expect(cleanProductTitle("  Samsung Samsung a31")).toBe("Samsung a31");
   });
 });

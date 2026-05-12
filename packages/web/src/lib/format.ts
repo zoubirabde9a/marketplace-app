@@ -68,3 +68,23 @@ export function formatRelativeTime(iso: string | null | undefined, now: Date = n
   const yr = Math.floor(day / 365);
   return yr === 1 ? "1 year ago" : `${yr} years ago`;
 }
+
+// Scraped product titles from Ouedkniss often duplicate the leading word
+// ("Samsung Samsung a31", "Iphone11 Iphone11", "Karakou Karakou", "Samsong
+// Galaxy Samsong"). Source quirk — the scraper sometimes concatenates a
+// brand-style prefix with a title that already starts with that brand. We
+// can't fix it server-side without rewriting stored data, so trim it at the
+// display layer.
+//
+// Only trims when the first two whitespace-separated words are identical
+// case-insensitively. Single-word titles or "Samsung Plus" stay untouched.
+export function cleanProductTitle(title: string): string {
+  const trimmed = title.trim();
+  if (trimmed.length === 0) return trimmed;
+  const m = trimmed.match(/^(\S+)\s+(\S+)(\s+|$)/);
+  if (!m) return trimmed;
+  if (m[1]!.toLowerCase() === m[2]!.toLowerCase()) {
+    return trimmed.slice(m[1]!.length + 1).trimStart();
+  }
+  return trimmed;
+}
