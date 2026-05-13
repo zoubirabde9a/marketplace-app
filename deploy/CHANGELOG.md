@@ -6,6 +6,19 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-13 — vps-eu · api+web rebuild · seller dashboard discoverability + plain copy
+
+- Closes the recurring "how do I see my stores from /dashboard?" gap: the signed-in /dashboard now renders a "Your stores" card (manage / add product / view public store) above the agent-activity feed, and the global header gains a direct "Ma boutique" link for signed-in users.
+- /seller/dashboard rewrite for non-technical sellers: glance metrics row (products / orders / total revenue), product thumbnails, prices in the product list, WhatsApp click-to-chat on every order, helpful empty-state copy with an inline "Ajouter" CTA, and a "Voir la boutique" link to the public store. No more raw sellerId / productId UUID clutter anywhere.
+- /seller/products/new simplified: SKU is now optional with client-side auto-generation, the currency field is hidden (always DZD), the category free-text field is replaced by a French-labeled dropdown of curated top-level slugs, the misleading subtitle is gone, and post-create the user is returned to the seller dashboard so the new product appears in context.
+- Honest labeling: /seller/products/[id]/edit renamed to "Détails du produit" with the read-only warning surfaced at the top, and the dashboard's per-product "Modifier" button is now "Détails".
+- /seller landing bullets rewritten to plain seller benefits — removed the false stock-edit promise and the developer-acronym soup (MCP / A2A / HTTP).
+- CreateSellerForm: "Nom de la boutique" instead of "Nom d'affichage", DZ-flavored placeholder ("ex. Téléphonie El Djazair"), button reads "Créer ma boutique".
+- Verified locally: `pnpm typecheck` and `pnpm test --filter=@marketplace/web` both green (161/161). Seller landing test updated to match the new bullet copy.
+- Deploy: tar+ssh full working tree, `docker compose -f docker-compose.prod.yml build api web` + `up -d api web caddy`. Bundled with the SEO/catalog work that had accumulated in the tree (commit `cf9a6fc`: blog OG card, /blog RSS feed, /c root redirect, "Référence" badge on scraped cards, max-image-preview robots meta, new recently_added sort).
+
+---
+
 ## 2026-05-13 — vps-eu · web rebuild · dedicated /blog index OG card
 
 - New `packages/web/src/app/blog/opengraph-image.tsx`: 1200×630 PNG (~108 KB) for the /blog index. Previously the route inherited the layout default (180×180 apple-icon), which Twitter's `summary_large_image` and Facebook's preview both rendered undersized. Now `og:image` resolves to `/blog/opengraph-image` and shares of the blog index get a full-size branded card with title + tagline + post count.
