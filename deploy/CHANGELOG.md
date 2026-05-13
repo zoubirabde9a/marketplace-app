@@ -60,6 +60,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-13 — vps-eu · deployed seller image-upload flow + media volume bind-mount
+
+- Created `/var/lib/marketplace/media` (uid 1000:1000) for the new bind mount.
+- Rebuilt `marketplace-api:local` + `marketplace-web:local` from commit d8b8f31, recreated api/web containers. api healthcheck passing within 35s.
+- Smoke-checked the new endpoints: `POST /v1/media` returns 401 unauthenticated (expected), `GET /v1/media/<missing>` returns 404 (handler live), container reads/writes `/data/media` mounted from the host.
+- See the long entry below for the full code change set.
+
+---
+
 ## 2026-05-13 — seller dashboard: end-to-end image flow + editable products
 
 - **Bug report**: operator created a product via /seller/products/new and couldn't find it on the dashboard. Investigation: product existed in DB (id `019e20df…`, title "pr") but with zero `catalog.media` rows; the catalog filter (`packages/api/src/catalog/filter.ts:58`) hid it from every browse surface including the seller's own dashboard.
