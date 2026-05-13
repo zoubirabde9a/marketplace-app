@@ -6,6 +6,91 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-13 — vps-eu · api + web rebuild · migrate sidecar, media-less filter, contact-emoji strip, run-loop tripwire
+
+- `docker-compose.prod.yml`: new `api-migrate` one-shot service runs `node packages/db/dist/migrate.js` against postgres and exits; `api` depends on it with `service_completed_successfully` so any migration shipped inside the api image is applied before the api starts serving. Closes the failure mode that froze the catalog for ~30h on 2026-05-12.
+- `packages/api/src/catalog/filter.ts`: `passes()` now returns false for products with no media, so home/search/category surfaces stop rendering empty-card placeholders. `GET /v1/products/:id` still serves the record. Test fixtures updated to seed a default media entry.
+- `packages/web/src/app/product/[id]/page.tsx`: `stripMaskedContactLines()` removes lines that are just a contact emoji (📞/📧/☎) with separators — Ouedkniss masks phone/email in public bodies but leaves the emoji, which used to leak into the rendered body, the `<meta description>`, and the Product JSON-LD description (and from there into SERP snippets).
+- `scraper/run-loop.sh`: post-seed tripwire compares `catalog.products` row count before/after; exits 9 if the seeder claims `seeded>0` but the table didn't grow. Belt-and-suspenders against the 2026-05-12 silent-failure mode.
+- Deploy: tar+ssh sync, `docker compose build api web`, then `up -d api-migrate api web caddy`. Migrate sidecar ran clean (no pending migrations). Verified: `/livez` 200, `/`, `/blog/<slug>` and OG image routes 200.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · Speakable spec on blog posts (voice/AI snippet)
+
+- `packages/web/src/app/blog/[slug]/page.tsx`: added `SpeakableSpecification` to the BlogPosting JSON-LD (cssSelector `["#article-headline", "#article-lead"]`) and matching `id`s on the H1 and a new lead `<p>` rendering the post excerpt. Speakable is schema.org's mechanism for telling Google Assistant / Bing Chat voice / ChatGPT voice / Perplexity audio which spans are safe to read aloud as a 30–60s featured snippet. Same pattern the /about FAQPage already uses.
+- Verified live: `curl /blog/<slug>` shows `SpeakableSpecification` + both ids in the rendered HTML.
+- Deploy: tar+ssh web only, `docker compose build web` + `up -d web`. Api unchanged.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · blog Article rich-result fields + RSS feed
+
+- `packages/web/src/app/blog/[slug]/page.tsx`: added `image` (pointing at the dynamic `/opengraph-image` route from earlier today) and `wordCount` to the BlogPosting JSON-LD — `image` is the missing field that was blocking Google's Article rich-result eligibility. Also extended the OG metadata with `article:author` (→ `/about`), `article:section` (= post category), explicit `twitter:image`, and `siteName`. Verified live: `curl /blog/<slug>` shows `"image":[".../opengraph-image"]`, `"wordCount":1800`, `article:published_time`, `article:author`, `article:section` in the rendered HTML.
+- New: RSS 2.0 feed at `/blog/rss.xml` (200 application/rss+xml, ~3.5 KB, 4 items). Distinct from `/feed.xml` (catalog Atom feed). Auto-discovered from `/blog` via `<link rel="alternate" type="application/rss+xml">`. AI search crawlers (ChatGPT/Perplexity/Claude/Bing Chat) follow RSS for editorial content discovery.
+- Sitemap now lists `/blog/rss.xml` at priority 0.5 so search engines find it without depending on the `<link rel="alternate">` header alone.
+- Pushed 3 URLs to IndexNow (HTTP 200).
+- Deploy: tar+ssh sync, `docker compose -f docker-compose.prod.yml build web` + `up -d web`. Api unchanged.
+
+---
+
+## 2026-05-13 — vps-eu · expanded brand inference: +30 appliance & automotive brands, 133 rows backfilled
+
+- `packages/db/src/seed-from-scraped.ts`: extended `KNOWN_BRANDS` from 35 mostly-phone/laptop entries to 65, adding small-appliance brands (Moulinex, Rowenta, Tefal, Philips, Kenwood, Bosch, Brandt, Beko, Whirlpool, LG, Panasonic, Hisense, Condor, Sonashi, Clatronic, Nardi, Bomann, Magimix, Enzo, SEB, De'Longhi w/ canonical map for "De Longhi"/"DeLonghi" variants) and automotive (Volkswagen, Mercedes-Benz w/ canonical map, Renault, Peugeot, Citroen, Toyota, Hyundai, Nissan, Honda, Dacia, BMW, Audi, Ford, Kia, Opel, Fiat).
+- Why: prior audit showed 110+ products with detectable appliance brand names in the title but `brand = NULL`. Brand-facet filters and brand-keyed SERP rich-cards were skipping them. The original list was scoped to phones/laptops because that's how the catalog started; the scraper now covers electronique_electromenager and automobiles_vehicules where the brand surface is completely different.
+- Backfilled 133 existing rows with a single SQL UPDATE using `~* '\y<brand>\y'` matchers mirroring the JS regex: 34 Moulinex, 20 Tefal, 9 Rowenta, 8 each of Sonashi/Kenwood/Clatronic, 7 each of Philips/LG/Bosch, 6 Enzo, 5 De'Longhi, 3 each of Nardi/Condor, 2 each of SEB/Hisense/Bomann, 1 each of Panasonic/Citroen.
+- Rebuilt `marketplace-api:local`. Next scrape uses the new list; existing rows are already correct.
+
+---
+
+## 2026-05-13 — vps-eu · brand inference: drop substring-match fallback that produced wrong brands
+
+- `packages/db/src/seed-from-scraped.ts`: `inferBrand()` was matching brands with `re.test(lower) || lower.includes(brand.toLowerCase())`. The substring fallback was redundant (the `/i` regex already handles case-insensitive word-boundary matching, including brand names with spaces like "Google Pixel"), and it false-matched on:
+  - "ASUS VIVOBOOK ..." → tagged "Vivo" (substring "vivo" inside "vivobook")
+  - "DATASHOW ACER X1123HP" → tagged "HP" (substring "hp" after "1123")
+  - "MINI HACHOIRE KENWOOD CHP40" → tagged "HP" (substring "hp" inside "chp40")
+  - "HPE OC20 ..." → tagged "HP" (substring "hp" inside "hpe")
+  - "Location Local Oran Bir el djir" → tagged "DJI" (substring "dji" inside "djir")
+  Removed the fallback. Built `marketplace-api:local`. The next scrape uses the corrected inference; existing rows are fixed below.
+- Corrected the 6 mis-branded rows in production: 2 "ASUS VIVOBOOK ..." rows set to `brand = 'Asus'`, 1 "DATASHOW ACER X1123HP" to `'Acer'`, and 3 unbrandable rows (Kenwood, HPE, real-estate listing) set to `NULL`. Samsung "GALAXY BOOK" was a false positive in the audit query — it's correctly resolved to "Samsung" via the existing `Galaxy → Samsung` canonical map.
+
+---
+
+## 2026-05-13 — vps-eu · seeder exit policy: pre-flight rejections are no longer failures
+
+- `packages/db/src/seed-from-scraped.ts`: rewrote the bottom-of-`main()` exit branch. Old logic exited 1 whenever `ok === 0` with any skip/noPhone activity. That conflated pre-flight rejections (listings without phones in no-shop-account categories, listings without title/price on Ouedkniss, already-seeded duplicates — all expected outcomes) with true catch-block exceptions on every insert. `run-loop.sh` saw the exit 1, ran 2 retries, then exited 5 — three full docker-run cycles burned for a "no eligible listings in this batch" outcome that was perfectly normal. Three of every five runs on this six-category rotation were hitting this — `telephones`, `automobiles_vehicules`, `vetements_mode` had zero shop accounts (only `siteBuildGetByStore`-enriched listings carry phones since `OUEDKNISS_JWT` isn't set), so they always all-noPhone'd, retried, and exited 5 every minute.
+- New rule: exit 1 only when `ok === 0 && skipped === items.length && items.length > 0`, i.e. every listing went into the catch-block bucket with zero noPhone/dup activity, which is the actual error signature.
+- Rebuilt `marketplace-api:local`. Verified live: runs at 09:47 (`vetements_mode`, all-noPhone) and 09:49 (`automobiles_vehicules`, all-noPhone) both exited 0 with `seedAttempts=1`. Compare to 09:44 `telephones` (last run with old code): exit 5 after 2 retries. Three categories' worth of false-alarm noise eliminated, ~6 wasted docker-run starts per minute saved.
+
+---
+
+## 2026-05-13 — vps-eu · scraper rejects video URLs as images + cleanup of 14 bad rows
+
+- `packages/db/src/seed-from-scraped.ts`: `pickImages()` now rejects URLs that look like videos (`/videos/` in the path, or `.mp4/.webm/.mov/.m4v/.avi/.mkv` extension). Ouedkniss returns both stills (`/medias/announcements/images/...`) and clips (`/medias/announcements/videos/...`) in the same `item.images` array; the seeder used to accept both and stamp them `image/jpeg`. Result: Next.js Image Optimizer returned 400 on every video URL it tried to transcode (~24 occurrences per affected product over 10 minutes — one product loads at multiple breakpoints, so one bad URL = many 4xx hits).
+- Rebuilt `marketplace-api:local` so `docker run marketplace-api:local node packages/db/dist/seed-from-scraped.js` (spawned by `run-loop.sh`) picks up the fix on the next iteration. Running `marketplace-api` container left as-is — no serving-code change.
+- Cleaned existing bad rows: `DELETE FROM catalog.media WHERE url ~ '/videos/|\.(mp4|webm|mov|m4v|avi|mkv)(\?|$)'` removed 14 rows across the products that had bad media. Repointed 5 dangling `catalog.products.hero_media_id` references to the first remaining `catalog.media` row for each affected product so those products didn't lose their hero image.
+- Verified live: scrape at 09:36:06Z inserted 35 rows; post-scrape `SELECT COUNT(*)` on the video-URL pattern still returned 0.
+
+---
+
+## 2026-05-13 — vps-eu · api-migrate sidecar + scraper silent-failure tripwire
+
+- `docker-compose.prod.yml`: added a one-shot `api-migrate` service that runs `node packages/db/dist/migrate.js` against Postgres and exits. The `api` service now declares `depends_on: api-migrate: condition: service_completed_successfully`, so future `docker compose up -d api` runs gate the api start on migrations being applied. Sidecar deploy was a no-op restart (compose didn't recreate the running api container because the only diff was `depends_on`, which is a runtime ordering hint rather than a container-config field — the gate becomes effective on the next api image rebuild). Verified: `marketplace-api-migrate` exited 0 with "Migrations complete" (count stayed at 13; nothing new to apply).
+- `/opt/marketplace/scripts/run-loop.sh`: scp'd updated script + `sed -i 's/\r$//'` for CRLF (per the cross-platform deploy gotcha in CLAUDE.md). The new script captures `DB_BEFORE = SELECT COUNT(*) FROM catalog.products` immediately before `run_seed`, captures `DB_AFTER` after the summary line is parsed, and aborts with exit code 9 if `SEEDED > 0` but `DB_AFTER - DB_BEFORE <= 0`. Tripwire for any future silent-rollback bug — would have caught the 2026-05-12 migration outage within 60 seconds rather than 30 hours. Docstring updated for exit code 9. Verified: subsequent scrape at 09:30:24Z completed cleanly (`seeded=21`, no exit 9 fire).
+- Why both at once: the migration outage hid behind two failures simultaneously — (a) the deploy pipeline didn't apply migrations, and (b) the run-loop's metrics line happily reported success on rolled-back inserts. The sidecar prevents (a) for future migrations; the tripwire catches (b) regardless of what causes future silent failures.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · strip masked-contact emoji residue from scraped descriptions
+
+- `packages/web/src/app/product/[id]/page.tsx`: added `stripMaskedContactLines()` next to the existing `stripLeadingArabic()`. Filters out lines whose visible content is only a contact emoji (`📞`, `📧`, `☎`) followed by separators (slashes, dashes, pipes, em-dashes) and whitespace — the artifact Ouedkniss leaves when it masks public phone/email numbers from listing bodies before serving them. Real phone numbers and emails (anything with digits or letters after the emoji) are preserved. Collapses runs of 3+ blank lines to 2 so the cleanup doesn't leave gaping holes.
+- Wired into three description-rendering sites: the visible `<p>` body, the SERP meta-description `cleanedDesc`, and the JSON-LD `Product.description` (`ldRaw`).
+- Why: every scraped Ouedkniss listing rendered residue like `📞 /` and `📧` on its own line — both in the visible description and inside Google's product rich-card description field. Looks broken to buyers, and Google was sometimes pulling the empty `📧` line into the SERP snippet.
+- Verified live on `/product/019e209e-a603-75c3-adc3-c508a98aaa64` (Lenovo ThinkPad X13): grep for `📞`/`📧` residue patterns returned 8 matches before, 0 after.
+- Deploy: scp single file, `docker compose -f docker-compose.prod.yml build web` + `up -d web`. Api unchanged. Affects all ~143 existing scraped products + every future one — no data migration needed.
+
+---
+
 ## 2026-05-13 — vps-eu · web rebuild · 2 more blog posts + dynamic OG cards for /blog and /c
 
 - Blog now has 4 posts (was 2). New: `/blog/acheter-voiture-occasion-algerie-10-verifications` (~1,180 mots, used-car inspection checklist) and `/blog/ordinateur-portable-etudes-algerie-guide-2026` (~1,150 mots, student laptop buyer's guide). Both internally link to relevant `/c/<slug>` pages. Past the 3–5 post threshold where Google starts treating a blog section as a real content surface rather than a token presence.
