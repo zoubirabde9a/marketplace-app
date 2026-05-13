@@ -12,8 +12,9 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getCurrentUser, SELLER_COOKIE } from "@/lib/sellerSession";
-import { getMyActivity } from "@/lib/api";
+import Link from "next/link";
+import { getCurrentUser, SELLER_COOKIE, syntheticAgentId } from "@/lib/sellerSession";
+import { getMyActivity, listMySellers, type SellerRecord } from "@/lib/api";
 import { AgentActivity } from "@/components/AgentActivity";
 
 export const dynamic = "force-dynamic";
@@ -53,5 +54,89 @@ export default async function Dashboard() {
       recentActions: [],
     };
   }
-  return <AgentActivity data={activity} />;
+
+  // Sellers the signed-in user owns. The agent-activity view doesn't surface
+  // these, so a user who created a store on /seller/dashboard had no way to
+  // discover it from the main /dashboard. Best-effort fetch — if it fails
+  // we just hide the section.
+  let sellers: SellerRecord[] = [];
+  try {
+    const r = await listMySellers(me.jwt, syntheticAgentId(me.user.id));
+    sellers = r.data;
+  } catch {
+    sellers = [];
+  }
+
+  return (
+    <>
+      <YourStores sellers={sellers} />
+      <AgentActivity data={activity} />
+    </>
+  );
+}
+
+function YourStores({ sellers }: { sellers: SellerRecord[] }) {
+  return (
+    <section className="pt-10 pb-2 max-w-5xl mx-auto">
+      <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-5">
+        <header className="flex items-baseline justify-between mb-3">
+          <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">
+            Your stores
+          </h2>
+          <Link
+            href="/seller/dashboard"
+            className="text-xs text-ink-soft hover:text-accent transition"
+          >
+            Manage all →
+          </Link>
+        </header>
+        {sellers.length === 0 ? (
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-ink-soft">
+              You don&apos;t have a store yet.
+            </p>
+            <Link
+              href="/seller/dashboard"
+              className="text-sm px-3 py-1.5 rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition shrink-0"
+            >
+              Open a store
+            </Link>
+          </div>
+        ) : (
+          <ul className="divide-y divide-line-soft">
+            {sellers.map((s) => (
+              <li key={s.sellerId} className="py-3 flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-ink truncate font-medium">{s.displayName}</div>
+                  <div className="text-xs text-ink-mute">
+                    {s.productCount} product{s.productCount === 1 ? "" : "s"}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs shrink-0">
+                  <Link
+                    href={`/seller/products/new?sellerId=${encodeURIComponent(s.sellerId)}`}
+                    className="px-2 py-1 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+                  >
+                    Add product
+                  </Link>
+                  <Link
+                    href="/seller/dashboard"
+                    className="px-2 py-1 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+                  >
+                    Manage
+                  </Link>
+                  <Link
+                    href={`/store/${encodeURIComponent(s.sellerId)}`}
+                    className="px-2 py-1 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+                  >
+                    View public
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
 }

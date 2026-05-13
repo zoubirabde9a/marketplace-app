@@ -8,8 +8,10 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   // French chrome to match the rest of the seller surface (dashboard,
-  // products/new, contact) and the buyer money path.
-  title: "Modifier le produit",
+  // products/new, contact) and the buyer money path. The page is currently
+  // read-only; "Détails du produit" is more honest than "Modifier" until the
+  // edit endpoints land.
+  title: "Détails du produit",
   robots: { index: false, follow: false },
 };
 
@@ -62,8 +64,11 @@ export default async function EditProductPage({
       <Link href="/seller/dashboard" className="text-sm text-ink-soft hover:text-ink">
         ← Retour au tableau de bord
       </Link>
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight">Modifier le produit</h1>
-      <p className="mt-2 text-xs text-ink-mute font-mono">{product.productId}</p>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight">Détails du produit</h1>
+
+      <div className="mt-4 rounded-xl border border-warn/30 bg-warn/5 px-4 py-3 text-sm text-ink-soft">
+        <strong className="text-warn">Lecture seule.</strong> La modification n’est pas encore disponible — pour changer un champ, recréez le produit.
+      </div>
 
       <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-6 space-y-4">
         <Field label="Titre" value={product.title.value} />
@@ -128,9 +133,6 @@ export default async function EditProductPage({
         )}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-warn/30 bg-warn/5 p-4 text-sm text-ink-soft">
-        <strong className="text-warn">Lecture seule :</strong> la modification des produits, l’ajout/édition de variantes et la gestion des images ne sont pas encore disponibles. Pour changer un champ, recréez le produit.
-      </div>
     </section>
   );
 }

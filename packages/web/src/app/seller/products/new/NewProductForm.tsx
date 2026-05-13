@@ -2,6 +2,24 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { FR_CATEGORY } from "@/lib/categories";
+
+// A short curated list of seller-facing categories. The full FR_CATEGORY map
+// has nested/duplicate slugs (smartphones vs telephones, voitures vs
+// vehicules) that confuse non-technical sellers; this list keeps the choices
+// few and obvious. Slugs match what /search and the catalog facets emit.
+const SELLER_CATEGORIES: ReadonlyArray<{ slug: string; label: string }> = [
+  { slug: "telephones", label: FR_CATEGORY.telephones },
+  { slug: "informatique", label: FR_CATEGORY.informatique },
+  { slug: "electromenager", label: FR_CATEGORY.electromenager },
+  { slug: "mode", label: FR_CATEGORY.mode },
+  { slug: "maison", label: FR_CATEGORY.maison },
+  { slug: "vehicules", label: FR_CATEGORY.vehicules },
+  { slug: "bebe", label: FR_CATEGORY.bebe },
+  { slug: "sport", label: FR_CATEGORY.sport },
+  { slug: "accessoires", label: FR_CATEGORY.accessoires },
+  { slug: "jeux", label: FR_CATEGORY.jeux },
+];
 
 interface SellerOption {
   sellerId: string;
@@ -29,21 +47,20 @@ export function NewProductForm({
         const brand = String(f.get("brand") ?? "").trim();
         const description = String(f.get("description") ?? "").trim();
         const category = String(f.get("category") ?? "").trim();
-        const sku = String(f.get("sku") ?? "").trim();
+        const skuInput = String(f.get("sku") ?? "").trim();
         const priceMajor = String(f.get("priceMajor") ?? "").trim();
         // DZD is the catalog default — virtually all live listings are in
-        // Algerian dinars. Sellers were defaulting to USD and shipping
-        // mis-priced listings before noticing. Operator can still type any
-        // other ISO code.
-        const currency = String(f.get("currency") ?? "DZD").trim().toUpperCase();
+        // Algerian dinars. The field is hidden in the form to keep it simple;
+        // we just pass DZD through.
+        const currency = "DZD";
 
         if (!title) return setError("Le titre est obligatoire.");
-        if (!sku) return setError("Le SKU est obligatoire.");
+        // SKU is auto-generated when blank so sellers don't have to think
+        // about an inventory code on day one. Built from a slug of the title
+        // plus a short random suffix for uniqueness.
+        const sku = skuInput || autoSku(title);
         if (!/^\d+(\.\d{1,2})?$/.test(priceMajor)) {
           return setError("Le prix doit être un nombre positif avec au plus 2 décimales.");
-        }
-        if (!/^[A-Z]{3}$/.test(currency)) {
-          return setError("La devise doit être un code ISO de 3 lettres (ex. DZD).");
         }
         // Convert price to minor units (e.g. cents) — assumes 2dp currencies.
         // Good enough for the dashboard; JPY-style 0dp currencies aren't yet
@@ -70,8 +87,11 @@ export function NewProductForm({
             setError(j.detail || j.error || `Échec (HTTP ${r.status})`);
             return;
           }
-          const j = (await r.json()) as { ok: true; product: { productId: string } };
-          router.push(`/seller/products/${encodeURIComponent(j.product.productId)}/edit`);
+          // Land back on the dashboard so the seller sees their freshly-created
+          // product in the list. Previously redirected to the edit page, but
+          // that page is currently read-only and felt like a dead-end.
+          router.push("/seller/dashboard");
+          router.refresh();
         });
       }}
       className="grid gap-4"
@@ -106,12 +126,24 @@ export function NewProductForm({
           className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
         />
       </label>
-      <Field label="Catégorie" name="category" placeholder="ex. telephones" />
-      <fieldset className="grid grid-cols-3 gap-3">
-        <legend className="text-sm text-ink-soft mb-1 col-span-3">Variante initiale</legend>
-        <Field label="SKU" name="sku" required maxLength={64} />
-        <Field label="Prix" name="priceMajor" required placeholder="29999.00" />
-        <Field label="Devise" name="currency" defaultValue="DZD" maxLength={3} />
+      <label className="text-sm">
+        <span className="block text-ink-soft mb-1">Catégorie</span>
+        <select
+          name="category"
+          defaultValue=""
+          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
+        >
+          <option value="">— Aucune —</option>
+          {SELLER_CATEGORIES.map((c) => (
+            <option key={c.slug} value={c.slug}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <fieldset className="grid grid-cols-2 gap-3">
+        <Field label="Prix (DZD)" name="priceMajor" required placeholder="29999" />
+        <Field label="SKU (optionnel)" name="sku" maxLength={64} placeholder="généré automatiquement" />
       </fieldset>
       {error && (
         <p className="text-sm text-bad" role="alert">
@@ -127,6 +159,18 @@ export function NewProductForm({
       </button>
     </form>
   );
+}
+
+function autoSku(title: string): string {
+  const slug = title
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 32) || "item";
+  const suffix = Math.random().toString(36).slice(2, 7);
+  return `${slug}-${suffix}`;
 }
 
 function Field({

@@ -50,13 +50,7 @@ export default async function DashboardPage() {
   return (
     <section className="pt-10 pb-24 max-w-5xl mx-auto" lang="fr">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Tableau de bord vendeur</h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            Connecté en tant que <span className="text-ink">{session.user.email}</span>
-            {session.user.displayName ? ` (${session.user.displayName})` : ""}.
-          </p>
-        </div>
+        <h1 className="text-3xl font-semibold tracking-tight">Tableau de bord vendeur</h1>
         <LogoutButton />
       </div>
 
@@ -82,7 +76,18 @@ export default async function DashboardPage() {
 }
 
 async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; sessionJwt: string }) {
-  let products: { productId: string; title: string; brand?: string; variantCount?: number; inStock: boolean }[] = [];
+  let products: {
+    productId: string;
+    title: string;
+    brand?: string;
+    variantCount?: number;
+    inStock: boolean;
+    priceMinor?: string;
+    priceFromMinor?: string;
+    priceToMinor?: string;
+    currency?: string;
+    heroImageUrl: string | null;
+  }[] = [];
   let productsError: string | null = null;
   try {
     const r = await listProductsBySeller(seller.sellerId, sessionJwt);
@@ -92,6 +97,11 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
       brand: h.brand,
       variantCount: h.variantCount,
       inStock: h.inStock,
+      priceMinor: h.priceMinor,
+      priceFromMinor: h.priceFromMinor,
+      priceToMinor: h.priceToMinor,
+      currency: h.currency,
+      heroImageUrl: h.heroImageUrl,
     }));
   } catch (e) {
     productsError = (e as Error).message;
@@ -106,15 +116,50 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
     ordersError = (e as Error).message;
   }
 
+  // Glance metrics row: total orders, total revenue across orders, product
+  // count. Revenue is summed across whichever currency is most common in the
+  // order list — virtually always DZD for this marketplace; mixed-currency
+  // sellers just see the dominant currency total.
+  const revenueByCcy = orders.reduce<Record<string, bigint>>((acc, o) => {
+    try {
+      acc[o.currency] = (acc[o.currency] ?? 0n) + BigInt(o.subtotalMinor);
+    } catch {
+      // Skip lines we can't parse rather than failing the whole render.
+    }
+    return acc;
+  }, {});
+  const topCcy = Object.entries(revenueByCcy).sort((a, b) => Number(b[1] - a[1]))[0];
+
   return (
     <div className="rounded-2xl border border-line-soft bg-bg-soft/60">
       <header className="p-6 border-b border-line-soft flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-medium">{seller.displayName}</h2>
-          <p className="mt-1 text-xs text-ink-mute font-mono">{seller.sellerId}</p>
+          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
+            <span>
+              <span className="text-ink font-medium">{products.length}</span> produit{products.length === 1 ? "" : "s"}
+            </span>
+            <span>
+              <span className="text-ink font-medium">{orders.length}</span> commande{orders.length === 1 ? "" : "s"}
+            </span>
+            {topCcy && (
+              <span>
+                Total :{" "}
+                <span className="text-ink font-medium">
+                  {formatPrice(topCcy[1].toString(), topCcy[0])}
+                </span>
+              </span>
+            )}
+          </div>
           <ContactSummary seller={seller} />
         </div>
         <div className="flex flex-col gap-2 items-end">
+          <Link
+            href={`/store/${encodeURIComponent(seller.sellerId)}`}
+            className="text-sm px-3 py-1.5 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+          >
+            Voir la boutique
+          </Link>
           <Link
             href={`/seller/contact?sellerId=${encodeURIComponent(seller.sellerId)}`}
             className="text-sm px-3 py-1.5 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
@@ -136,7 +181,9 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
         {ordersError ? (
           <p className="text-sm text-bad">Impossible de charger les commandes.</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-ink-mute">Aucune commande pour le moment.</p>
+          <p className="text-sm text-ink-mute">
+            Aucune commande pour le moment. Dès qu’un acheteur commande, vous verrez son nom et son téléphone ici.
+          </p>
         ) : (
           <ul className="divide-y divide-line-soft">
             {orders.map((o) => (
@@ -166,14 +213,41 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                       <a href={`tel:${o.customer.phone}`} className="font-mono hover:text-accent">
                         {o.customer.phone}
                       </a>
+                      {/* WhatsApp click-to-chat — most Algerian buyers prefer
+                          WhatsApp over a phone call. Strip non-digits; wa.me
+                          requires international format without the leading +. */}
+                      <a
+                        href={`https://wa.me/${o.customer.phone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-2 text-xs text-ink-mute hover:text-accent"
+                      >
+                        WhatsApp
+                      </a>
                       <span className="text-ink-mute"> · {o.customer.region}</span>
                     </div>
                   )}
-                  <ul className="mt-2 text-xs text-ink-mute space-y-0.5">
+                  <ul className="mt-2 text-xs text-ink-mute space-y-1">
                     {o.lines.map((l) => (
-                      <li key={l.variantId} className="truncate">
-                        × {l.qty}{" "}
-                        <span className="untrusted">{l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}</span>
+                      <li key={l.variantId} className="flex items-center gap-2 min-w-0">
+                        {l.heroImageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={l.heroImageUrl}
+                            alt=""
+                            className="w-8 h-8 rounded object-cover border border-line-soft bg-bg shrink-0"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span
+                            aria-hidden
+                            className="w-8 h-8 rounded border border-line-soft bg-bg-elev shrink-0"
+                          />
+                        )}
+                        <span className="truncate">
+                          × {l.qty}{" "}
+                          <span className="untrusted">{l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}</span>
+                        </span>
                       </li>
                     ))}
                   </ul>
@@ -195,17 +269,53 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
         {productsError ? (
           <p className="text-sm text-bad">Impossible de charger les produits.</p>
         ) : products.length === 0 ? (
-          <p className="text-sm text-ink-mute">Aucun produit pour le moment.</p>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-ink-mute">
+              Aucun produit pour le moment. Ajoutez votre premier produit pour le rendre visible aux acheteurs.
+            </p>
+            <Link
+              href={`/seller/products/new?sellerId=${encodeURIComponent(seller.sellerId)}`}
+              className="text-sm px-3 py-1.5 rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition shrink-0"
+            >
+              Ajouter
+            </Link>
+          </div>
         ) : (
           <ul className="divide-y divide-line-soft">
             {products.map((p) => (
               <li key={p.productId} className="py-3 flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="text-ink truncate">{cleanProductTitle(p.title)}</div>
-                  <div className="text-xs text-ink-mute font-mono">{p.productId}</div>
+                <div className="flex items-center gap-3 min-w-0">
+                  {p.heroImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={p.heroImageUrl}
+                      alt=""
+                      className="w-10 h-10 rounded object-cover border border-line-soft bg-bg shrink-0"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <span
+                      aria-hidden
+                      className="w-10 h-10 rounded border border-line-soft bg-bg-elev shrink-0"
+                    />
+                  )}
+                  <div className="min-w-0">
+                    <div className="text-ink truncate">{cleanProductTitle(p.title)}</div>
+                    {p.brand && (
+                      <div className="text-xs text-ink-mute">{p.brand}</div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-ink-soft">
-                  {p.brand && <span className="text-ink-mute">{p.brand}</span>}
+                  {p.currency && (p.priceMinor || p.priceFromMinor) && (
+                    <span className="text-ink">
+                      {p.priceMinor
+                        ? formatPrice(p.priceMinor, p.currency)
+                        : p.priceToMinor && p.priceToMinor !== p.priceFromMinor
+                        ? `${formatPrice(p.priceFromMinor!, p.currency)} – ${formatPrice(p.priceToMinor, p.currency)}`
+                        : formatPrice(p.priceFromMinor!, p.currency)}
+                    </span>
+                  )}
                   <span
                     className={
                       "px-2 py-0.5 rounded-full border " +
@@ -220,7 +330,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                     href={`/seller/products/${encodeURIComponent(p.productId)}/edit`}
                     className="px-2 py-1 rounded-md border border-line hover:border-accent/40 hover:text-ink transition"
                   >
-                    Modifier
+                    Détails
                   </Link>
                 </div>
               </li>

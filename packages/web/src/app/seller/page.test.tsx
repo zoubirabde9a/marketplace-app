@@ -41,11 +41,13 @@ describe("SellerLandingPage (signed-out)", () => {
     const tree = await SellerLandingPage();
     const { container } = render(tree as React.ReactElement);
     const text = container.textContent ?? "";
-    // Three bullets translated to French in iter-13; assert on substantive
-    // substrings so copy can evolve without breaking the test entirely.
-    expect(text).toMatch(/MCP, A2A/i);
-    expect(text).toMatch(/[Cc]ontrefa/);
+    // Three bullets in plain French — assert on substantive substrings so
+    // copy can evolve without breaking the test entirely. The bullets cover:
+    // (1) audience reach without technical setup, (2) speed of publishing in
+    // dinars, (3) the buyer-contact path that the seller actually uses.
+    expect(text).toMatch(/[Aa]cheteurs alg/);
     expect(text).toMatch(/dinars/i);
+    expect(text).toMatch(/[Tt]éléphone/);
   });
 
   it("redirects signed-in sessions to the dashboard", async () => {

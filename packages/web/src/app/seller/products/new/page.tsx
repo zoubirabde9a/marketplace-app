@@ -54,7 +54,7 @@ export default async function NewProductPage({
       </Link>
       <h1 className="mt-3 text-2xl font-semibold tracking-tight">Nouveau produit</h1>
       <p className="mt-2 text-sm text-ink-soft">
-        Ajoutez une annonce. Vous pouvez définir une variante initiale ; d’autres variantes pourront être ajoutées plus tard depuis la page d’édition du produit.
+        Remplissez le titre et le prix — c’est tout ce qu’il faut pour publier.
       </p>
       <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
         <NewProductForm

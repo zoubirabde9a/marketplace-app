@@ -95,23 +95,22 @@ export default async function SellerLandingPage() {
         <li className="flex items-start gap-3">
           <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
           <span>
-            Atteignez à la fois les acheteurs algériens et les agents IA qui
-            achètent pour le compte d&rsquo;humains — vos annonces sont
-            exposées via MCP, A2A et HTTP.
+            Acheteurs algériens et assistants IA voient vos annonces — sans
+            paramétrage technique de votre côté.
           </span>
         </li>
         <li className="flex items-start gap-3">
           <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
           <span>
-            Signaux anti-contrefaçon visibles sur chaque annonce, aux côtés
-            d&rsquo;autres vendeurs de confiance.
+            Publication en quelques secondes : titre, prix en dinars, c’est
+            tout.
           </span>
         </li>
         <li className="flex items-start gap-3">
           <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
           <span>
-            Prix en dinars algériens (DZD), tarification par variante, stock
-            modifiable à tout moment depuis le tableau de bord.
+            Vous recevez les commandes avec nom, téléphone et région —
+            contactez le client directement.
           </span>
         </li>
       </ul>

@@ -17,7 +17,7 @@ export function CreateSellerForm() {
         const phone = String(data.get("phone") ?? "").trim();
         const countryCode = String(data.get("countryCode") ?? "DZ").trim().toUpperCase();
         if (!displayName) {
-          setError("Le nom d'affichage est requis.");
+          setError("Le nom de la boutique est requis.");
           return;
         }
         if (!phone) {
@@ -42,13 +42,13 @@ export function CreateSellerForm() {
       className="flex flex-col gap-3 max-w-md"
     >
       <label className="text-sm">
-        <span className="block text-ink-soft mb-1">Nom d&apos;affichage</span>
+        <span className="block text-ink-soft mb-1">Nom de la boutique</span>
         <input
           name="displayName"
           required
           maxLength={120}
           className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
-          placeholder="ex. Acme Hardware"
+          placeholder="ex. Téléphonie El Djazair"
         />
       </label>
       <label className="text-sm">
@@ -71,7 +71,7 @@ export function CreateSellerForm() {
         disabled={pending}
         className="self-start inline-flex h-10 px-4 items-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
       >
-        {pending ? "Création…" : "Créer le profil vendeur"}
+        {pending ? "Création…" : "Créer ma boutique"}
       </button>
     </form>
   );

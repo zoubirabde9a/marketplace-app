@@ -22,6 +22,13 @@ export async function HeaderUserMenu() {
   return (
     <div className="flex items-center gap-2">
       <Link
+        href="/seller/dashboard"
+        className="hidden sm:inline-flex px-3 py-1.5 rounded-md text-sm text-ink-soft hover:text-ink hover:bg-bg-elev transition"
+        title="Gérer votre boutique"
+      >
+        Ma boutique
+      </Link>
+      <Link
         href="/dashboard"
         className="text-xs text-ink-soft hidden sm:inline truncate max-w-[20ch] hover:text-ink transition"
         title={me.user.email}

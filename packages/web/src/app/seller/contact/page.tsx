@@ -53,8 +53,7 @@ export default async function ContactPage({
       </Link>
       <h1 className="mt-3 text-2xl font-semibold tracking-tight">Modifier les coordonnées</h1>
       <p className="mt-2 text-sm text-ink-soft">
-        Boutique : <span className="text-ink">{seller.displayName}</span>{" "}
-        <span className="text-ink-mute font-mono text-xs">({seller.sellerId})</span>
+        Boutique : <span className="text-ink">{seller.displayName}</span>
       </p>
       <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
         <ContactForm
@@ -67,7 +66,7 @@ export default async function ContactPage({
         />
       </div>
       <p className="mt-4 text-xs text-ink-mute">
-        Seuls le téléphone, le WhatsApp et le site web sont modifiables ici. Le renom de la boutique et l’e-mail de support ne sont pas encore exposés par l’API.
+        Le nom de la boutique et l’e-mail de support ne sont pas encore modifiables — contactez-nous si vous devez les changer.
       </p>
     </section>
   );
