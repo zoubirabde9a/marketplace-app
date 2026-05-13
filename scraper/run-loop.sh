@@ -72,6 +72,8 @@
 #   5   seed failed all retries (transient)
 #   6   skip-urls refresh failed (transient)
 #   7   another instance is running (lock held)
+#   9   insert mismatch: seeder claims rows landed but DB count did not grow
+#       (silent-failure tripwire — see step 3.5 post-seed sanity check)
 #
 # Env (read once, can be overridden by CLI):
 #   SELLER_ID, CATEGORY, PAGES, PAGE_SIZE, MAX_LISTINGS, MAX_AGE_DAYS,
@@ -440,6 +442,15 @@ if [[ -z "$BEFORE" ]]; then
   log warn "could not measure 'before' total — api unreachable. Continuing seed anyway."
 fi
 
+# Direct DB row count before seed. Belt-and-suspenders against the silent-
+# failure mode where the seeder claims "seeded N" but the rows never land
+# (e.g. unapplied migration on 2026-05-12: `seller_id` was still NOT NULL,
+# every INSERT rolled back, but the run-loop's metrics line showed
+# `seeded=47` for ~30 hours before anyone noticed the catalog had frozen).
+# We compare DB_BEFORE/DB_AFTER and refuse to declare success unless the
+# delta matches what the seeder reported.
+DB_BEFORE="$(docker exec "$PG_CONTAINER" psql -U marketplace -d marketplace -At -c 'SELECT COUNT(*) FROM catalog.products;' 2>/dev/null || echo "")"
+
 run_seed() {
   # Direct-DB seeder via the api image. Bypasses the HTTP auth surface
   # entirely (no DEV_BYPASS, no session JWT, no DPoP) — writes go through
@@ -475,6 +486,23 @@ if [[ -n "$SUMMARY" ]]; then
   SEEDED="$(  echo "$SUMMARY" | sed -nE 's/^seeded ([0-9]+).*/\1/p')"
   SKIPPED="$( echo "$SUMMARY" | sed -nE 's/.*skipped ([0-9]+)\/.*/\1/p')"
   DUPS="$(    echo "$SUMMARY" | sed -nE 's/.*\(([0-9]+) as already-seeded.*/\1/p')"
+fi
+
+# Silent-failure tripwire: if the seeder claims it inserted rows but the
+# direct DB row count didn't grow, the inserts rolled back somewhere
+# downstream (NOT NULL violation, deferred constraint, trigger, etc.). In
+# that case the per-listing "  <uuid> — title" log lines are misleading —
+# the UUIDs were generated in JS, not committed to disk. Fail loud rather
+# than letting another 30-hour catalog freeze hide behind a green metrics
+# line. The check is skipped if DB_BEFORE wasn't measured (postgres was
+# unreachable pre-seed) since we'd have no baseline.
+DB_AFTER="$(docker exec "$PG_CONTAINER" psql -U marketplace -d marketplace -At -c 'SELECT COUNT(*) FROM catalog.products;' 2>/dev/null || echo "")"
+if [[ -n "$DB_BEFORE" && -n "$DB_AFTER" && "$SEEDED" -gt 0 ]]; then
+  DB_DELTA=$(( DB_AFTER - DB_BEFORE ))
+  if (( DB_DELTA <= 0 )); then
+    log error "INSERT MISMATCH: seeder claims seeded=$SEEDED but catalog.products row count did not grow (db_before=$DB_BEFORE db_after=$DB_AFTER). Inserts likely rolled back. See $LOG_FILE."
+    exit 9
+  fi
 fi
 
 # ─── step 3.5: push newly-seeded URLs to IndexNow ─────────────────────────
