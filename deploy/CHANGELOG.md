@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-13 — vps-eu — scraper requires >=1 phone per product, legacy phoneless rows purged
+
+- `packages/db/src/seed-from-scraped.ts`: `collectPhones()` merges per-listing `phoneEntries` with `stores[sellerStoreId].phones`; listings with zero phones are dropped before insert (counted as `noPhone` in the new "NNN dropped for missing phone" tail line). When at least one phone is present it is persisted on the product as `attributes.sourcePhones` (comma-joined).
+  - Why: operator directive — products without a reachable phone number are unusable to buyers and must not appear on the site.
+- Rebuilt `marketplace-api:local` and recreated the api container so the new seeder ships inside the image the run-loop invokes.
+- Purged scraper-source products from production Postgres in two passes: `DELETE` on `catalog.products` WHERE `attributes->>'source' = 'ouedkniss-public-listing'` AND NOT EXISTS(order_items ref) plus `cart.cart_items` cleanup. Removed 49,255 + 307 rows. 5 rows referenced by `order.order_items` were preserved (historical purchase integrity).
+- Verified new seeder live: `run-2026-05-13T08-20-02Z.log` shows `seeded 0 products, skipped 50/50 (0 as already-seeded duplicates, 46 dropped for missing phone)` — current `automobiles_vehicules` category yields 0 shop stores and `OUEDKNISS_JWT` is unset, so every individual-seller listing is correctly dropped.
+- Follow-up: set `OUEDKNISS_JWT` in `/opt/marketplace/.env` so the scraper can reveal per-listing phones; otherwise the only categories that refill the catalog are those dominated by Ouedkniss shop accounts (`siteBuildGetByStore` is the only anonymous phone source).
+
 ## 2026-05-12 — vps-eu · web rebuild · robots.txt `/seller$` anchor
 
 - Closes anomaly [9]: `Allow: /seller` overlapped `Disallow: /seller/`, which modern crawlers resolve correctly via most-specific match but is ambiguous to older agents.
