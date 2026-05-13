@@ -25,6 +25,13 @@ const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").r
 // the platform; anything under this threshold is treated as "Prix sur demande".
 // Match feed.xml's MIN_REAL_PRICE_MINOR.
 const MIN_REAL_PRICE_MINOR = 10000;
+// Sanity ceiling: ~1B DZD ($7.5M USD). Above this the price is almost
+// certainly off by a 100× factor — Algerian real estate sometimes lists in
+// centimes (1 DZD = 100 centimes) instead of dinars, and the scraper
+// can't disambiguate at parse time. 5 immobilier rows currently sit at
+// values like "13.75 TRILLION santeem" (= $1B USD for a parcel of land).
+// Match feed.xml's MAX_REAL_PRICE_MINOR.
+const MAX_REAL_PRICE_MINOR = 100_000_000_000;
 
 // Min length for the seller-provided description before we trust it as a
 // SERP/JSON-LD/social preview. Below this, fall back to the structured
@@ -119,7 +126,7 @@ function buildProductDescription(args: {
   )[0];
   if (lowest) {
     const n = Number(lowest.priceMinor);
-    if (Number.isFinite(n) && n >= MIN_REAL_PRICE_MINOR) {
+    if (Number.isFinite(n) && n >= MIN_REAL_PRICE_MINOR && n <= MAX_REAL_PRICE_MINOR) {
       parts.push(`${(n / 100).toLocaleString("fr-DZ")} ${lowest.currency}`);
     } else {
       parts.push("Prix sur demande");
@@ -241,7 +248,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // "Prix sur demande") would broadcast "0.00 DZD" to Facebook/Pinterest
   // product cards and tell shopping aggregators the item is free.
   const minorPriceNum = minorVariant ? Number(minorVariant.priceMinor) : NaN;
-  const ogPriceAmount = Number.isFinite(minorPriceNum) && minorPriceNum >= MIN_REAL_PRICE_MINOR
+  const ogPriceAmount = Number.isFinite(minorPriceNum) && minorPriceNum >= MIN_REAL_PRICE_MINOR && minorPriceNum <= MAX_REAL_PRICE_MINOR
     ? (minorPriceNum / 100).toFixed(2)
     : undefined;
   // NOTE: og:type, product:* OG-extension tags are NOT emitted here. Next.js's
@@ -261,6 +268,13 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     description: desc,
     alternates: {
       canonical,
+      // Re-declare hreflang — Next.js replaces layout-level alternates
+      // wholesale on child pages, dropping the fr-DZ / x-default signal
+      // unless restored here.
+      languages: {
+        "fr-DZ": `${SITE_URL}${canonical}`,
+        "x-default": `${SITE_URL}${canonical}`,
+      },
       // Tell AI search crawlers + agent-discovery tools that the same product
       // content is available as JSON via REST. The MCP / A2A surfaces are
       // declared globally in /.well-known/agents.json; this is the per-page
@@ -342,9 +356,26 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   const minPrice = variants[0]?.priceMinor;
   const maxPrice = variants[variants.length - 1]?.priceMinor;
   const currency = variants[0]?.currency ?? "USD";
-  const priceLabel = variants.length > 1
-    ? formatPriceRange(minPrice ?? null, maxPrice ?? null, currency)
-    : formatPrice(minPrice ?? null, currency);
+  // Suppress placeholder prices in the visible price label too — Ouedkniss
+  // sellers commonly post `priceMinor = 100` (= 1 DZD) or `0` as a
+  // negotiate-only convention. The SERP description and JSON-LD Offers
+  // already swap those for "Prix sur demande" / drop the Offer; the visible
+  // H1-area was still rendering "DZD 1", which made the listing look like
+  // an obvious mis-price to buyers. Match the existing `MIN_REAL_PRICE_MINOR`
+  // threshold so the three surfaces stay consistent.
+  //
+  // Ceiling MAX_REAL_PRICE_MINOR is defined at module scope above.
+  const minPriceNum = Number(minPrice ?? "0");
+  const maxPriceNum = Number(maxPrice ?? "0");
+  const allBelowFloor =
+    Number.isFinite(minPriceNum) && Number.isFinite(maxPriceNum) && maxPriceNum < MIN_REAL_PRICE_MINOR;
+  const anyAboveCeiling =
+    Number.isFinite(maxPriceNum) && maxPriceNum > MAX_REAL_PRICE_MINOR;
+  const priceLabel = allBelowFloor || anyAboveCeiling
+    ? "Prix sur demande"
+    : variants.length > 1
+      ? formatPriceRange(minPrice ?? null, maxPrice ?? null, currency)
+      : formatPrice(minPrice ?? null, currency);
 
   // Build schema.org/Product JSON-LD so search engines and AI agents can
   // unambiguously parse this listing without scraping markup.
@@ -393,7 +424,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // description) — just without a price line in the snippet.
   const hasRealPrice = variants.some((v) => {
     const n = Number(v.priceMinor);
-    return Number.isFinite(n) && n >= MIN_REAL_PRICE_MINOR;
+    return Number.isFinite(n) && n >= MIN_REAL_PRICE_MINOR && n <= MAX_REAL_PRICE_MINOR;
   });
   const offers = !hasRealPrice
     ? undefined
@@ -720,6 +751,18 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               } else {
                 if (p.sellerPhone) chips.push({ kind: "tel", phone: p.sellerPhone });
                 if (p.sellerWhatsapp) chips.push({ kind: "wa", phone: p.sellerWhatsapp });
+              }
+              // Unowned scraped listings (sellerId = NULL) have no seller record,
+              // so sellerPhones/sellerPhone/sellerWhatsapp are all empty. The
+              // scraper persists reachable phones on attributes.sourcePhones
+              // (comma-joined), enforced as non-empty at insert time by
+              // collectPhones() in packages/db/src/seed-from-scraped.ts. Surface
+              // those as tel: chips so buyers can reach the original seller.
+              if (chips.length === 0) {
+                const raw = p.attributes?.sourcePhones?.value ?? "";
+                for (const phone of raw.split(",").map((s) => s.trim()).filter(Boolean)) {
+                  chips.push({ kind: "tel", phone });
+                }
               }
               const hasContact =
                 chips.length > 0 ||
