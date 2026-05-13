@@ -89,9 +89,6 @@ export async function CategoryFooter() {
       <summary className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-2 text-xs uppercase tracking-widest text-ink-mute font-semibold cursor-pointer list-none hover:text-ink transition [&::-webkit-details-marker]:hidden">
         <span aria-hidden className="inline-block transition-transform group-open:rotate-90">▸</span>
         Parcourir le catalogue
-        <span className="ml-2 normal-case tracking-normal text-ink-mute font-normal">
-          {categories.length} catégories · {brands.length} marques
-        </span>
       </summary>
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6 pt-1 space-y-5">
         {categories.length > 0 && (
@@ -105,7 +102,7 @@ export async function CategoryFooter() {
                 return (
                   <li key={c.value}>
                     <Link
-                      href={`/search?category=${encodeURIComponent(c.value)}`}
+                      href={`/c/${encodeURIComponent(c.value)}`}
                       className="inline-flex items-center px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition capitalize"
                     >
                       {human}

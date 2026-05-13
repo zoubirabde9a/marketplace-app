@@ -85,7 +85,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
       const availability = hit.inStock
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock";
-      const seller = hit.sellerDisplayName
+      const seller = hit.sellerId && hit.sellerDisplayName
         ? {
             "@type": "Organization",
             name: hit.sellerDisplayName,
@@ -321,7 +321,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           ].map(([label, slug]) => (
             <li key={slug}>
               <Link
-                href={`/search?category=${encodeURIComponent(slug)}`}
+                href={`/c/${encodeURIComponent(slug)}`}
                 className="inline-flex items-center px-3 h-9 rounded-full bg-bg-soft border border-line-soft text-sm text-ink-soft hover:border-accent/40 hover:text-ink transition"
               >
                 {label}

@@ -5,7 +5,7 @@
 // addressed, read-only, and expire 24h after capture.
 
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
 import { getProduct, getSeller } from "@/lib/api";
 
@@ -85,17 +85,10 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
   }
 
   if (!snap) {
-    return (
-      <article className="max-w-3xl mx-auto p-6" lang="en">
-        <h1 className="text-2xl font-semibold mb-2">Snapshot not found</h1>
-        <p className="text-ink-soft mb-4">
-          This isn’t a valid snapshot link. Snapshot tokens look like{" "}
-          <code className="font-mono text-xs">a-zA-Z0-9_-</code> (no hyphens),
-          22 characters long.
-        </p>
-        <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
-      </article>
-    );
+    // notFound() returns HTTP 404 — link checkers, crawlers, and upstream caches
+    // need that signal. The route-scoped not-found.tsx renders the friendly text
+    // ("snapshot tokens look like…") so we don't lose the recipient-facing UX.
+    notFound();
   }
 
   if ("unauthorized" in snap) {
@@ -112,19 +105,10 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
   }
 
   if ("expired" in snap) {
-    return (
-      <article className="max-w-3xl mx-auto p-6" lang="en">
-        <h1 className="text-2xl font-semibold mb-2">Snapshot unavailable</h1>
-        <p className="text-ink-soft mb-4">
-          This snapshot is no longer stored. Snapshots are kept for 24 hours after
-          they’re captured, then deleted. If you arrived here from an agent reply
-          older than a day, ask the agent to re-run the request to get a fresh
-          snapshot. If the link was never valid (e.g. an entity id mistyped into
-          this URL), check the original source.
-        </p>
-        <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
-      </article>
-    );
+    // Next.js RSC doesn't expose HTTP 410 (Gone); 404 via notFound() is the
+    // closest honest signal we have. The route-scoped not-found.tsx renders
+    // the expired-friendly text ("snapshots kept for 24 hours…").
+    notFound();
   }
 
   const created = new Date(snap.createdAt).toISOString();
@@ -175,7 +159,7 @@ function SearchSnapshot({ output, input }: { output: unknown; input: unknown }) 
       rating?: number;
       ratingCount?: number;
       inStock: boolean;
-      sellerId: string;
+      sellerId: string | null;
       counterfeitRisk: "low" | "elevated" | "high";
       relevanceScore: number;
     }>;
@@ -229,7 +213,7 @@ function ProductSnapshot({ output }: { output: unknown }) {
     title?: unknown;
     description?: unknown;
     brand?: string;
-    sellerId: string;
+    sellerId: string | null;
     variants?: Array<{ id: string; sku: string; priceMinor: string; currency: string; inStock: boolean }>;
   };
   return (
@@ -272,7 +256,7 @@ function ProductSnapshot({ output }: { output: unknown }) {
 
 function SellerCreateSnapshot({ output }: { output: unknown }) {
   const s = output as {
-    sellerId: string;
+    sellerId: string | null;
     displayName?: string;
     ownerAgentId?: string;
     phone?: string | null;
@@ -324,11 +308,13 @@ function SellerCreateSnapshot({ output }: { output: unknown }) {
         {s.ownerAgentId ? (<><dt className="text-ink-mute">Owner agent</dt><dd className="font-mono text-xs">{s.ownerAgentId}</dd></>) : null}
         {s.createdAt ? (<><dt className="text-ink-mute">Created</dt><dd>{s.createdAt}</dd></>) : null}
       </dl>
-      <p className="mt-6">
-        <Link className="text-accent hover:underline font-medium" href={`/store/${s.sellerId}`}>
-          View live storefront →
-        </Link>
-      </p>
+      {s.sellerId && (
+        <p className="mt-6">
+          <Link className="text-accent hover:underline font-medium" href={`/store/${s.sellerId}`}>
+            View live storefront →
+          </Link>
+        </p>
+      )}
     </section>
   );
 }
@@ -336,7 +322,7 @@ function SellerCreateSnapshot({ output }: { output: unknown }) {
 function ProductCreateSnapshot({ output }: { output: unknown }) {
   const p = output as {
     productId: string;
-    sellerId: string;
+    sellerId: string | null;
     title?: string;
     description?: string;
     brand?: string;
@@ -396,9 +382,11 @@ function ProductCreateSnapshot({ output }: { output: unknown }) {
         <Link className="text-accent hover:underline font-medium" href={`/product/${p.productId}`}>
           View live product page →
         </Link>
-        <Link className="text-accent hover:underline" href={`/store/${p.sellerId}`}>
-          Go to store
-        </Link>
+        {p.sellerId && (
+          <Link className="text-accent hover:underline" href={`/store/${p.sellerId}`}>
+            Go to store
+          </Link>
+        )}
       </p>
     </section>
   );

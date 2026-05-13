@@ -97,25 +97,25 @@ describe("SnapshotPage", () => {
     expect(container.textContent).toContain("out");
   });
 
-  it("renders the unavailable view when API returns 410 and the id is not a known entity", async () => {
+  it("returns HTTP 404 via notFound() when API returns 410 and the id is not a known entity", async () => {
     // 410 from /v1/snapshots/x, plus 404 from /v1/sellers/x and /v1/products/x
     // (the recogniseEntity probe). The id "x" isn't UUID-shaped so the entity
-    // probes are skipped entirely; we just get the unavailable copy.
+    // probes are skipped; we let Next.js render the route-scoped not-found.tsx
+    // with HTTP 404. The friendly "snapshots kept 24h" copy lives there.
     mockFetch((url) => {
       if (url.includes("/v1/snapshots/")) return new Response("", { status: 410 });
       return new Response("", { status: 404 });
     });
-    const tree = await SnapshotPage({ params: Promise.resolve({ id: "x" }) });
-    const { container } = render(tree);
-    expect(container.textContent).toMatch(/no longer stored|unavailable/i);
-    expect(container.textContent).toMatch(/24 hours/i);
+    await expect(
+      SnapshotPage({ params: Promise.resolve({ id: "x" }) }),
+    ).rejects.toThrow(/NEXT_HTTP_ERROR_FALLBACK;404/);
   });
 
-  it("renders the not-found view when API returns 404", async () => {
+  it("returns HTTP 404 via notFound() when API returns 404", async () => {
     mockFetch(() => new Response("", { status: 404 }));
-    const tree = await SnapshotPage({ params: Promise.resolve({ id: "missing" }) });
-    const { container } = render(tree);
-    expect(container.textContent).toMatch(/not found/i);
+    await expect(
+      SnapshotPage({ params: Promise.resolve({ id: "missing" }) }),
+    ).rejects.toThrow(/NEXT_HTTP_ERROR_FALLBACK;404/);
   });
 
   it("renders the access-denied view when API returns 401", async () => {

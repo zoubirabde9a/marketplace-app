@@ -73,7 +73,7 @@ export default function robots(): MetadataRoute.Robots {
         // the trailing-slash variant below disallows /seller/dashboard etc.
         // Without the `$` the two rules overlapped and crawlers had to
         // fall back to most-specific-match semantics to do the right thing.
-        allow: ["/", "/search", "/product/", "/store/", "/seller$", "/about"],
+        allow: ["/", "/search", "/product/", "/store/", "/seller$", "/about", "/blog", "/c/"],
         // /api/ is internal; /login is the auth ceremony page; /seller/ subpaths
         // (dashboard/contact/products) are auth-required and have no SEO value;
         // /s/ are private snapshot links that are public-token addressed.
@@ -81,7 +81,7 @@ export default function robots(): MetadataRoute.Robots {
       },
       ...[...AI_USER_AGENTS, ...SOCIAL_SHARE_USER_AGENTS].map((ua) => ({
         userAgent: ua,
-        allow: ["/", "/search", "/product/", "/store/", "/seller$", "/about"],
+        allow: ["/", "/search", "/product/", "/store/", "/seller$", "/about", "/blog", "/c/"],
         disallow: ["/api/", "/login", "/seller/", "/s/"],
       })),
     ],

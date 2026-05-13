@@ -347,7 +347,7 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
     if (f.value && f.displayName) sellerDisplayNames[f.value] = f.displayName;
   }
   for (const hit of result.data) {
-    if (hit.sellerDisplayName && !sellerDisplayNames[hit.sellerId]) {
+    if (hit.sellerId && hit.sellerDisplayName && !sellerDisplayNames[hit.sellerId]) {
       sellerDisplayNames[hit.sellerId] = hit.sellerDisplayName;
     }
   }
@@ -402,7 +402,7 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
       const availability = hit.inStock
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock";
-      const seller = hit.sellerDisplayName
+      const seller = hit.sellerId && hit.sellerDisplayName
         ? {
             "@type": "Organization",
             name: hit.sellerDisplayName,
@@ -623,17 +623,25 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
           />
         )
       ) : (
-        <InfiniteResults
-          initialHits={result.data}
-          initialCursor={result.pagination.cursor}
-          baseQuery={(() => {
-            // Drop `cursor` from the inherited params — the client component
-            // appends its own as it walks forward through pages.
-            const q = new URLSearchParams(params.toString());
-            q.delete("cursor");
-            return q.toString();
-          })()}
-        />
+        (() => {
+          // Drop `cursor` from the inherited params — the client component
+          // appends its own as it walks forward through pages. Also used as
+          // a remount key so a new query resets the infinite-scroll state
+          // (useState initializers only run on mount; without the key, a
+          // fresh /search?q=… navigation would keep the previous query's
+          // hits and cursor).
+          const q = new URLSearchParams(params.toString());
+          q.delete("cursor");
+          const baseQuery = q.toString();
+          return (
+            <InfiniteResults
+              key={baseQuery}
+              initialHits={result.data}
+              initialCursor={result.pagination.cursor}
+              baseQuery={baseQuery}
+            />
+          );
+        })()
       )}
     </div>
   );

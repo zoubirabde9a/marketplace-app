@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { upscaleOuedknissForCrawler } from "@/lib/images";
+import { BLOG_POSTS } from "./blog/posts";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
@@ -258,6 +259,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.5,
     },
+    {
+      url: `${SITE_URL}/blog`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    ...BLOG_POSTS.map((p) => ({
+      url: `${SITE_URL}/blog/${p.slug}`,
+      lastModified: new Date(p.dateModified),
+      changeFrequency: "monthly" as const,
+      priority: 0.6,
+    })),
   ];
 
   let productEntries: MetadataRoute.Sitemap = [];
@@ -302,16 +315,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "daily",
       priority: 0.6,
     }));
-    // Category-only landings (`/search?category=telephones`) are now
-    // canonical-self + indexable via search/page.tsx; surface them so Google
-    // sees them as legitimate destinations rather than discovering them by
-    // following links.
-    categoryEntries = categories.map((c) => ({
-      url: `${SITE_URL}/search?category=${encodeURIComponent(c)}`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.7,
-    }));
+    // Category landings: emit BOTH /c/{slug} (editorial landing — prose,
+    // FAQ, sample products) and /search?category={slug} (filterable catalog
+    // tool). Both are canonical-self with distinct content and serve
+    // different intents; Google indexes both without dedupe conflicts.
+    // /c/ gets higher priority because it carries the unique long-form
+    // content Google's quality signals reward.
+    categoryEntries = categories.flatMap((c) => [
+      {
+        url: `${SITE_URL}/c/${encodeURIComponent(c)}`,
+        lastModified: now,
+        changeFrequency: "daily" as const,
+        priority: 0.8,
+      },
+      {
+        url: `${SITE_URL}/search?category=${encodeURIComponent(c)}`,
+        lastModified: now,
+        changeFrequency: "daily" as const,
+        priority: 0.7,
+      },
+    ]);
   } catch (err) {
     // API unreachable — fall back to static-only sitemap. Log so we see it
     // in container logs; this exact catch silently swallowed an error in

@@ -193,6 +193,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav aria-label="Pied de page" className="flex items-center gap-5">
               <Link href="/search" className="hover:text-ink transition">Parcourir</Link>
               <Link href="/seller/products/new" className="hover:text-ink transition">Vendre</Link>
+              <Link href="/blog" className="hover:text-ink transition">Blog</Link>
               <Link href="/about" className="hover:text-ink transition">À propos</Link>
             </nav>
             <span>© {new Date().getFullYear()} Teno Store</span>

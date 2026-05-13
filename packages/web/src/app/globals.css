@@ -46,6 +46,21 @@ body { font-feature-settings: "ss01", "cv11"; }
   background: #6c8cff; opacity: 0.55; margin-right: 8px; vertical-align: middle;
 }
 
+/* Blog post typography — light prose styles scoped to article body. */
+.blog-prose h2 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; color: #e7eaf0; margin-top: 2.5rem; margin-bottom: 0.75rem; letter-spacing: -0.01em; }
+.blog-prose h3 { font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; color: #e7eaf0; margin-top: 1.75rem; margin-bottom: 0.5rem; }
+.blog-prose p { margin-bottom: 1rem; }
+.blog-prose p.lead { font-size: 1.125rem; line-height: 1.75rem; color: #c8cdd9; }
+.blog-prose ul, .blog-prose ol { margin: 0.5rem 0 1.25rem 0; padding-left: 1.5rem; }
+.blog-prose ul { list-style: disc; }
+.blog-prose ol { list-style: decimal; }
+.blog-prose li { margin-bottom: 0.4rem; }
+.blog-prose a { color: #6c8cff; text-decoration: underline; text-underline-offset: 3px; }
+.blog-prose a:hover { color: #94adff; }
+.blog-prose code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.875em; padding: 0.1rem 0.35rem; background: #1d2230; border-radius: 4px; color: #e7eaf0; }
+.blog-prose strong { color: #e7eaf0; font-weight: 600; }
+.blog-prose em { color: #c8cdd9; }
+
 /* Focus ring */
 :where(button, a, input, select, textarea):focus-visible {
   outline: 2px solid #6c8cff;

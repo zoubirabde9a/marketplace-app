@@ -389,7 +389,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           ...(offerAreaServed ? { areaServed: offerAreaServed } : {}),
           ...(variants[0].sku ? { sku: variants[0].sku } : {}),
           url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
-          ...(p.sellerDisplayName
+          ...(p.sellerId && p.sellerDisplayName
             ? {
                 seller: {
                   "@type": "Organization",
@@ -413,7 +413,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           priceValidUntil,
           ...(offerAreaServed ? { areaServed: offerAreaServed } : {}),
           url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
-          ...(p.sellerDisplayName
+          ...(p.sellerId && p.sellerDisplayName
             ? {
                 seller: {
                   "@type": "Organization",
@@ -505,10 +505,15 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     // ('automobiles vehicules').
     productJsonLd.category = humanizeCategorySlug(p.categoryIds[0]);
   }
-  // Promote a single variant's SKU to the Product level so Google can match
-  // this listing to known catalogs even without scanning the Offer.
-  if (variants.length === 1 && variants[0].sku) {
-    productJsonLd.sku = variants[0].sku;
+  // Promote a variant SKU to the Product level so Google can match this
+  // listing to known catalogs even without scanning the Offer. For
+  // multi-variant products we use the cheapest variant's SKU (same one
+  // surfaced in the Offer/AggregateOffer "from" price) — schema.org
+  // accepts a single representative SKU at Product level even when
+  // variants exist, and Google Shopping rich-cards prefer having one.
+  const representativeSku = variants[0]?.sku;
+  if (representativeSku) {
+    productJsonLd.sku = representativeSku;
   }
   if (offers) productJsonLd.offers = offers;
 
@@ -549,7 +554,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
       "@type": "ListItem",
       position: 3,
       name: breadcrumbCategoryLabel,
-      item: `${SITE_URL}/search?category=${encodeURIComponent(breadcrumbCategorySlug)}`,
+      item: `${SITE_URL}/c/${encodeURIComponent(breadcrumbCategorySlug)}`,
     });
   }
   breadcrumbItems.push({
@@ -646,15 +651,23 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               <CounterfeitBadge risk={p.counterfeitRisk} />
             </div>
             <h1 dir="auto" className="text-3xl font-semibold tracking-tight leading-tight untrusted">{displayTitle}</h1>
-            <div className="mt-3 text-sm text-ink-soft">
-              Vendu par{" "}
-              <Link
-                href={`/store/${encodeURIComponent(p.sellerId)}`}
-                className="text-ink hover:text-accent underline-offset-4 hover:underline"
-              >
-                {p.sellerDisplayName?.trim() ? p.sellerDisplayName : "ce vendeur"}
-              </Link>
-            </div>
+            {p.sellerId ? (
+              <div className="mt-3 text-sm text-ink-soft">
+                Vendu par{" "}
+                <Link
+                  href={`/store/${encodeURIComponent(p.sellerId)}`}
+                  className="text-ink hover:text-accent underline-offset-4 hover:underline"
+                >
+                  {p.sellerDisplayName?.trim() ? p.sellerDisplayName : "ce vendeur"}
+                </Link>
+              </div>
+            ) : (
+              // Unowned reference listing (scraper-seeded). No store page to
+              // link to, and the buy-flow is disabled further down the page.
+              <div className="mt-3 text-sm text-ink-mute italic">
+                Annonce de référence — non disponible à l’achat sur Teno Store
+              </div>
+            )}
             {(() => {
               // Algerian local-style display: drop +213 country code, prefix
               // a leading 0 (e.g. +213555000101 → 0555000101). The tel: and
@@ -772,6 +785,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             // (or the cheapest overall, disabled, if nothing is in stock).
             // Buyers who need a specific variant get per-row buttons in the
             // variants table below.
+            //
+            // Unowned reference listings (p.sellerId == null) are excluded —
+            // they live in the catalog as discoverability/SEO data but cannot
+            // be purchased. The cart API would refuse the variant anyway
+            // (see resolveLine → unowned_product); hiding the button here
+            // keeps the UI honest and avoids the user-facing error path.
+            if (!p.sellerId) return null;
             const target = inStockVariants[0] ?? variants[0];
             if (!target) return null;
             const inStock = inStockVariants.length > 0;
@@ -842,7 +862,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                           )}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <AddToCart variantId={v.id} inStock={v.inStock} label="Ajouter" />
+                          {p.sellerId ? (
+                            <AddToCart variantId={v.id} inStock={v.inStock} label="Ajouter" />
+                          ) : (
+                            <span className="text-xs text-ink-mute">—</span>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -880,11 +904,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             </section>
           )}
 
-          <div className="text-xs text-ink-mute pt-4 border-t border-line-soft">
-            <Link href={`/store/${encodeURIComponent(p.sellerId)}`} className="hover:text-accent">
-              Plus d&rsquo;annonces de {p.sellerDisplayName ?? "ce vendeur"} →
-            </Link>
-          </div>
+          {p.sellerId && (
+            <div className="text-xs text-ink-mute pt-4 border-t border-line-soft">
+              <Link href={`/store/${encodeURIComponent(p.sellerId)}`} className="hover:text-accent">
+                Plus d&rsquo;annonces de {p.sellerDisplayName ?? "ce vendeur"} →
+              </Link>
+            </div>
+          )}
         </div>
       </div>
       <Suspense fallback={null}>
@@ -906,7 +932,7 @@ async function RelatedProducts({
   categoryId,
 }: {
   productId: string;
-  sellerId: string;
+  sellerId: string | null;
   sellerDisplayName: string | null;
   categoryId: string | null;
 }) {
@@ -916,7 +942,13 @@ async function RelatedProducts({
     // EVERY product render from that seller. Smart Phone DZ has 4,800+
     // products → 4,800 identical fetches per crawl wave without this
     // cache. iter-29 API overload mitigation.
-    const sellerSlice = await searchProductsCached({ sellerId: [sellerId], limit: 9, sort: "newest" });
+    //
+    // For unowned listings (sellerId == null) we skip the seller slice and
+    // go straight to the category fallback — there's no "seller" to fetch
+    // sibling items from.
+    const sellerSlice = sellerId
+      ? await searchProductsCached({ sellerId: [sellerId], limit: 9, sort: "newest" })
+      : { data: [] as SearchHit[] };
     relatedHits = sellerSlice.data.filter((h) => h.productId !== productId).slice(0, 8);
     if (relatedHits.length < 4 && categoryId) {
       const catSlice = await searchProductsCached({ category: [categoryId], limit: 12, sort: "newest" });
@@ -940,12 +972,14 @@ async function RelatedProducts({
         <h2 id="related-heading" className="text-xl font-semibold tracking-tight">
           {sellerDisplayName ? `Plus d'annonces de ${sellerDisplayName}` : "Plus d'annonces"}
         </h2>
-        <Link
-          href={`/store/${encodeURIComponent(sellerId)}`}
-          className="text-sm text-ink-soft hover:text-ink transition"
-        >
-          Voir tout →
-        </Link>
+        {sellerId && (
+          <Link
+            href={`/store/${encodeURIComponent(sellerId)}`}
+            className="text-sm text-ink-soft hover:text-ink transition"
+          >
+            Voir tout →
+          </Link>
+        )}
       </div>
       <ProductGrid hits={relatedHits} />
     </section>
@@ -970,7 +1004,7 @@ function Breadcrumbs({
         <>
           <span aria-hidden>/</span>
           <Link
-            href={`/search?category=${encodeURIComponent(categorySlug)}`}
+            href={`/c/${encodeURIComponent(categorySlug)}`}
             className="hover:text-ink-soft"
           >
             {categoryLabel}

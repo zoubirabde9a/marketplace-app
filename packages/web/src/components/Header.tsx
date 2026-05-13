@@ -28,6 +28,7 @@ export function Header() {
         </div>
         <nav className="ml-auto flex items-center gap-1 text-sm text-ink-soft shrink-0">
           <Link href="/search" className="hidden sm:inline-flex px-3 py-1.5 rounded-md hover:text-ink hover:bg-bg-elev transition">Parcourir</Link>
+          <Link href="/blog" className="hidden md:inline-flex px-3 py-1.5 rounded-md hover:text-ink hover:bg-bg-elev transition">Blog</Link>
           <Link href="/about" className="hidden md:inline-flex px-3 py-1.5 rounded-md hover:text-ink hover:bg-bg-elev transition">À propos</Link>
           <Link
             href="/seller/products/new"
