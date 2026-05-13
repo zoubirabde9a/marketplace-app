@@ -76,7 +76,12 @@ export interface StoredMedia {
 
 export interface StoredProduct {
   productId: string;
-  sellerId: string;
+  /**
+   * null for unowned reference listings (currently: scraper-seeded items).
+   * Such products surface in search but cannot be added to a cart or
+   * purchased — see resolveLine in repos/cart.ts and the AddToCart UI guard.
+   */
+  sellerId: string | null;
   titleSanitized: string;
   descriptionSanitized?: string;
   brand?: string;

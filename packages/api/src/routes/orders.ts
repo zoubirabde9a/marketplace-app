@@ -110,17 +110,18 @@ export async function registerOrderRoutes(
     // cacheable across users — explicit no-store.
     reply.header("cache-control", "private, no-store");
     const o = await orders.get(req.params.id);
-    if (!o) throw new NotFoundError("order", req.params.id);
-
+    // Existence is not disclosed before auth — otherwise a caller could
+    // enumerate valid order ids by comparing not_found vs access_denied.
+    // Anonymous callers without a matching token always see access_denied.
     const userId = req.userPrincipal?.userId;
     const token = typeof req.headers["x-mp-order-token"] === "string" ? req.headers["x-mp-order-token"] : "";
-    const isOwner = o.ownerKind === "user" && o.ownerId === userId;
-    const tokenOk = token.length > 0 && tokensEqual(token, o.accessToken);
+    const isOwner = !!o && o.ownerKind === "user" && o.ownerId === userId;
+    const tokenOk = !!o && token.length > 0 && tokensEqual(token, o.accessToken);
     if (!isOwner && !tokenOk) {
       throw new UnauthorizedError("order_access_denied");
     }
-    const infos = await enrichFor([o]);
-    return shapeOrder(o, infos);
+    const infos = await enrichFor([o!]);
+    return shapeOrder(o!, infos);
   });
 
   // Seller view: orders that contain at least one of this seller's items.

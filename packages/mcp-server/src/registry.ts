@@ -133,17 +133,22 @@ function hash(v: unknown): string {
 }
 
 function schemaToJsonSchema(schema: ZodType): unknown {
-  // The MCP TS SDK validates tools/list responses and rejects entries without a
-  // valid JSON Schema object. We don't have zod-to-json-schema in deps, so we
-  // emit a permissive object schema that the SDK accepts. The handler still
-  // calls schema.safeParse() so input validation isn't lost.
-  return {
-    type: "object",
-    additionalProperties: true,
-    ...(typeof (schema as unknown as { description?: string })?.description === "string"
-      ? { description: (schema as unknown as { description?: string }).description }
-      : {}),
-  };
+  // Clients use the exposed JSON Schema to decide how to serialise each field —
+  // a permissive `additionalProperties: true` makes them ship arrays/objects as
+  // JSON strings, which the Zod validator then rejects. Emit a real schema so
+  // structured inputs (variants[], media[], phones[], customer{}) come through.
+  try {
+    // `unrepresentable: "any"` keeps the conversion from throwing on Zod
+    // transforms (e.g. `z.union([string,number]).transform(BigInt)` on
+    // priceMinor). Without this, a single transform anywhere in the tree
+    // poisons the whole schema and we fall back to `additionalProperties: true`,
+    // which makes MCP clients ship arrays as JSON strings — the exact failure
+    // mode this function exists to prevent.
+    return z.toJSONSchema(schema, { unrepresentable: "any", io: "input" });
+  } catch (err) {
+    log.warn({ err: (err as Error).message }, "schema_to_jsonschema_fallback");
+    return { type: "object", additionalProperties: true };
+  }
 }
 
 export { z };

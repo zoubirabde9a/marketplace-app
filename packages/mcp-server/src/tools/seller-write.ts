@@ -7,7 +7,7 @@
 // calling principal's agentId.
 
 import { z } from "zod";
-import { NotFoundError, UnauthorizedError } from "@marketplace/shared/errors";
+import { NotFoundError, UnauthorizedError, ValidationError } from "@marketplace/shared/errors";
 import type { catalog } from "@marketplace/domain";
 import type { McpRegistry } from "../registry.js";
 import { captureSnapshot, snapshotWebUrl, webBase } from "./snapshot-helpers.js";
@@ -59,6 +59,13 @@ export interface SellerWriteAdapter {
       createdAt: number;
     }>;
     get(sellerId: string): Promise<{ sellerId: string; ownerAgentId: string } | undefined>;
+    /**
+     * Optional. Case-insensitive existence check for a seller already owned by
+     * `ownerAgentId` with the same `displayName`. When implemented, the
+     * create handler uses it to reject duplicates; when omitted, the check is
+     * skipped and create proceeds (in-memory test adapters don't need it).
+     */
+    findOwnedByName?(ownerAgentId: string, displayName: string): Promise<{ sellerId: string } | undefined>;
   };
   products: {
     create(input: {
@@ -100,11 +107,37 @@ const SellerPhoneInputSchema = z.object({
   position: z.number().int().nonnegative().optional(),
 });
 
+// ISO 3166-1 alpha-2 country codes. Frozen at write time; if a future country
+// is added internationally update this set rather than relaxing validation.
+// Lookup is O(1); the 249-entry list adds ~2KB to the bundle and is fine.
+const ISO_3166_1_ALPHA2 = new Set([
+  "AD","AE","AF","AG","AI","AL","AM","AO","AQ","AR","AS","AT","AU","AW","AX","AZ",
+  "BA","BB","BD","BE","BF","BG","BH","BI","BJ","BL","BM","BN","BO","BQ","BR","BS",
+  "BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN",
+  "CO","CR","CU","CV","CW","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE",
+  "EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","GA","GB","GD","GE","GF",
+  "GG","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM",
+  "HN","HR","HT","HU","ID","IE","IL","IM","IN","IO","IQ","IR","IS","IT","JE","JM",
+  "JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC",
+  "LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","ME","MF","MG","MH","MK",
+  "ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA",
+  "NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG",
+  "PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RS","RU","RW",
+  "SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","SS",
+  "ST","SV","SX","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TL","TM","TN","TO",
+  "TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI",
+  "VN","VU","WF","WS","YE","YT","ZA","ZM","ZW",
+]);
+
 const CreateSellerInput = z
   .object({
     displayName: z.string().min(2).max(120),
     /** Required — ISO 3166-1 alpha-2 country code (e.g. "DZ"). Drives shipping origin + currency hints. */
-    countryCode: z.string().length(2).transform((v) => v.toUpperCase()),
+    countryCode: z
+      .string()
+      .length(2)
+      .transform((v) => v.toUpperCase())
+      .refine((v) => ISO_3166_1_ALPHA2.has(v), { message: "must be an ISO 3166-1 alpha-2 country code" }),
     /**
      * Single-line shop shorthand. For multi-line shops with separate sales / support /
      * after-sales numbers, pass `phones[]` instead. At least one of `phone` or `phones` is required.
@@ -281,6 +314,14 @@ export function registerSellerWriteTools(
               ]
             : [];
 
+      if (deps.sellers.findOwnedByName) {
+        const existing = await deps.sellers.findOwnedByName(ctx.agentId, input.displayName);
+        if (existing) {
+          throw new ValidationError([
+            { path: "displayName", message: `duplicate_store_name: you already own a store named "${input.displayName}" (sellerId=${existing.sellerId})` },
+          ]);
+        }
+      }
       const created = await deps.sellers.create({
         displayName: input.displayName,
         ownerAgentId: ctx.agentId,

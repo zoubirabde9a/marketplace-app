@@ -82,6 +82,12 @@ export async function registerCartRoutes(app: FastifyInstance, carts: CartRepo):
     try {
       resolved = await carts.resolveLine(body.variantId, body.qty);
     } catch (e) {
+      const msg = (e as Error).message;
+      if (msg.startsWith("unowned_product:")) {
+        throw new ValidationError([
+          { path: "variantId", message: "unowned_product:this listing is a catalog reference and is not for sale" },
+        ]);
+      }
       throw new NotFoundError("variant", body.variantId);
     }
     let cart = c;

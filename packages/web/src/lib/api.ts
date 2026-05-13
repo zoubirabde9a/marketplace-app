@@ -22,7 +22,7 @@ export interface SearchHit {
   rating?: number;
   ratingCount?: number;
   inStock: boolean;
-  sellerId: string;
+  sellerId: string | null;
   sellerDisplayName: string | null;
   categoryIds: string[];
   counterfeitRisk: "low" | "elevated" | "high";
@@ -58,7 +58,7 @@ export interface ProductDetail {
   brand?: string;
   attributes: Record<string, Untrusted>;
   variants: Array<{ id: string; sku: string; priceMinor: string; currency: string; inStock: boolean }>;
-  sellerId: string;
+  sellerId: string | null;
   sellerDisplayName: string | null;
   sellerPhone: string | null;
   sellerWhatsapp: string | null;
@@ -204,7 +204,12 @@ export interface SellerPhonePublic {
 export interface SellerRecord {
   sellerId: string;
   displayName: string;
-  ownerAgentId: string;
+  /**
+   * Present only when the caller is authenticated AND owns the seller.
+   * Anonymous and non-owner responses omit it — it's an internal identifier
+   * (e.g. `agt_dev`, `agt_local_operator`) we don't want surfaced publicly.
+   */
+  ownerAgentId?: string;
   productCount: number;
   phone: string | null;
   whatsapp: string | null;

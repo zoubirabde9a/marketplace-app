@@ -110,4 +110,74 @@ describe("McpRegistry", () => {
     expect(events).toContain("denied");
     expect(audit).toBeDefined();
   });
+
+  it("exposes a typed JSON Schema so clients serialize arrays as arrays", () => {
+    // Regression guard for the structured-input bug: when list() returned a
+    // permissive {additionalProperties: true} placeholder, MCP clients shipped
+    // array fields as JSON strings and the Zod validator rejected them. The
+    // schema must describe arrays as type:"array" with an items shape.
+    const r = new McpRegistry();
+    r.register({
+      name: "product.create_listing",
+      description: "",
+      scope: "seller:product:write",
+      auditEvent: "x",
+      idempotent: false,
+      inputSchema: z.object({
+        sellerId: z.string(),
+        variants: z.array(z.object({ sku: z.string() })).min(1),
+        media: z.array(z.object({ url: z.string() })).min(1).max(20),
+      }),
+      outputSchema: z.object({}),
+      handler: async () => ({}),
+    });
+    const [tool] = r.list();
+    const schema = tool!.inputSchema as {
+      type?: string;
+      properties?: Record<string, { type?: string; items?: { type?: string } }>;
+    };
+    expect(schema.type).toBe("object");
+    expect(schema.properties?.variants?.type).toBe("array");
+    expect(schema.properties?.variants?.items?.type).toBe("object");
+    expect(schema.properties?.media?.type).toBe("array");
+  });
+
+  it("exposes a typed JSON Schema even when fields use Zod transforms", () => {
+    // Regression for the 2026-05-13 production incident: product.create_listing
+    // has `priceMinor: z.union([string,number]).transform(BigInt)` and a media
+    // `.transform()` that re-adds contentType. Without `unrepresentable: "any"`
+    // on z.toJSONSchema, those transforms cause the whole conversion to throw
+    // and the registry falls back to `additionalProperties: true`, which makes
+    // MCP clients serialize arrays as JSON strings.
+    const r = new McpRegistry();
+    r.register({
+      name: "product.create_listing",
+      description: "",
+      scope: "seller:product:write",
+      auditEvent: "x",
+      idempotent: false,
+      inputSchema: z.object({
+        variants: z
+          .array(
+            z.object({
+              sku: z.string(),
+              priceMinor: z.union([z.string(), z.number()]).transform((v) => BigInt(v)),
+            }),
+          )
+          .min(1),
+        media: z.array(z.object({ url: z.string() }).transform((m) => m)).min(1),
+      }),
+      outputSchema: z.object({}),
+      handler: async () => ({}),
+    });
+    const [tool] = r.list();
+    const schema = tool!.inputSchema as {
+      type?: string;
+      additionalProperties?: boolean;
+      properties?: Record<string, { type?: string }>;
+    };
+    expect(schema.type).toBe("object");
+    expect(schema.properties?.variants?.type).toBe("array");
+    expect(schema.properties?.media?.type).toBe("array");
+  });
 });

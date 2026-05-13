@@ -11,6 +11,24 @@ import type { SearchResult } from "../catalog/search.js";
 import { searchProducts } from "../catalog/search.js";
 import type { StoredMedia, StoredProduct, StoredSeller, StoredVariant } from "../types/store-types.js";
 
+// Some scraped Ouedkniss listings carry their brand twice at the start of the
+// title ("Honor Honor 400 pro", "VIVO VIVO Y19s") because the original seller
+// typed the brand once and the platform also prefixed it once. 257 catalog
+// rows in this state today (live probe 2026-05-12). We strip the leading
+// duplicate at display time so buyers see a clean title — the underlying
+// `title_sanitized` stays as-is so any historical analysis or audit retains
+// the seller's original wording.
+export function stripDuplicateBrandPrefix(title: string, brand: string | undefined): string {
+  if (!brand) return title;
+  const b = brand.trim();
+  if (b.length === 0) return title;
+  // Case-insensitive, brand followed by whitespace, then same brand and a word
+  // boundary so we don't eat a real noun that happens to start the same way.
+  const escaped = b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`^${escaped}\\s+(?=${escaped}(?:\\s|$))`, "i");
+  return title.replace(re, "");
+}
+
 export interface ProductMedia {
   id: string;
   url: string;
@@ -33,7 +51,8 @@ export interface ProductReader {
     brand?: string;
     attributes: Record<string, string>;
     variants: Array<{ id: string; sku: string; priceMinor: bigint; currency: string; inStock: boolean }>;
-    sellerId: string;
+    /** null for unowned reference listings — not purchasable. */
+    sellerId: string | null;
     sellerDisplayName?: string;
     sellerPhone?: string;
     sellerWhatsapp?: string;
@@ -86,12 +105,24 @@ const SearchQueryParamsSchema = z.object({
   sort: z.enum(["relevance", "price_asc", "price_desc", "newest", "rating"]).default("relevance"),
 });
 
-const BatchGetQuerySchema = z.object({
-  id: z
-    .union([z.string().min(1).max(64), z.array(z.string().min(1).max(64))])
-    .transform((v) => (Array.isArray(v) ? v : [v]))
-    .pipe(z.array(z.string()).min(1).max(50)),
-});
+// Accept either repeated `?id=A&id=B` (the canonical form documented in tests)
+// or the more conventional `?ids=A,B,C` (CSV). Agents intuit the latter first;
+// supporting both means the error message they hit when they get it wrong is
+// itself only reached by a real mistake, not a guessing-the-param-name miss.
+const BatchGetQuerySchema = z
+  .object({
+    id: z
+      .union([z.string().min(1).max(64), z.array(z.string().min(1).max(64))])
+      .transform((v) => (Array.isArray(v) ? v : [v]))
+      .optional(),
+    ids: z.string().min(1).max(2048).optional(),
+  })
+  .transform((q) => {
+    const fromIds = q.ids ? q.ids.split(",").map((s) => s.trim()).filter((s) => s.length > 0) : [];
+    const combined = [...(q.id ?? []), ...fromIds];
+    return { id: combined };
+  })
+  .pipe(z.object({ id: z.array(z.string().min(1).max(64)).min(1).max(50) }));
 
 function extractAttributeFilters(rawQuery: unknown): Record<string, string> | undefined {
   if (!rawQuery || typeof rawQuery !== "object") return undefined;
@@ -388,7 +419,7 @@ export async function registerProductRoutes(
       data: r.hits.map((h) => ({
         productId: h.productId,
         viewUrl: productViewUrl(base, h.productId),
-        title: { role: "untrusted_content", origin: `seller:${h.sellerId}`, value: h.titleSanitized },
+        title: { role: "untrusted_content", origin: `seller:${h.sellerId}`, value: stripDuplicateBrandPrefix(h.titleSanitized, h.brand) },
         brand: h.brand,
         priceMinor: h.priceMinor?.toString(),
         priceFromMinor: h.priceFromMinor?.toString(),
@@ -468,7 +499,7 @@ function projectDetail(p: DetailInput) {
   for (const [k, v] of Object.entries(p.attributes)) attrs[k] = wrap(v);
   return {
     productId: p.productId,
-    title: wrap(p.titleSanitized),
+    title: wrap(stripDuplicateBrandPrefix(p.titleSanitized, p.brand)),
     description: p.descriptionSanitized ? wrap(p.descriptionSanitized) : null,
     brand: p.brand,
     attributes: attrs,
@@ -580,7 +611,7 @@ export function makeProductReader(repo: {
     return fresh;
   }
   function projectOne(p: StoredProduct, sellers: Map<string, StoredSeller>) {
-    const seller = sellers.get(p.sellerId);
+    const seller = p.sellerId ? sellers.get(p.sellerId) : undefined;
     return {
       productId: p.productId,
       titleSanitized: p.titleSanitized,

@@ -20,7 +20,8 @@ export interface SearchHit {
   rating?: number;
   ratingCount?: number;
   inStock: boolean;
-  sellerId: string;
+  /** null for unowned reference listings — not purchasable. */
+  sellerId: string | null;
   sellerDisplayName?: string;
   counterfeitRisk: catalog.CounterfeitRiskT;
   relevanceScore: number;
@@ -55,7 +56,7 @@ function heroOf(p: StoredProduct): StoredMedia | undefined {
 
 function projectHit(p: StoredProduct, ctx: FilterContext, sellers: Map<string, StoredSeller>): SearchHit {
   const dv = displayVariant(p, ctx);
-  const sellerName = sellers.get(p.sellerId)?.displayName;
+  const sellerName = p.sellerId ? sellers.get(p.sellerId)?.displayName : undefined;
   const sameCurrency = dv ? p.variants.filter((v) => v.currency === dv.currency) : [];
   const prices = sameCurrency.map((v) => v.priceMinor);
   const priceFrom = prices.length > 0 ? prices.reduce((a, b) => (a < b ? a : b)) : undefined;

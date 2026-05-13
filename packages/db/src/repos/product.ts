@@ -26,7 +26,13 @@ export interface StoredMedia {
 
 export interface StoredProduct {
   productId: string;
-  sellerId: string;
+  /**
+   * null for "unowned" reference listings (currently: scraper-seeded items
+   * from Ouedkniss). Such products are visible in the catalog and search,
+   * but cart/checkout paths refuse to resolve their variants — see
+   * resolveLine() in repos/cart.ts and the UI guard on AddToCart.
+   */
+  sellerId: string | null;
   titleSanitized: string;
   descriptionSanitized?: string;
   brand?: string;
@@ -375,7 +381,7 @@ export function makeProductRepo(db: DbClient) {
     },
 
     async create(input: {
-      sellerId: string;
+      sellerId: string | null;
       title: string;
       description?: string;
       brand?: string;
@@ -425,7 +431,7 @@ export function makeProductRepo(db: DbClient) {
             .values(
               input.media.map((m) => ({
                 id: uuidv7(),
-                sellerId: input.sellerId,
+                sellerId: input.sellerId ?? null,
                 productId,
                 url: m.url,
                 contentType: m.contentType,
@@ -630,7 +636,7 @@ export function makeProductRepo(db: DbClient) {
     },
 
     /** Resolve a variantId to its product, owning seller, price, currency. */
-    async resolveVariant(variantId: string): Promise<{ productId: string; sellerId: string; priceMinor: bigint; currency: string } | undefined> {
+    async resolveVariant(variantId: string): Promise<{ productId: string; sellerId: string | null; priceMinor: bigint; currency: string } | undefined> {
       if (!isUuid(variantId)) return undefined;
       const rows = await db
         .select({

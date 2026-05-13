@@ -306,17 +306,12 @@ with_retries() {
 }
 
 # ─── step 1: refresh skip-urls ───────────────────────────────────────────
-# Pull every sourceUrl already seeded by the scraper, regardless of which
-# per-listing seller it landed on. Filtering by attributes->>'source' (set
-# by the seeder for every scraped product) is the source-of-truth — using
-# seller_id would miss listings under sibling per-listing sellers and we'd
-# re-seed them. Legacy mode (--seller-id set) narrows to that seller's
-# rows only, preserving the older single-seller behavior.
+# Pull every sourceUrl already seeded by the scraper. Filtering by
+# attributes->>'source' (set by the seeder for every scraped product) is
+# the source-of-truth — scraped products carry seller_id=NULL since
+# 2026-05-12, so any seller_id-based filter would match nothing.
 refresh_skip_urls() {
   local where="attributes->>'source' = 'ouedkniss-public-listing'"
-  if [[ -n "$SELLER_ID" ]]; then
-    where="seller_id='$SELLER_ID'"
-  fi
   docker exec "$PG_CONTAINER" psql -U marketplace -d marketplace -At -c "
     SELECT attributes->>'sourceUrl'
     FROM catalog.products
@@ -517,19 +512,16 @@ fi
 
 # ─── step 3.6: prune oldest products to cap ──────────────────────────────
 # Keeps the catalog at a steady size: after seeding, delete the oldest
-# (created_at ASC) until count <= MAX_PRODUCTS. In per-listing-seller
-# mode the cap applies globally across every scraper-created product
-# (filtered by attributes->>'source' = 'ouedkniss-public-listing'); in
-# legacy single-seller mode (SELLER_ID set) it scopes to that seller.
+# (created_at ASC) until count <= MAX_PRODUCTS. Filtered by
+# attributes->>'source' = 'ouedkniss-public-listing' so only scraper-
+# created rows are eligible — scraped products carry seller_id=NULL
+# since 2026-05-12, so any seller_id-based filter would be a no-op.
 # Cascades wipe catalog.media + catalog.product_variants + inventory_levels
 # automatically (via the FK onDelete: cascade in the schema). Images live
 # as URL refs only — there is no local image bytes to clean up.
 PRUNED=0
 if [[ -n "$MAX_PRODUCTS" ]]; then
   PRUNE_WHERE="attributes->>'source' = 'ouedkniss-public-listing'"
-  if [[ -n "$SELLER_ID" ]]; then
-    PRUNE_WHERE="seller_id='$SELLER_ID'"
-  fi
   PRUNE_OUT="$(docker exec "$PG_CONTAINER" psql -U marketplace -d marketplace -At -v ON_ERROR_STOP=1 -c "
     WITH excess AS (
       SELECT id FROM catalog.products

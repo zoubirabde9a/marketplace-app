@@ -26,7 +26,14 @@ export async function registerHealth(app: FastifyInstance, opts: HealthOptions =
   // Liveness: process is up and responsive. Cheap, no dep checks — used by
   // Caddy's healthcheck so that a transient db/redis blip doesn't trigger
   // container churn during recovery.
-  app.get("/livez", async () => ({ status: "ok" }));
+  // /livez is the canonical name (matches the auth middleware's public list);
+  // /healthz is the Kubernetes/Google convention and is what external uptime
+  // services often default to. Aliasing prevents the surprise where an
+  // operator points their probe at /healthz, gets 401, and concludes the API
+  // is down — the auth middleware catches unknown paths and returns 401.
+  const liveness = async () => ({ status: "ok" as const });
+  app.get("/livez", liveness);
+  app.get("/healthz", liveness);
 
   // Readiness: process is up AND its dependencies are reachable. Used by an
   // orchestrator that wants to drain traffic when a dep is down. Previously

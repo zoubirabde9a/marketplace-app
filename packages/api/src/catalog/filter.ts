@@ -54,7 +54,7 @@ export function passes(p: StoredProduct, ctx: FilterContext, skip?: FacetDim): b
   if (!matchesText(p, ctx)) return false;
   const f = ctx.filters;
   if (skip !== "brand" && f.brand && (p.brand ?? "").toLowerCase() !== f.brand.toLowerCase()) return false;
-  if (skip !== "seller" && f.sellerIds && f.sellerIds.length > 0 && !f.sellerIds.includes(p.sellerId)) return false;
+  if (skip !== "seller" && f.sellerIds && f.sellerIds.length > 0 && (p.sellerId === null || !f.sellerIds.includes(p.sellerId))) return false;
   if (skip !== "category" && f.categoryIds && f.categoryIds.length > 0) {
     const has = (p.categoryIds ?? []).some((c) => f.categoryIds!.includes(c));
     if (!has) return false;

@@ -39,9 +39,31 @@ function relevanceScore(p: StoredProduct, ctx: FilterContext): number {
   return s;
 }
 
+// Per-currency junk-price floor for sort=price_asc. Scraped listings on
+// Ouedkniss often carry a "1 DA" placeholder when the seller wants "contact
+// for price" — these flood the top of price_asc and make the cheapest-first
+// view unusable (live probe 2026-05-12: top three results for q=samsung were
+// all priceMinor=100, i.e. 1.00 DZD). We don't drop them — buyers may still
+// want to see them — we just sort them to the bottom by treating below-floor
+// prices as the maximum sort key. price_desc is unaffected; junk naturally
+// sinks there. Floor is conservative (1,000 DZD ≈ 7 USD; a sub-1000-DZD
+// physical good is almost always a placeholder, not a real listing).
+const PRICE_FLOOR_MINOR: Record<string, bigint> = {
+  DZD: 100_000n, // 1,000 DZD
+  EUR: 100n, // 1 EUR
+  USD: 100n, // 1 USD
+};
+const PRICE_ASC_SINK = (1n << 62n); // any below-floor price gets bumped here
+
 export function keyOf(p: StoredProduct, sort: Sort, ctx: FilterContext): SortKey {
   if (sort === "price_asc" || sort === "price_desc") {
-    return { v: displayVariant(p, ctx)?.priceMinor ?? 0n, isBig: true };
+    const v = displayVariant(p, ctx);
+    const price = v?.priceMinor ?? 0n;
+    if (sort === "price_asc" && v) {
+      const floor = PRICE_FLOOR_MINOR[v.currency];
+      if (floor !== undefined && price < floor) return { v: PRICE_ASC_SINK, isBig: true };
+    }
+    return { v: price, isBig: true };
   }
   if (sort === "newest") {
     // Prefer the seller's original posting date (sourcePostedAt, ISO 8601)

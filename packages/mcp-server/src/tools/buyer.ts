@@ -384,7 +384,16 @@ export function registerBuyerTools(reg: McpRegistry, deps: BuyerAdapter): void {
       let resolved;
       try {
         resolved = await deps.carts.resolveLine(input.variantId, input.qty);
-      } catch {
+      } catch (e) {
+        const msg = (e as Error).message;
+        if (msg.startsWith("unowned_product:")) {
+          throw new ValidationError([
+            {
+              path: "variantId",
+              message: "unowned_product:this listing is a catalog reference and is not for sale",
+            },
+          ]);
+        }
         throw new NotFoundError("variant", input.variantId);
       }
       let cart = existing;
@@ -540,21 +549,25 @@ export function registerBuyerTools(reg: McpRegistry, deps: BuyerAdapter): void {
     outputSchema: OrderOutputSchema,
     handler: async (input, ctx) => {
       const o = await deps.orders.get(input.orderId);
-      if (!o) throw new NotFoundError("order", input.orderId);
       // Mirror /v1/orders/:id auth: owner-by-user OR matching token.
-      const isOwner = o.ownerKind === "user" && o.ownerId === ctx.ownerId;
+      // Existence is not disclosed before auth — otherwise the diff between
+      // "not found" and "access denied" lets a caller enumerate valid order
+      // ids. Anonymous callers without a matching token always see the same
+      // access_denied response whether or not the id resolves.
+      const isOwner = !!o && o.ownerKind === "user" && o.ownerId === ctx.ownerId;
       // Constant-time compare — mirrors the REST handler at /v1/orders/:id.
       // `===` leaks length/prefix-match info via timing; with 192-bit tokens
       // this isn't practically exploitable but the safe pattern is cheap.
       const provided = input.orderToken ?? "";
       const tokenOk =
+        !!o &&
         provided.length > 0 &&
         provided.length === o.accessToken.length &&
         timingSafeEqual(Buffer.from(provided), Buffer.from(o.accessToken));
       if (!isOwner && !tokenOk) {
         throw new ValidationError([{ path: "orderToken", message: "order_access_denied" }]);
       }
-      return shapeOrder(deps, o, { includeToken: false });
+      return shapeOrder(deps, o!, { includeToken: false });
     },
   });
 

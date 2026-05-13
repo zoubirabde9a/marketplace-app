@@ -172,6 +172,18 @@ describe("seller write tools — snapshots", () => {
     ).rejects.toThrow();
   });
 
+  it("seller.create_account rejects a non-ISO country code", async () => {
+    const reg = new McpRegistry();
+    registerSellerWriteTools(reg, fakeAdapter);
+    await expect(
+      reg.invoke(
+        "seller.create_account",
+        { displayName: "Bogus", countryCode: "XX", phone: "+213500000000" },
+        ctx(),
+      ),
+    ).rejects.toThrow(/ISO 3166|country/i);
+  });
+
   it("omits snapshotUrl when no snapshot store is configured", async () => {
     const reg = new McpRegistry();
     registerSellerWriteTools(reg, fakeAdapter);

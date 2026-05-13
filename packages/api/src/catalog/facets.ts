@@ -34,7 +34,7 @@ export function computeFacets(
     if (p.brand && passes(p, ctx, "brand")) {
       brandCounts.set(p.brand, (brandCounts.get(p.brand) ?? 0) + 1);
     }
-    if (passes(p, ctx, "seller")) {
+    if (p.sellerId && passes(p, ctx, "seller")) {
       sellerCounts.set(p.sellerId, (sellerCounts.get(p.sellerId) ?? 0) + 1);
     }
     if (passes(p, ctx, "currency")) {

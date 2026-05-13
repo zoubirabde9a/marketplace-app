@@ -114,6 +114,24 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
     void reply.code(c.status).header("content-type", "application/problem+json").send(c.body);
   });
 
+  // Unknown routes that bypass the auth gate (notably anything under
+  // /.well-known/) fall through to Fastify's built-in 404 handler, which
+  // emits `{error, message, statusCode}` — a different shape from the
+  // RFC 7807 problem+json the rest of the API uses. Clients that parse
+  // errors by RFC 7807 schema break on those misses. Unify the shape here.
+  app.setNotFoundHandler((req, reply) => {
+    void reply
+      .code(404)
+      .header("content-type", "application/problem+json")
+      .send({
+        type: "https://marketplace.dev/errors/not-found",
+        title: "Not Found",
+        status: 404,
+        detail: `Route ${req.method} ${req.url} not found`,
+        instance: req.url,
+      });
+  });
+
   await app.register(import("@fastify/sensible"));
   await app.register(import("@fastify/helmet"), { contentSecurityPolicy: false });
   await app.register(import("@fastify/cors"), {
@@ -213,13 +231,20 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
           const s = await opts.repos.sellers.get(id);
           return s ? { sellerId: s.sellerId, ownerAgentId: s.ownerAgentId } : undefined;
         },
+        findOwnedByName: (ownerAgentId, displayName) =>
+          opts.repos.sellers.findOwnedByName(ownerAgentId, displayName),
       },
       products: {
         create: async (input) => {
           const p = await opts.repos.products.create(input);
+          // The MCP seller-write adapter only exposes product.create to a
+          // logged-in seller, so input.sellerId is always a non-null UUID
+          // and the repo round-trips it verbatim. The `!` here narrows
+          // away the nullable that exists on the storage row to support
+          // unowned scraper-seeded listings.
           return {
             productId: p.productId,
-            sellerId: p.sellerId,
+            sellerId: p.sellerId!,
             titleSanitized: p.titleSanitized,
             ...(p.brand !== undefined ? { brand: p.brand } : {}),
             variants: p.variants.map((v) => ({

@@ -41,7 +41,11 @@ export const products = catalogSchema.table(
   "products",
   {
     id: idCol(),
-    sellerId: uuidv7("seller_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+    // Nullable since 2026-05-12: scraper-seeded listings carry seller_id=NULL
+    // ("unowned reference listings"). Cart/checkout paths refuse to resolve a
+    // variant whose product has no seller, so these rows are catalog-only and
+    // cannot be bought. See seed-from-scraped.ts and repos/cart.ts → resolveLine.
+    sellerId: uuidv7("seller_id").references(() => organizations.id, { onDelete: "cascade" }),
     canonicalId: uuidv7("canonical_id").references(() => canonicalProducts.id, { onDelete: "set null" }),
     canonicalConfidence: varchar("canonical_confidence", { length: 16 }), // exact|high|medium|null
     sku: varchar("sku", { length: 200 }).notNull(),
@@ -121,7 +125,9 @@ export const productVersions = catalogSchema.table(
 
 export const media = catalogSchema.table("media", {
   id: idCol(),
-  sellerId: uuidv7("seller_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  // Nullable since 2026-05-12: mirrors catalog.products.seller_id — media rows
+  // attached to unowned scraper listings have no owning org.
+  sellerId: uuidv7("seller_id").references(() => organizations.id, { onDelete: "cascade" }),
   productId: uuidv7("product_id").references(() => products.id, { onDelete: "cascade" }),
   url: text("url").notNull(),
   contentType: varchar("content_type", { length: 64 }).notNull(),

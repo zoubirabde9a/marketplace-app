@@ -178,6 +178,13 @@ export function makeCartRepo(db: DbClient) {
         .limit(1);
       const v = rows[0];
       if (!v) throw new Error(`unknown_variant:${variantId}`);
+      // Unowned reference listings (scraper-seeded with seller_id = NULL) are
+      // catalog-only — they appear in search but cannot be purchased. Surface
+      // a distinct error code so the API layer can translate it to a 409 and
+      // the UI/MCP can render a user-friendly explanation.
+      if (v.sellerId === null) {
+        throw new Error(`unowned_product:${variantId}`);
+      }
       return {
         line: { variantId: v.variantId, sellerId: v.sellerId, qty, unitPriceMinor: v.priceMinor },
         currency: v.currency,

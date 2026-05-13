@@ -53,5 +53,15 @@ export interface SellerRepo {
 
   list(): Promise<SellerRecord[]>;
 
+  /**
+   * Case-insensitive lookup of a seller already owned by the same agent
+   * with the same display name. Used by seller.create_account to reject
+   * accidental duplicates by the same caller.
+   */
+  findOwnedByName(
+    ownerAgentId: string,
+    displayName: string,
+  ): Promise<{ sellerId: string } | undefined>;
+
   countProducts(sellerId: string): Promise<number>;
 }

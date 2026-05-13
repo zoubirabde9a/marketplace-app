@@ -26,6 +26,25 @@ describe("sort key extraction", () => {
     expect(keyOf(p, "price_desc", baseCtx)).toEqual({ v: 35_000_00n, isBig: true });
   });
 
+  it("price_asc sinks below-floor junk-price listings to the bottom", () => {
+    // Ouedkniss-style "1 DA" placeholder — 100 minor units = 1.00 DZD. Real
+    // products at this price are essentially never the catalog reality.
+    const junk = product({
+      productId: "00000000-0000-7000-8000-000000000099",
+      variants: [{ id: "vj", sku: "sj", priceMinor: 100n, currency: "DZD", inStock: true }],
+    });
+    const real = product({
+      productId: "00000000-0000-7000-8000-000000000100",
+      variants: [{ id: "vr", sku: "sr", priceMinor: 35_000_00n, currency: "DZD", inStock: true }],
+    });
+    const cmp = makeComparator("price_asc", baseCtx);
+    expect(cmp(junk, real)).toBeGreaterThan(0); // junk sorts after real
+    expect(cmp(real, junk)).toBeLessThan(0);
+    // price_desc is unchanged — junk is naturally at the bottom there.
+    const cmpDesc = makeComparator("price_desc", baseCtx);
+    expect(cmpDesc(real, junk)).toBeLessThan(0);
+  });
+
   it("newest prefers attributes.sourcePostedAt over createdAt", () => {
     const p = product({
       createdAt: 1,

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, sql } from "drizzle-orm";
 import { uuidv7 } from "@marketplace/shared/ids";
 import { normalizeAlgerianPhone } from "@marketplace/shared/phone";
 import { organizations } from "../schema/identity.js";
@@ -398,6 +398,30 @@ export function makeSellerRepo(db: DbClient) {
       const ids = rows.map((r) => r.profile.orgId);
       const phoneMap = await phonesForSellers(ids);
       return rows.map((r) => shape(r.profile, phoneMap.get(r.profile.orgId) ?? [], r.countryCode));
+    },
+
+    // Case-insensitive lookup of a seller already owned by the same agent
+    // with the same display name. Used by seller.create_account to reject
+    // accidental duplicates ("SOP Loop Test Store" twice under one agent).
+    // No unique index yet: this is a write-time soft check until the schema
+    // gets a (owner_agent_id, lower(display_name)) constraint.
+    async findOwnedByName(
+      ownerAgentId: string,
+      displayName: string,
+    ): Promise<{ sellerId: string } | undefined> {
+      const trimmed = displayName.trim();
+      if (trimmed.length === 0) return undefined;
+      const rows = await db
+        .select({ id: sellerProfiles.orgId })
+        .from(sellerProfiles)
+        .where(
+          and(
+            eq(sellerProfiles.ownerAgentId, ownerAgentId),
+            sql`lower(${sellerProfiles.storeName}) = lower(${trimmed})`,
+          ),
+        )
+        .limit(1);
+      return rows[0] ? { sellerId: rows[0].id } : undefined;
     },
 
     async countProducts(sellerId: string): Promise<number> {

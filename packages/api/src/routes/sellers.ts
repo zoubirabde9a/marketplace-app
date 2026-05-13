@@ -33,11 +33,22 @@ const ListSellersQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
-function shapeSellerPublic(s: SellerRecord, productCount: number): Record<string, unknown> {
+function shapeSellerPublic(
+  s: SellerRecord,
+  productCount: number,
+  /**
+   * Include `ownerAgentId` in the returned shape. Only pass `true` when the
+   * caller is authenticated AND is the owner — anonymous callers must not see
+   * it (it's an internal identifier that distinguishes "agent-managed" from
+   * "real shop", and exposing it makes the `?ownerAgentId=` filter a public
+   * enumeration vector).
+   */
+  includeOwnership = false,
+): Record<string, unknown> {
   return {
     sellerId: s.sellerId,
     displayName: s.displayName,
-    ownerAgentId: s.ownerAgentId,
+    ...(includeOwnership ? { ownerAgentId: s.ownerAgentId } : {}),
     productCount,
     // Legacy single-value mirrors of the first/primary number. Kept so
     // existing clients keep working; new clients should read `phones`.
@@ -74,7 +85,8 @@ export async function registerSellerRoutes(app: FastifyInstance, sellers: Seller
       ...(body.city !== undefined ? { city: body.city } : {}),
     });
     void reply.code(201);
-    return shapeSellerPublic(seller, 0);
+    // The caller just created this seller — they own it, so they see ownership.
+    return shapeSellerPublic(seller, 0, true);
   });
 
   app.patch<{ Params: { id: string } }>("/v1/sellers/:id", async (req) => {
@@ -87,7 +99,8 @@ export async function registerSellerRoutes(app: FastifyInstance, sellers: Seller
     const body = UpdateSellerContactSchema.parse(req.body);
     const updated = await sellers.updateContact(req.params.id, body);
     if (!updated) throw new NotFoundError("seller", req.params.id);
-    return shapeSellerPublic(updated, await sellers.countProducts(updated.sellerId));
+    // PATCH already verified ownership above; safe to surface ownerAgentId.
+    return shapeSellerPublic(updated, await sellers.countProducts(updated.sellerId), true);
   });
 
   app.get("/v1/sellers", async (req, reply) => {
@@ -109,8 +122,15 @@ export async function registerSellerRoutes(app: FastifyInstance, sellers: Seller
     const nextOffset = offset + page.length;
     const hasMore = nextOffset < filtered.length;
     const counts = await Promise.all(page.map((s) => sellers.countProducts(s.sellerId)));
+    const callerAgentId = req.principal?.agentId;
     return {
-      data: page.map((s, i) => shapeSellerPublic(s, counts[i] ?? 0)),
+      data: page.map((s, i) =>
+        shapeSellerPublic(
+          s,
+          counts[i] ?? 0,
+          callerAgentId !== undefined && callerAgentId === s.ownerAgentId,
+        ),
+      ),
       pagination: {
         cursor: hasMore ? String(nextOffset) : null,
         totalEstimate: filtered.length,
@@ -123,6 +143,11 @@ export async function registerSellerRoutes(app: FastifyInstance, sellers: Seller
     applyPublicReadCacheHeaders(reply, agentId);
     const s = await sellers.get(req.params.id);
     if (!s) throw new NotFoundError("seller", req.params.id);
-    return shapeSellerPublic(s, await sellers.countProducts(s.sellerId));
+    const callerAgentId = req.principal?.agentId;
+    return shapeSellerPublic(
+      s,
+      await sellers.countProducts(s.sellerId),
+      callerAgentId !== undefined && callerAgentId === s.ownerAgentId,
+    );
   });
 }

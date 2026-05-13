@@ -72,6 +72,7 @@ const isRead = (m: string): boolean => m === "GET" || m === "HEAD";
 const PUBLIC_MATCHERS: ReadonlyArray<(method: string, path: string) => boolean> = [
   (m, p) =>
     p.startsWith("/livez") ||
+    p.startsWith("/healthz") ||
     p.startsWith("/readyz") ||
     p.startsWith("/.well-known/") ||
     p === "/robots.txt" ||
