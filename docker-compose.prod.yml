@@ -118,8 +118,15 @@ services:
       # headroom on the 6-core box for postgres / web / scraper). Set to 1
       # to disable clustering and revert to single-process mode.
       API_WORKERS: ${API_WORKERS:-auto}
+      # Directory where POST /v1/media writes uploaded image bytes. Bind-
+      # mounted below so files survive container recreate. Filenames are
+      # content-addressed (sha256 prefix + ext), so deletes here without a
+      # corresponding DB row deletion will 404 future GETs but won't corrupt
+      # state. See deploy/CHANGELOG.md 2026-05-13.
+      MARKETPLACE_MEDIA_DIR: /data/media
     volumes:
       - ./minimal-issuer:/app/minimal-issuer:ro
+      - /var/lib/marketplace/media:/data/media
     expose:
       - "3100"
     depends_on:

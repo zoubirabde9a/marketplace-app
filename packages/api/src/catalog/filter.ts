@@ -51,11 +51,17 @@ function variantsInCurrency(p: StoredProduct, ctx: FilterContext, skip?: FacetDi
  * lifted just for that calculation.
  */
 export function passes(p: StoredProduct, ctx: FilterContext, skip?: FacetDim): boolean {
-  // Hide listings with no media. A card with no hero image renders as an
-  // empty placeholder on home/search/category — a visible quality hit. The
-  // product is still retrievable by direct GET /v1/products/:id; only the
-  // browse surfaces drop it. ~3.8% of catalog as of 2026-05-10.
-  if (p.media.length === 0) return false;
+  // Hide listings with no media on browse surfaces. A card with no hero
+  // image renders as an empty placeholder on home/search/category — a
+  // visible quality hit. The product is still retrievable by direct
+  // GET /v1/products/:id, and seller-scoped queries (dashboard, store page)
+  // bypass this rule below so the seller can see and fix their own listings
+  // that slipped in without media. ~3.8% of catalog as of 2026-05-10.
+  // 2026-05-13: scope tightened to browse-only — was applying everywhere,
+  // including the seller's own /seller/dashboard which made freshly-created
+  // (UI-side) media-less listings vanish without a trace.
+  const sellerScoped = ctx.filters.sellerIds !== undefined && ctx.filters.sellerIds.length > 0;
+  if (!sellerScoped && p.media.length === 0) return false;
   if (!matchesText(p, ctx)) return false;
   const f = ctx.filters;
   if (skip !== "brand" && f.brand && (p.brand ?? "").toLowerCase() !== f.brand.toLowerCase()) return false;

@@ -77,14 +77,21 @@ export interface ProductRepo {
     },
   ): Promise<ProductRecord | undefined>;
 
+  /**
+   * Attach an already-uploaded media URL to a product. Bytes are stored
+   * separately by POST /v1/media (which writes to the media volume and
+   * returns a content-addressed URL); this just records the metadata and
+   * promotes the new row to hero if the product has no hero yet.
+   */
   addMedia(
     productId: string,
     input: {
+      url: string;
       contentType: string;
-      bytes: Buffer;
-      altText?: string;
+      byteSize?: number;
       width?: number;
       height?: number;
+      altText?: string;
     },
   ): Promise<MediaRecord | undefined>;
 

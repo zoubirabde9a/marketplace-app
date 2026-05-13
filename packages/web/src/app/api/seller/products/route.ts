@@ -18,9 +18,14 @@ export async function POST(req: Request): Promise<Response> {
     typeof body.sellerId !== "string" ||
     typeof body.title !== "string" ||
     !Array.isArray(body.variants) ||
-    body.variants.length === 0
+    body.variants.length === 0 ||
+    !Array.isArray(body.media) ||
+    body.media.length === 0
   ) {
-    return NextResponse.json({ ok: false, error: "missing_fields" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "missing_fields", detail: "sellerId, title, variants[1+], media[1+] are required" },
+      { status: 400 },
+    );
   }
   try {
     const product = await createProduct(jwt, body as CreateProductInput);

@@ -336,6 +336,15 @@ export async function updateSellerContact(
   });
 }
 
+export interface MediaInput {
+  url: string;
+  contentType: string;
+  byteSize?: number;
+  width?: number;
+  height?: number;
+  altText?: string;
+}
+
 export interface CreateProductInput {
   sellerId: string;
   title: string;
@@ -343,6 +352,22 @@ export interface CreateProductInput {
   brand?: string;
   categoryIds?: string[];
   variants: Array<{ sku: string; priceMinor: string; currency: string; inStock?: boolean }>;
+  media: MediaInput[];
+  heroMediaIndex?: number;
+}
+
+export interface UpdateProductInput {
+  title?: string;
+  description?: string | null;
+  brand?: string | null;
+  categoryIds?: string[];
+  variants?: Array<{ sku: string; priceMinor: string; currency: string; inStock?: boolean }>;
+}
+
+export interface UploadedMedia {
+  url: string;
+  contentType: string;
+  byteSize: number;
 }
 
 export interface CreateProductResponse {
@@ -365,6 +390,67 @@ export async function createProduct(
     headers: { "content-type": "application/json", "idempotency-key": cryptoRandomKey() },
     body: JSON.stringify(input),
   });
+}
+
+export async function updateProduct(
+  sessionJwt: string,
+  productId: string,
+  input: UpdateProductInput,
+): Promise<CreateProductResponse> {
+  return authedRequest(`/v1/products/${encodeURIComponent(productId)}`, sessionJwt, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", "idempotency-key": cryptoRandomKey() },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function attachProductMedia(
+  sessionJwt: string,
+  productId: string,
+  media: MediaInput,
+): Promise<{ id: string; url: string; contentType: string }> {
+  return authedRequest(`/v1/products/${encodeURIComponent(productId)}/media`, sessionJwt, {
+    method: "POST",
+    headers: { "content-type": "application/json", "idempotency-key": cryptoRandomKey() },
+    body: JSON.stringify(media),
+  });
+}
+
+export async function detachProductMedia(
+  sessionJwt: string,
+  productId: string,
+  mediaId: string,
+): Promise<void> {
+  await authedRequest<unknown>(
+    `/v1/products/${encodeURIComponent(productId)}/media/${encodeURIComponent(mediaId)}`,
+    sessionJwt,
+    { method: "DELETE", headers: { "idempotency-key": cryptoRandomKey() } },
+  );
+}
+
+/**
+ * Upload a single image file to /v1/media. Returns the canonical URL and
+ * metadata that you can then pass as a MediaInput to createProduct or
+ * attachProductMedia. Bytes are content-addressed: re-uploading the same
+ * image just returns the same URL.
+ */
+export async function uploadMedia(sessionJwt: string, file: Blob): Promise<UploadedMedia> {
+  const fd = new FormData();
+  fd.append("file", file);
+  const res = await fetch(`${API_URL}/v1/media`, {
+    method: "POST",
+    headers: { authorization: `Bearer ${sessionJwt}` },
+    body: fd,
+  });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    const err: ApiError = Object.assign(new Error(`HTTP ${res.status} ${res.statusText}`), {
+      status: res.status,
+      detail,
+    });
+    throw err;
+  }
+  return (await res.json()) as UploadedMedia;
 }
 
 export interface SellerOrderLine {

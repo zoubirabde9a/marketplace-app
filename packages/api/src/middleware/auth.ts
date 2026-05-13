@@ -128,6 +128,11 @@ const SESSION_OR_PASSPORT_MATCHERS: ReadonlyArray<(method: string, path: string)
   (m, p) => m === "PATCH" && /^\/v1\/products\/[^/]+$/.test(p),
   (m, p) => m === "POST" && /^\/v1\/products\/[^/]+\/media$/.test(p),
   (m, p) => m === "DELETE" && /^\/v1\/products\/[^/]+\/media\/[^/]+$/.test(p),
+  // Image upload (multipart). Owner-authed at the handler — only the seller
+  // dashboard hits this in practice, but any authenticated principal can
+  // upload bytes; the attach step (POST /v1/products/:id/media) is what
+  // enforces seller ownership.
+  (m, p) => m === "POST" && p === "/v1/media",
   // Seller-only view of incoming orders. Handler enforces the caller's
   // synthetic agent id matches the seller's ownerAgentId; auth here just
   // ensures we have *some* principal (session or passport).

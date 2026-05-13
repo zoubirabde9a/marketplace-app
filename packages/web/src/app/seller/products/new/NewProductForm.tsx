@@ -26,6 +26,24 @@ interface SellerOption {
   displayName: string;
 }
 
+// Mirror of the API's accepted set (packages/api/src/routes/products.ts).
+// Kept short on purpose — heic/tiff need transcoding the API doesn't do yet.
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"];
+const MAX_IMAGES = 8;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+interface StagedImage {
+  /** Local id used for React keys before/after upload completes. */
+  localId: string;
+  file: File;
+  /** object-URL preview, revoked on unmount or remove. */
+  previewUrl: string;
+  /** Set once the upload to /api/seller/media has returned. */
+  uploaded?: { url: string; contentType: string; byteSize: number };
+  error?: string;
+  uploading: boolean;
+}
+
 export function NewProductForm({
   sellers,
   defaultSellerId,
@@ -36,6 +54,76 @@ export function NewProductForm({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [images, setImages] = useState<StagedImage[]>([]);
+
+  function addFiles(files: FileList | null): void {
+    if (!files) return;
+    setError(null);
+    const next: StagedImage[] = [];
+    for (const f of Array.from(files)) {
+      if (images.length + next.length >= MAX_IMAGES) {
+        setError(`Maximum ${MAX_IMAGES} images.`);
+        break;
+      }
+      if (!ACCEPTED_IMAGE_TYPES.includes(f.type)) {
+        setError(`Format non supporté : ${f.name}. Utilisez JPG, PNG, WEBP, AVIF ou GIF.`);
+        continue;
+      }
+      if (f.size > MAX_FILE_BYTES) {
+        setError(`Trop volumineux (max 10 Mo) : ${f.name}.`);
+        continue;
+      }
+      next.push({
+        localId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file: f,
+        previewUrl: URL.createObjectURL(f),
+        uploading: true,
+      });
+    }
+    if (next.length === 0) return;
+    setImages((prev) => [...prev, ...next]);
+    // Kick off uploads in parallel. Each completes independently and updates
+    // its own row. We let the user keep filling in other fields meanwhile.
+    for (const img of next) {
+      void uploadOne(img);
+    }
+  }
+
+  async function uploadOne(img: StagedImage): Promise<void> {
+    try {
+      const fd = new FormData();
+      fd.append("file", img.file);
+      const r = await fetch("/api/seller/media", { method: "POST", body: fd });
+      if (!r.ok) {
+        const j = (await r.json().catch(() => ({}))) as { detail?: string; error?: string };
+        throw new Error(j.detail || j.error || `HTTP ${r.status}`);
+      }
+      const data = (await r.json()) as { url: string; contentType: string; byteSize: number };
+      setImages((prev) =>
+        prev.map((x) =>
+          x.localId === img.localId
+            ? { ...x, uploaded: data, uploading: false }
+            : x,
+        ),
+      );
+    } catch (e) {
+      setImages((prev) =>
+        prev.map((x) =>
+          x.localId === img.localId
+            ? { ...x, uploading: false, error: (e as Error).message }
+            : x,
+        ),
+      );
+    }
+  }
+
+  function removeImage(localId: string): void {
+    setImages((prev) => {
+      const target = prev.find((x) => x.localId === localId);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return prev.filter((x) => x.localId !== localId);
+    });
+  }
 
   return (
     <form
@@ -68,6 +156,17 @@ export function NewProductForm({
         const [whole, frac = ""] = priceMajor.split(".");
         const priceMinor = `${whole}${frac.padEnd(2, "0").slice(0, 2)}`.replace(/^0+(?=\d)/, "");
 
+        // Media gate: ≥1 successful upload. Mirrors the API's media.min(1)
+        // requirement so we fail fast in the browser with a clear message
+        // instead of letting the server reject the request.
+        const successful = images.filter((x) => x.uploaded);
+        if (successful.length === 0) {
+          return setError("Ajoutez au moins une image du produit.");
+        }
+        if (images.some((x) => x.uploading)) {
+          return setError("Patientez : un téléversement est en cours.");
+        }
+
         setError(null);
         start(async () => {
           const r = await fetch("/api/seller/products", {
@@ -80,6 +179,11 @@ export function NewProductForm({
               ...(description ? { description } : {}),
               ...(category ? { categoryIds: [category] } : {}),
               variants: [{ sku, priceMinor, currency, inStock: true }],
+              media: successful.map((x) => ({
+                url: x.uploaded!.url,
+                contentType: x.uploaded!.contentType,
+                byteSize: x.uploaded!.byteSize,
+              })),
             }),
           });
           if (!r.ok) {
@@ -87,9 +191,11 @@ export function NewProductForm({
             setError(j.detail || j.error || `Échec (HTTP ${r.status})`);
             return;
           }
+          // Free the preview blob URLs before we navigate.
+          for (const x of images) URL.revokeObjectURL(x.previewUrl);
           // Land back on the dashboard so the seller sees their freshly-created
-          // product in the list. Previously redirected to the edit page, but
-          // that page is currently read-only and felt like a dead-end.
+          // product in the list. With media required at creation, the new
+          // product passes the catalog filter and is visible immediately.
           router.push("/seller/dashboard");
           router.refresh();
         });
@@ -115,6 +221,13 @@ export function NewProductForm({
       ) : (
         <input type="hidden" name="sellerId" value={defaultSellerId} />
       )}
+
+      <ImageUploader
+        images={images}
+        onAdd={addFiles}
+        onRemove={removeImage}
+      />
+
       <Field label="Titre" name="title" required maxLength={300} />
       <Field label="Marque" name="brand" maxLength={120} />
       <label className="text-sm">
@@ -152,12 +265,87 @@ export function NewProductForm({
       )}
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || images.some((x) => x.uploading)}
         className="self-start inline-flex h-10 px-4 items-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
       >
         {pending ? "Création…" : "Créer le produit"}
       </button>
     </form>
+  );
+}
+
+function ImageUploader({
+  images,
+  onAdd,
+  onRemove,
+}: {
+  images: StagedImage[];
+  onAdd: (files: FileList | null) => void;
+  onRemove: (localId: string) => void;
+}): React.ReactElement {
+  const canAddMore = images.length < MAX_IMAGES;
+  return (
+    <div className="text-sm">
+      <span className="block text-ink-soft mb-1">
+        Images <span className="text-ink-mute">({images.length}/{MAX_IMAGES}, JPG/PNG/WEBP)</span>
+      </span>
+      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+        {images.map((img) => (
+          <div
+            key={img.localId}
+            className="relative aspect-square rounded-lg border border-line bg-bg overflow-hidden"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={img.previewUrl}
+              alt=""
+              className="w-full h-full object-cover"
+            />
+            {img.uploading && (
+              <div className="absolute inset-0 bg-bg/60 flex items-center justify-center text-xs text-ink-soft">
+                Téléversement…
+              </div>
+            )}
+            {img.error && (
+              <div
+                className="absolute inset-0 bg-bad/20 flex items-center justify-center text-xs text-bad px-1 text-center"
+                title={img.error}
+              >
+                Échec
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => onRemove(img.localId)}
+              aria-label="Retirer l'image"
+              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-bg/80 border border-line text-ink hover:text-bad hover:border-bad/40 transition flex items-center justify-center text-base leading-none"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {canAddMore && (
+          <label className="aspect-square rounded-lg border border-dashed border-line hover:border-accent/40 hover:text-accent cursor-pointer flex items-center justify-center text-xs text-ink-soft transition">
+            + Ajouter
+            <input
+              type="file"
+              accept={ACCEPTED_IMAGE_TYPES.join(",")}
+              multiple
+              className="sr-only"
+              onChange={(e) => {
+                onAdd(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        )}
+      </div>
+      {images.length === 0 && (
+        <p className="mt-2 text-xs text-ink-mute">
+          Au moins une image est requise — sans image, le produit n’apparaîtra pas dans le catalogue.
+        </p>
+      )}
+    </div>
   );
 }
 

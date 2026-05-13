@@ -1,5 +1,9 @@
 // REST surface for /v1/products — spec §5.1.
 
+import { createHash, randomUUID } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { mkdir, stat, writeFile } from "node:fs/promises";
+import { extname, join, resolve } from "node:path";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { catalog } from "@marketplace/domain";
@@ -175,9 +179,68 @@ const CreateProductSchema = z.object({
       }),
     )
     .min(1),
-  media: z.array(MediaInputSchema).max(20).optional(),
+  // Media is required at creation. The catalog filter (catalog/filter.ts)
+  // hides any product without media from every browse surface, so allowing
+  // a media-less create produces an instantly-invisible listing — including
+  // from the seller's own dashboard. The constraint here matches that read
+  // invariant. See deploy/CHANGELOG.md 2026-05-13.
+  media: z.array(MediaInputSchema).min(1).max(20),
   heroMediaIndex: z.number().int().nonnegative().optional(),
 });
+
+const UpdateProductSchema = z.object({
+  title: z.string().min(1).max(300).optional(),
+  description: z.string().max(5000).nullable().optional(),
+  brand: z.string().max(120).nullable().optional(),
+  attributes: z.record(z.string(), z.string()).optional(),
+  categoryIds: z.array(z.string().min(1).max(120)).max(20).optional(),
+  shipsTo: z.array(z.string().length(2)).max(250).optional(),
+  variants: z
+    .array(
+      z.object({
+        sku: z.string().min(1).max(64),
+        priceMinor: z.coerce.bigint(),
+        currency: z.string().regex(/^[A-Z]{3}$/),
+        inStock: z.boolean().optional(),
+      }),
+    )
+    .min(1)
+    .optional(),
+});
+
+// Where uploaded media bytes live on disk inside the api container.
+// The compose file bind-mounts /var/lib/marketplace/media → /data/media so
+// the volume survives container recreate. Override with $MARKETPLACE_MEDIA_DIR
+// in tests / non-prod envs (the var also lets the directory move without a
+// code change if we ever migrate to a different mount point).
+function mediaDir(): string {
+  return process.env.MARKETPLACE_MEDIA_DIR ?? "/data/media";
+}
+
+// Public URL path under which uploaded files are served. The api also serves
+// them (GET /v1/media/:filename below) so Caddy proxies them through and
+// Cloudflare can edge-cache by URL. The filename includes the content hash
+// of the bytes, so we can serve with `immutable` cache-control.
+const MEDIA_URL_PREFIX = "/v1/media";
+
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+]);
+
+function extForContentType(ct: string): string {
+  const map: Record<string, string> = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "image/avif": ".avif",
+  };
+  return map[ct.toLowerCase()] ?? ".bin";
+}
 
 export async function registerProductWriteRoutes(
   app: FastifyInstance,
@@ -189,6 +252,105 @@ export async function registerProductWriteRoutes(
 
   app.addContentTypeParser(/^image\//, { parseAs: "buffer" }, (_req, body, done) => {
     done(null, body);
+  });
+
+  // ── POST /v1/media ─────────────────────────────────────────────────────
+  // Single-image upload. Multipart form-data with field name "file". Writes
+  // bytes to {mediaDir}/<contentHash>.<ext> (content-addressed, so re-uploading
+  // the same image is a no-op deduplication) and returns the canonical URL.
+  // Idempotency-key not required (the content hash IS the idempotency key —
+  // exempted in server.ts).
+  app.post("/v1/media", async (req, reply) => {
+    requirePrincipal(req);
+    const part = await req.file();
+    if (!part) {
+      void reply.code(400);
+      return { error: "missing_file", detail: "Expected a multipart file part named 'file'." };
+    }
+    const ct = (part.mimetype ?? "").toLowerCase();
+    if (!ALLOWED_IMAGE_TYPES.has(ct)) {
+      void reply.code(415);
+      return { error: "unsupported_media_type", detail: `Content-Type ${ct || "(none)"} not allowed.` };
+    }
+    const buf = await part.toBuffer();
+    if (buf.length === 0) {
+      void reply.code(400);
+      return { error: "empty_file" };
+    }
+    if (buf.length > MAX_UPLOAD_BYTES) {
+      void reply.code(413);
+      return { error: "file_too_large", detail: `Max ${MAX_UPLOAD_BYTES} bytes.` };
+    }
+    const hash = createHash("sha256").update(buf).digest("hex").slice(0, 32);
+    const filename = `${hash}${extForContentType(ct)}`;
+    const dir = mediaDir();
+    await mkdir(dir, { recursive: true });
+    const path = join(dir, filename);
+    // Content-addressed: skip the write if the file already exists.
+    let exists = false;
+    try {
+      await stat(path);
+      exists = true;
+    } catch {
+      // ENOENT — fall through to write.
+    }
+    if (!exists) {
+      await writeFile(path, buf);
+    }
+    void reply.code(201);
+    return {
+      url: `${MEDIA_URL_PREFIX}/${filename}`,
+      contentType: ct,
+      byteSize: buf.length,
+    };
+  });
+
+  // ── GET /v1/media/:filename ────────────────────────────────────────────
+  // Static-file passthrough so the api is the canonical origin for image
+  // bytes (Caddy proxies and Cloudflare edge-caches by URL). Filenames are
+  // content-addressed, so `immutable` is safe — the bytes for a given name
+  // will never change.
+  app.get("/v1/media/:filename", async (req, reply) => {
+    const { filename } = req.params as { filename: string };
+    // Defence against path-traversal: only accept [a-z0-9.-]+ filenames, and
+    // resolve against the media dir to verify the resolved path stays inside.
+    if (!/^[a-z0-9][a-z0-9.-]*$/i.test(filename)) {
+      void reply.code(400);
+      return { error: "bad_filename" };
+    }
+    const dir = resolve(mediaDir());
+    const path = resolve(join(dir, filename));
+    if (!path.startsWith(dir + "/") && path !== dir) {
+      void reply.code(400);
+      return { error: "bad_filename" };
+    }
+    let info: Awaited<ReturnType<typeof stat>>;
+    try {
+      info = await stat(path);
+    } catch {
+      void reply.code(404);
+      return { error: "not_found" };
+    }
+    if (!info.isFile()) {
+      void reply.code(404);
+      return { error: "not_found" };
+    }
+    const ext = extname(filename).toLowerCase();
+    const ctByExt: Record<string, string> = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".webp": "image/webp",
+      ".gif": "image/gif",
+      ".avif": "image/avif",
+    };
+    void reply.header("content-type", ctByExt[ext] ?? "application/octet-stream");
+    void reply.header("content-length", String(info.size));
+    // Filenames are content-hashed, so the bytes can never change for a
+    // given URL. Long-cache + immutable is safe. Public so CF / Caddy can
+    // cache and serve repeat requests without hitting origin.
+    void reply.header("cache-control", "public, max-age=31536000, immutable");
+    return reply.send(createReadStream(path));
   });
 
   app.post("/v1/products", async (req, reply) => {
@@ -244,6 +406,117 @@ export async function registerProductWriteRoutes(
       heroMediaId: p.heroMediaId ?? null,
       createdAt: new Date(p.createdAt).toISOString(),
     };
+  });
+
+  // ── PATCH /v1/products/:id ─────────────────────────────────────────────
+  // Field update for an existing product. Owner-authed. Media adds/removes
+  // go through the dedicated /media subroutes below so a typo in this body
+  // can't accidentally orphan image rows.
+  app.patch("/v1/products/:id", async (req, reply) => {
+    const principal = requirePrincipal(req);
+    const { id } = req.params as { id: string };
+    const body = UpdateProductSchema.parse(req.body);
+    const existing = await deps.products.loadOne(id);
+    if (!existing) throw new NotFoundError("product", id);
+    if (existing.sellerId === null) throw new UnauthorizedError("orphan_product_not_editable");
+    const seller = await deps.sellers.get(existing.sellerId);
+    if (!seller) throw new NotFoundError("seller", existing.sellerId);
+    if (seller.ownerAgentId !== principal.agentId) {
+      throw new UnauthorizedError("not_seller_owner");
+    }
+    const patch: Parameters<ProductRepo["update"]>[1] = {};
+    if (body.title !== undefined) patch.title = body.title;
+    if (body.description !== undefined) patch.description = body.description;
+    if (body.brand !== undefined) patch.brand = body.brand;
+    if (body.attributes !== undefined) patch.attributes = body.attributes;
+    if (body.categoryIds !== undefined) patch.categoryIds = body.categoryIds;
+    if (body.shipsTo !== undefined) patch.shipsTo = body.shipsTo;
+    if (body.variants !== undefined) {
+      patch.variants = body.variants.map((v) => ({
+        sku: v.sku,
+        priceMinor: v.priceMinor,
+        currency: v.currency,
+        ...(v.inStock !== undefined ? { inStock: v.inStock } : {}),
+      }));
+    }
+    const updated = await deps.products.update(id, patch);
+    if (!updated) throw new NotFoundError("product", id);
+    void reply.code(200);
+    return {
+      productId: updated.productId,
+      sellerId: updated.sellerId,
+      title: updated.titleSanitized,
+      brand: updated.brand,
+      variants: updated.variants.map((v) => ({
+        id: v.id,
+        sku: v.sku,
+        priceMinor: v.priceMinor.toString(),
+        currency: v.currency,
+        inStock: v.inStock,
+      })),
+      images: updated.media,
+      heroMediaId: updated.heroMediaId ?? null,
+      updatedAt: new Date().toISOString(),
+    };
+  });
+
+  // ── POST /v1/products/:id/media ────────────────────────────────────────
+  // Attach an already-uploaded media URL (from POST /v1/media) to a product.
+  // Owner-authed. Returns the updated product including the new media row.
+  app.post("/v1/products/:id/media", async (req, reply) => {
+    const principal = requirePrincipal(req);
+    const { id } = req.params as { id: string };
+    const body = MediaInputSchema.parse(req.body);
+    const existing = await deps.products.loadOne(id);
+    if (!existing) throw new NotFoundError("product", id);
+    if (existing.sellerId === null) throw new UnauthorizedError("orphan_product_not_editable");
+    const seller = await deps.sellers.get(existing.sellerId);
+    if (!seller || seller.ownerAgentId !== principal.agentId) {
+      throw new UnauthorizedError("not_seller_owner");
+    }
+    if (existing.media.length >= 20) {
+      void reply.code(409);
+      return { error: "media_limit", detail: "A product can hold at most 20 images." };
+    }
+    const added = await deps.products.addMedia(id, {
+      url: body.url,
+      contentType: body.contentType,
+      ...(body.byteSize !== undefined ? { byteSize: body.byteSize } : {}),
+      ...(body.width !== undefined ? { width: body.width } : {}),
+      ...(body.height !== undefined ? { height: body.height } : {}),
+      ...(body.altText !== undefined ? { altText: body.altText } : {}),
+    });
+    void reply.code(201);
+    return added;
+  });
+
+  // ── DELETE /v1/products/:id/media/:mediaId ─────────────────────────────
+  // Detach an image. Refuses to delete the last image on a product so the
+  // catalog-filter invariant (media.length >= 1 for visible products) holds.
+  app.delete("/v1/products/:id/media/:mediaId", async (req, reply) => {
+    const principal = requirePrincipal(req);
+    const { id, mediaId } = req.params as { id: string; mediaId: string };
+    const existing = await deps.products.loadOne(id);
+    if (!existing) throw new NotFoundError("product", id);
+    if (existing.sellerId === null) throw new UnauthorizedError("orphan_product_not_editable");
+    const seller = await deps.sellers.get(existing.sellerId);
+    if (!seller || seller.ownerAgentId !== principal.agentId) {
+      throw new UnauthorizedError("not_seller_owner");
+    }
+    if (existing.media.length <= 1) {
+      void reply.code(409);
+      return {
+        error: "last_image",
+        detail: "Refusing to delete the only image on this product. Upload a replacement first, then delete this one.",
+      };
+    }
+    const removed = await deps.products.removeMedia(id, mediaId);
+    if (!removed) {
+      void reply.code(404);
+      return { error: "not_found", detail: "Image is not on this product." };
+    }
+    void reply.code(204);
+    return "";
   });
 }
 

@@ -555,12 +555,19 @@ export function makeProductRepo(db: DbClient) {
       });
     },
 
-    // The HTTP surface doesn't currently expose addMedia/removeMedia routes,
-    // but the interface requires them. We implement against the media table
-    // (no blob storage — the existing schema only stores URL+metadata).
+    // Attach already-uploaded media (POST /v1/media wrote the bytes and
+    // produced a content-addressed URL). We record the metadata row and
+    // promote it to hero if the product has none yet.
     async addMedia(
       productId: string,
-      input: { contentType: string; bytes: Buffer; altText?: string; width?: number; height?: number },
+      input: {
+        url: string;
+        contentType: string;
+        byteSize?: number;
+        width?: number;
+        height?: number;
+        altText?: string;
+      },
     ): Promise<StoredMedia | undefined> {
       const prod = await db.select().from(products).where(eq(products.id, productId)).limit(1);
       if (!prod[0]) return undefined;
@@ -571,9 +578,9 @@ export function makeProductRepo(db: DbClient) {
           id,
           sellerId: prod[0].sellerId,
           productId,
-          url: `/v1/media/${id}`,
+          url: input.url,
           contentType: input.contentType,
-          byteSize: input.bytes.byteLength,
+          byteSize: input.byteSize ?? 0,
           width: input.width ?? null,
           height: input.height ?? null,
           altText: input.altText ?? null,

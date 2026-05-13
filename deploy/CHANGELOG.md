@@ -6,6 +6,221 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-13 — vps-eu · web rebuild · sitemap now includes 5 editorial alias category landings
+
+- Follow-up to the prior chip-alias fix: now that `/c/smartphones`, `/c/portables`, `/c/electromenager`, `/c/mode`, `/c/vehicules` render real product strips (via `CATEGORY_ALIASES`), they should be discoverable to crawlers. They weren't — the sitemap was harvested from API facets, which only return the compound underscored slugs that actually tag products. The 5 head-term alias landings (each with unique 2-3 paragraph French copy + FAQPage JSON-LD, optimized for queries like "smartphones algérie") were orphaned in the index.
+- `packages/web/src/app/sitemap.ts`: added an `ALIAS_SLUGS` constant + a flatMap step that emits each alias slug as a /c/<slug> sitemap entry at priority 0.8 (same as the API-facet entries). Skipped the matching `/search?category=<alias>` entries because the click-through CTAs on /c/<alias> already resolve to the underlying API slug, so the search URLs are emitted by the facet loop.
+- Verified live: sitemap now lists 11 `/c/<slug>` entries (was 6) — the 6 API-facet slugs plus the 5 aliases.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · fixed 6 home page chips leading to empty category pages
+
+- Bug: 6 of the 8 hero-section category chips on the home page linked to `/c/<slug>` pages that returned 200 OK but rendered **zero product cards**. Slug mismatch — the home page used simplified head-term slugs (`/c/smartphones`, `/c/portables`, `/c/electromenager`, `/c/mode`, `/c/vehicules`, `/c/maison`) while the catalog tags products with compound Ouedkniss slugs (`telephones`, `informatique`, `electronique_electromenager`, `vetements_mode`, `automobiles_vehicules`). Each clicked chip dropped the buyer onto an editorial-only page with no actual listings — a hard bait-and-switch.
+- `packages/web/src/lib/categories.ts`: added `CATEGORY_ALIASES` map + `resolveCategorySlugs()` helper. Maps each editorial short slug to the underlying API category set: `electromenager → ["electronique_electromenager"]`, `mode → ["vetements_mode"]`, `vehicules → ["automobiles_vehicules", "vehicules", "voitures"]`, `smartphones → ["telephones"]`, `portables → ["informatique"]`.
+- `packages/web/src/app/c/[slug]/page.tsx`: replaced the two `category: [slug]` calls (`searchProducts` for the metadata count + the sample-products fetch) with `category: resolveCategorySlugs(slug)`. The "Voir toutes les …" and "Voir plus →" CTAs now build `/search?category=X&category=Y` URLs so the click-through from `/c/mode` lands on `/search?category=vetements_mode` instead of `/search?category=mode`.
+- `packages/web/src/app/page.tsx`: swapped the "Maison & Déco" chip (the only one with no real catalog backing — no products tagged `maison`) for "Immobilier" (991 listings).
+- Verified live: `/c/smartphones` 0 → 12 cards, `/c/portables` 0 → 12, `/c/electromenager` 0 → 12, `/c/mode` 0 → 12, `/c/vehicules` 0 → 3. Plus the new "Immobilier" chip leads to 12 cards.
+
+---
+
+## 2026-05-13 — vps-eu · brand inference round 9: security cameras + kitchen, 89 rows backfilled
+
+- Round-9 audit: security/CCTV (Dahua 23), kitchen (Ninja 15 verified kitchen-only, Krups 7, Nespresso 6, Terraillon 1), refrigeration (Raylan 10, Arcodym 5 Algerian cooker brand), vacuums (Bissell 8), pro audio (Rode 7 verified audio-only, Sennheiser 7).
+- `KNOWN_BRANDS` extended 156 → 166 entries.
+- Backfilled 89 rows. **Session running total: 1,680 products** newly or correctly tagged.
+- Brand-fill rates now: telephones 74%, vetements_mode 74%, informatique 56%, electronique_electromenager 45%. Diminishing returns on further rounds — most remaining NULL-brand rows are genuinely brandless (generic accessories, no-name imports, real estate).
+
+---
+
+## 2026-05-13 — vps-eu · brand inference round 8: PC components + denim, 247 rows backfilled
+
+- Round-8 audit found two clusters: PC components (Gigabyte 38, UGREEN 22, Magma 21 — verified PC-components brand not the generic word, APC 19, SanDisk 14, Tenda 11, Galax 8, Godox 5, Kingston 4, Biostar 4, Western Digital 4, ASRock 2, EVGA 0-but-pre-positioned) and one more apparel hit (Pepe Jeans 67). Plus heating (Chappee 18), small appliances (WMF 3, Lexical 2), smart watches (Haino-Teko 5).
+- `packages/db/src/seed-from-scraped.ts`: `KNOWN_BRANDS` extended 137 → 156 entries. Added `WD → Western Digital` canonical map.
+- Backfilled 247 rows. **Session running total: 169 + 91 + 149 + 171 + 417 + 347 + 247 = 1,591 products** newly or correctly tagged.
+
+---
+
+## 2026-05-13 — vps-eu · brand inference round 7: shoe brands + watches, 347 rows backfilled
+
+- Round-7 audit on the remaining vetements_mode NULL-brand rows surfaced specialty shoe brands not in the prior pass: Timberland (62, after CASE-WHEN priority unmasking — 53 in the predicted count), Xtep (57, Chinese athleticwear), Rahati (57, Algerian orthopedic shoes — single high-volume reseller), Clarks (56), Ecco (53), Chicco (22, baby/kids), Umbro (16), Fly Flot (12). Plus watches: Naviforce (7) and Casio (5).
+- Pre-positioned for future scrapes but zero historical matches: Columbia, Fossil, Michael Kors, Guess, Pandora, Carrefour, IKEA.
+- `packages/db/src/seed-from-scraped.ts`: `KNOWN_BRANDS` extended 120 → 137 entries.
+- Backfilled 347 rows. **Session running total: 169 + 91 + 149 + 171 + 417 + 347 = 1,344 products** newly or correctly tagged.
+
+---
+
+## 2026-05-13 — vps-eu · brand inference round 6: clothing brands (Lacoste, sneakers, athleticwear), 417 rows backfilled
+
+- The homepage hero strip surfaced 8 unbranded vetements_mode cards (Lacoste tennis kits, Skechers shoes, Safety Jogger sandals) — turned out the fashion category had 96% NULL-brand coverage because the brand list still skipped apparel entirely. Audit found 417 untagged rows with detectable apparel/footwear brands, dominated by Lacoste at 332 (a single high-volume Algerian reseller accounts for most of those).
+- `packages/db/src/seed-from-scraped.ts`: extended `KNOWN_BRANDS` to 120 entries — Lacoste, Skechers, Nike, Safety Jogger, Adidas, Puma, Reebok, New Balance, Converse, Under Armour, Asics, Jordan, Tommy Hilfiger, Calvin Klein, Polo Ralph Lauren, Levi.
+- Backfilled 417 rows: 332 Lacoste, 46 Skechers, 24 Nike, 15 Safety Jogger. Other apparel brands (Adidas, Puma, etc.) had zero historical matches but are pre-positioned for future scrapes.
+- Rebuilt `marketplace-api:local`. **Session running total: 169 + 91 + 149 + 171 + 417 = 997 products** newly or correctly tagged.
+- Vetements_mode brand-fill rate moves from ~4% to ~42% in one pass.
+
+---
+
+## 2026-05-13 — seller dashboard: end-to-end image flow + editable products
+
+- **Bug report**: operator created a product via /seller/products/new and couldn't find it on the dashboard. Investigation: product existed in DB (id `019e20df…`, title "pr") but with zero `catalog.media` rows; the catalog filter (`packages/api/src/catalog/filter.ts:58`) hid it from every browse surface including the seller's own dashboard.
+- **Root cause**: three layers disagreed about whether images are required. The catalog filter assumed every visible product had ≥1 image, but (a) the API's `CreateProductSchema.media` was `.optional()`, (b) the seller-creation form had no image picker at all, (c) the edit page was a read-only stub, and (d) there was no upload endpoint to even host bytes — though the auth middleware whitelisted `POST /v1/products/:id/media` for a never-built route. Scraper-seeded products always have URLs so the bug was invisible in steady state; only UI-created listings hit it.
+- **Fix scope**: closed every layer of the gap.
+  - `packages/api/src/routes/products.ts`: new `POST /v1/media` (multipart, content-addressed sha256 filenames) writes bytes to `/data/media/<hash>.<ext>`. New `GET /v1/media/:filename` streams them with `cache-control: public, max-age=31536000, immutable` (filenames are content-hashed so the bytes can never change). New `PATCH /v1/products/:id` updates fields. New `POST /v1/products/:id/media` attaches an uploaded URL. New `DELETE /v1/products/:id/media/:mediaId` detaches and refuses if it would drop to zero. `CreateProductSchema.media` is now `.min(1)`.
+  - `packages/api/src/middleware/auth.ts` + `packages/api/src/server.ts`: allow-listed `POST /v1/media` and exempted from idempotency-key requirement (content hash IS the idempotency key).
+  - `packages/api/src/catalog/filter.ts`: media-required rule scoped to browse only — seller-scoped queries (dashboard, store page) now show all of a seller's listings, including any media-less rows that slipped in historically.
+  - `packages/api/src/repos/product.ts` + `packages/db/src/repos/product.ts`: changed `addMedia` to take `{url, contentType, ...}` instead of raw bytes (upload writes bytes; attach records metadata).
+  - `docker-compose.prod.yml`: bind-mount `/var/lib/marketplace/media:/data/media` on the api service; `MARKETPLACE_MEDIA_DIR=/data/media`.
+  - `packages/web/src/app/seller/products/new/NewProductForm.tsx`: full rewrite with image picker — multi-file select, per-image upload progress, removable, blocks submit until ≥1 image successfully uploaded.
+  - `packages/web/src/app/seller/products/[id]/edit/`: replaced the "Lecture seule" stub with `EditProductForm.tsx` — editable title/brand/description/category/price plus add/remove images (uploads attach immediately, deletes hit the API immediately, last-image deletion is refused).
+  - `packages/web/src/app/api/seller/`: new `/media`, `/products/[id]`, `/products/[id]/media`, `/products/[id]/media/[mediaId]` proxy routes forwarding to the API with the session JWT.
+  - `packages/web/src/lib/api.ts`: new `uploadMedia`, `updateProduct`, `attachProductMedia`, `detachProductMedia` client helpers.
+- **Verification**: 108 api tests green, all packages typecheck, MCP `product.create_listing` and scraper `seed-from-scraped` already enforced media presence before this — three of three write paths now agree.
+
+---
+
+## 2026-05-13 — vps-eu · brand inference round 5: African/Chinese phones + accessories, 171 rows backfilled
+
+- Post-imageless-purge audit on the now-6,400-row scraped catalog turned up another concentrated NULL-brand bucket in telephones + accessories: African phone makers (Tecno 29, Infinix 32 — both very common in DZ market) and Chinese phone makers (ZTE 23, Nothing 26), plus accessory brands (LDNIO 22, Capsys 18, Hollyland 9, Oculus 3, Nvidia 3, Astro 3, Fiio 3).
+- `packages/db/src/seed-from-scraped.ts`: extended `KNOWN_BRANDS` to 104 entries (added Infinix, Tecno, LDNIO, ZTE, Nothing, Hollyland, Capsys, Nvidia, Oculus, Astro, Fiio). Verified zero false-positives for "Nothing" specifically — every catalog match was the actual brand (e.g., "NOTHING WATCH 3 PRO", "CMF NOTHING phone 2a").
+- Backfilled 171 existing rows in a single UPDATE — the actual matches turned out 2.3× higher than the audit query suggested (CASE-WHEN priority was masking lower-priority brands when both regexes matched the same row).
+- Rebuilt `marketplace-api:local`; next scrape uses the new list.
+- **Session running total for brand-correctness improvements: 169 + 91 + 149 + 171 = 580 products** newly or correctly tagged in this loop session.
+
+---
+
+## 2026-05-13 — vps-eu · scraper requires ≥1 image, 533 imageless rows purged
+
+- Audit found 13% of scraped products (251 rows at that time, climbing) had `hero_media_id = NULL` because the Ouedkniss source listing had no photos. These rendered as letter-only placeholder cards on home / search / category grids — wall of A/V/L badges instead of product imagery, looks thin.
+- Skew: nearly 100% immobilier — Ouedkniss real-estate sellers often skip photos entirely (a Vente Villa with no exterior shot, a Vente Terrain with nothing). 5/5 random samples were "Vente Villa/Appartement/Terrain ..." with `images: []` in the scraper JSON dump.
+- `packages/db/src/seed-from-scraped.ts`: added pre-flight check next to the existing phone/title/price/dup guards. If `pickImages(item)` returns 0 candidates (the source listing has no acceptable image URL after the existing video/extension filter), increment `noImage` and skip. Summary line now reports the new bucket separately ("N dropped for missing image").
+- Cleanup SQL: `DELETE FROM catalog.products WHERE attributes->>'source' = 'ouedkniss-public-listing' AND hero_media_id IS NULL AND id NOT IN (SELECT pv.product_id FROM catalog.product_variants pv JOIN "order".order_items oi ON oi.variant_id = pv.id)` — deleted 533 rows; preserved 2 with historical order-item references for transactional integrity.
+- Rebuilt `marketplace-api:local` and recreated the api container so the next scrape uses the new filter. Container required manual cleanup of a stray `7fb91525b421_marketplace-api` left by an interrupted compose recreate during the rebuild — `docker stop && rm` followed by clean `up -d api`.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · same recovery treatment for /product/[id] 404
+
+- `packages/web/src/app/product/[id]/not-found.tsx`: mirrored the just-improved global /not-found pattern (Accueil / Parcourir le catalogue CTAs + 6 head-category recovery chips). Was a single back-to-catalog link; now keeps the user inside the shopping flow when a product URL points at a removed listing.
+- Verified live: hitting a nonexistent product UUID returns 404 with "Annonce introuvable" + "Catégories populaires" + chips.
+- Deploy: tar+ssh single file, `docker compose build web` + `up -d web`.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · improved /not-found recovery page
+
+- `packages/web/src/app/not-found.tsx`: was a single "Retour au catalogue" link. Now offers three primary CTAs (Accueil / Parcourir le catalogue / Blog) plus a row of recovery chips linking to the 6 head categories (`/c/telephones`, `/c/informatique`, `/c/electronique_electromenager`, `/c/vetements_mode`, `/c/automobiles_vehicules`, `/c/immobilier`). Stays `robots: noindex, follow` so dead URLs don't pollute Google's index.
+- Why: 404 is the only chance to recover a user whose link didn't resolve. Single-link 404 dead-ends ~80% of those sessions; a chip row keeps them in the catalog.
+- Verified live: `curl /this-page-does-not-exist` returns 404 with H1 "Cette page est vide", "Catégories populaires" heading, and chips for Téléphones / Informatique / etc.
+- Deploy: tar+ssh single file, `docker compose build web` + `up -d web`. One transient container-name conflict during recreate (stale `59c1c8d1b2fb_marketplace-web` reference) self-resolved on the second `up -d web` invocation.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · price sanity ceiling at 1B DZD (catches centime/dinar unit confusion)
+
+- Bug: 5 immobilier products had absurd prices like "DZD 4,320,000,000.00" (= $32M USD) and "DZD 137,500,000,000.00" (= $1B USD) on cards, product pages, the feed, OG meta, and JSON-LD Offer blocks. Root cause: Algerian real-estate sellers on Ouedkniss commonly post prices in centimes (1 DZD = 100 centimes) rather than dinars; the scraper's parsePriceToMinor can't tell the units apart at parse time, so a "4 320 000 000" centimes listing (= 43.2M DZD = reasonable land in Algiers, ~$320K USD) gets stored as 432B santeem.
+- Fix: added `MAX_REAL_PRICE_MINOR = 100_000_000_000` (= 1B DZD = ~$7.5M USD) ceiling alongside the existing 100-DZD floor. Anything above renders as "Prix sur demande" — matches how placeholder-low prices are already handled. Real luxury villas in Algiers cap around 300M-500M DZD, so the 1B ceiling has zero false-positives on legitimate listings.
+- Wired into all four render sites: `ProductCard.tsx` (card grids), `product/[id]/page.tsx` (visible price label + `ogPriceAmount` + JSON-LD Offer guard + variant-table filters + `metadata.other` injection — 7 call-sites total), `feed.xml/route.ts` (`fmtPrice` returns null above ceiling so Atom summary shows seller/brand only).
+- Verified live: `/product/019e2104-18b2-...` (Vente Terrain Boumerdès with priceMinor=13,750,000,000,000) — was "DZD 137,500,000,000.00", now "Prix sur demande".
+- Deploy: scp 3 files, `docker compose build web` + `up -d web`. Api unchanged.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · "Prix sur demande" on cards + product page for placeholder prices
+
+- Bug: products with `priceMinor < 10000` santeem (= 100 DZD) rendered as "DZD 1" / "DZD 4" on cards and the product detail price block. This is the Ouedkniss negotiate-only convention (sellers post 1 DA / 4 DA when they want buyers to call for a real price), not a real listing price. Looked like an obvious mis-price to buyers and reads as "this catalog is broken" — affects 11+ products in informatique alone (HUAWEI access points, AMD Ryzen trays, Dlink racks, etc.).
+- `MIN_REAL_PRICE_MINOR = 10000` was already filtering placeholder prices out of the SERP `<meta description>`, the JSON-LD Product.description, and the JSON-LD Offer block. Just not the visible price label.
+- Fixed at both render sites:
+  - `packages/web/src/app/product/[id]/page.tsx`: when all variants are below floor, swap `priceLabel` for "Prix sur demande" (was: `formatPrice(100, 'DZD')` → "DZD 1").
+  - `packages/web/src/components/ProductCard.tsx`: same threshold applied to card grids (home / search / category / related strip / store).
+- Verified live: `/product/019e208e-00e5-...` (HUAWEI S5700 switch, priceMinor=100) now shows "Prix sur demande" both as the main price and on its card; `/search?q=HUAWEI+S5700` card result also shows "Prix sur demande".
+- Deploy: scp 2 files, `docker compose build web` + `up -d web`. Api unchanged.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · per-seller OG card for /store/[id]
+
+- Was: every /store/<id> share rendered the same global brand card (`/opengraph-image`) — no way to tell which store from a Facebook / X / Discord preview.
+- New `packages/web/src/app/store/[id]/opengraph-image.tsx`: 1200×630 PNG that calls `getSeller(id)` and renders the seller's display name (auto-shrinks at ~28 chars), plus a subtitle of `city · N annonces actives` (or a generic fallback when the seller has neither). `/store/[id]/page.tsx` openGraph.images updated to point at the new route.
+- Verified live: `<meta property="og:image" content="https://teno-store.com/store/<id>/opengraph-image">` (cache-busted), image route returns 200 image/png (~97 KB).
+- Deploy: tar+ssh 2 files, `docker compose build web` + `up -d web`.
+
+---
+
+## 2026-05-13 — vps-eu · brand inference round 4: +13 brands (peripherals, networking, EU appliance), 149 rows backfilled
+
+- Round-four audit: NULL-brand sample still showed concentrated misses on PC peripherals, networking, printers, and Algerian-market heating/appliance names. Added Calor, Havit (which turned out to be 83 hits — much bigger than the sample suggested), TP-Link (canonical map handles "Tp-Link"/"TPLink" variants), Immergas, Midea, Corsair, Epson, Junkers, BenQ, Taurus, GoPro, plus a `MacBook → Apple` canonical so titles like "MacBook Air M3 2024" tag as Apple.
+- `packages/db/src/seed-from-scraped.ts`: `KNOWN_BRANDS` now 93 entries (up from 80). Rebuilt `marketplace-api:local`.
+- Backfilled 149 existing NULL-brand rows: 83 Havit, 12 Calor, 8 TP-Link, 6 each of Midea/Junkers/Immergas/Epson/Corsair, 6 Apple (MacBook), 4 Taurus, 4 BenQ, 2 GoPro.
+- **Session running total for brand-correctness improvements: 169 + 91 + 149 = 409 products** newly or correctly tagged. Brand-facet coverage in informatique should move from ~37% to ~52%.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · visible "Publié le" / "Mis à jour le" on blog posts
+
+- `packages/web/src/app/blog/[slug]/page.tsx`: blog post header now renders `Publié le {date}` (prefix added) and, when `dateModified !== datePublished`, an additional `Mis à jour le {date}` chip. Google's freshness ranker rewards pages where the visible modification date matches the `dateModified` in BlogPosting JSON-LD; this closes the loop and tells readers the content is being kept current.
+- All 4 current posts have matching published/modified dates, so only `Publié le` renders today — the "Mis à jour" branch activates automatically when a post's frontmatter bumps `dateModified`.
+- Verified live: `/blog/<slug>` shows `Publié le 13 mai 2026 · 7 min de lecture`.
+- Deploy: tar+ssh single file, `docker compose build web` + `up -d web`.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · dedicated OG cards for /about and /seller
+
+- Audit of all indexable routes' `og:image` found /about and /seller shipping NO og:image at all (their per-page `openGraph` metadata replaces the layout default — which has the `images` field — wholesale; without a file-convention `opengraph-image.tsx` in the route dir, Next.js can't auto-fill it). FB / X / Discord / LinkedIn shares of these pages were rendering only the 180×180 apple-icon fallback.
+- New `packages/web/src/app/about/opengraph-image.tsx` (1200×630, ~115 KB) and `packages/web/src/app/seller/opengraph-image.tsx` (1200×630, ~118 KB). Both match the green-gradient + brand-mark visual language of the existing /, /search, /blog, /c/<slug> OG cards.
+- Verified live (cache-busted): `<meta property="og:image" content="https://teno-store.com/about/opengraph-image?...">` + same for /seller. Both image routes return 200 image/png.
+- Remaining routes are fine: / and /search have file-convention cards; /blog and /blog/<slug> and /c/<slug> have dedicated cards (shipped today); /product/<id> uses the seller's hero image at 1200×; /store/<id> falls back to the global brand card (acceptable — still 1200×630, not 180×180).
+- Deploy: tar+ssh 2 files, `docker compose build web` + `up -d web`.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · CategoryFooter uses humanizeCategorySlug for chip labels
+
+- `packages/web/src/components/CategoryFooter.tsx`: category chips in the sticky "Parcourir le catalogue" panel (shown on every page) now render through `humanizeCategorySlug()` instead of `slug.replace(/[-_]/g, " ")` + Tailwind's `capitalize` class.
+- Before: "electronique electromenager", "automobiles vehicules" — no diacritics, no proper conjunction, per-word capitalization that drops accents Algerian users expect.
+- After: "Électronique & Électroménager", "Automobiles & Véhicules", "Téléphones", "Vêtements & Mode". Uses the curated French label map already used by `/c/[slug]` editorial pages and the breadcrumbs, so chip text matches the destination page heading exactly.
+- Verified live: home, /search, every product detail page that renders the footer now shows the proper labels.
+- Deploy: scp single file, `docker compose build web` + `up -d web`.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · hreflang sweep — /about, /seller, /search, /product, /store
+
+- Follow-up to the earlier /c + /blog hreflang fix: same Next.js wholesale-replacement of layout `metadata.alternates` affected every other child page that sets its own canonical. Added `languages: { "fr-DZ": ..., "x-default": ... }` next to canonical in: `/about/page.tsx`, `/seller/page.tsx`, `/store/[id]/page.tsx`, `/search/page.tsx`, `/product/[id]/page.tsx`.
+- Verified live: `<link rel="alternate" hrefLang="fr-DZ" href="...">` + `x-default` now present on `/about`, `/seller`, `/search?category=telephones`, `/product/<id>`, `/store/<id>` (all pointing at the correct per-page canonical URL).
+- Effect: Google now has the country/language signal it needs to route fr-DZ users to fr-DZ pages on every indexable surface — without this Google treats canonical-only pages as locale-agnostic and downgrades them in geo-targeted SERPs.
+- Deploy: tar+ssh 5 files (one had to be re-tarred after a transient SSH timeout), `docker compose build web` + `up -d web`.
+
+---
+
+## 2026-05-13 — vps-eu · brand inference round 3: +13 brands (cameras, robot vacuums, software), 91 rows backfilled
+
+- A second audit of NULL-brand scraped rows after the round-2 appliance+auto expansion showed informatique and electronique_electromenager still had ~870 NULL brands. Top recoverable buckets: Canon 29, Adobe 10, Dreame 9, AMD 8, Hikvision 8, Autodesk 6, Dyson 6, Smeg 5, Ariete 3, plus stragglers (TCL, Intel, Kärcher, Ecovacs, Nikon).
+- `packages/db/src/seed-from-scraped.ts`: extended `KNOWN_BRANDS` to 80 entries (added Kärcher/Karcher, Canon, Nikon, Dyson, Ecovacs, Dreame, Hikvision, TCL, Smeg, Ariete, Adobe, Autodesk, AMD, Intel). Added `Karcher → Kärcher` to `BRAND_CANONICAL` so both spellings normalize. Deliberately omitted IRIS despite 18 candidate matches — would false-positive on the common French/English word "iris" outside the Algerian Iris-appliance context.
+- Backfilled 91 existing rows: 30 Canon, 10 Adobe, 9 Dreame, 8 each AMD/Hikvision, 6 each Dyson/Autodesk, 5 Smeg, 3 Ariete, 2 each TCL/Intel, 1 each Kärcher/Ecovacs.
+- Rebuilt `marketplace-api:local`; next scrape uses the new list. Session running total for brand-correctness improvements: 169 + 91 = **260 products** newly or correctly tagged.
+
+---
+
+## 2026-05-13 — vps-eu · api+web rebuild · new `recently_added` sort + feed.xml uses it (no more 1.5h-stale feed)
+
+- Bug: `feed.xml`'s `<updated>` tag was running ~1.5 hours behind real ingestion. Atom feed-readers (RSS clients + AI crawlers like ChatGPT / Perplexity / Claude that poll Atom for "what's new") were seeing the catalog as stagnant even though the scraper ingests ~25–30 new rows per minute.
+- Root cause: feed.xml fetched `?sort=newest&limit=50`, which orders by `attributes.sourcePostedAt` (Ouedkniss seller's original post date). The 50-newest-by-postedAt set is dominated by fixture-era rows from May 11 (real seller posts, not freshly ingested). New scraper rows whose Ouedkniss source date is anywhere in the recent past don't crack the top-50, so the feed never saw them — and `max(updatedAt across hits)` never advanced past the May-11 ceiling.
+- Fix: added a new `recently_added` value to the catalog Sort enum in three places (`packages/domain/src/catalog/types.ts`, `packages/api/src/routes/products.ts`, `packages/api/src/catalog/sort.ts`). It sorts by `p.createdAt` (our DB ingestion time) — distinct from `newest` which prefers the Ouedkniss source post date. Switched `feed.xml` from `sort=newest` to `sort=recently_added`. Rebuilt both `marketplace-api:local` and `marketplace-web:local`; recreated both containers.
+- Verified live: `/v1/products?sort=recently_added&limit=3` returns the three most-recently-scraped products (UUIDv7 prefix `019e20e3-3b...` = today's ingestion). `feed.xml`'s `<updated>` advanced from `2026-05-13T08:58:24Z` to `2026-05-13T10:30:23Z` (3 min stale vs. previous 1.5h).
+- UI `sort=newest` unchanged — buyer-facing surfaces still show "newest as posted by the seller", which is the right semantic there. Only the Atom feed swapped axes.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · hreflang on /c/[slug], /blog, /blog/[slug]
+
+- Bug: those three routes shipped NO hreflang `<link>` tags at all. Root cause: Next.js replaces the layout-level `metadata.alternates` wholesale when a child page sets `alternates: { canonical: ... }` — it does not shallow-merge the `languages` field. Layout had `languages: { "fr-DZ": ..., "x-default": ... }` but the child override dropped it.
+- Fix in `packages/web/src/app/c/[slug]/page.tsx`, `/blog/page.tsx`, `/blog/[slug]/page.tsx`: re-declare `alternates.languages` next to the per-page canonical so each child carries its own per-URL hreflang. Verified live: `curl -s /c/telephones | grep hrefLang` now shows `fr-DZ` + `x-default` pointing at the correct per-page URL. Same for /blog and /blog/<slug>.
+- Pre-existing routes (`/product/[id]`, `/store/[id]`, `/search`, `/about`, `/seller*`) probably have the same drop pattern — they're out-of-scope for this commit but worth a sweep next time.
+- Deploy: tar+ssh 3 files, `docker compose build web` + `up -d web`.
+
+---
+
 ## 2026-05-13 — vps-eu · api+web rebuild · seller dashboard discoverability + plain copy
 
 - Closes the recurring "how do I see my stores from /dashboard?" gap: the signed-in /dashboard now renders a "Your stores" card (manage / add product / view public store) above the agent-activity feed, and the global header gains a direct "Ma boutique" link for signed-in users.

@@ -159,7 +159,12 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
       req.url === "/mcp" ||
       req.url === "/register" ||
       req.url === "/oauth/register" ||
-      /^\/v1\/products\/[^/]+\/media(\/[^/]+)?(\?|$)/.test(req.url),
+      /^\/v1\/products\/[^/]+\/media(\/[^/]+)?(\?|$)/.test(req.url) ||
+      // Image uploads are content-addressed (POST /v1/media writes to
+      // <sha256-prefix>.<ext>), so retransmitting the same bytes is naturally
+      // idempotent at the disk layer — no need to demand an Idempotency-Key
+      // header that file pickers don't supply.
+      /^\/v1\/media(\?|$)/.test(req.url),
   });
   const snapshotStore = opts.snapshotStore ?? new catalog.MemorySnapshotStore();
   await registerProductRoutes(app, opts.productReader, snapshotStore, opts.repos.searchLog);
