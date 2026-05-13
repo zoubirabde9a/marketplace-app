@@ -6,6 +6,36 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-13 — vps-eu · web rebuild · 2 more blog posts + dynamic OG cards for /blog and /c
+
+- Blog now has 4 posts (was 2). New: `/blog/acheter-voiture-occasion-algerie-10-verifications` (~1,180 mots, used-car inspection checklist) and `/blog/ordinateur-portable-etudes-algerie-guide-2026` (~1,150 mots, student laptop buyer's guide). Both internally link to relevant `/c/<slug>` pages. Past the 3–5 post threshold where Google starts treating a blog section as a real content surface rather than a token presence.
+- New OG image routes: `/blog/[slug]/opengraph-image` and `/c/[slug]/opengraph-image` — render 1200×630 branded PNGs (green gradient, brand mark, category chip, title) when these URLs are shared on FB/X/Discord/Slack. Matches the visual language of the existing `/`, `/search`, and `/product/[id]` OG cards. Verified live: `curl /c/voitures/opengraph-image` returns 200 image/png; same for `/blog/<slug>/opengraph-image` (~137 KB, ~1s cold render).
+- Pushed 4 URLs to IndexNow (HTTP 200) so Bing/Yandex pick the new posts up within minutes.
+- Deploy: tar+ssh sync, `docker compose -f docker-compose.prod.yml build web` + `up -d web`. Api unchanged.
+
+---
+
+## 2026-05-13 — vps-eu · apply migration 0012 (seller_id nullable) — unblock scraper inserts
+
+- Ran `docker exec -w /app/packages/db marketplace-api node dist/migrate.js`. Drizzle migration count went 12 → 13.
+- `catalog.products.seller_id` and `catalog.media.seller_id` are now `NULL`-able (was NOT NULL).
+- Background: commit `91891a6` (2026-05-12) shipped the seeder change to insert scraped listings with `seller_id = NULL`, plus migration `0012_nullable_seller_for_scraped.sql`, but the migration was never applied on the live DB. From 2026-05-12 ~07:07Z onward, every scraper run silently failed — the seeder logged "seeded N" but every INSERT hit the NOT NULL constraint and rolled back. Catalog froze at 2,418 products (only 5 of which were scraper-sourced) for ~30 hours despite the per-minute timer firing successfully.
+- Post-migration verification: `marketplace-scrape-loop.service` run at 08:57:19Z inserted 33 rows. Catalog count 2,418 → 2,451; `ouedkniss-public-listing` rows 5 → 38; newest `created_at` now current.
+- Follow-up defects worth fixing (not blocking): (a) seeder swallows the NOT NULL exception silently and reports success — try/catch should distinguish; (b) `metrics.jsonl` recorded `seeded=N` for ~30h of phantom inserts, so historical aggregates are wrong; (c) deploy pipeline doesn't run migrations on api image rebuild — needs a one-line addition to whatever launches `marketplace-api` so 0013+ don't sit unapplied again.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · /c/[slug] category landings + IndexNow ping
+
+- New surface: `/c/<slug>` editorial category landings backed by `packages/web/src/lib/categoryContent.ts` (29 hand-written French entries covering every slug in `FR_CATEGORY`). Each page renders unique 2–3 paragraph intro, 3–4-entry FAQ, related-category chips, sample products strip, and CTA into `/search?category=<slug>` for the filterable view. Distinct from `/search?category=<slug>` (filter tool, also still indexable): `/c/<slug>` is the SEO head-term landing — keyword in URL path, prose-heavy, eligible for FAQ rich results via FAQPage JSON-LD.
+- Sitemap now emits both `/c/<slug>` (priority 0.8) and `/search?category=<slug>` (priority 0.7) per category. Internal links from home, CategoryFooter, product breadcrumb, and blog posts repointed at `/c/<slug>` so PageRank flows into the head-term page.
+- Robots.txt extended to allow `/c/` for the wildcard rule and every AI/social UA.
+- Verified live: `/c/telephones`, `/c/informatique`, `/c/immobilier`, `/c/voitures` all return 200 with H1/FAQPage/CollectionPage JSON-LD intact. Sitemap contains 8 `/c/<slug>` entries (matches the API's category facets at time of build).
+- Pushed 12 URLs to IndexNow (Bing/Yandex/Seznam/Naver via `https://api.indexnow.org/IndexNow`, HTTP 200). Google ignores IndexNow but the others will recrawl within minutes.
+- Deploy: tar+ssh sync, `docker compose -f docker-compose.prod.yml build web` + `up -d web`. Api image unchanged (rebuilt earlier today for the MCP JSON-Schema fix).
+
+---
+
 ## 2026-05-13 — vps-eu — scraper requires >=1 phone per product, legacy phoneless rows purged
 
 - `packages/db/src/seed-from-scraped.ts`: `collectPhones()` merges per-listing `phoneEntries` with `stores[sellerStoreId].phones`; listings with zero phones are dropped before insert (counted as `noPhone` in the new "NNN dropped for missing phone" tail line). When at least one phone is present it is persisted on the product as `attributes.sourcePhones` (comma-joined).
