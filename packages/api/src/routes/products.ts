@@ -102,7 +102,7 @@ const SearchQueryParamsSchema = z.object({
     .optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
-  sort: z.enum(["relevance", "price_asc", "price_desc", "newest", "rating"]).default("relevance"),
+  sort: z.enum(["relevance", "price_asc", "price_desc", "newest", "recently_added", "rating"]).default("relevance"),
 });
 
 // Accept either repeated `?id=A&id=B` (the canonical form documented in tests)

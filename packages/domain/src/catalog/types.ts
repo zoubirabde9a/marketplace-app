@@ -25,7 +25,7 @@ export const SearchQuerySchema = z.object({
       includeOutOfStock: z.boolean().default(false),
     })
     .optional(),
-  sort: z.enum(["relevance", "price_asc", "price_desc", "newest", "rating"]).default("relevance"),
+  sort: z.enum(["relevance", "price_asc", "price_desc", "newest", "recently_added", "rating"]).default("relevance"),
   cursor: z.string().optional(),
   limit: z.number().int().min(1).max(100).default(25),
   embeddingsMode: z.enum(["off", "hybrid", "vector_only"]).default("hybrid"),

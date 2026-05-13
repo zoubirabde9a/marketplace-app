@@ -78,6 +78,17 @@ export function keyOf(p: StoredProduct, sort: Sort, ctx: FilterContext): SortKey
     }
     return { v: p.createdAt, isBig: false };
   }
+  if (sort === "recently_added") {
+    // Pure ingestion time — when WE first saw this row. Distinct from
+    // `newest` (which prefers the seller's source post date) so the
+    // Atom feed can surface "what's new in our catalog this hour"
+    // rather than "what was posted recently on Ouedkniss" — those two
+    // differ wildly when the scraper backfills pages of older listings.
+    // Until 2026-05-13 the feed was using `sort=newest`, which left
+    // <updated> stuck at the most-recent sourcePostedAt across the
+    // top-50 by-postedAt set (~2 days behind real ingestion).
+    return { v: p.createdAt, isBig: false };
+  }
   if (sort === "rating") return { v: p.rating ?? 0, isBig: false };
   return { v: relevanceScore(p, ctx), isBig: false };
 }

@@ -19,23 +19,44 @@ export async function generateMetadata({
   const post = getPostBySlug(slug);
   if (!post) return { title: "Article introuvable" };
   const url = `${SITE_URL}/blog/${post.slug}`;
+  const ogImage = `${url}/opengraph-image`;
   return {
     title: post.title,
     description: post.description,
-    alternates: { canonical: `/blog/${post.slug}` },
+    alternates: {
+      canonical: `/blog/${post.slug}`,
+      // Next.js replaces layout-level `alternates` wholesale when a child
+      // sets one. Re-declare hreflang so child pages keep the fr-DZ /
+      // x-default language signal.
+      languages: {
+        "fr-DZ": `${SITE_URL}/blog/${post.slug}`,
+        "x-default": `${SITE_URL}/blog/${post.slug}`,
+      },
+    },
     openGraph: {
       title: post.title,
       description: post.description,
       url,
       type: "article",
       locale: "fr_DZ",
+      siteName: "Teno Store",
       publishedTime: post.datePublished,
       modifiedTime: post.dateModified,
+      // Authors as URL strings — Next emits article:author with the URL. We
+      // attribute every post to the brand (no per-author bylines yet); point
+      // at /about so social platforms have a real landing if a reader clicks
+      // the byline.
+      authors: [`${SITE_URL}/about`],
+      // article:section feeds the category breadcrumb on Facebook/LinkedIn
+      // share previews. Mirrors the same value as the JSON-LD articleSection.
+      section: post.category,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: post.title }],
     },
     twitter: {
       card: "summary_large_image",
       title: post.title,
       description: post.description,
+      images: [ogImage],
     },
   };
 }
@@ -58,6 +79,11 @@ export default async function BlogPostPage({
   if (!post) notFound();
   const { prev, next } = getAdjacentPosts(slug);
   const url = `${SITE_URL}/blog/${post.slug}`;
+  // `image` is REQUIRED for Article rich-result eligibility per Google's
+  // structured-data docs. Use the dynamic /opengraph-image route we already
+  // generate (1200×630 PNG, branded). Without this Google rejects the
+  // Article enhancement and falls back to a plain blue link in SERP.
+  const ogImage = `${url}/opengraph-image`;
   const articleJsonLd = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
@@ -65,6 +91,7 @@ export default async function BlogPostPage({
     url,
     headline: post.title,
     description: post.description,
+    image: [ogImage],
     datePublished: post.datePublished,
     dateModified: post.dateModified,
     inLanguage: "fr",
@@ -73,6 +100,16 @@ export default async function BlogPostPage({
     publisher: { "@id": `${SITE_URL}/#organization` },
     author: { "@id": `${SITE_URL}/#organization` },
     articleSection: post.category,
+    wordCount: post.readingMinutes * 200,
+    // Speakable annotation: tells Google Assistant / Bing Chat voice mode /
+    // Perplexity audio / ChatGPT voice which parts of the page are safe to
+    // read aloud as a featured snippet. We target the H1 + lead paragraph
+    // (the post's excerpt block) — the natural "elevator pitch" surface
+    // that maps cleanly to a 30-60 sec audio answer.
+    speakable: {
+      "@type": "SpeakableSpecification",
+      cssSelector: ["#article-headline", "#article-lead"],
+    },
   };
   const breadcrumbJsonLd = {
     "@context": "https://schema.org",
@@ -107,9 +144,16 @@ export default async function BlogPostPage({
           <span>·</span>
           <span>{post.readingMinutes} min de lecture</span>
         </div>
-        <h1 className="text-4xl font-semibold tracking-tight text-ink leading-tight">
+        <h1 id="article-headline" className="text-4xl font-semibold tracking-tight text-ink leading-tight">
           {post.title}
         </h1>
+        {/* Lead paragraph — speakable target. Renders the excerpt so the
+            voice-readable surface matches what a human-skim reader would
+            also see first. Without this, the Speakable cssSelector below
+            points at nothing. */}
+        <p id="article-lead" className="mt-4 text-lg text-ink-soft leading-relaxed">
+          {post.excerpt}
+        </p>
       </header>
       <div className="space-y-5 leading-relaxed">
         <post.Body />

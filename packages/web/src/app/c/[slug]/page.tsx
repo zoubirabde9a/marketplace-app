@@ -18,6 +18,8 @@ import { ProductGrid } from "@/components/ProductGrid";
 import { jsonLdString } from "@/lib/jsonld";
 import { FR_CATEGORY, humanizeCategorySlug } from "@/lib/categories";
 import { getCategoryContent } from "@/lib/categoryContent";
+import { getCategoryBlogLinks } from "@/lib/categoryBlogLinks";
+import { getPostBySlug } from "../../blog/posts";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
@@ -60,7 +62,17 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: { canonical: `/c/${slug}` },
+    alternates: {
+      canonical: `/c/${slug}`,
+      // Re-declare hreflang here. Next.js replaces the layout-level
+      // `alternates` wholesale on child pages — without this the page
+      // ships no hreflang, dropping the country/language targeting
+      // signal Google uses to route fr-DZ users to fr-DZ pages.
+      languages: {
+        "fr-DZ": `${SITE_URL}/c/${slug}`,
+        "x-default": `${SITE_URL}/c/${slug}`,
+      },
+    },
     openGraph: {
       title,
       description,
@@ -145,6 +157,13 @@ export default async function CategoryLandingPage({
     "@id": `${url}#faq`,
     inLanguage: "fr",
     isPartOf: { "@id": `${SITE_URL}/#website` },
+    // Speakable: tells voice/AI search engines which spans are safe to read
+    // aloud as a featured snippet. Targets the FAQ heading + the <dl> that
+    // follows it — matches the same selector pattern /about already uses.
+    speakable: {
+      "@type": "SpeakableSpecification",
+      cssSelector: ["#faq-heading", "#faq-heading ~ dl"],
+    },
     mainEntity: content.faq.map((f) => ({
       "@type": "Question",
       name: f.q,
@@ -213,6 +232,34 @@ export default async function CategoryLandingPage({
           <ProductGrid hits={sample} />
         </section>
       )}
+
+      {(() => {
+        const blogLinks = getCategoryBlogLinks(slug)
+          .map((s) => getPostBySlug(s))
+          .filter((p): p is NonNullable<typeof p> => Boolean(p));
+        if (blogLinks.length === 0) return null;
+        return (
+          <section aria-labelledby="related-blog-heading" className="mb-12">
+            <h2 id="related-blog-heading" className="text-xl font-medium text-ink mb-4">
+              Articles à lire
+            </h2>
+            <ul className="space-y-3">
+              {blogLinks.map((p) => (
+                <li key={p.slug}>
+                  <Link
+                    href={`/blog/${p.slug}`}
+                    className="group block p-4 rounded-lg border border-line-soft hover:border-accent transition"
+                  >
+                    <div className="text-xs text-ink-mute mb-1">{p.category} · {p.readingMinutes} min de lecture</div>
+                    <div className="text-ink font-medium group-hover:text-accent">{p.title}</div>
+                    <div className="text-sm text-ink-soft mt-1">{p.excerpt}</div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })()}
 
       {content.related.length > 0 && (
         <section aria-labelledby="related-heading" className="mb-12">

@@ -9,7 +9,20 @@ export const metadata: Metadata = {
   title: "Blog — guides d'achat et conseils vendeurs",
   description:
     "Le blog Teno Store — guides d'achat pour acheteurs algériens, conseils pour vendeurs, tendances du marché. Tout en français, en dinars algériens (DZD).",
-  alternates: { canonical: "/blog" },
+  alternates: {
+    canonical: "/blog",
+    // Re-declare hreflang — Next.js replaces layout-level `alternates`
+    // wholesale on child pages, so without this /blog ships no language
+    // signal.
+    languages: {
+      "fr-DZ": `${SITE_URL}/blog`,
+      "x-default": `${SITE_URL}/blog`,
+    },
+    // Declare the RSS feed as an alternate representation. Browsers and
+    // feed readers auto-discover via this <link>; AI crawlers (ChatGPT,
+    // Perplexity, Bing Chat) also follow RSS for content discovery.
+    types: { "application/rss+xml": `${SITE_URL}/blog/rss.xml` },
+  },
   openGraph: {
     title: "Blog Teno Store — guides d'achat et conseils vendeurs",
     description:

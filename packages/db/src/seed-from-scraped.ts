@@ -107,11 +107,25 @@ function parsePriceToMinor(priceText: string | null | undefined): bigint | undef
 // names first so "OnePlus" wins over a hypothetical "One". Match is
 // case-insensitive against word-boundary occurrences in the title.
 const KNOWN_BRANDS = [
+  // Phones / laptops / peripherals — the original list.
   "OnePlus", "One plus", "iPhone", "I phone", "Apple", "Samsung", "Galaxy",
   "Xiaomi", "Huawei", "Honor", "Vivo", "Oppo", "Realme", "Google Pixel",
   "Google", "Sony", "Lenovo", "Dell", "HP", "Asus", "Acer", "MSI",
   "Logitech", "Jabra", "DJI", "Insta360", "Baseus", "Anker", "JBL", "Bose",
   "Pitaka", "Nokia", "Redmi", "POCO", "Microsoft",
+  // Small-appliance + home — added 2026-05-13 after an audit showed 110+
+  // products with detectable appliance brands ending up with `brand = NULL`
+  // (Moulinex 34, Tefal 20, Rowenta 9, Kenwood 8, Sonashi 8, Bosch 7,
+  // Philips 7, Enzo 6, DeLonghi 3, Condor 3, Nardi 3, SEB 2, …).
+  "De'Longhi", "De Longhi", "DeLonghi", "Moulinex", "Rowenta", "Tefal",
+  "Philips", "Kenwood", "Bosch", "Brandt", "Beko", "Whirlpool", "LG",
+  "Panasonic", "Hisense", "Condor", "Sonashi", "Clatronic", "Nardi",
+  "Bomann", "Magimix", "Enzo", "SEB",
+  // Automotive — every car listing under automobiles_vehicules currently
+  // has `brand = NULL` (3/3 sampled). Common DZ-market makes only.
+  "Volkswagen", "Mercedes-Benz", "Mercedes", "Renault", "Peugeot", "Citroen",
+  "Toyota", "Hyundai", "Nissan", "Honda", "Dacia", "BMW", "Audi", "Ford",
+  "Kia", "Opel", "Fiat",
 ];
 
 // Some brand spellings on the marketplace map to a canonical brand name.
@@ -123,24 +137,45 @@ const BRAND_CANONICAL: Record<string, string> = {
   Redmi: "Xiaomi",
   POCO: "Xiaomi",
   "Google Pixel": "Google",
+  "De Longhi": "De'Longhi",
+  DeLonghi: "De'Longhi",
+  "Mercedes-Benz": "Mercedes",
 };
 
 function inferBrand(title: string | null | undefined): string | undefined {
   if (!title) return undefined;
-  const lower = title.toLowerCase();
+  // Word-boundary match only. An earlier version also fell back to a plain
+  // `lower.includes(brand)` substring match, which produced false positives:
+  // "ASUS VIVOBOOK ..." tagged Vivo, "DATASHOW ACER X1123HP" tagged HP,
+  // "MINI HACHOIRE KENWOOD CHP40" tagged HP, "HPE OC20" tagged HP. The
+  // regex already runs case-insensitive (`/i`) and `\b` handles brand
+  // names with embedded spaces ("Google Pixel", "One plus") correctly,
+  // so the substring fallback was strictly redundant — and harmful.
   for (const brand of KNOWN_BRANDS) {
     const re = new RegExp(`\\b${brand.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-    if (re.test(lower) || lower.includes(brand.toLowerCase())) {
+    if (re.test(title)) {
       return BRAND_CANONICAL[brand] ?? brand;
     }
   }
   return undefined;
 }
 
+// Ouedkniss CDN serves both still images (under `/medias/announcements/images/...`)
+// and video clips (under `/medias/announcements/videos/...`) — and both URL
+// shapes show up in the same `item.images` array of a scraped listing. Before
+// 2026-05-13 we accepted everything and stamped it `image/jpeg`, which made
+// Next.js Image Optimizer return 400 on the video files (it refuses to
+// transcode non-image content) and produced steady 0.7%-of-traffic 5xx noise
+// from product card thumbnails. Reject anything with `/videos/` in the path
+// or a video file extension; everything else still defaults to JPEG, which
+// is what the CDN actually returns for the legitimate `/images/...` URLs.
+const VIDEO_PATH_RE = /\/videos\/|\.(mp4|webm|mov|m4v|avi|mkv)(\?|$)/i;
+
 function pickImages(item: ScrapedItem): Array<{ url: string; contentType: string }> {
   const out: Array<{ url: string; contentType: string }> = [];
   for (const url of item.images ?? []) {
     if (typeof url !== "string" || !/^https?:/.test(url)) continue;
+    if (VIDEO_PATH_RE.test(url)) continue;
     out.push({ url, contentType: "image/jpeg" });
     if (out.length >= 5) break;
   }
@@ -296,7 +331,19 @@ async function main(): Promise<void> {
     `seeded ${ok} products, skipped ${skipped + noPhone}/${items.length} (${dups} as already-seeded duplicates, ${noPhone} dropped for missing phone)`,
   );
   log.info(`done: seeded ${ok}, skipped ${skipped}/${items.length}, noPhone ${noPhone}, dups ${dups}`);
-  if (ok === 0 && (skipped > 0 || noPhone > 0) && dups === 0) process.exit(1);
+  // Exit policy: pre-flight rejections (no phone, no title/price, already-
+  // seeded duplicate) are *expected* outcomes for a given scrape batch —
+  // categories without Ouedkniss shop accounts hit `noPhone === items.length`
+  // every run, listings without prices on Ouedkniss show up as missing-
+  // title-or-price skips, and re-scraping the same page produces dups.
+  // None of those are bugs; treating them as exit 1 was making run-loop.sh
+  // retry 2× and exit 5, which burned docker-run cycles and filled the
+  // metrics log with false alarms. Only fail when *every* item went into
+  // the `skipped` bucket with zero noPhone/dups, which means either a
+  // catch-block exception on every insert (true unexpected error) or a
+  // structural input issue that warrants an alert.
+  const allTrulyFailed = ok === 0 && skipped === items.length && items.length > 0;
+  if (allTrulyFailed) process.exit(1);
 }
 
 main().catch((err) => {

@@ -6,6 +6,49 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-13 — vps-eu · web rebuild · dedicated /blog index OG card
+
+- New `packages/web/src/app/blog/opengraph-image.tsx`: 1200×630 PNG (~108 KB) for the /blog index. Previously the route inherited the layout default (180×180 apple-icon), which Twitter's `summary_large_image` and Facebook's preview both rendered undersized. Now `og:image` resolves to `/blog/opengraph-image` and shares of the blog index get a full-size branded card with title + tagline + post count.
+- Verified live: `og:image` content URL points at /blog/opengraph-image, 200 image/png returned.
+- Deploy: tar+ssh single file, `docker compose build web` + `up -d web`.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · "Articles à lire" cross-links from /c to /blog
+
+- New `packages/web/src/lib/categoryBlogLinks.ts`: maps category slugs to blog-post slugs (telephones/smartphones → smartphone buyer guide; informatique/ordinateurs/portables → laptop guide; automobiles_vehicules/voitures/vehicules → car inspection checklist). Single source of truth.
+- `/c/[slug]` now renders an "Articles à lire" section above the related-categories chips when the slug maps to at least one blog post. Section is fully hidden for unmapped slugs (e.g. /c/immobilier) — no empty heading, no spam links.
+- Bidirectional internal linking: blog posts already link inline to relevant `/c/<slug>`; this closes the loop so /c/ ↔ /blog/ flow PageRank both directions and Google can cluster the topical content.
+- Verified live: `/c/telephones` shows the smartphone guide card, `/c/voitures` shows the car checklist card, `/c/portables` shows the laptop guide, `/c/immobilier` correctly hides the section.
+- Deploy: tar+ssh minimal (c/ + categoryBlogLinks.ts), `docker compose build web` + `up -d web`.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · "Référence" badge on cards for non-purchasable scraped products
+
+- `packages/web/src/components/ProductCard.tsx`: card now shows a "Référence" badge in the top-right corner (next to `CounterfeitBadge` and `Rupture de stock`) when `hit.sellerId === null`. Badge styled bg-bg/80 + text-ink-mute + border-line for a subtle, distinct-from-warning look. `title` attribute carries the full explanation ("Annonce de référence — non disponible à l'achat sur Teno Store") for hover/screen-reader.
+- Why: scraped products were rendering on home / search / category pages exactly like purchasable products. Buyers clicked them expecting checkout, then got "non disponible à l'achat" on the detail page — a bait-and-switch UX. With the badge, intent is set on the listing surface.
+- Verified live: `/search?category=informatique` (97/97 scraped) renders 25 cards, all with "Référence" badge. Fixture product `/product/019e08a4-9976-...` (real seller) renders without the badge. Homepage also surfaces the badge on the 4 current scraped products in the recent strip.
+- Deploy: scp single file, `docker compose -f docker-compose.prod.yml build web` + `up -d web`. Api unchanged.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · max-image-preview:large + /c root redirect
+
+- `packages/web/src/app/layout.tsx`: extended the site-wide robots meta with `max-image-preview: large`, `max-snippet: -1`, `max-video-preview: -1`. Google defaults to a small image preview in SERP; `large` unlocks full-width images on mobile + Image Search rich-result eligibility. Verified live: `<meta name="robots" content="index, follow, max-video-preview:-1, max-image-preview:large, max-snippet:-1">`.
+- New `packages/web/src/app/c/page.tsx`: bare `/c` now 308-redirects to `/search` (was 404). Recovers typed-URL traffic and consolidates any external link to `/c` onto the catalog tool. Per-category landings still live at `/c/<slug>`. Verified: `curl -I /c` → `308 Location: /search`.
+- Deploy: tar+ssh minimal change set (layout + c/), `docker compose build web` + `up -d web`.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · Speakable spec on /c/[slug] FAQ
+
+- `packages/web/src/app/c/[slug]/page.tsx`: added `SpeakableSpecification` (cssSelector `["#faq-heading", "#faq-heading ~ dl"]`) to the per-category FAQPage JSON-LD. Same pattern /about and /blog/<slug> now use. Tells Google Assistant / Bing Chat voice / Perplexity audio that the category FAQ is a safe span to read aloud as a voice-search answer for queries like "comment vérifier un téléphone d'occasion en Algérie".
+- Verified live: `curl /c/telephones` shows `SpeakableSpecification` + the `#faq-heading` selector in the rendered HTML.
+- Deploy: tar+ssh `packages/web/src/app/c` only, `docker compose build web` + `up -d web`.
+
+---
+
 ## 2026-05-13 — vps-eu · api + web rebuild · migrate sidecar, media-less filter, contact-emoji strip, run-loop tripwire
 
 - `docker-compose.prod.yml`: new `api-migrate` one-shot service runs `node packages/db/dist/migrate.js` against postgres and exits; `api` depends on it with `service_completed_successfully` so any migration shipped inside the api image is applied before the api starts serving. Closes the failure mode that froze the catalog for ~30h on 2026-05-12.
@@ -39,6 +82,7 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 - `packages/db/src/seed-from-scraped.ts`: extended `KNOWN_BRANDS` from 35 mostly-phone/laptop entries to 65, adding small-appliance brands (Moulinex, Rowenta, Tefal, Philips, Kenwood, Bosch, Brandt, Beko, Whirlpool, LG, Panasonic, Hisense, Condor, Sonashi, Clatronic, Nardi, Bomann, Magimix, Enzo, SEB, De'Longhi w/ canonical map for "De Longhi"/"DeLonghi" variants) and automotive (Volkswagen, Mercedes-Benz w/ canonical map, Renault, Peugeot, Citroen, Toyota, Hyundai, Nissan, Honda, Dacia, BMW, Audi, Ford, Kia, Opel, Fiat).
 - Why: prior audit showed 110+ products with detectable appliance brand names in the title but `brand = NULL`. Brand-facet filters and brand-keyed SERP rich-cards were skipping them. The original list was scoped to phones/laptops because that's how the catalog started; the scraper now covers electronique_electromenager and automobiles_vehicules where the brand surface is completely different.
 - Backfilled 133 existing rows with a single SQL UPDATE using `~* '\y<brand>\y'` matchers mirroring the JS regex: 34 Moulinex, 20 Tefal, 9 Rowenta, 8 each of Sonashi/Kenwood/Clatronic, 7 each of Philips/LG/Bosch, 6 Enzo, 5 De'Longhi, 3 each of Nardi/Condor, 2 each of SEB/Hisense/Bomann, 1 each of Panasonic/Citroen.
+- Follow-up backfill of fixture-era rows (the original UPDATE was scoped to `attributes->>'source' = 'ouedkniss-public-listing'`): same brand-detection CASE on the complement, fixed 30 more rows (19 Panasonic, 8 LG, 3 Philips). Session total: 133 scraped + 30 fixture + 6 wrong→correct from the prior iteration = **169 products** with newly-accurate brand tags.
 - Rebuilt `marketplace-api:local`. Next scrape uses the new list; existing rows are already correct.
 
 ---

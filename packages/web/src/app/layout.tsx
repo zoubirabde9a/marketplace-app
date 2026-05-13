@@ -107,7 +107,21 @@ export const metadata: Metadata = {
     // types entirely, dropping feed discovery on the deepest indexed
     // surfaces (where AI crawlers most often land from Google).
   },
-  robots: { index: true, follow: true },
+  // Google honors max-image-preview / max-snippet / max-video-preview as
+  // hints for how much of the page it may display in SERP. Default image
+  // preview size is "standard" (small thumb); "large" enables full-width
+  // images on mobile and Image Search rich results — meaningful mobile
+  // CTR lift on visual catalogs like ours. max-snippet:-1 lets Google
+  // pick a snippet of any length (it won't pad beyond useful, but it
+  // also won't artificially clip mid-sentence). max-video-preview:-1
+  // is harmless on a non-video site but future-proofs.
+  robots: {
+    index: true,
+    follow: true,
+    "max-image-preview": "large",
+    "max-snippet": -1,
+    "max-video-preview": -1,
+  },
   // Prevent iOS Safari and Chrome from auto-detecting numeric text (DZD
   // prices, productIds, dates) and turning them into tel:/email/address
   // links. The product page emits explicit <a href="tel:..."> chips for

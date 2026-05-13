@@ -80,6 +80,20 @@ export function ProductCard({
         )}
         <div className="absolute top-2 right-2 flex gap-1.5">
           <CounterfeitBadge risk={hit.counterfeitRisk} />
+          {hit.sellerId === null && (
+            // Scraped Ouedkniss listings are catalog reference data, not
+            // purchasable on Teno Store — surfacing this on the card sets
+            // expectations before the click. The product detail page also
+            // swaps Add-to-Cart for "Annonce de référence — non disponible
+            // à l'achat sur Teno Store", but a card-level badge avoids the
+            // bait-and-switch where a buyer clicks expecting checkout.
+            <span
+              className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium bg-bg/80 text-ink-mute border border-line"
+              title="Annonce de référence — non disponible à l'achat sur Teno Store"
+            >
+              Référence
+            </span>
+          )}
           {!hit.inStock && (
             <span className="px-2 py-0.5 rounded-full text-[10px] uppercase tracking-wider font-medium bg-bg/80 text-ink-soft border border-line">
               Rupture de stock

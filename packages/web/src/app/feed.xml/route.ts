@@ -79,7 +79,16 @@ async function getFeedHits(): Promise<FeedHit[]> {
   if (feedInFlight) return feedInFlight;
   feedInFlight = (async () => {
     try {
-      const res = await fetch(`${API_URL}/v1/products?sort=newest&limit=50`, {
+      // sort=recently_added orders by our DB ingestion time (createdAt),
+      // not by the seller's source post date. The latter (sort=newest) is
+      // what buyers see on UI surfaces, but for an Atom feed "newly added
+      // to our catalog" is the meaningful axis — a feed-reader that polls
+      // every 5 min wants to know what we just ingested, not what
+      // Ouedkniss sellers happened to post recently. Until this change
+      // the feed's <updated> tag was lagging ~2 days behind ingestion
+      // because the top-50 by-postedAt set was dominated by older
+      // fixture-era rows with fresh DB updates but stale source dates.
+      const res = await fetch(`${API_URL}/v1/products?sort=recently_added&limit=50`, {
         headers: { accept: "application/json" },
         cache: "no-store",
       });
