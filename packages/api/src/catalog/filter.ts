@@ -51,6 +51,11 @@ function variantsInCurrency(p: StoredProduct, ctx: FilterContext, skip?: FacetDi
  * lifted just for that calculation.
  */
 export function passes(p: StoredProduct, ctx: FilterContext, skip?: FacetDim): boolean {
+  // Hide listings with no media. A card with no hero image renders as an
+  // empty placeholder on home/search/category — a visible quality hit. The
+  // product is still retrievable by direct GET /v1/products/:id; only the
+  // browse surfaces drop it. ~3.8% of catalog as of 2026-05-10.
+  if (p.media.length === 0) return false;
   if (!matchesText(p, ctx)) return false;
   const f = ctx.filters;
   if (skip !== "brand" && f.brand && (p.brand ?? "").toLowerCase() !== f.brand.toLowerCase()) return false;

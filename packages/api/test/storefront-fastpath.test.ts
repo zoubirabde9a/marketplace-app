@@ -26,7 +26,7 @@ function makeProduct(id: string, sellerId: string): StoredProduct {
     titleSanitized: `Product ${id}`,
     attributes: {},
     variants: [{ id: `${id}-v`, sku: `sku-${id}`, priceMinor: 1000n, currency: "DZD", inStock: true }],
-    media: [],
+    media: [{ id: `${id}-m`, url: "default.jpg", contentType: "image/jpeg" }],
     counterfeitRisk: "low",
     createdAt: Date.now(),
   };

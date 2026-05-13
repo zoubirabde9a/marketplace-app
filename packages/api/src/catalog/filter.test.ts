@@ -11,7 +11,7 @@ function makeProduct(overrides: Partial<StoredProduct> = {}): StoredProduct {
     variants: [
       { id: "v1", sku: "sku-1", priceMinor: 1000n, currency: "DZD", inStock: true },
     ],
-    media: [],
+    media: [{ id: "m-default", url: "default.jpg", contentType: "image/jpeg" }],
     counterfeitRisk: "low",
     createdAt: Date.now(),
     ...overrides,

@@ -24,7 +24,7 @@ function p(overrides: Partial<StoredProduct>): StoredProduct {
     titleSanitized: "Sample",
     attributes: {},
     variants: [{ id: "v", sku: "sku", priceMinor: 1000n, currency: "DZD", inStock: true }],
-    media: [],
+    media: [{ id: "m-default", url: "default.jpg", contentType: "image/jpeg" }],
     counterfeitRisk: "low",
     createdAt: 1,
     ...overrides,

@@ -67,6 +67,26 @@ function stripLeadingArabic(s: string): string {
   return stripped.length > 0 ? stripped : s;
 }
 
+// Ouedkniss masks seller-provided phone numbers and email addresses in
+// public listing bodies before serving them, replacing the actual contact
+// string with empty space while leaving the surrounding "📞" / "📧" emoji
+// and any seller-typed separators (slashes, dashes) intact. The artifact
+// reads as broken text on a product page ("📞 /" with nothing after it,
+// "📧" on its own line), and Google sometimes pulls the empty line into
+// the SERP snippet. Strip lines whose visible content is just a contact
+// emoji plus separators/whitespace, and collapse runs of 3+ blank lines
+// to a single blank line so the cleanup doesn't leave gaping holes.
+function stripMaskedContactLines(s: string): string {
+  if (!s) return s;
+  const cleaned = s
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*[📞📧☎]\s*[\s/\\\-:|—–]*\s*$/u.test(line))
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+  return cleaned;
+}
+
 // Shared description builder — used both by generateMetadata (SERP +
 // social preview) and the page body's Product JSON-LD `description`
 // field. Without this, the JSON-LD payload was shipping the raw 4-word
@@ -142,7 +162,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // boundary so we don't slice through a word; append "…" if we trimmed.
   const DESC_BUDGET = 155;
   const cleanedDesc = (() => {
-    const raw = p.description?.value
+    const raw = (p.description?.value ? stripMaskedContactLines(p.description.value) : p.description?.value)
       ?.replace(/\s+/g, " ")
       .replace(/^[\s\p{P}\p{S}]+/u, "")
       .trim();
@@ -439,9 +459,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   // body is too short / unhelpful (e.g. a 4-word Arabic blurb on a major
   // listing). Compute via the shared buildProductDescription helper so
   // SERP meta + JSON-LD stay aligned.
-  const ldRaw = p.description?.value
-    ?.replace(/^[\s\p{P}\p{S}]+/u, "")
-    .trim() ?? "";
+  const ldRaw = (p.description?.value ? stripMaskedContactLines(p.description.value) : "")
+    .replace(/^[\s\p{P}\p{S}]+/u, "")
+    .trim();
   // Mirror the strip applied to <meta description>: drop leading Arabic-
   // boilerplate chunks so the JSON-LD Product.description that Google
   // ingests for product rich-cards stays language-consistent with the
@@ -826,7 +846,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-5">
               <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-2">Description</h2>
               <p dir="auto" className="text-sm leading-relaxed text-ink-soft whitespace-pre-line untrusted">
-                {p.description.value}
+                {stripMaskedContactLines(p.description.value)}
               </p>
             </div>
           )}
