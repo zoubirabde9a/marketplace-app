@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { humanizeCategorySlug } from "@/lib/categories";
 
 const API_URL = (
   process.env.NEXT_PUBLIC_API_BASE_URL ??
@@ -98,12 +99,20 @@ export async function CategoryFooter() {
             </h2>
             <ul className="flex flex-wrap gap-2 list-none p-0 m-0">
               {categories.map((c) => {
-                const human = c.value.replace(/[-_]/g, " ");
+                // humanizeCategorySlug returns the curated French label
+                // ("Téléphones", "Automobiles & Véhicules", "Électronique &
+                // Électroménager") when the slug is known, else falls back
+                // to a capitalized variant of the slug. Previously this
+                // shipped the raw slug with underscores converted to spaces
+                // and relied on Tailwind's `capitalize` class, which gave
+                // ugly per-word output like "Electronique Electromenager"
+                // — no diacritics, no proper conjunction.
+                const human = humanizeCategorySlug(c.value);
                 return (
                   <li key={c.value}>
                     <Link
                       href={`/c/${encodeURIComponent(c.value)}`}
-                      className="inline-flex items-center px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition capitalize"
+                      className="inline-flex items-center px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
                     >
                       {human}
                       <span className="ml-1.5 text-ink-mute">{c.count}</span>

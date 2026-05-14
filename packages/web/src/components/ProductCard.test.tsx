@@ -86,8 +86,11 @@ describe("ProductCard", () => {
   });
 
   it("renders a price for a single-variant hit using formatPrice", () => {
-    const { container } = render(<ProductCard hit={baseHit({ priceMinor: "1999", currency: "USD" })} />);
-    expect(container.textContent).toMatch(/19\.99/);
+    // 19999 santeem = 199.99 — above the MIN_REAL_PRICE_MINOR=10000 floor
+    // that's collapsing sub-100-DZD listings to "Prix sur demande" (the
+    // Ouedkniss "1 DA" / "0 DA" placeholder bucket).
+    const { container } = render(<ProductCard hit={baseHit({ priceMinor: "19999", currency: "USD" })} />);
+    expect(container.textContent).toMatch(/199\.99/);
   });
 
   it("renders a price range when only priceFrom/priceTo are present", () => {
@@ -95,15 +98,17 @@ describe("ProductCard", () => {
       <ProductCard
         hit={baseHit({
           priceMinor: undefined,
-          priceFromMinor: "1000",
-          priceToMinor: "2000",
+          // Both ends above MIN_REAL_PRICE_MINOR=10000 so the range
+          // renders instead of collapsing to "Prix sur demande".
+          priceFromMinor: "10000",
+          priceToMinor: "20000",
           variantCount: 2,
         })}
       />,
     );
     // formatPriceRange yields "<low> – <high>"
-    expect(container.textContent).toMatch(/10/);
-    expect(container.textContent).toMatch(/20/);
+    expect(container.textContent).toMatch(/100/);
+    expect(container.textContent).toMatch(/200/);
     expect(container.textContent).toContain("–");
   });
 });

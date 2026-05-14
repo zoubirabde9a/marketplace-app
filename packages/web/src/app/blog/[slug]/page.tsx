@@ -136,12 +136,25 @@ export default async function BlogPostPage({
         <Link href="/blog" className="hover:text-ink">Blog</Link>
       </nav>
       <header className="mb-8">
-        <div className="flex items-center gap-3 text-xs text-ink-mute mb-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-mute mb-3">
           <span className="px-2 py-0.5 rounded-md bg-bg-elev border border-line-soft">
             {post.category}
           </span>
-          <time dateTime={post.datePublished}>{formatDate(post.datePublished)}</time>
-          <span>·</span>
+          <time dateTime={post.datePublished}>Publié le {formatDate(post.datePublished)}</time>
+          {post.dateModified !== post.datePublished && (
+            <>
+              <span aria-hidden>·</span>
+              {/* Visible freshness signal. Google's freshness ranker rewards
+                  pages where the on-page modification date matches the
+                  `dateModified` in BlogPosting JSON-LD; emitting it here
+                  in human-readable form closes the loop and tells readers
+                  the post has been kept current. */}
+              <time dateTime={post.dateModified} className="text-ink-soft">
+                Mis à jour le {formatDate(post.dateModified)}
+              </time>
+            </>
+          )}
+          <span aria-hidden>·</span>
           <span>{post.readingMinutes} min de lecture</span>
         </div>
         <h1 id="article-headline" className="text-4xl font-semibold tracking-tight text-ink leading-tight">

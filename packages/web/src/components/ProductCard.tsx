@@ -24,9 +24,28 @@ export function ProductCard({
   eager?: boolean;
   priority?: boolean;
 }) {
-  const priceLabel = hit.priceMinor
-    ? formatPrice(hit.priceMinor, hit.currency)
-    : formatPriceRange(hit.priceFromMinor ?? null, hit.priceToMinor ?? null, hit.currency);
+  // Mirror the MIN_REAL_PRICE_MINOR floor used by feed.xml / product page /
+  // JSON-LD Offer suppression: Ouedkniss sellers commonly list with
+  // priceMinor = 100 (= 1 DZD) or 0 as a "Prix sur demande" / negotiate
+  // convention. Rendering them as "DZD 1" on card grids makes the catalog
+  // look mis-priced. 100 DZD = 10000 santeem is well below any real
+  // consumer-goods price on the platform.
+  const MIN_REAL_PRICE_MINOR = 10000;
+  // Ceiling: ~1B DZD = $7.5M USD. Algerian real-estate sometimes lists in
+  // *centimes* (1 DZD = 100 centimes) instead of dinars, which the scraper
+  // can't disambiguate at parse time. 5 immobilier rows currently sit
+  // above this ceiling at absurd values like "13,750,000,000,000 santeem"
+  // (= $1B USD for a parcel of land). Treat anything > ceiling as
+  // unreliable and swap for "Prix sur demande".
+  const MAX_REAL_PRICE_MINOR = 100_000_000_000;
+  const priceLabel = (() => {
+    const cap = Number(hit.priceToMinor ?? hit.priceMinor ?? "0");
+    if (Number.isFinite(cap) && cap > 0 && cap < MIN_REAL_PRICE_MINOR) return "Prix sur demande";
+    if (Number.isFinite(cap) && cap > MAX_REAL_PRICE_MINOR) return "Prix sur demande";
+    return hit.priceMinor
+      ? formatPrice(hit.priceMinor, hit.currency)
+      : formatPriceRange(hit.priceFromMinor ?? null, hit.priceToMinor ?? null, hit.currency);
+  })();
   const displayTitle = cleanProductTitle(hit.title.value);
 
   return (

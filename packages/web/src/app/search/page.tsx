@@ -10,7 +10,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { InfiniteResults } from "@/components/InfiniteResults";
 import { jsonLdString } from "@/lib/jsonld";
 import { upscaleOuedknissForCrawler } from "@/lib/images";
-import { humanizeCategorySlug } from "@/lib/categories";
+import { humanizeCategorySlug, resolveCategorySlugs } from "@/lib/categories";
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3200").replace(/\/$/, "");
 
@@ -199,7 +199,16 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   return {
     title,
     description,
-    alternates: { canonical },
+    alternates: {
+      canonical,
+      // Re-declare hreflang — Next.js replaces layout-level alternates
+      // wholesale on child pages. Anchor at canonical (single source per
+      // slice; multi-filter combinations canonical back to bare /search).
+      languages: {
+        "fr-DZ": `${SITE_URL}${canonical}`,
+        "x-default": `${SITE_URL}${canonical}`,
+      },
+    },
     robots:
       // Noindex when the slice has zero results. Without this, anyone can
       // construct /search?q=<garbage> or /search?brand=<typo> and we
@@ -318,7 +327,16 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
   let result;
   let error: string | null = null;
   try {
-    result = await searchProducts(input);
+    // Resolve editorial alias slugs (e.g. "mode" → ["vetements_mode"]) to
+    // the underlying compound API category set before the fetch. Users who
+    // land on /search?category=mode (typed URL, stale external link, or
+    // the /c/<alias> CTA) get matching products instead of an empty grid.
+    // input.category is left untouched so canonical URLs, breadcrumbs, and
+    // singleCategory display keep the alias slug the user actually navigated to.
+    const apiCategory = input.category?.flatMap(resolveCategorySlugs);
+    result = await searchProducts(
+      apiCategory ? { ...input, category: apiCategory } : input,
+    );
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   }

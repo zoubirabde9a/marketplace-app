@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { searchProducts } from "@/lib/api";
 import { parseSearchParams } from "@/lib/url";
+import { resolveCategorySlugs } from "@/lib/categories";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,15 @@ export async function GET(req: Request) {
   }
   const input = parseSearchParams(sp);
   try {
-    const result = await searchProducts(input);
+    // Mirror /search SSR: expand editorial alias slugs (e.g. "mode" →
+    // ["vetements_mode"]) before the upstream fetch. Without this the
+    // infinite-scroll continuation (InfiniteResults → /api/search?cursor=…)
+    // returns 0 results once the user scrolls past the first page on any
+    // alias slug, even though the initial SSR page rendered fine.
+    const apiCategory = input.category?.flatMap(resolveCategorySlugs);
+    const result = await searchProducts(
+      apiCategory ? { ...input, category: apiCategory } : input,
+    );
     // ETag fingerprint of the response: cursor + first hit's productId +
     // hit count. Two requests for the same (q, filters, cursor) tuple
     // get the same ETag iff the API returned the same first page —

@@ -316,7 +316,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
             ["Ordinateurs portables", "portables"],
             ["Électroménager", "electromenager"],
             ["Mode", "mode"],
-            ["Maison & Déco", "maison"],
+            ["Immobilier", "immobilier"],
             ["Véhicules", "vehicules"],
           ].map(([label, slug]) => (
             <li key={slug}>

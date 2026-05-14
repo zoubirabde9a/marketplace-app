@@ -11,7 +11,15 @@ export const metadata: Metadata = {
   title: "À propos",
   description:
     "Teno Store — marketplace algérien avec des milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA.",
-  alternates: { canonical: "/about" },
+  alternates: {
+    canonical: "/about",
+    // Re-declare hreflang so Next's wholesale replacement of layout-level
+    // alternates doesn't drop the fr-DZ / x-default signal on this page.
+    languages: {
+      "fr-DZ": `${SITE_URL}/about`,
+      "x-default": `${SITE_URL}/about`,
+    },
+  },
   openGraph: {
     locale: "fr_DZ",
     alternateLocale: ["en_US"],

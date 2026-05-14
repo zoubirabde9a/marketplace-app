@@ -34,6 +34,7 @@
 // carry seller_id = NULL and are excluded from cart/buy flows.
 
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { createDb } from "./client.js";
 import { createRepos } from "./repos/index.js";
 import { createLogger } from "@marketplace/shared/logger";
@@ -126,6 +127,64 @@ const KNOWN_BRANDS = [
   "Volkswagen", "Mercedes-Benz", "Mercedes", "Renault", "Peugeot", "Citroen",
   "Toyota", "Hyundai", "Nissan", "Honda", "Dacia", "BMW", "Audi", "Ford",
   "Kia", "Opel", "Fiat",
+  // Round-three audit (2026-05-13, after the appliance+auto pass): 100+
+  // more products in informatique + electronique_electromenager still
+  // had brand=NULL with detectable brands in the title. Canon (29) and
+  // Adobe/Autodesk (16) dominate, followed by mid-tier appliance and
+  // robot-vacuum names. Order matters — Kärcher placed near other K
+  // brands isn't important but kept readable. IRIS deliberately not
+  // added: it would false-positive on the common French/English word
+  // "iris" outside the Algerian Iris-appliance context.
+  "Kärcher", "Karcher", "Canon", "Nikon", "Dyson", "Ecovacs", "Dreame",
+  "Hikvision", "TCL", "Smeg", "Ariete", "Adobe", "Autodesk", "AMD", "Intel",
+  // Round-four audit (2026-05-13): another 60+ NULL-brand rows had
+  // detectable brands. Mix of PC peripherals (Corsair, Havit, BenQ),
+  // networking (TP-Link), printers (Epson), and Algerian-market
+  // heating/appliance brands (Calor, Immergas, Junkers, Midea, Taurus,
+  // GoPro, MacBook variant). Order doesn't matter relative to the round-1
+  // list since `\b` makes each brand independent.
+  "TP-Link", "Tp-Link", "MacBook", "Corsair", "Havit", "BenQ", "Epson",
+  "Calor", "Immergas", "Junkers", "Midea", "Taurus", "GoPro",
+  // Round-five audit (post-imageless-purge): telephones + accessories
+  // category. African / Chinese phone brands very common in DZ market
+  // (Tecno, Infinix, ZTE — together ~35 rows), then chargers (LDNIO),
+  // audio (Hollyland, Capsys, Fiio, Astro), GPU (Nvidia), VR (Oculus),
+  // and the awkward-but-real "Nothing" phone brand (verified zero false-
+  // positives across the catalog — every "nothing" match was the brand).
+  "Infinix", "Tecno", "LDNIO", "ZTE", "Nothing", "Hollyland", "Capsys",
+  "Nvidia", "Oculus", "Astro", "Fiio",
+  // Round-six audit (vetements_mode discovery): the home page hero strip
+  // surfaced 8 unbranded Lacoste/Skechers/Safety-Jogger cards — turns out
+  // the fashion category had 417 untagged rows with detectable apparel
+  // brands. Lacoste alone is 332 listings (the seller "Lacoste DZ" is
+  // the catalog's biggest clothing reseller). Sneaker & athleticwear
+  // brands fill the rest.
+  "Lacoste", "Skechers", "Nike", "Safety Jogger", "Adidas", "Puma",
+  "Reebok", "New Balance", "Converse", "Under Armour", "Asics", "Jordan",
+  "Tommy Hilfiger", "Calvin Klein", "Polo Ralph Lauren", "Levi",
+  // Round-seven audit (still vetements_mode dominated, plus watch brands):
+  // shoe brands (Clarks, Timberland, Ecco, Chicco baby shoes, Fly Flot,
+  // Xtep, Umbro), Algerian orthopedic-shoe brand Rahati (large
+  // listing-count, all medical/diabetic footwear), and watch brands
+  // (Casio, Naviforce — Chinese watch brand common in DZ).
+  "Rahati", "Xtep", "Clarks", "Timberland", "Ecco", "Chicco", "Umbro",
+  "Fly Flot", "Naviforce", "Casio", "Columbia", "Fossil", "Michael Kors",
+  "Guess", "Pandora", "Carrefour", "IKEA",
+  // Round-eight audit: PC components (Gigabyte, ASRock, Biostar, EVGA,
+  // Galax, Kingston, SanDisk, WD/Western Digital — 60+ rows), cables/
+  // hubs (UGREEN), UPS (APC), heating (Chappee), networking (Tenda),
+  // photography (Godox), kitchen (WMF, Lexical), smart watches
+  // (Haino-Teko), audio/PC accessories (Magma — verified PC-components
+  // brand, not the generic word), and one more apparel hit (Pepe Jeans, 67 rows).
+  "Pepe Jeans", "Gigabyte", "APC", "Chappee", "Magma", "Western Digital",
+  "WD", "UGREEN", "Tenda", "SanDisk", "Galax", "Godox", "Biostar",
+  "Haino-Teko", "Kingston", "WMF", "Lexical", "ASRock", "EVGA",
+  // Round-nine audit: security cameras (Dahua 23), kitchen (Ninja 15
+  // verified kitchen brand only, Krups 7, Nespresso 6, Terraillon 1),
+  // refrigeration (Raylan 10, Arcodym 5 Algerian cooker brand), vacuums
+  // (Bissell 8), audio (Rode 4 verified audio brand only, Sennheiser 3).
+  "Dahua", "Ninja", "Raylan", "Bissell", "Krups", "Nespresso", "Arcodym",
+  "Rode", "Sennheiser", "Terraillon",
 ];
 
 // Some brand spellings on the marketplace map to a canonical brand name.
@@ -140,6 +199,10 @@ const BRAND_CANONICAL: Record<string, string> = {
   "De Longhi": "De'Longhi",
   DeLonghi: "De'Longhi",
   "Mercedes-Benz": "Mercedes",
+  "Karcher": "Kärcher",
+  MacBook: "Apple",
+  "Tp-Link": "TP-Link",
+  WD: "Western Digital",
 };
 
 function inferBrand(title: string | null | undefined): string | undefined {
@@ -257,6 +320,7 @@ async function main(): Promise<void> {
   let ok = 0;
   let skipped = 0;
   let noPhone = 0;
+  let noImage = 0;
   let dups = 0;
   for (let i = 0; i < items.length; i++) {
     const it = items[i]!;
@@ -283,7 +347,32 @@ async function main(): Promise<void> {
       log.warn(`skip [${i}] no phone reachable (storeId=${it.sellerStoreId ?? "-"}, listingPhones=${it.phoneEntries?.length ?? 0}): ${title.slice(0, 60)}`);
       continue;
     }
-    const sku = `scraped-${slug(title, 24)}-${i}`;
+    // Hard requirement (2026-05-13): every seeded product must carry at least
+    // one image URL. Ouedkniss immobilier sellers commonly post listings
+    // without photos; those rows render as a brand-initial placeholder
+    // card on home/search/category grids — a wall of letter-only cards
+    // makes the catalog look thin. Until the previous pass 13% of scraped
+    // products had no hero image. Drop them at ingest time the same way
+    // noPhone rows are dropped; the scrape loop will re-find them on the
+    // next page-walk if the seller adds photos later.
+    const imageCandidates = pickImages(it);
+    if (imageCandidates.length === 0) {
+      noImage++;
+      log.warn(`skip [${i}] no image: ${title.slice(0, 60)}`);
+      continue;
+    }
+    // Globally-unique variant SKU. Previously `scraped-<title-slug>-<i>`
+    // where `i` is the loop index within a single scrape batch — every
+    // run that processed e.g. a "Vente Appartement F3 Alger ..." at
+    // position 37 produced the SKU `scraped-vente-appartement-f3-alg-37`,
+    // and 10+ rows in the live catalog ended up sharing identical SKUs
+    // (different products though, so the schema's (product_id, sku)
+    // unique constraint was still satisfied). Use a short hash of the
+    // sourceUrl as the uniqueness token instead — each scraped listing
+    // has a unique Ouedkniss URL, so this collapses the collision space.
+    const urlForHash = sourceUrl || `${title}-${i}`;
+    const urlHash = createHash("sha1").update(urlForHash).digest("hex").slice(0, 10);
+    const sku = `scraped-${slug(title, 24)}-${urlHash}`;
     const brand = inferBrand(title);
     const attributes: Record<string, string> = {
       source: "ouedkniss-public-listing",
@@ -311,7 +400,7 @@ async function main(): Promise<void> {
         ...(dump.category ? { categoryIds: [dump.category] } : {}),
         shipsTo: shipsToDefault,
         variants: [{ sku, priceMinor, currency: "DZD" }],
-        media: pickImages(it),
+        media: imageCandidates,
       });
       const dzd = (Number(priceMinor) / 100).toLocaleString("fr-DZ");
       log.info(`  ${created.productId} — ${title.slice(0, 60)} (DZD ${dzd})`);
@@ -327,10 +416,14 @@ async function main(): Promise<void> {
   // Plain-text summary on stdout (separate from pino JSON) so the
   // run-loop.sh shell parser can grep this exact shape — same line
   // shape the legacy HTTP seeder emitted.
+  // The plain-text summary's `skipped X/N` total includes every pre-flight
+  // rejection so the run-loop's grep parser keeps its existing meaning; the
+  // structured pino log adds noImage as a distinct bucket.
+  const totalSkippedDisplay = skipped + noPhone + noImage;
   console.log(
-    `seeded ${ok} products, skipped ${skipped + noPhone}/${items.length} (${dups} as already-seeded duplicates, ${noPhone} dropped for missing phone)`,
+    `seeded ${ok} products, skipped ${totalSkippedDisplay}/${items.length} (${dups} as already-seeded duplicates, ${noPhone} dropped for missing phone, ${noImage} dropped for missing image)`,
   );
-  log.info(`done: seeded ${ok}, skipped ${skipped}/${items.length}, noPhone ${noPhone}, dups ${dups}`);
+  log.info(`done: seeded ${ok}, skipped ${skipped}/${items.length}, noPhone ${noPhone}, noImage ${noImage}, dups ${dups}`);
   // Exit policy: pre-flight rejections (no phone, no title/price, already-
   // seeded duplicate) are *expected* outcomes for a given scrape batch —
   // categories without Ouedkniss shop accounts hit `noPhone === items.length`

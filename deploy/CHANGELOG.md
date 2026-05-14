@@ -6,6 +6,76 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-13 — vps-eu · reclaimed 117 GB of docker build cache (disk 52% → 3%)
+
+- Disk audit: `/` was at 124 GB used / 251 GB (52%), with `docker system df` showing **124.8 GB of build cache (99% reclaimable)** plus 111.8 GB of intermediate image layers. Source: my ~30 `docker compose build` cycles across this loop session (api + web rebuilds for each scraper / brand / category / sitemap / alias fix).
+- `marketplace-docker-prune.timer` runs daily at 00:05 CEST with `docker builder prune -af --filter until=72h`. Recent runs all reported "Total: 0B" reclaimed because every cache entry was <72h old. The filter is too conservative for our deploy cadence — at 30 builds/day adding ~4 GB each, we'd hit 80% disk before any cache entry aged past 72h.
+- Manual `docker builder prune -af` (no filter) reclaimed **117 GB** in one pass. Disk now at 7.1 GB used / 251 GB (3%). All running containers untouched; only intermediate cached layers discarded.
+- Suggested follow-up (operator confirmation): change the systemd unit `ExecStart` from `--filter until=72h` to `--filter until=24h` (or remove the filter entirely). At current cadence the build cache that "saves work on future rebuilds" actually only saves work on rebuilds within the same day — older entries are mostly stale layer dependencies that re-resolve fast anyway.
+
+---
+
+## 2026-05-13 — vps-eu · variant SKU now globally unique (sourceUrl hash, not loop index)
+
+- Audit found 353 variant SKUs duplicated across different products in `catalog.product_variants`. Schema's `UNIQUE (product_id, sku)` constraint was still satisfied (different products), so it's cosmetic not a functional bug — but ugly. Top collision: `scraped-vente-appartement-f3-alg-37` shared by 10 different "Vente Appartement F3 Alger ..." listings. Pattern: every loop index `i` of every scrape batch produced the same SKU suffix.
+- `packages/db/src/seed-from-scraped.ts`: SKU now uses `sha1(sourceUrl).slice(0, 10)` as the uniqueness token instead of loop index. Each scraped listing has a unique Ouedkniss URL → unique hash → globally-unique variant SKU. Rebuilt `marketplace-api:local`; next scrape uses the new format.
+- Pre-existing 353 collisions stay — backfill would require regenerating SKUs for hundreds of variants with potential downstream cart_items / order_items implications. New scrapes are clean.
+
+---
+
+## 2026-05-13 — vps-eu · 44 duplicate-sourceUrl products purged
+
+- Data integrity audit found 44 distinct Ouedkniss `sourceUrl` values that appeared as 2 product rows each in `catalog.products`. The seeder's `skipUrls` set dedup should prevent this, but the bug-window window (iters 1-9, pre-migration-0012) likely produced these — every scrape claimed "seeded N" but the rows rolled back, then a subsequent run's `refresh_skip_urls` query couldn't see the failed inserts, so the same `sourceUrl` got attempted again successfully later.
+- Cleanup SQL (one transactional pass, kept the oldest row per duplicate group, preserved any with order-item references): `DELETE FROM catalog.products WHERE id IN (SELECT id FROM dups WHERE rn > 1 AND id NOT IN (...order-item refs...))`. Removed 44 rows.
+- No new dups should appear in steady state — the seeder's skipUrls dedup is sound when the DB reflects committed state. Optional follow-up: add a `UNIQUE INDEX ON ((attributes->>'sourceUrl'))` to enforce at the DB layer; deferred for operator confirmation since it requires a migration.
+
+---
+
+## 2026-05-13 — vps-eu · 18 more imageless products purged (fixture-era cleanup)
+
+- Follow-up data audit: iter-27 purged 533 imageless *scraped* rows but the same query filter (`attributes->>'source' = 'ouedkniss-public-listing'`) skipped the fixture-era catalog. 22 fixture products still had `hero_media_id = NULL` and were rendering as letter-only placeholder cards on /store/<id>, search, and home. 18 of the 22 lacked order-item references and were safe to delete.
+- SQL: `DELETE FROM catalog.products WHERE hero_media_id IS NULL AND id NOT IN (SELECT pv.product_id FROM catalog.product_variants pv JOIN "order".order_items oi ON oi.variant_id = pv.id)` — removed 18 rows. The 4 remaining imageless fixtures have historical order-item references and were preserved for transactional integrity (negligible at 12k+ catalog size; can be hidden via status=draft later if visible).
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · sitemap now lists all 19 alias category landings
+
+- Iter-37 added 5 alias slugs to the sitemap; iter-38 extended `CATEGORY_ALIASES` from 7 to 19 entries (adding subcategory landings like `/c/femme`, `/c/homme`, `/c/ordinateurs`, `/c/maison`, `/c/decoration`, `/c/motos`, `/c/jeux`, …). The new 14 landings each show their own French editorial prose + FAQ + populated sample-product strip, but the sitemap still only listed the original 5. Google had no way to discover the head-term landings that earn the most natural search traffic.
+- `packages/web/src/app/sitemap.ts`: `ALIAS_SLUGS` array expanded from 5 to 20 entries (matches `CATEGORY_ALIASES` keys plus `voitures` which doubles as both subcategory and API-facet slug).
+- Verified live: sitemap.xml now lists 26 unique `/c/<slug>` entries (was 11) — the 6 API-facet slugs + 19 alias slugs + 1 overlap deduped. Each entry priority 0.8, changefreq daily.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · /api/search route now resolves category aliases too (infinite-scroll fix)
+
+- Follow-up to iter-39 /search alias fix: the SSR `/search?category=mode` page now renders 25 products. But the client-side infinite-scroll uses `/api/search?category=mode&cursor=…` to load subsequent pages — and that route handler wasn't applying the alias resolution. Result: user scrolls past the first 25 cards on /search?category=mode and infinite scroll terminates silently with no more results — looks like the catalog only has 25 mode listings.
+- `packages/web/src/app/api/search/route.ts`: same `input.category?.flatMap(resolveCategorySlugs)` step as the SSR page. ETag/cache-control unchanged.
+- Verified live: `/api/search?category=mode&limit=3` payload size went from 25 bytes (`{"data":[],"cursor":null}`) to 2,468 bytes (3 products + cursor).
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · /search route now resolves category aliases too
+
+- Follow-up to iter-36/38 `/c/<alias>` fix: `/search?category=mode` (and every other alias slug) was still returning 0 cards. The /c/<alias> CTAs from iter-36 were rewriting click-through links to use the underlying compound slug, but **typed URLs, stale external links, sitemap entries, and any internal link that still used the alias would all hit /search with the editorial slug and get empty results**.
+- `packages/web/src/app/search/page.tsx`: in `Results({ input })`, expand `input.category` through `resolveCategorySlugs` before passing to `searchProducts`. The original `input.category` is left untouched so canonical URL generation, breadcrumb labels, and singleCategory display keep showing the editorial slug the user actually navigated to — only the upstream fetch sees the expanded compound IDs.
+- Verified live: `/search?category=mode` 0 → 25 cards, `/search?category=femme` 0 → 25, `/search?category=homme` 0 → 25, `/search?category=electromenager` 0 → 25, `/search?category=portables` 0 → 25, `/search?category=maison` 0 → 25, `/search?category=vehicules` 0 → 3.
+
+---
+
+## 2026-05-13 — vps-eu · web rebuild · 10 more category aliases (subcategory landings now populated)
+
+- Follow-up audit on the iter-36 alias fix: the related-categories chips on `/c/<slug>` pages (and pre-rendered via `generateStaticParams` from `FR_CATEGORY`) include subcategory slugs like `/c/femme`, `/c/homme`, `/c/accessoires`, `/c/bebe`, `/c/sport`, `/c/ordinateurs`, `/c/ecrans`, `/c/decoration`, `/c/peripheriques`, `/c/jeux`, `/c/motos`, `/c/maison`, `/c/salon`, `/c/traditionnel`. Tested all 14 — every one rendered 200 OK but with **0 product cards**. Same root cause as the home-chip bug: editorial subcategory slugs map onto no product `category_ids`. Each Mode-femme / Mode-homme / Décoration / Ordinateurs landing was an editorial dead-end.
+- `packages/web/src/lib/categories.ts`: extended `CATEGORY_ALIASES` from 7 entries to 19. Subcategory-to-aisle mappings:
+  - apparel subcats (`femme`, `homme`, `accessoires`, `traditionnel`, `bebe`, `sport`) → `["vetements_mode"]`
+  - home subcats (`maison`, `decoration`, `salon`) → `["electronique_electromenager"]`
+  - computing subcats (`ordinateurs`, `ecrans`, `peripheriques`, `jeux`) → `["informatique"]`
+  - vehicle subcats (`motos`) → `["automobiles_vehicules"]`
+- Each landing keeps its unique editorial prose / FAQ / breadcrumb-label (e.g. "Mode femme") but its product strip resolves against the parent aisle, so users get prose + listings instead of prose + empty grid.
+- Verified live: `/c/femme` 0 → 12 cards, `/c/homme` 0 → 12, `/c/accessoires` 0 → 12, `/c/bebe` 0 → 12, `/c/sport` 0 → 12, `/c/ordinateurs` 0 → 12, `/c/ecrans` 0 → 12, `/c/decoration` 0 → 12, `/c/motos` 0 → 3, `/c/maison` 0 → 12, `/c/salon` 0 → 12, `/c/traditionnel` 0 → 12, `/c/peripheriques` 0 → 12, `/c/jeux` 0 → 12.
+- Still empty: `/c/sante_beaute`, `/c/services`, `/c/emploi` — these are Ouedkniss top-level categories we don't currently scrape. They need either a scraper extension or removal from `FR_CATEGORY`/related-chips. Out-of-scope for this iteration.
+
+---
+
 ## 2026-05-13 — vps-eu · web rebuild · sitemap now includes 5 editorial alias category landings
 
 - Follow-up to the prior chip-alias fix: now that `/c/smartphones`, `/c/portables`, `/c/electromenager`, `/c/mode`, `/c/vehicules` render real product strips (via `CATEGORY_ALIASES`), they should be discoverable to crawlers. They weren't — the sitemap was harvested from API facets, which only return the compound underscored slugs that actually tag products. The 5 head-term alias landings (each with unique 2-3 paragraph French copy + FAQPage JSON-LD, optimized for queries like "smartphones algérie") were orphaned in the index.

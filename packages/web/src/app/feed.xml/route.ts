@@ -56,10 +56,19 @@ function escapeXml(s: string): string {
 // priceMinor is in santeem (1 DZD = 100 santeem), so 100 DZD = 10000 minor.
 const MIN_REAL_PRICE_MINOR = 10000;
 
+// Sanity ceiling on the high end: ~1B DZD = $7.5M USD. Algerian real-
+// estate sometimes lists in centimes (1 DZD = 100 centimes) instead of
+// dinars, which the scraper can't disambiguate at parse time. Above this
+// ceiling the displayed price is almost certainly 100× the true value
+// (e.g. a $10K parcel of land rendering as $1B). Suppress in the feed
+// summary the same way we suppress below-floor placeholder prices.
+const MAX_REAL_PRICE_MINOR = 100_000_000_000;
+
 function fmtPrice(minor: string | undefined, currency: string | undefined): string | null {
   if (!minor || !currency) return null;
   const n = Number(minor);
   if (!Number.isFinite(n) || n < MIN_REAL_PRICE_MINOR) return null;
+  if (n > MAX_REAL_PRICE_MINOR) return null;
   const major = (n / 100).toFixed(2);
   return `${major} ${currency}`;
 }

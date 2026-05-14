@@ -327,20 +327,48 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // different intents; Google indexes both without dedupe conflicts.
     // /c/ gets higher priority because it carries the unique long-form
     // content Google's quality signals reward.
-    categoryEntries = categories.flatMap((c) => [
-      {
-        url: `${SITE_URL}/c/${encodeURIComponent(c)}`,
+    // Editorial short-slug aliases (e.g. /c/smartphones, /c/mode,
+    // /c/vehicules) — these don't appear in API facets because no product
+    // is tagged with the short slug directly, but the /c/<slug> route
+    // resolves them via CATEGORY_ALIASES and renders a populated landing
+    // page. Including them in the sitemap so Google indexes the head-term
+    // landings, not just the compound underscored slugs.
+    // Full alias list — matches CATEGORY_ALIASES in lib/categories.ts. After
+    // iter-38 expanded the alias map from 5 to 19 entries, the sitemap only
+    // listed the original 5, leaving 14 newly-populated subcategory landings
+    // (/c/femme, /c/homme, /c/ordinateurs, /c/maison, …) undiscoverable to
+    // crawlers. Each is a unique editorial landing with its own French prose
+    // + FAQ + sample-product strip, optimized for head-term queries
+    // ("mode femme algérie", "ordinateurs portables algérie", etc.).
+    const ALIAS_SLUGS = [
+      "smartphones", "portables", "electromenager", "mode", "vehicules",
+      "femme", "homme", "accessoires", "traditionnel", "bebe", "sport",
+      "ordinateurs", "ecrans", "peripheriques", "jeux",
+      "maison", "decoration", "salon",
+      "motos", "voitures",
+    ];
+    categoryEntries = [
+      ...categories.flatMap((c) => [
+        {
+          url: `${SITE_URL}/c/${encodeURIComponent(c)}`,
+          lastModified: now,
+          changeFrequency: "daily" as const,
+          priority: 0.8,
+        },
+        {
+          url: `${SITE_URL}/search?category=${encodeURIComponent(c)}`,
+          lastModified: now,
+          changeFrequency: "daily" as const,
+          priority: 0.7,
+        },
+      ]),
+      ...ALIAS_SLUGS.map((slug) => ({
+        url: `${SITE_URL}/c/${encodeURIComponent(slug)}`,
         lastModified: now,
         changeFrequency: "daily" as const,
         priority: 0.8,
-      },
-      {
-        url: `${SITE_URL}/search?category=${encodeURIComponent(c)}`,
-        lastModified: now,
-        changeFrequency: "daily" as const,
-        priority: 0.7,
-      },
-    ]);
+      })),
+    ];
   } catch (err) {
     // API unreachable — fall back to static-only sitemap. Log so we see it
     // in container logs; this exact catch silently swallowed an error in

@@ -16,7 +16,15 @@ export const metadata: Metadata = {
   title: "Vendre",
   description:
     "Publiez vos annonces sur Teno Store et atteignez à la fois les acheteurs algériens et les agents IA. Connectez-vous avec Google pour créer votre profil vendeur.",
-  alternates: { canonical: "/seller" },
+  alternates: {
+    canonical: "/seller",
+    // Re-declare hreflang — Next.js replaces layout-level alternates
+    // wholesale on child pages.
+    languages: {
+      "fr-DZ": `${SITE_URL}/seller`,
+      "x-default": `${SITE_URL}/seller`,
+    },
+  },
   openGraph: {
     locale: "fr_DZ",
     alternateLocale: ["en_US"],

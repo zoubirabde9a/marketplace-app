@@ -16,7 +16,7 @@ import { notFound } from "next/navigation";
 import { searchProducts } from "@/lib/api";
 import { ProductGrid } from "@/components/ProductGrid";
 import { jsonLdString } from "@/lib/jsonld";
-import { FR_CATEGORY, humanizeCategorySlug } from "@/lib/categories";
+import { FR_CATEGORY, humanizeCategorySlug, resolveCategorySlugs } from "@/lib/categories";
 import { getCategoryContent } from "@/lib/categoryContent";
 import { getCategoryBlogLinks } from "@/lib/categoryBlogLinks";
 import { getPostBySlug } from "../../blog/posts";
@@ -46,7 +46,7 @@ export async function generateMetadata({
   // Cached by Next's request-scoped fetch dedup with the page render below.
   let total: number | null = null;
   try {
-    const r = await searchProducts({ category: [slug], limit: 1, noFacets: true });
+    const r = await searchProducts({ category: resolveCategorySlugs(slug), limit: 1, noFacets: true });
     total = r.pagination?.totalEstimate ?? null;
   } catch {
     // Soft-fail: render meta without count.
@@ -101,7 +101,7 @@ export default async function CategoryLandingPage({
   let total: number | null = null;
   try {
     const r = await searchProducts({
-      category: [slug],
+      category: resolveCategorySlugs(slug),
       sort: "newest",
       limit: 12,
       noFacets: true,
@@ -208,7 +208,7 @@ export default async function CategoryLandingPage({
         </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            href={`/search?category=${encodeURIComponent(slug)}`}
+            href={`/search?${resolveCategorySlugs(slug).map(s => `category=${encodeURIComponent(s)}`).join("&")}`}
             className="inline-flex items-center px-4 py-2 rounded-md bg-accent text-bg font-medium shadow-glow hover:brightness-110 transition"
           >
             Voir toutes les {annonce} →
@@ -223,7 +223,7 @@ export default async function CategoryLandingPage({
               Annonces récentes
             </h2>
             <Link
-              href={`/search?category=${encodeURIComponent(slug)}&sort=newest`}
+              href={`/search?${resolveCategorySlugs(slug).map(s => `category=${encodeURIComponent(s)}`).join("&")}&sort=newest`}
               className="text-sm text-accent hover:underline"
             >
               Voir plus →

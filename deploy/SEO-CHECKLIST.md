@@ -8,6 +8,23 @@ A step-by-step list of actions only you (the operator) can do to get the site fo
 
 ---
 
+## Already done by the dev side (no action needed) — 2026-05-13
+
+For context, here's what's already shipped on the site so you can answer questions if Google Search Console asks. You don't need to do anything for these; they're just informational.
+
+- **Sitemap** at `https://teno-store.com/sitemap.xml` — auto-generated, lists every product, brand, seller, and category landing. ~14k+ URLs, refreshed every 30 min.
+- **RSS feed** for the blog at `https://teno-store.com/blog/rss.xml`. AI search engines (ChatGPT/Perplexity/Bing Chat) follow this for content discovery.
+- **Blog** with 4 long-form French posts (smartphone buyer guide, seller advice, used-car checklist, student laptop guide). Located at `/blog`.
+- **Category landing pages** at `/c/<category>` for every category in the catalog (telephones, informatique, immobilier, voitures, etc.) — 29 hand-written French entries with FAQ sections that are eligible for Google's expandable FAQ rich results.
+- **Structured data**: Product, Organization, WebSite (with SearchAction = sitelinks search box), BreadcrumbList, FAQPage, BlogPosting (with Article rich-result eligibility), CollectionPage, ProductGroup, Speakable (voice search) — all live and validate clean.
+- **Open Graph cards**: dedicated 1200×630 PNGs for `/`, `/about`, `/search`, `/seller`, `/blog`, every `/blog/<slug>`, every `/c/<slug>`, and every `/store/<seller-id>`. Products use the seller's hero image.
+- **Hreflang**: `fr-DZ` + `x-default` correctly emitted on every indexable route.
+- **robots.txt** allows all major search bots + the AI crawler fleet (GPTBot, ClaudeBot, PerplexityBot, etc.) and disallows authenticated routes (`/seller/dashboard`, `/login`, `/api/`, private snapshot links).
+- **IndexNow** integration: `https://teno-store.com/81b0a3ff408a96ef5c0381a78aae7f58.txt` host-key in place. New URLs are pushed to Bing/Yandex/Seznam/Naver on every deploy (the dev side runs `node packages/web/scripts/indexnow-ping.mjs` or the older `scripts/indexnow-submit.mjs` for the full sitemap).
+- **`max-image-preview: large`** in the site-wide robots meta so Google can show full-width images in SERP cards (the default is small thumbs).
+
+---
+
 ## 1. Google Search Console — verify the domain and submit the sitemap
 
 **Time: 15 minutes (plus ~1 hour wait for DNS to propagate)**

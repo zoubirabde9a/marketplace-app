@@ -75,7 +75,15 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return {
     title: s.displayName,
     description: desc.slice(0, 200),
-    alternates: { canonical: `/store/${s.sellerId}` },
+    alternates: {
+      canonical: `/store/${s.sellerId}`,
+      // Re-declare hreflang — Next.js replaces layout-level alternates
+      // wholesale on child pages.
+      languages: {
+        "fr-DZ": `${SITE_URL}/store/${s.sellerId}`,
+        "x-default": `${SITE_URL}/store/${s.sellerId}`,
+      },
+    },
     openGraph: {
       // Next.js metadata.openGraph REPLACES the layout default wholesale on
       // child pages (no shallow-merge of nested fields). Probed live before
@@ -88,11 +96,18 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       siteName: "Teno Store",
       locale: "fr_DZ",
       alternateLocale: ["ar_DZ", "en_US"],
-      // og:image — without this, Twitter summary_large_image renders a
-      // degraded card and FB/LinkedIn show no preview image. Use the
-      // home opengraph-image route which renders the brand card at
-      // 1200×630 (the spec minimum for summary_large_image).
-      images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: `${s.displayName} — Teno Store` }],
+      // og:image — points at the per-seller `/store/[id]/opengraph-image`
+      // route (1200×630 PNG, renders the seller name + city + product
+      // count). Was previously the global brand card; per-seller imagery
+      // makes shares on FB / X / Discord identifiable rather than uniform.
+      images: [
+        {
+          url: `/store/${encodeURIComponent(s.sellerId)}/opengraph-image`,
+          width: 1200,
+          height: 630,
+          alt: `${s.displayName} — Teno Store`,
+        },
+      ],
     },
     twitter: {
       // Same shallow-merge gotcha — without explicit twitter.*, /store/{id}
