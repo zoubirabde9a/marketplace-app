@@ -29,7 +29,10 @@ describe("evaluateNegotiation", () => {
     expect(r.effectiveDiscountBps).toBe(1000);
   });
 
-  it("rejects below-floor and counters at floor", () => {
+  it("rejects below-floor without leaking the private floor in a counter", () => {
+    // Spec §7b: floor price is PRIVATE. Pre-fix the response set
+    // `counterUnitPriceMinor: policy.floorPriceMinor`, revealing the
+    // floor to a probing buyer on the very first below-floor offer.
     const r = evaluateNegotiation(policy, {
       buyerAgentId: "a1",
       buyerSegments: [],
@@ -38,7 +41,9 @@ describe("evaluateNegotiation", () => {
       now,
     });
     expect(r.accepted).toBe(false);
-    expect(r.counterUnitPriceMinor).toBe(50_00n);
+    expect(r.reason).toBe("below_floor_price");
+    // No counter — the buyer doesn't learn the floor.
+    expect(r.counterUnitPriceMinor).toBeUndefined();
   });
 
   it("rejects discount beyond band, counters with band-implied price", () => {
@@ -96,5 +101,23 @@ describe("transcriptHash", () => {
       exchanges: [{ at: new Date(0), speaker: "buyer" as const, payload: { offer: 100 } }],
     };
     expect(transcriptHash(t)).toBe(transcriptHash(t));
+  });
+
+  it("survives bigint payloads (typical negotiation prices are bigint-typed)", () => {
+    // Plain JSON.stringify throws `TypeError: Do not know how to serialize
+    // a BigInt` — every transcript with a price would fail to hash, and
+    // every consumer of the audit/dispute evidence trail silently 500'd.
+    const t = {
+      dialogueId: "d-big",
+      buyerAgentId: "a1",
+      sellerAgentId: "a2",
+      variantId: "v1",
+      exchanges: [
+        { at: new Date(0), speaker: "buyer" as const, payload: { offerMinor: 99_99n, qty: 12 } },
+        { at: new Date(1000), speaker: "seller" as const, payload: { counterMinor: 110_00n } },
+      ],
+    };
+    const h = transcriptHash(t);
+    expect(h).toMatch(/^[0-9a-f]{64}$/);
   });
 });

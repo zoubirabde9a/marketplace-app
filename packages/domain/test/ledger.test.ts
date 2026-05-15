@@ -42,6 +42,24 @@ describe("assertBalanced", () => {
       ]),
     ).toThrow();
   });
+
+  it("rejects zero-amount legs (bug-indicator upstream)", () => {
+    expect(() =>
+      assertBalanced([
+        { accountId: "a", side: "debit", amountMinor: 0n, currency: "USD", legType: "x" },
+        { accountId: "b", side: "credit", amountMinor: 0n, currency: "USD", legType: "x" },
+      ]),
+    ).toThrow(/ledger_zero_amount_leg/);
+  });
+
+  it("rejects ISO-non-compliant currency codes (case-mixed Map keys break balance)", () => {
+    expect(() =>
+      assertBalanced([
+        { accountId: "a", side: "debit", amountMinor: 100n, currency: "usd", legType: "x" },
+        { accountId: "b", side: "credit", amountMinor: 100n, currency: "USD", legType: "x" },
+      ]),
+    ).toThrow(/ledger_invalid_currency:usd/);
+  });
 });
 
 const resolver: AccountResolver = {
@@ -93,6 +111,81 @@ describe("computeSplitLegs", () => {
     assertBalanced(r.legs);
     expect(r.perSellerNet[0]?.affiliateMinor).toBe(5_00n);
     expect(r.perSellerNet[0]?.netPayableMinor).toBe(85_00n);
+  });
+
+  it("rejects combined marketplace + affiliate bps > 10000 (would produce negative seller payable)", () => {
+    expect(() =>
+      computeSplitLegs(
+        {
+          orderId: "o-neg",
+          txGroupId: "tx-neg",
+          currency: "USD",
+          grossMinor: 100_00n,
+          sellers: [{ sellerOrgId: "s1", sellerNetMinor: 100_00n, taxMinor: 0n }],
+          processorFeeMinor: 0n,
+          marketplaceFeeBps: 7000, // 70%
+          affiliateBps: 4000, // 40% → combined 110%
+          affiliateOrgId: "a1",
+        },
+        resolver,
+      ),
+    ).toThrow(/split_combined_fee_exceeds_100pct/);
+  });
+
+  it("rejects out-of-range affiliateBps", () => {
+    expect(() =>
+      computeSplitLegs(
+        {
+          orderId: "o",
+          txGroupId: "tx",
+          currency: "USD",
+          grossMinor: 100_00n,
+          sellers: [{ sellerOrgId: "s1", sellerNetMinor: 100_00n, taxMinor: 0n }],
+          processorFeeMinor: 0n,
+          marketplaceFeeBps: 0,
+          affiliateBps: -1,
+          affiliateOrgId: "a1",
+        },
+        resolver,
+      ),
+    ).toThrow(/split_invalid_affiliate_fee/);
+  });
+
+  it("rejects empty sellers list", () => {
+    expect(() =>
+      computeSplitLegs(
+        {
+          orderId: "o",
+          txGroupId: "tx",
+          currency: "USD",
+          grossMinor: 0n,
+          sellers: [],
+          processorFeeMinor: 0n,
+          marketplaceFeeBps: 0,
+        },
+        resolver,
+      ),
+    ).toThrow(/split_(no_sellers|gross_must_be_positive)/);
+  });
+
+  it("rejects a negative seller net (would flip leg direction silently)", () => {
+    expect(() =>
+      computeSplitLegs(
+        {
+          orderId: "o",
+          txGroupId: "tx",
+          currency: "USD",
+          grossMinor: 100_00n,
+          sellers: [
+            { sellerOrgId: "s1", sellerNetMinor: 150_00n, taxMinor: 0n },
+            { sellerOrgId: "s2", sellerNetMinor: -50_00n, taxMinor: 0n }, // negative — gross still adds up
+          ],
+          processorFeeMinor: 0n,
+          marketplaceFeeBps: 0,
+        },
+        resolver,
+      ),
+    ).toThrow(/split_seller_net_negative:s2/);
   });
 
   it("rejects gross mismatch", () => {
@@ -158,6 +251,13 @@ describe("reconcileOrder", () => {
     expect(r.ok).toBe(false);
     expect(shouldHaltPayouts([r])).toBe(true);
   });
+
+  it("shouldHaltPayouts rejects a negative tolerance (would invert halt polarity)", () => {
+    // A caller passing toleranceMinor = -5n would have the comparison
+    // covering [-5, 5] but with reversed polarity — payouts would halt
+    // for IN-tolerance diffs and PASS for out-of-tolerance ones.
+    expect(() => shouldHaltPayouts([], -1n)).toThrow(/negative_tolerance/);
+  });
 });
 
 describe("routeRefund", () => {
@@ -191,6 +291,20 @@ describe("routeRefund", () => {
       resolver,
     );
     expect(r.kind).toBe("manual_payout");
+  });
+
+  it("rejects an empty resolver reference (would corrupt reconciliation)", async () => {
+    // A buggy/misconfigured resolver returning "" would otherwise let us
+    // construct {kind:"original_source", providerRef:""} — a route the
+    // ledger can't reconcile against the provider side. Loud is better
+    // than silently-broken-after-the-fact.
+    const brokenResolver: RouteResolver = {
+      ...resolver,
+      reverseToOriginalSource: async () => "",
+    };
+    await expect(routeRefund(baseCtx, brokenResolver)).rejects.toThrow(
+      /refund_resolver_returned_empty_ref/,
+    );
   });
 
   it("issues credit note as last resort", async () => {
@@ -228,6 +342,46 @@ describe("Saga", () => {
     const out = await saga.run(initial);
     expect(out.status).toBe("failed");
     expect(log).toEqual(["a-exec", "b-exec-fail", "a-comp"]);
+  });
+
+  it("rejects maxAttempts < 1 at construction (silent no-op trap)", () => {
+    type S = Record<string, never>;
+    expect(
+      () =>
+        new Saga<S>([{ name: "x", execute: async (s) => s, compensate: async (s) => s }], {
+          maxAttempts: 0,
+          onPersist: async () => undefined,
+        }),
+    ).toThrow(/saga_invalid_max_attempts/);
+  });
+
+  it("surfaces compensation failures via compensationFailures count", async () => {
+    // A compensation that throws used to be silently logged into `state.error`
+    // and the saga reported plain "failed" — indistinguishable from a clean
+    // rollback. The count + the named-step error message now make
+    // partially-rolled-back state legible to operators.
+    type S = { v: number };
+    const steps: SagaStep<S>[] = [
+      {
+        name: "a",
+        execute: async (s) => ({ v: s.v + 1 }),
+        compensate: async () => {
+          throw new Error("a-rollback-boom");
+        },
+      },
+      {
+        name: "b",
+        execute: async () => {
+          throw new Error("forward-fail");
+        },
+        compensate: async (s) => s,
+      },
+    ];
+    const saga = new Saga<S>(steps, { maxAttempts: 1, onPersist: async () => undefined });
+    const out = await saga.run({ id: "1", status: "pending", step: "", attempts: 0, state: { v: 0 } });
+    expect(out.status).toBe("failed");
+    expect(out.compensationFailures).toBe(1);
+    expect(out.error).toContain("compensate_failed:a:");
   });
 
   it("retries up to maxAttempts before compensating", async () => {

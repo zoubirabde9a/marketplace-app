@@ -26,7 +26,44 @@ const MIN_TX_FOR_DISPLAY = 10;
 const MIN_DAYS_FOR_DISPLAY = 30;
 const HALF_LIFE_DAYS = 90;
 
+// Sanity-check the input. The final score is bounded by Math.min/max in
+// the return, so junk inputs produce a "plausible" number rather than an
+// obvious error — but a negative `disputesAgainst` would mathematically
+// INCREASE the observed score (via `Math.min(negative, 4000) = negative`,
+// then `10000 - (negative) > 10000`), and a chargeback rate well past
+// 10000 bps masks the actual fraud signal under the Math.min cap.
+// Surfacing the bad input as a clear NaN-score with insufficientData
+// would be one option; for now we clamp at the function boundary so a
+// caller passing slightly-noisy data still gets a sensible result, but
+// the bounds are explicit and a future audit can grep for them.
+function clampNonNeg(n: number): number {
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+function clampBps(n: number): number {
+  return Number.isFinite(n) ? Math.max(0, Math.min(10000, n)) : 0;
+}
+
 export function computeReputation(c: ReputationComponents, now: Date, lastEventAt: Date): ReputationScore {
+  // Defensive clamps. Counterparts of these were previously implicit via
+  // Math.min(...) caps on the deductions, but the input shape was unchecked
+  // — a NaN `disputesAgainst` propagated NaN through every arithmetic step
+  // and `Math.round(Math.max(0, Math.min(10000, NaN)))` came out as `NaN`
+  // (Math.min with NaN returns NaN), producing an invalid `scoreBps` field
+  // that downstream consumers serialised and persisted.
+  const clamped: ReputationComponents = {
+    settledTxCount: clampNonNeg(c.settledTxCount),
+    settledValueMinor: c.settledValueMinor < 0n ? 0n : c.settledValueMinor,
+    disputesAgainst: clampNonNeg(c.disputesAgainst),
+    chargebackRateBps: clampBps(c.chargebackRateBps),
+    refundRateBps: clampBps(c.refundRateBps),
+    cancellationRateBps: clampBps(c.cancellationRateBps),
+    counterpartyAvgBps: clampBps(c.counterpartyAvgBps),
+    daysOfHistory: clampNonNeg(c.daysOfHistory),
+  };
+  // Use the clamped values below; the original `c` is preserved in the
+  // returned `components` only when it was already in range. Replace c with
+  // the clamped copy from here on so the score reflects sanitised input.
+  c = clamped;
   const insufficient = c.settledTxCount < MIN_TX_FOR_DISPLAY || c.daysOfHistory < MIN_DAYS_FOR_DISPLAY;
 
   // Prior: 0.85 reliability with N=20 pseudo-observations (Bayesian smoothing)
@@ -44,8 +81,20 @@ export function computeReputation(c: ReputationComponents, now: Date, lastEventA
   // Counterparty rating averaged in (capped influence at 30%)
   const withCounterparty = blended * 0.7 + c.counterpartyAvgBps * 0.3;
 
-  // Time decay since last activity
-  const daysSinceEvent = Math.max(0, (now.getTime() - lastEventAt.getTime()) / (24 * 3600 * 1000));
+  // Time decay since last activity. Reject Invalid Date here so the NaN
+  // doesn't propagate through `Math.pow(0.5, NaN/90) → NaN → decayed →
+  // scoreBps: NaN` and land a non-numeric score in the result that
+  // downstream consumers (signed VDCs, audit storage) serialise. The
+  // earlier input-clamp block already sanitised `daysOfHistory`, but the
+  // Date arithmetic here is computed at use, not from `c`, so it needed
+  // its own guard. Treat "no usable last-event" as "no decay" (the
+  // safer of the two: assume fresh, since penalty for inactivity is
+  // separately captured by `insufficientData`).
+  const nowMs = now.getTime();
+  const lastMs = lastEventAt.getTime();
+  const daysSinceEvent = Number.isFinite(nowMs) && Number.isFinite(lastMs)
+    ? Math.max(0, (nowMs - lastMs) / (24 * 3600 * 1000))
+    : 0;
   const decay = Math.pow(0.5, daysSinceEvent / HALF_LIFE_DAYS);
   const decayed = withCounterparty * decay;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addLine, removeLine, totalsFor, updateLineQty, type CartLine } from "../src/cart/cart.js";
+import { addLine, MAX_QTY_PER_LINE, removeLine, totalsFor, updateLineQty, type CartLine } from "../src/cart/cart.js";
 
 const line = (overrides: Partial<CartLine> = {}): CartLine => ({
   variantId: "v1",
@@ -27,6 +27,32 @@ describe("addLine", () => {
 
   it("rejects different seller for same variant", () => {
     expect(() => addLine([line()], line({ sellerId: "s2" }))).toThrow(/variant<->seller_mismatch|seller/);
+  });
+
+  it("rejects non-positive unitPriceMinor", () => {
+    expect(() => addLine([], line({ unitPriceMinor: 0n }))).toThrow(/unitPriceMinor/);
+    expect(() => addLine([], line({ unitPriceMinor: -1n }))).toThrow(/unitPriceMinor/);
+  });
+
+  it("rejects qty above MAX_QTY_PER_LINE", () => {
+    expect(() => addLine([], line({ qty: MAX_QTY_PER_LINE + 1 }))).toThrow(/must be ≤/);
+  });
+
+  it("rejects merge that would push qty above MAX_QTY_PER_LINE", () => {
+    expect(() =>
+      addLine(
+        [line({ qty: MAX_QTY_PER_LINE - 1 })],
+        line({ qty: 5 }),
+      ),
+    ).toThrow(/exceeds/);
+  });
+
+  it("rejects a second add at a different unit price (stale-price guard)", () => {
+    // Previous behaviour silently re-priced the already-added units. The
+    // caller now has to surface the new price to the buyer before re-adding.
+    expect(() =>
+      addLine([line({ unitPriceMinor: 100_00n })], line({ unitPriceMinor: 200_00n })),
+    ).toThrow(/cart_line_price_changed/);
   });
 });
 

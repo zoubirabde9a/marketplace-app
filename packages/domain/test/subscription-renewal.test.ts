@@ -75,6 +75,23 @@ describe("planRetry", () => {
     const r = planRetry({ ...baseState, retryCount: 1, lastFailureAt: first }, now);
     expect(r.kind).toBe("auto_pause");
   });
+
+  it("auto-pauses past 14d overdue from nextRenewalAt even when lastFailureAt refreshes", () => {
+    // Defends against callers that read `lastFailureAt` literally and update
+    // it on every retry. The original due date stays fixed, so the
+    // nextRenewalAt-anchored check still fires the 14-day cutoff.
+    const due = new Date("2026-05-03T00:00:00Z");
+    const failureAt = new Date("2026-05-20T00:00:00Z"); // 17 days past due
+    const r = planRetry(
+      // lastFailureAt is "yesterday" (only 1 day since), but we're 17 days past due.
+      { ...baseState, nextRenewalAt: due, retryCount: 1, lastFailureAt: new Date("2026-05-19T00:00:00Z") },
+      failureAt,
+    );
+    expect(r.kind).toBe("auto_pause");
+    if (r.kind === "auto_pause") {
+      expect(r.reason).toBe("max_retry_window_exceeded");
+    }
+  });
 });
 
 describe("preChargeNotificationDue", () => {

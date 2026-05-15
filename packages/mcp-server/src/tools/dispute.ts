@@ -9,6 +9,7 @@ import {
   type DisputeStatus,
   type DisputeEvent,
 } from "@marketplace/domain/dispute/state-machine";
+import { sanitizeUntrustedString, safeOrigin } from "@marketplace/shared/untrusted";
 import type { McpRegistry } from "../registry.js";
 
 const StatusEnum = z.enum([
@@ -20,10 +21,19 @@ const StatusEnum = z.enum([
   "withdrawn",
 ]);
 
+// Reason is buyer/seller-supplied free text destined for the dispute
+// escalation record and operator-facing dispute summaries (which may be
+// LLM-rendered). Cap at 500 to bound the audit row and DoS risk — same
+// limit applied to order cancel/open_dispute reasons (order.ts pass #90).
+// Sanitisation is applied in the handler so the persisted text doesn't
+// carry `<system>`-style injection payloads into a downstream LLM view.
 const EventInput = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("seller_respond") }),
-  z.object({ kind: z.literal("escalate"), reason: z.string().min(1) }),
-  z.object({ kind: z.literal("resolve_buyer"), refundMinor: z.bigint() }),
+  z.object({ kind: z.literal("escalate"), reason: z.string().min(1).max(500) }),
+  // Refunds can be zero (e.g. a non-monetary apology resolution in the buyer's
+  // favour) but never negative — a negative refund would imply charging the
+  // buyer more, which the dispute path is not authorised to do.
+  z.object({ kind: z.literal("resolve_buyer"), refundMinor: z.bigint().nonnegative() }),
   z.object({ kind: z.literal("resolve_seller") }),
   z.object({ kind: z.literal("withdraw") }),
 ]);
@@ -72,8 +82,20 @@ export function registerDisputeTools(reg: McpRegistry): void {
     idempotent: false,
     inputSchema: TransitionInput,
     outputSchema: TransitionOutput,
-    handler: async (input) => {
-      const next: DisputeStatus = applyDisputeEvent(input.current, input.event as DisputeEvent);
+    handler: async (input, ctx) => {
+      // Scrub injection-pattern text from the escalation reason before it
+      // lands in the dispute record. See EventInput comment above and
+      // order.ts pass #90 for the same defense on order events.
+      const event = input.event.kind === "escalate"
+        ? {
+            ...input.event,
+            reason: sanitizeUntrustedString(input.event.reason, {
+              maxLength: 500,
+              origin: safeOrigin(ctx.ownerKind, ctx.ownerId),
+            }),
+          }
+        : input.event;
+      const next: DisputeStatus = applyDisputeEvent(input.current, event as DisputeEvent);
       const sla = evaluateSla(next, input.openedAt, input.now);
       return {
         disputeId: input.disputeId,
@@ -96,7 +118,11 @@ export function registerDisputeTools(reg: McpRegistry): void {
     name: "dispute.check_sla",
     description:
       "Check SLA pressure for an open dispute: should-auto-escalate, approaching-deadline notice, and hours-remaining.",
-    scope: "dispute:write",
+    // Read-only: pure function over (status, openedAt, now). Was previously
+    // gated on dispute:write, which forced every observer (oncall dashboard,
+    // notifier worker, escalation cron) to hold a write capability just to
+    // peek at deadline pressure. Now a strict read scope is enough.
+    scope: "dispute:read",
     auditEvent: "dispute.check_sla",
     idempotent: true,
     inputSchema: SlaInput,

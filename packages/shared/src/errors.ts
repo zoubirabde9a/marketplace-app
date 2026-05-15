@@ -57,24 +57,49 @@ export class MarketplaceError extends Error {
 
 export class NotFoundError extends MarketplaceError {
   constructor(resource: string, id: string) {
+    // Bound the echoed id. Pre-fix a 10 MB id submitted in a URL path
+    // (or via direct domain caller) would round-trip through `detail`
+    // into the audit log + the problem+json response — wasted log bytes
+    // and a memory hit per probe. 200 chars covers any legitimate id
+    // shape (UUIDs ≤36, prefixed-ulids ≤32, slug ids ≤120). Replace any
+    // control chars with `?` so a payload with embedded NUL/CR/LF can't
+    // inject into a downstream consumer that renders the detail field
+    // verbatim into a non-JSON surface (e.g. an operator dashboard
+    // pasting error text into an HTML log viewer).
+    const safe = String(id).slice(0, 200).replace(/[\x00-\x1f\x7f]/g, "?");
     super({
       type: "https://marketplace.dev/errors/not-found",
       title: `${resource} not found`,
       status: 404,
-      detail: `No ${resource} with id=${id}`,
+      detail: `No ${resource} with id=${safe}`,
     });
   }
 }
 
 export class ValidationError extends MarketplaceError {
   constructor(errors: Array<{ path: string; message: string }>) {
-    const detail = errors.map((e) => `${e.path}: ${e.message}`).join("; ");
+    // Bound the issue list. A Zod schema rejecting an attacker-submitted
+    // array of 1000 bad values would otherwise produce a detail string +
+    // extensions.errors array that bloats both the wire response and any
+    // audit row capturing it. 50 issues is plenty of detail for any real
+    // validation failure (typical request: 0–5 issues). Per-issue path
+    // and message are also bounded so a 10 MB Zod custom-message can't
+    // sneak through. Same defense-in-depth pattern as NotFoundError's
+    // id-echo cap (pass #145).
+    const capped = errors.slice(0, 50).map((e) => ({
+      path: String(e.path).slice(0, 200),
+      message: String(e.message).slice(0, 500),
+    }));
+    const detail = capped.map((e) => `${e.path}: ${e.message}`).join("; ").slice(0, 4000);
     super({
       type: "https://marketplace.dev/errors/validation",
       title: "Validation failed",
       status: 400,
       detail,
-      extensions: { errors },
+      extensions: {
+        errors: capped,
+        ...(errors.length > capped.length ? { truncated: errors.length - capped.length } : {}),
+      },
     });
   }
 }

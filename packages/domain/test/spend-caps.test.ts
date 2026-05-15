@@ -59,6 +59,30 @@ describe("checkSpendCap", () => {
     ).toThrow(/per_merchant/);
   });
 
+  it("rejects a zero amount (would otherwise trivially pass every cap)", () => {
+    expect(() =>
+      checkSpendCap({
+        caps,
+        usage: { todayMinor: 0n, perMerchantMinor: new Map() },
+        amountMinor: 0n,
+        currency: "USD",
+        merchantId: "m1",
+      }),
+    ).toThrow(/amount_must_be_positive/);
+  });
+
+  it("rejects a negative amount", () => {
+    expect(() =>
+      checkSpendCap({
+        caps,
+        usage: { todayMinor: 0n, perMerchantMinor: new Map() },
+        amountMinor: -100n,
+        currency: "USD",
+        merchantId: "m1",
+      }),
+    ).toThrow(/amount_must_be_positive/);
+  });
+
   it("rejects on currency mismatch", () => {
     expect(() =>
       checkSpendCap({
@@ -99,6 +123,21 @@ describe("checkVelocity", () => {
       txLastHour: 1,
       lastLocation: { lat: 40.7, lng: -74.0, atMs: 0 }, // NYC
       currentLocation: { lat: 51.5, lng: -0.13, atMs: 1000 * 60 * 30 }, // London 30min later
+    });
+    expect(r.anomaly).toBe(true);
+    expect(r.reasons).toContain("geo_jump_1000km_under_1h");
+  });
+
+  it("still flags the geo-jump when timestamps are reordered (current older than last)", () => {
+    // Adversarial input: an attacker controlling the timestamps could swap them
+    // to make `currentLocation.atMs < lastLocation.atMs` and previously the
+    // geo-jump check would silently skip. Now it uses |delta| and still fires.
+    const r = checkVelocity({
+      rolling30dMedianMinor: 100_00n,
+      amountMinor: 10_00n,
+      txLastHour: 1,
+      lastLocation: { lat: 40.7, lng: -74.0, atMs: 1000 * 60 * 30 }, // NYC, "later"
+      currentLocation: { lat: 51.5, lng: -0.13, atMs: 0 }, // London, "earlier"
     });
     expect(r.anomaly).toBe(true);
     expect(r.reasons).toContain("geo_jump_1000km_under_1h");

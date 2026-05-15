@@ -24,7 +24,14 @@ export function computeFacets(
   ctx: FilterContext,
   sellers: Map<string, StoredSeller>,
 ): Facets {
-  const brandCounts = new Map<string, number>();
+  // Brand counts are keyed by case-folded brand string because the filter
+  // path matches case-insensitively (`(p.brand ?? "").toLowerCase() !==
+  // f.brand.toLowerCase()`). Keying facets by the raw string previously
+  // produced "Samsung" / "samsung" / "SAMSUNG" as three separate facet
+  // values whose counts each undercounted what the filter actually returns
+  // when the agent clicks the facet. Keep a display form alongside (the
+  // first capitalisation seen) so the rendered chip still looks human.
+  const brandCounts = new Map<string, { count: number; display: string }>();
   const currencyCounts = new Map<string, number>();
   const sellerCounts = new Map<string, number>();
   const categoryCounts = new Map<string, number>();
@@ -32,7 +39,10 @@ export function computeFacets(
 
   for (const p of all) {
     if (p.brand && passes(p, ctx, "brand")) {
-      brandCounts.set(p.brand, (brandCounts.get(p.brand) ?? 0) + 1);
+      const key = p.brand.toLowerCase();
+      const existing = brandCounts.get(key);
+      if (existing) existing.count += 1;
+      else brandCounts.set(key, { count: 1, display: p.brand });
     }
     if (p.sellerId && passes(p, ctx, "seller")) {
       sellerCounts.set(p.sellerId, (sellerCounts.get(p.sellerId) ?? 0) + 1);
@@ -57,6 +67,12 @@ export function computeFacets(
         ? p.variants.filter((v) => v.currency === ctx.filters.currency)
         : p.variants;
       for (const v of variants) {
+        // Exclude zero-priced variants from the range. The scraper occasionally
+        // seeds 0-priced placeholders (Ouedkniss listings without a price
+        // field); previously the slider's min anchored to 0, telling the
+        // buyer "products start at $0" — same trust-trap as the
+        // displayVariant fix in the buyer-honest price selection.
+        if (v.priceMinor === 0n) continue;
         const rng = priceByCurrency.get(v.currency);
         if (!rng) priceByCurrency.set(v.currency, { min: v.priceMinor, max: v.priceMinor });
         else {
@@ -68,7 +84,10 @@ export function computeFacets(
   }
 
   return {
-    brands: topN(brandCounts).map(([value, count]) => ({ value, count })),
+    brands: [...brandCounts.entries()]
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, FACET_CAP)
+      .map(([, v]) => ({ value: v.display, count: v.count })),
     currencies: topN(currencyCounts).map(([value, count]) => ({ value, count })),
     sellers: topN(sellerCounts).map(([sellerId, count]) => {
       const dn = sellers.get(sellerId)?.displayName;

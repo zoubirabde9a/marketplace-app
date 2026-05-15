@@ -72,6 +72,42 @@ describe("messaging.send skill", () => {
     expect(out.attachments).toEqual([{ kind: "pdf", url: "https://example.com/inv.pdf" }]);
   });
 
+  it("rejects an oversize body at the schema gate (DoS guard)", async () => {
+    // The sanitiser truncates at 4 KB but the schema previously accepted
+    // any size — Fastify would buffer multi-megabyte JSON before truncate.
+    // Now bounded at 8 KB (2× headroom over the truncation limit).
+    const oversize = "a".repeat(20_000);
+    await expect(
+      invoke({ senderKind: "agent", senderId: "x", body: oversize }),
+    ).rejects.toThrow();
+  });
+
+  it("surfaces droppedAttachments so the caller can fix bad URLs", async () => {
+    // Pre-fix the skill silently swallowed `droppedAttachments` from the
+    // sanitiser — an A2A caller submitting a `javascript:` URL had it
+    // dropped with no feedback. Now exposed in the output.
+    // `z.string().url()` accepts `javascript:`-scheme URLs (WHATWG-valid),
+    // so the schema gate lets it through; the domain layer then drops it
+    // and reports back via `droppedAttachments`.
+    const out = (await invoke({
+      senderKind: "agent",
+      senderId: "agt_buyer",
+      body: "click here",
+      attachments: [
+        { kind: "img", url: "https://cdn.example.com/ok.jpg" },
+        { kind: "img", url: "javascript:alert(1)" },
+      ],
+    })) as {
+      attachments?: Array<{ url: string }>;
+      droppedAttachments?: Array<{ url: string; reason: string }>;
+      flagged: boolean;
+    };
+    expect(out.attachments).toEqual([{ kind: "img", url: "https://cdn.example.com/ok.jpg" }]);
+    expect(out.droppedAttachments).toHaveLength(1);
+    expect(out.droppedAttachments?.[0]?.reason).toBe("attachment_scheme_not_allowed");
+    expect(out.flagged).toBe(true);
+  });
+
   it("truncates over-long bodies (FIELD_LIMITS.message = 4096) and routes to slow lane", async () => {
     const longBody = "a".repeat(5000);
     const out = (await invoke({
@@ -94,6 +130,6 @@ describe("messaging.send skill", () => {
   it("rejects unknown senderKind", async () => {
     await expect(
       invoke({ senderKind: "alien", senderId: "x", body: "hi" }),
-    ).rejects.toThrow(/input_validation/);
+    ).rejects.toThrow(/Validation failed/);
   });
 });

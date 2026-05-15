@@ -6,7 +6,10 @@
 // helpers return undefined and callers omit snapshot fields from the response.
 
 import { catalog } from "@marketplace/domain";
+import { createLogger } from "@marketplace/shared/logger";
 import type { McpContext } from "../registry.js";
+
+const log = createLogger("mcp-snapshots");
 
 export function webBase(): string | null {
   const v = process.env.MARKETPLACE_WEB_BASE_URL;
@@ -29,15 +32,32 @@ export async function captureSnapshot(
   const id = catalog.newSnapshotId();
   const createdAt = ctx.now();
   const expiresAt = createdAt + catalog.SNAPSHOT_TTL_MS;
-  await store.put({
-    id,
-    kind,
-    input,
-    output,
-    principalId: ctx.ownerId,
-    agentId: ctx.agentId,
-    createdAt,
-    expiresAt,
-  });
-  return { id, createdAt, expiresAt };
+  // Snapshots are observational — losing one breaks the audit trail for that
+  // call, not the call itself. A snapshot-store outage (Redis down, disk full)
+  // must NOT take down search/checkout/listing-create. Log + return null so
+  // the tool response just omits the snapshot fields.
+  try {
+    await store.put({
+      id,
+      kind,
+      input,
+      output,
+      principalId: ctx.ownerId,
+      agentId: ctx.agentId,
+      createdAt,
+      expiresAt,
+    });
+    return { id, createdAt, expiresAt };
+  } catch (err) {
+    log.warn(
+      {
+        err: err instanceof Error ? err.message : String(err),
+        kind,
+        agentId: ctx.agentId,
+        requestId: ctx.requestId,
+      },
+      "snapshot_capture_failed",
+    );
+    return null;
+  }
 }

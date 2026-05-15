@@ -10,9 +10,20 @@ import type { McpRegistry } from "../registry.js";
 const InstrumentKind = z.enum(["card", "bank", "wallet", "virtual_card", "stablecoin"]);
 
 const Input = z.object({
-  refundId: z.string(),
-  amountMinor: z.bigint(),
-  currency: z.string().min(3).max(8),
+  // Bound the refund id at the gate. Pre-fix it accepted any string,
+  // including a multi-MB payload — refund ids in this system are UUIDv7
+  // or provider-side opaque ids, never anywhere near 200 chars.
+  refundId: z.string().min(1).max(200),
+  // Strictly positive — refunding 0 or a negative amount is meaningless and
+  // would silently waste an audit row + a route-resolver pick. The caller
+  // should not invoke this tool at all for a zero refund.
+  amountMinor: z.bigint().positive(),
+  // ISO 4217 alpha-3 — same allow-list every other money-bearing surface
+  // uses (catalog/types.ts, checkout, ledger/double-entry). Pre-fix the
+  // 3–8 char range admitted lowercase / mixed-case / stray-space variants
+  // that the ledger then carries through as currency keys, fragmenting the
+  // reconciliation tables.
+  currency: z.string().regex(/^[A-Z]{3}$/),
   ctx: z.object({
     instrumentKind: InstrumentKind,
     originalSourceRecreditable: z.boolean(),

@@ -21,20 +21,30 @@ import type { A2ASkillDef } from "../server.ts";
 const StatusEnum = z.enum(["scheduled", "open", "closed", "settled", "cancelled"]);
 
 const BidInput = z.object({
-  bidId: z.string(),
-  bidderAgentId: z.string(),
-  bidderOrgId: z.string(),
-  cartMandateId: z.string(),
-  amountMinor: z.bigint(),
+  bidId: z.string().min(1).max(120),
+  bidderAgentId: z.string().min(1).max(120),
+  bidderOrgId: z.string().min(1).max(120),
+  cartMandateId: z.string().min(1).max(120),
+  // Bid amounts are strictly positive — a 0/negative bid would pass
+  // `bid.amountMinor > mandate.maxBidMinor` (false for negatives) at the
+  // mandate gate and only fail at the inner state machine via the
+  // "below required" check. Catch at the boundary so the audit row
+  // carries the right error class, matching the same positivity stance
+  // applied to refund/dispute/payment amounts (passes #4 / #5 / #12).
+  amountMinor: z.bigint().positive(),
   at: z.coerce.date(),
 });
 
+// Bound ids + money + currency consistent with the rest of the platform
+// (negotiate.ts pass #103, refund/payment passes #94/#95). Reserve price
+// is non-negative — a negative reserve makes no economic sense and would
+// silently let every bid clear the reserve check in the state machine.
 const BaseAuction = {
-  auctionId: z.string(),
-  variantId: z.string(),
-  sellerOrgId: z.string(),
-  currency: z.string(),
-  reserveMinor: z.bigint(),
+  auctionId: z.string().min(1).max(120),
+  variantId: z.string().min(1).max(120),
+  sellerOrgId: z.string().min(1).max(120),
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  reserveMinor: z.bigint().nonnegative(),
   startsAt: z.coerce.date(),
   endsAt: z.coerce.date(),
   status: StatusEnum,
@@ -43,17 +53,28 @@ const BaseAuction = {
 const EnglishAuctionInput = z.object({
   ...BaseAuction,
   kind: z.literal("english"),
-  startingPriceMinor: z.bigint(),
-  bidIncrementMinor: z.bigint(),
-  softCloseSeconds: z.number().int().nonnegative(),
-  bids: z.array(BidInput),
+  // Starting price + increment are strictly positive. The state machine
+  // already rejects a 0 increment (pass #57 — would let same-amount bids
+  // stack forever), but bouncing at the schema gate gives a cleaner
+  // ValidationError to the caller instead of a deeper ConflictError.
+  startingPriceMinor: z.bigint().positive(),
+  bidIncrementMinor: z.bigint().positive(),
+  // Cap soft-close extension at 1 hour. Without an upper bound, a caller
+  // passing `Number.MAX_SAFE_INTEGER` could push `endsAt` arbitrarily far
+  // into the future on every bid — effectively a never-closing auction.
+  softCloseSeconds: z.number().int().nonnegative().max(3600),
+  // Cap bid arrays. The state machine's settle path scans all bids to find
+  // the highest amount (auctions/anti-collusion passes); 10k is generous
+  // (a real auction has at most a few hundred bids) and bounds the worst
+  // case scan to a tractable size.
+  bids: z.array(BidInput).max(10_000),
 });
 
 const DutchAuctionInput = z.object({
   ...BaseAuction,
   kind: z.literal("dutch"),
-  startingPriceMinor: z.bigint(),
-  decrementMinor: z.bigint(),
+  startingPriceMinor: z.bigint().positive(),
+  decrementMinor: z.bigint().positive(),
   decrementIntervalSeconds: z.number().int().positive(),
   acceptedBy: BidInput.optional(),
 });
@@ -61,14 +82,19 @@ const DutchAuctionInput = z.object({
 const SealedAuctionInput = z.object({
   ...BaseAuction,
   kind: z.literal("sealed_bid"),
-  bids: z.array(BidInput),
+  // Same cap as English auctions — bounds the highest-bid scan at settle.
+  bids: z.array(BidInput).max(10_000),
 });
 
 const MandateInput = z.object({
-  cartMandateId: z.string(),
-  auctionId: z.string(),
-  bidderAgentId: z.string(),
-  maxBidMinor: z.bigint(),
+  cartMandateId: z.string().min(1).max(120),
+  auctionId: z.string().min(1).max(120),
+  bidderAgentId: z.string().min(1).max(120),
+  // Max-bid caps must be strictly positive. A `maxBidMinor: 0n` mandate
+  // would reject every legitimate bid via `bid.amountMinor > 0n` while
+  // silently accepting a `bid.amountMinor = 0n` (combined with the bid
+  // positivity fix above, this is belt-and-suspenders).
+  maxBidMinor: z.bigint().positive(),
   revoked: z.boolean().default(false),
   expiresAt: z.coerce.date().optional(),
 });

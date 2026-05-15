@@ -12,7 +12,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { identity } from "@marketplace/domain";
 import { newId } from "@marketplace/shared/ids";
-import { UnauthorizedError } from "@marketplace/shared/errors";
+import { UnauthorizedError, ValidationError } from "@marketplace/shared/errors";
 import { requirePrincipal, requireUser } from "../middleware/auth.js";
 import type { UserRepo, UserRecord } from "../repos/user.js";
 import { verifyGoogleIdToken, type VerifyGoogleOptions } from "../auth/google.js";
@@ -29,18 +29,50 @@ const GoogleLoginSchema = z.object({
 });
 
 const IssuePassportSchema = z.object({
-  agentId: z.string().min(1).max(120),
-  scopes: z.array(z.string()).min(1).max(20),
+  // Reject `user:` and `psp_` prefixes — those are platform-reserved for
+  // synthetic principals (session-bound users get `agentId: "user:<uuid>"`
+  // per middleware/auth.ts syntheticAgentIdForUser; passport ids are
+  // `psp_<…>`). The audit middleware skips agentIds starting with `user:`
+  // (treating them as session-only humans whose FK rows don't exist in
+  // agents/passports) — pre-fix a passport-holder could mint themselves an
+  // agentId of `user:malicious` and slip every subsequent passport-
+  // authenticated request past the audit middleware, leaving no trail.
+  // Also reject empty / whitespace-prefixed values.
+  agentId: z
+    .string()
+    .min(1)
+    .max(120)
+    .refine((v) => !/^(user:|psp_)/i.test(v) && !/^\s/.test(v), {
+      message: "agent_id_reserved_prefix",
+    }),
+  // Bound each scope string. Pre-fix individual scopes were unbounded —
+  // a caller could pass 20 entries of 10 MB each and bake ~200 MB of
+  // string data into the signed passport JWT. Scopes in this platform are
+  // colon-segmented tokens like `seller:product:write`, never anywhere
+  // near 200 chars.
+  scopes: z.array(z.string().min(1).max(200)).min(1).max(20),
   spendCaps: z
     .object({
       currency: z.string().regex(/^[A-Z]{3}$/),
-      perTxMinor: z.string().optional(),
-      perDayMinor: z.string().optional(),
-      perMerchantMinor: z.string().optional(),
+      // Validate that the *Minor strings are positive decimal integers.
+      // Pre-fix `z.string().optional()` accepted any payload ("abc",
+      // "1e308", whitespace) — the downstream `BigInt()` parse would
+      // throw an obscure 500 instead of a clean 400 here. 78 chars covers
+      // a 256-bit integer in decimal (way past any realistic spend cap).
+      perTxMinor: z.string().regex(/^[0-9]+$/).max(78).optional(),
+      perDayMinor: z.string().regex(/^[0-9]+$/).max(78).optional(),
+      perMerchantMinor: z.string().regex(/^[0-9]+$/).max(78).optional(),
     })
     .optional(),
   ttlSeconds: z.number().int().min(60).max(60 * 60 * 24 * 30).default(60 * 60 * 24),
-  cnfJwk: z.record(z.string(), z.unknown()),
+  // Cap JWK shape at the gate so a 100 MB junk JWK can't reach jwkThumbprint
+  // (which JSON.stringifies canonical members and would burn CPU before
+  // failing). A valid JWK has at most ~10 named members; RSA `n` is the
+  // longest field at ~684 base64url chars for 4096-bit keys.
+  cnfJwk: z.record(z.string().max(16), z.unknown()).refine(
+    (jwk) => Object.keys(jwk).length <= 20,
+    { message: "jwk_too_many_members" },
+  ),
 });
 
 export interface AuthRouteDeps {
@@ -71,7 +103,18 @@ export async function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDe
         ...(deps.googleVerifyStub ? { testStub: deps.googleVerifyStub } : {}),
       });
     } catch (e) {
-      throw new UnauthorizedError(`google_verify:${(e as Error).message}`);
+      // jose's jwtVerify throws detailed messages ("invalid claim 'iss':
+      // must be one of [..]", "JWT expired at ...", "signature verification
+      // failed") that disclose verification internals to the client. Same
+      // allow-list defense as the session bearer / passport / link-token
+      // verifiers (passes #151 / #152 / #180). Our own `verifyGoogleIdToken`
+      // throws stable `google_id_token_*` / `google_email_unverified` slugs;
+      // collapse anything else to a generic "google_verify_failed". Detail
+      // is kept in server logs for operators investigating real failures.
+      const msg = (e as Error).message;
+      const safe = /^google_[a-z_]+$/.test(msg) ? msg : "google_verify_failed";
+      req.log.warn({ err: e }, "google_id_token_verify_failed");
+      throw new UnauthorizedError(safe);
     }
     if (!profile.emailVerified) {
       throw new UnauthorizedError("google_email_unverified");
@@ -167,7 +210,17 @@ export async function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDe
         resolveKey: deps.resolveSessionKey,
       });
     } catch (e) {
-      throw new UnauthorizedError(`link_invalid:${(e as Error).message}`);
+      // Same slug-allow-list defense as the session-bearer (auth middleware
+      // pass #151) and passport-verify (pass #152) paths. verifyLinkToken
+      // throws `link_*` slug-shaped errors that are safe to echo; anything
+      // else (a JSON.parse "Unexpected token h at position 1" leak that
+      // discloses the malformed-input shape, a future caller-supplied
+      // error string) collapses to a generic "link_invalid". Full detail
+      // logged server-side for operators.
+      const msg = (e as Error).message;
+      const safe = /^link_[a-z_]+$/.test(msg) ? msg : "link_invalid";
+      req.log.warn({ err: e }, "link_token_verify_failed");
+      throw new UnauthorizedError(safe);
     }
     const user = await deps.users.get(claims.sub);
     if (!user) throw new UnauthorizedError("link_user_not_found");
@@ -198,6 +251,24 @@ export async function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDe
   app.post("/v1/auth/passports", async (req, reply) => {
     const sess = requireUser(req);
     const body = IssuePassportSchema.parse(req.body);
+    // Validate `cnfJwk` shape at issuance time so a malformed JWK is rejected
+    // here instead of crashing every subsequent passport-using request with
+    // a 500 from the auth middleware's DPoP-binding check (jwkThumbprint
+    // throws on unknown `kty`). The cheapest sound check is to compute the
+    // thumbprint — it parses the canonical members per kty and throws an
+    // `UnauthorizedError("dpop_jwk_kty")` if the JWK is junk. Catch that
+    // and re-throw as a ValidationError on the right field path so the
+    // user issuing the passport gets a clear 400 instead of an obscure 500.
+    try {
+      await identity.jwkThumbprint(body.cnfJwk);
+    } catch {
+      throw new ValidationError([
+        {
+          path: "cnfJwk",
+          message: "must be a valid JWK with a known kty (EC / OKP / RSA)",
+        },
+      ]);
+    }
     const nowSec = Math.floor(deps.now() / 1000);
     const claims: identity.PassportClaims = {
       iss: "marketplace",

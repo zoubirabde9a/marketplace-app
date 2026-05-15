@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { passes, type FilterContext } from "./filter.js";
+import { displayVariant, passes, relevanceScoreFor, type FilterContext } from "./filter.js";
 import type { StoredProduct } from "../types/store-types.js";
 
 function makeProduct(overrides: Partial<StoredProduct> = {}): StoredProduct {
@@ -54,6 +54,81 @@ describe("filter.passes — zero-price exclusion", () => {
 
   it("keeps a normally-priced product (regression guard)", () => {
     expect(passes(makeProduct(), baseCtx)).toBe(true);
+  });
+});
+
+describe("displayVariant — buyer-honest price selection", () => {
+  it("prefers an in-stock variant over a cheaper out-of-stock one", () => {
+    const p = makeProduct({
+      variants: [
+        { id: "v_oos", sku: "oos", priceMinor: 1000n, currency: "DZD", inStock: false },
+        { id: "v_in",  sku: "in",  priceMinor: 1500n, currency: "DZD", inStock: true },
+      ],
+    });
+    expect(displayVariant(p, baseCtx)?.id).toBe("v_in");
+  });
+
+  it("prefers a non-zero-priced variant over a zero-priced one", () => {
+    // The scraper occasionally yields placeholder variants priced at 0;
+    // surfacing "From $0" on browse is a UX trap. The cheaper-by-bigint
+    // rule alone would pick the $0 row.
+    const p = makeProduct({
+      variants: [
+        { id: "v_zero", sku: "zero", priceMinor: 0n, currency: "DZD", inStock: true },
+        { id: "v_real", sku: "real", priceMinor: 2500n, currency: "DZD", inStock: true },
+      ],
+    });
+    expect(displayVariant(p, baseCtx)?.id).toBe("v_real");
+  });
+
+  it("falls back to cheapest by price when stock and zero-tier are equal", () => {
+    const p = makeProduct({
+      variants: [
+        { id: "v_hi", sku: "hi", priceMinor: 3000n, currency: "DZD", inStock: true },
+        { id: "v_lo", sku: "lo", priceMinor: 1500n, currency: "DZD", inStock: true },
+      ],
+    });
+    expect(displayVariant(p, baseCtx)?.id).toBe("v_lo");
+  });
+});
+
+describe("relevanceScoreFor — projected hit ranking signal", () => {
+  it("returns 1 when there is no query (every product equally relevant)", () => {
+    expect(relevanceScoreFor(makeProduct(), baseCtx)).toBe(1);
+  });
+
+  it("scores title substring hits higher than description-only hits", () => {
+    const titleHit = makeProduct({ titleSanitized: "Samsung Galaxy S22" });
+    const descOnly = makeProduct({
+      titleSanitized: "Phone",
+      descriptionSanitized: "Compatible with Samsung",
+    });
+    const ctx: FilterContext = { ...baseCtx, q: "samsung" };
+    expect(relevanceScoreFor(titleHit, ctx)).toBeGreaterThan(
+      relevanceScoreFor(descOnly, ctx),
+    );
+  });
+
+  it("uses textScores map when provided", () => {
+    const p = makeProduct({ productId: "p_x" });
+    const ctx: FilterContext = {
+      ...baseCtx,
+      q: "anything",
+      textScores: new Map([["p_x", 7.42]]),
+    };
+    expect(relevanceScoreFor(p, ctx)).toBe(7.42);
+  });
+
+  it("ranks fuzzy multi-token matches by token count when substring path is missed", () => {
+    const p = makeProduct({ titleSanitized: "Acme Wireless Earbuds" });
+    // Use typo'd queries so the title-substring branch is skipped on both,
+    // forcing the fuzzy branch where the new "1 + tokens" signal applies.
+    const fuzzyOne: FilterContext = { ...baseCtx, q: "earbudz", fuzzy: true };
+    const fuzzyTwo: FilterContext = { ...baseCtx, q: "wirless earbudz", fuzzy: true };
+    expect(relevanceScoreFor(p, fuzzyTwo)).toBeGreaterThan(relevanceScoreFor(p, fuzzyOne));
+    // Direct title substring on a non-typo'd query beats a 1-token fuzzy match.
+    const cleanShort: FilterContext = { ...baseCtx, q: "earbuds", fuzzy: true };
+    expect(relevanceScoreFor(p, cleanShort)).toBeGreaterThan(relevanceScoreFor(p, fuzzyOne));
   });
 });
 

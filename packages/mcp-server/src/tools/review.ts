@@ -24,19 +24,40 @@ const Signals = z.object({
   honeypotEcho: z.boolean().default(false),
 });
 
-const Input = z.object({
-  reviewerUserId: z.string().optional(),
-  reviewerAgentId: z.string().optional(),
-  productId: z.string(),
-  canonicalProductId: z.string().optional(),
-  reviewerSettledItems: z.array(SettledItem),
-  reviewWindowDays: z.number().int().positive(),
-  existingReviewsOnItem: z.number().int().nonnegative().default(0),
-  now: z.coerce.date(),
-  body: z.string().min(1).max(5000),
-  rating: z.number().int().min(1).max(5),
-  signals: Signals.optional(),
-});
+const Input = z
+  .object({
+    reviewerUserId: z.string().optional(),
+    reviewerAgentId: z.string().optional(),
+    productId: z.string(),
+    canonicalProductId: z.string().optional(),
+    // Cap the purchase-history array a caller can submit. Pre-fix an agent
+    // could pass 1M settled items and force `selectEligibleOrderItem` to
+    // scan all of them; 1000 is generous for any real buyer's window-of-
+    // eligibility purchases on a single product family.
+    reviewerSettledItems: z.array(SettledItem).max(1000),
+    // Upper-bound the review window. Without a ceiling, `Number.MAX_SAFE_INTEGER`
+    // is accepted; the domain layer's `now - windowMs` then underflows to
+    // before-the-epoch (or `windowMs` overflows to `Infinity`), and EVERY
+    // past settled purchase qualifies — silently defeating the eligibility
+    // window. 3650 days (10 years) is well beyond any legitimate policy.
+    reviewWindowDays: z.number().int().positive().max(3650),
+    // Cap mirrors the array bound above: existing-reviews-on-item is
+    // user-supplied caller state, not server-derived, and a huge value
+    // would shift the "one-per-item" branch into nonsense territory.
+    existingReviewsOnItem: z.number().int().nonnegative().max(1_000_000).default(0),
+    now: z.coerce.date(),
+    body: z.string().min(1).max(5000),
+    rating: z.number().int().min(1).max(5),
+    signals: Signals.optional(),
+  })
+  // The domain layer throws `review_no_principal` when both ids are missing.
+  // Reject at the schema boundary so the caller gets a clear validation error
+  // (and a clean Zod path) instead of a runtime domain error.
+  .refine((d) => Boolean(d.reviewerUserId) || Boolean(d.reviewerAgentId), {
+    path: ["reviewerUserId"],
+    message:
+      "review_no_principal: at least one of reviewerUserId or reviewerAgentId is required",
+  });
 
 const Output = z.object({
   orderItemId: z.string(),

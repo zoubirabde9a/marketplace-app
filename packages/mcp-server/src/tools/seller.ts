@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { sanitizeCatalogInput } from "@marketplace/domain/catalog/sanitize";
+import { FIELD_LIMITS } from "@marketplace/shared/untrusted";
 import type { McpRegistry } from "../registry.js";
 
 const Wrapped = z.object({
@@ -15,11 +16,22 @@ const Wrapped = z.object({
   sanitized: z.boolean().optional(),
 });
 
+// `preview_listing` is by-design a "what would happen if I submit this?"
+// tool, so we MUST accept input that exceeds FIELD_LIMITS — the whole point
+// is to let the seller see truncation/sanitisation/flagging *before* they
+// commit. The bounds below are therefore DoS guards (10× the corresponding
+// FIELD_LIMIT or higher), not policy gates: they reject obviously-malicious
+// 10 MB payloads while still leaving headroom to demonstrate truncation.
+// The attribute-count cap matches the search-side MAX_ATTR_FILTERS=32
+// (catalog/types.ts pass #87) so attribute-map size is bounded consistently.
 const Input = z.object({
-  sellerOrgId: z.string(),
-  title: z.string().min(1),
-  description: z.string().optional(),
-  attributes: z.record(z.string(), z.string()).default({}),
+  sellerOrgId: z.string().min(1).max(120),
+  title: z.string().min(1).max(FIELD_LIMITS.productTitle * 10),
+  description: z.string().max(FIELD_LIMITS.productDescription * 4).optional(),
+  attributes: z
+    .record(z.string().max(120), z.string().max(FIELD_LIMITS.productAttribute * 10))
+    .default({})
+    .refine((v) => Object.keys(v).length <= 32, { message: "at_most_32_attributes" }),
 });
 
 const Output = z.object({

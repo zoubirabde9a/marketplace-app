@@ -25,6 +25,13 @@ export interface SpendCheckInput {
 }
 
 export function checkSpendCap(input: SpendCheckInput): void {
+  // A non-positive amount slips past every cap check below (0 + usage <= cap is
+  // always true; perTx of 0 against any positive cap holds). Reject at the gate
+  // so a pre-flight `amount=0` can't be used as a "spend cap dry-run always
+  // green-lights me" bypass before the real charge.
+  if (input.amountMinor <= 0n) {
+    throw new ForbiddenError(`spend_cap_amount_must_be_positive:${input.amountMinor}`);
+  }
   if (input.caps.currency !== input.currency) {
     throw new ForbiddenError(`spend_cap_currency_mismatch:${input.caps.currency}!=${input.currency}`);
   }
@@ -73,11 +80,39 @@ export function checkVelocity(input: VelocityCheckInput): VelocitySignal {
   if (input.rolling30dMedianMinor > 0n && input.amountMinor > input.rolling30dMedianMinor * 3n) {
     reasons.push("amount_3x_median");
   }
-  if (input.txLastHour > 10) reasons.push("tx_velocity_10x_per_hour");
+  // Treat a non-finite txLastHour as suspicious. Pre-fix, `NaN > 10` is
+  // `false` — so an upstream that passed a `Number.NaN` (from a parse miss,
+  // a divide-by-zero in usage aggregation, etc.) would silently exempt the
+  // request from the burst check. The schema gate (mcp/payment.ts pass #95)
+  // bounds this at [0, 10_000], but the domain function is callable
+  // directly; flagging on non-finite values is the right defense-in-depth.
+  if (!Number.isFinite(input.txLastHour)) {
+    reasons.push("tx_velocity_invalid");
+  } else if (input.txLastHour > 10) {
+    reasons.push("tx_velocity_10x_per_hour");
+  }
   if (input.lastLocation && input.currentLocation) {
-    const km = haversineKm(input.lastLocation, input.currentLocation);
-    const hours = (input.currentLocation.atMs - input.lastLocation.atMs) / 3_600_000;
-    if (hours > 0 && km > 1000 && hours < 1) reasons.push("geo_jump_1000km_under_1h");
+    // If any coordinate or timestamp is non-finite, the haversine and
+    // time-delta computations propagate NaN — `NaN > 1000` and `NaN < 1`
+    // are both false, silently skipping the geo-jump anomaly. Same
+    // exemption-via-NaN pattern as txLastHour above.
+    const coordsOk = Number.isFinite(input.lastLocation.lat)
+      && Number.isFinite(input.lastLocation.lng)
+      && Number.isFinite(input.lastLocation.atMs)
+      && Number.isFinite(input.currentLocation.lat)
+      && Number.isFinite(input.currentLocation.lng)
+      && Number.isFinite(input.currentLocation.atMs);
+    if (!coordsOk) {
+      reasons.push("location_invalid");
+    } else {
+      const km = haversineKm(input.lastLocation, input.currentLocation);
+      // Use the absolute time delta — an adversarial input with the timestamps
+      // reordered (current.atMs < last.atMs) would otherwise yield a negative
+      // `hours` and skip the geo-jump check entirely, letting a NYC→London hop
+      // through with `last.atMs > current.atMs`.
+      const hours = Math.abs(input.currentLocation.atMs - input.lastLocation.atMs) / 3_600_000;
+      if (km > 1000 && hours < 1) reasons.push("geo_jump_1000km_under_1h");
+    }
   }
   return { anomaly: reasons.length > 0, reasons };
 }

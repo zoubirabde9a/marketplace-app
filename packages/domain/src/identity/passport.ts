@@ -6,6 +6,14 @@ import { newId } from "@marketplace/shared/ids";
 import { sign, verify, generateKeyPairSync, createPublicKey, type KeyObject } from "node:crypto";
 import { base64url, base64urlDecode } from "./dpop.js";
 
+// Positive decimal-integer big-int strings carried in JSON (spend caps).
+// Pre-fix `z.string().optional()` accepted any payload — "abc", "1e10",
+// "-5" — that the downstream `BigInt()` coercion in the auth middleware
+// threw on, producing a generic 500 instead of a clean schema-validation
+// 400 here. Same defense as the mandate VDC schema (mandate.ts pass #118).
+// 78 chars covers a 256-bit integer in decimal, well past any spend cap.
+const BigIntDecimalString = z.string().regex(/^[0-9]+$/).max(78);
+
 export const PassportClaimsSchema = z.object({
   iss: z.string(),
   sub: z.string(), // agent id
@@ -17,9 +25,9 @@ export const PassportClaimsSchema = z.object({
   scopes: z.array(z.string()),
   spend_caps: z.object({
     currency: z.string().regex(/^[A-Z]{3}$/),
-    per_tx_minor: z.string().optional(),
-    per_day_minor: z.string().optional(),
-    per_merchant_minor: z.string().optional(),
+    per_tx_minor: BigIntDecimalString.optional(),
+    per_day_minor: BigIntDecimalString.optional(),
+    per_merchant_minor: BigIntDecimalString.optional(),
   }),
   allow_merchants: z.array(z.string()).optional(),
   deny_merchants: z.array(z.string()).optional(),
@@ -76,7 +84,13 @@ export async function verifyPassport(jwt: string, opts: VerifyPassportOptions): 
   }
   const kid = String(header["kid"] ?? "");
   const issuerKey = await opts.resolveIssuerKey(kid);
-  if (!issuerKey) throw new Error("passport_unknown_kid");
+  // Collapse "unknown kid" and "signature mismatch" into the same error so
+  // an attacker submitting forged passport JWTs with candidate kids can't
+  // use the distinct `passport_unknown_kid` response to enumerate the
+  // platform's issuer-signer registry. Same kid-enumeration oracle the
+  // session-token verifier (pass #116) and DPoP / mandate verifiers
+  // already close — applied here for parity.
+  if (!issuerKey) throw new Error("passport_signature");
 
   const ok = verify(
     null,

@@ -45,6 +45,46 @@ export async function verifyDpop(proofJwt: string, opts: DpopVerifyOptions): Pro
   const jwk = header["jwk"];
   if (!jwk || typeof jwk !== "object") throw new UnauthorizedError("dpop_jwk_missing");
 
+  // Verify the signature FIRST, before any payload-derived checks or jti
+  // consumption. Two reasons:
+  //   1. The specific error codes for payload mismatches (htm/htu/iat/ath/jti)
+  //      leak server state to an attacker who can submit forged proofs and
+  //      probe the responses ("this jti was already used", "ath_mismatch
+  //      means the access token is valid"). Signature-first means an
+  //      unsigned/forged proof always fails with the same `dpop_signature`
+  //      regardless of payload contents.
+  //   2. Pre-signature jti consumption was a denial-of-service vector: an
+  //      attacker who guessed/snooped a future jti could submit a forged
+  //      proof first, the server would call `jtiSeen` and ADD the jti to
+  //      the replay cache, and the legitimate client's later valid proof
+  //      would then be rejected as `dpop_jti_replay`.
+  const signingInput = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
+  const signature = base64urlDecode(sigB64);
+  // Wrap importJwk in a try/catch and surface as the same `dpop_signature`
+  // error any other signature failure produces. Pre-fix a malformed JWK
+  // (wrong kty/alg pairing, invalid curve, missing required member) would
+  // make `crypto.subtle.importKey` throw a generic DOMException / Error
+  // that bubbled out of verifyDpop unhandled. Two issues with that:
+  //   1. The error message can disclose JWK-shape details to an attacker
+  //      probing with crafted JWKs ("Unsupported key usage", "Invalid
+  //      curve", etc.).
+  //   2. It surfaces in the API layer's error handler as a 500 rather than
+  //      a 401 — confusing operationally and turns every malformed-JWK
+  //      probe into a metric spike on `unhandled_error`.
+  let cryptoKey: CryptoKey;
+  try {
+    cryptoKey = await importJwk(jwk as Record<string, unknown>, alg);
+  } catch {
+    throw new UnauthorizedError("dpop_signature");
+  }
+  const ok = await crypto.subtle.verify(
+    algParams(alg),
+    cryptoKey,
+    signature as BufferSource,
+    signingInput as BufferSource,
+  );
+  if (!ok) throw new UnauthorizedError("dpop_signature");
+
   const htm = String(payload["htm"] ?? "");
   const htu = String(payload["htu"] ?? "");
   if (htm !== opts.htm) throw new UnauthorizedError("dpop_htm_mismatch");
@@ -65,22 +105,11 @@ export async function verifyDpop(proofJwt: string, opts: DpopVerifyOptions): Pro
     if (payload["ath"] !== expectedAth) throw new UnauthorizedError("dpop_ath_mismatch");
   }
 
-  // Replay protection
+  // Replay protection — only consume the jti once the signature has proved
+  // the proof was actually issued by the bound keypair.
   const expiresAtMs = (iat + maxAge) * 1000;
   const seen = await opts.jtiSeen(jti, expiresAtMs);
   if (seen) throw new UnauthorizedError("dpop_jti_replay");
-
-  // Signature verification
-  const signingInput = new TextEncoder().encode(`${headerB64}.${payloadB64}`);
-  const signature = base64urlDecode(sigB64);
-  const cryptoKey = await importJwk(jwk as Record<string, unknown>, alg);
-  const ok = await crypto.subtle.verify(
-    algParams(alg),
-    cryptoKey,
-    signature as BufferSource,
-    signingInput as BufferSource,
-  );
-  if (!ok) throw new UnauthorizedError("dpop_signature");
 
   const jkt = await jwkThumbprint(jwk as Record<string, unknown>);
   return { jkt, jwk: jwk as Record<string, unknown>, jti, iat };

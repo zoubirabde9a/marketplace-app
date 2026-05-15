@@ -82,9 +82,25 @@ export async function registerIdempotency(app: FastifyInstance, opts: Idempotenc
     if (key.length < 8 || key.length > 128) {
       throw new ValidationError([{ path: "headers.idempotency-key", message: "must be 8-128 chars" }]);
     }
+    // Restrict to printable-ASCII (no whitespace, no controls, no
+    // non-ASCII). Without this, a key containing a NUL byte or unicode
+    // homoglyph (e.g. Cyrillic "а" U+0430 vs Latin "a") would key the
+    // store-side Map/Redis entry differently from a similar-looking key
+    // a client logs and re-sends — a retry would re-execute the handler
+    // because the two never match. Also closes line-injection vectors
+    // into the audit log line that includes the key.
+    if (!/^[A-Za-z0-9_\-:.]+$/.test(key)) {
+      throw new ValidationError([
+        { path: "headers.idempotency-key", message: "must contain only [A-Za-z0-9_-:.] chars" },
+      ]);
+    }
 
     const scope = `${req.method}:${req.url.split("?")[0]}`;
-    const bodyStr = req.body ? JSON.stringify(req.body) : "";
+    // Use `!= null` rather than truthy — a request body that legitimately
+    // serialises to a falsy value (`0`, `false`, empty string) would
+    // otherwise collide with a no-body request because both took the
+    // `""` branch. JSON.stringify(0) → "0", JSON.stringify(undefined) → undefined.
+    const bodyStr = req.body != null ? JSON.stringify(req.body) : "";
     const requestHash = createHash("sha256").update(`${scope}:${bodyStr}`).digest("hex");
 
     const cached = await opts.store.get(key, scope);
@@ -96,6 +112,12 @@ export async function registerIdempotency(app: FastifyInstance, opts: Idempotenc
         void reply.code(cached.status).send(cached.body);
         return;
       }
+      // status === 0 means a previous request reserved the key but hasn't
+      // finalized yet — i.e. a concurrent in-flight retry. Letting it fall
+      // through ran the route handler a second time with the same key,
+      // violating the idempotency contract (side effects happen twice).
+      // Reject the retry; the client should backoff and re-poll.
+      throw new ConflictError("idempotency_key_concurrent_request");
     } else {
       const ok = await opts.store.reserve(key, scope, requestHash, ttl);
       if (!ok) throw new ConflictError("idempotency_key_concurrent_request");
@@ -121,7 +143,22 @@ export async function registerIdempotency(app: FastifyInstance, opts: Idempotenc
     } else if (Buffer.isBuffer(payload)) {
       body = payload.toString("utf8");
     }
-    void opts.store.finalize(ctx.key, ctx.scope, reply.statusCode, body);
+    // Await the finalize: if the response leaves the wire before the store
+    // commits, a fast retry can race in, see the reservation still at
+    // status=0, and (now correctly) get bounced as a concurrent request —
+    // but with the await, the retry instead reads the finalized cached
+    // response, which is the actual idempotent-replay behaviour we promise.
+    // Wrap in try/catch so a store outage doesn't fail the in-flight call;
+    // worst case the next retry re-runs the handler, which is no worse
+    // than not having idempotency at all.
+    try {
+      await opts.store.finalize(ctx.key, ctx.scope, reply.statusCode, body);
+    } catch (err) {
+      req.log.warn(
+        { err: err instanceof Error ? err.message : String(err), key: ctx.key, scope: ctx.scope },
+        "idempotency_finalize_failed",
+      );
+    }
     return payload;
   });
 }

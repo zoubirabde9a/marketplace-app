@@ -61,6 +61,61 @@ describe("checkListingShippability", () => {
     expect(r.reason).toContain("age_verification_required_21");
   });
 
+  it("blocks license-required when buyerHasLicense is explicitly false (not just missing)", () => {
+    // The previous check used `!hasOwnProperty("buyerHasLicense")` — a buyer
+    // who explicitly said "I have NO license" (field present, value false)
+    // passed the gate. Real compliance defect — convert the check to a
+    // truthy test so the field's value matters.
+    const rule: RestrictedItemRule = {
+      taxonomyKey: "weapons",
+      countryCode: "US",
+      restrictionKind: "license_required",
+      licenseRequiredOf: "buyer",
+      effectiveFrom: new Date("2020-01-01"),
+      registryVersion: "v1",
+    };
+    const listing = { ...baseListing, taxonomyKeys: ["weapons/firearms"] };
+    const buyer = { ...baseBuyer, buyerHasLicense: false };
+    const r = checkListingShippability(listing, buyer, [rule], now);
+    expect(r.allowed).toBe(false);
+    expect(r.reason).toBe("license_required_buyer");
+  });
+
+  it("allows license-required when buyerHasLicense is true", () => {
+    const rule: RestrictedItemRule = {
+      taxonomyKey: "weapons",
+      countryCode: "US",
+      restrictionKind: "license_required",
+      licenseRequiredOf: "buyer",
+      effectiveFrom: new Date("2020-01-01"),
+      registryVersion: "v1",
+    };
+    const listing = { ...baseListing, taxonomyKeys: ["weapons/firearms"] };
+    const buyer = { ...baseBuyer, buyerHasLicense: true };
+    const r = checkListingShippability(listing, buyer, [rule], now);
+    expect(r.allowed).toBe(true);
+  });
+
+  it("blocks carrier-prohibited hierarchically (carrier bans 'weapons' ⇒ blocks 'weapons/firearms')", () => {
+    // The previous check used `listing.taxonomyKeys.includes(p)` — exact
+    // equality — so a carrier banning the parent didn't catch the leaf.
+    const rule: RestrictedItemRule = {
+      taxonomyKey: "weapons",
+      countryCode: "US",
+      restrictionKind: "carrier_prohibited",
+      effectiveFrom: new Date("2020-01-01"),
+      registryVersion: "v1",
+    };
+    const listing = { ...baseListing, taxonomyKeys: ["weapons/firearms"] };
+    const buyer = {
+      ...baseBuyer,
+      carriersAvailable: [{ key: "ups", prohibitedItems: ["weapons"] }],
+    };
+    const r = checkListingShippability(listing, buyer, [rule], now);
+    expect(r.allowed).toBe(false);
+    expect(r.reason).toBe("no_carrier_available");
+  });
+
   it("blocks ITAR shipments outside the US", () => {
     const listing = {
       ...baseListing,

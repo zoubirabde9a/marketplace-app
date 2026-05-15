@@ -25,7 +25,7 @@ const apply = (input: unknown) =>
   reg().invoke("dispute.apply_event", input, ctx(["dispute:write"]));
 
 const sla = (input: unknown) =>
-  reg().invoke("dispute.check_sla", input, ctx(["dispute:write"]));
+  reg().invoke("dispute.check_sla", input, ctx(["dispute:read"]));
 
 const OPENED = new Date("2026-05-01T00:00:00Z");
 const NOW = new Date("2026-05-04T00:00:00Z");

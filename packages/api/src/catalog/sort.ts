@@ -89,7 +89,13 @@ export function keyOf(p: StoredProduct, sort: Sort, ctx: FilterContext): SortKey
     // top-50 by-postedAt set (~2 days behind real ingestion).
     return { v: p.createdAt, isBig: false };
   }
-  if (sort === "rating") return { v: p.rating ?? 0, isBig: false };
+  if (sort === "rating") {
+    // `(p.rating ?? 0)` only catches null/undefined — a NaN that snuck in
+    // via bad upstream data would propagate as the sort key and produce
+    // engine-defined (i.e. unstable) ordering. Use isFinite as the gate.
+    const r = p.rating;
+    return { v: typeof r === "number" && Number.isFinite(r) ? r : 0, isBig: false };
+  }
   return { v: relevanceScore(p, ctx), isBig: false };
 }
 
@@ -98,7 +104,18 @@ export const ascending = (sort: Sort): boolean => sort === "price_asc";
 
 function cmpKey(a: SortKey, b: SortKey): number {
   if (a.isBig && b.isBig) return a.v < b.v ? -1 : a.v > b.v ? 1 : 0;
-  if (!a.isBig && !b.isBig) return a.v - b.v;
+  if (!a.isBig && !b.isBig) {
+    // Use an explicit −1/0/+1 result. `a.v - b.v` returns the raw delta,
+    // which is fine for `Array.sort` but has two real-world failure modes
+    // on Number keys: (a) NaN propagates if either side is NaN (Array.sort
+    // behaviour with NaN comparators is engine-defined and observably
+    // unstable in V8); (b) very large absolute deltas (epoch ms vs. epoch
+    // ms differing by years) can exceed int32 and trigger different
+    // sort-algorithm branches in some engines. -1/0/1 sidesteps both.
+    if (a.v < b.v) return -1;
+    if (a.v > b.v) return 1;
+    return 0;
+  }
   return 0; // mixed — should never happen within a single sort dimension
 }
 
@@ -116,10 +133,26 @@ export function makeComparator(sort: Sort, ctx: FilterContext): (a: StoredProduc
   };
 }
 
-/** Parse the `k` field from a cursor back into a SortKey for the active sort. */
-export function parseCursorKey(rawK: string, sort: Sort): SortKey {
+/**
+ * Parse the `k` field from a cursor back into a SortKey for the active sort.
+ *
+ * Returns `undefined` on a bad-shape key rather than throwing. The previous
+ * implementation called `BigInt(rawK)` for price sorts — a non-numeric cursor
+ * `k` (corrupted client state, attacker submitting `k: "not-a-number"`)
+ * threw `SyntaxError` that bubbled up through `searchProducts` into an
+ * uncaught 500 on the search endpoint. The caller now treats `undefined`
+ * as "cursor key unusable" — search.ts falls back to the productId-only
+ * lookup path.
+ */
+export function parseCursorKey(rawK: string, sort: Sort): SortKey | undefined {
   if (sort === "price_asc" || sort === "price_desc") {
-    return { v: BigInt(rawK), isBig: true };
+    try {
+      return { v: BigInt(rawK), isBig: true };
+    } catch {
+      return undefined;
+    }
   }
-  return { v: Number(rawK), isBig: false };
+  const n = Number(rawK);
+  if (!Number.isFinite(n)) return undefined;
+  return { v: n, isBig: false };
 }

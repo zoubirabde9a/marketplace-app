@@ -49,6 +49,59 @@ async function loadLines(db: DbClient, orderId: string): Promise<cartDomain.Cart
   }));
 }
 
+/**
+ * Batch-load lines for many orders in a single `WHERE order_id IN (...)`
+ * round-trip. Cuts the per-order N+1 in `listForUser` / `listForSeller`
+ * (one `loadLines` query per shaped row) down to one query for the page.
+ * At the 200-row cap (pass #140) this drops a "list orders" call from
+ * ~201 round-trips to 2.
+ */
+async function loadLinesByOrderIds(
+  db: DbClient,
+  orderIds: ReadonlyArray<string>,
+): Promise<Map<string, cartDomain.CartLine[]>> {
+  const out = new Map<string, cartDomain.CartLine[]>();
+  if (orderIds.length === 0) return out;
+  const rows = await db
+    .select()
+    .from(orderItems)
+    .where(inArray(orderItems.orderId, [...orderIds]));
+  for (const r of rows) {
+    const list = out.get(r.orderId) ?? [];
+    list.push({
+      variantId: r.variantId,
+      sellerId: r.sellerId,
+      qty: r.qty,
+      unitPriceMinor: r.unitPriceMinor,
+    });
+    out.set(r.orderId, list);
+  }
+  return out;
+}
+
+function shapeWithLines(
+  row: typeof orders.$inferSelect,
+  lines: cartDomain.CartLine[],
+): StoredOrder {
+  return {
+    orderId: row.id,
+    publicNumber: row.publicNumber,
+    ownerKind: (row.ownerKind === "user" ? "user" : "anonymous") as StoredOrder["ownerKind"],
+    ownerId: row.buyerUserId ?? "anonymous",
+    cartId: row.cartId ?? "",
+    status: row.status as orderDomain.OrderStatus,
+    currency: row.currency,
+    subtotalMinor: row.subtotalMinor,
+    shippingMinor: row.shippingMinor,
+    taxMinor: row.taxMinor,
+    totalMinor: row.totalMinor,
+    lines,
+    customer: parseCustomer(row.metadata),
+    accessToken: row.accessToken ?? "",
+    createdAt: row.createdAt.getTime(),
+  };
+}
+
 async function shape(db: DbClient, row: typeof orders.$inferSelect): Promise<StoredOrder> {
   return {
     orderId: row.id,
@@ -133,17 +186,33 @@ export function makeOrderRepo(db: DbClient) {
 
     async listForUser(userId: string): Promise<StoredOrder[]> {
       if (!isUuid(userId)) return [];
+      // Cap the response. Pre-fix this returned every order for the user
+      // with no upper bound — a buyer with 10k orders loaded all of them
+      // (plus a per-order `loadLines` round-trip → ~10k * order-items
+      // queries) into the /v1/orders payload, exhausting memory on both
+      // server and client. The route layer doesn't paginate; the most
+      // recent 200 covers any realistic dashboard "your orders" view.
       const rows = await db
         .select()
         .from(orders)
         .where(and(eq(orders.ownerKind, "user"), eq(orders.buyerUserId, userId)))
-        .orderBy(desc(orders.createdAt));
-      return Promise.all(rows.map((r) => shape(db, r)));
+        .orderBy(desc(orders.createdAt))
+        .limit(200);
+      const linesByOrder = await loadLinesByOrderIds(db, rows.map((r) => r.id));
+      return rows.map((r) => shapeWithLines(r, linesByOrder.get(r.id) ?? []));
     },
 
     async findRecentByCartId(cartId: string, withinMs: number): Promise<StoredOrder | undefined> {
       if (!isUuid(cartId)) return undefined;
-      const cutoff = new Date(Date.now() - withinMs);
+      // Validate `withinMs`. The previous code did `new Date(Date.now() - withinMs)`
+      // without bound: NaN propagated through to `Invalid Date`, and Drizzle/
+      // Postgres rejected the query with a confusing type-conversion error
+      // instead of a clean "no recent order" result. Same for Infinity.
+      // The function is used to dedupe checkout-confirm retries within a
+      // ~10 min window; anything past 30 days is meaningless (and slow).
+      if (!Number.isFinite(withinMs) || withinMs <= 0) return undefined;
+      const cappedMs = Math.min(withinMs, 30 * 24 * 3600 * 1000);
+      const cutoff = new Date(Date.now() - cappedMs);
       const rows = await db
         .select()
         .from(orders)
@@ -155,7 +224,11 @@ export function makeOrderRepo(db: DbClient) {
 
     async listForSeller(sellerId: string): Promise<StoredOrder[]> {
       if (!isUuid(sellerId)) return [];
-      // Find order ids that contain at least one item sold by this seller.
+      // Same cap as listForUser. A high-volume seller with 100k orders
+      // shouldn't blow up the /v1/sellers/:id/orders payload. 200 most-
+      // recent covers the seller dashboard's "incoming orders" view; the
+      // seller can drill into older orders by order id once a paginated
+      // surface is added.
       const idRows = await db
         .selectDistinct({ orderId: orderItems.orderId })
         .from(orderItems)
@@ -166,8 +239,10 @@ export function makeOrderRepo(db: DbClient) {
         .select()
         .from(orders)
         .where(inArray(orders.id, orderIds))
-        .orderBy(desc(orders.createdAt));
-      return Promise.all(rows.map((r) => shape(db, r)));
+        .orderBy(desc(orders.createdAt))
+        .limit(200);
+      const linesByOrder = await loadLinesByOrderIds(db, rows.map((r) => r.id));
+      return rows.map((r) => shapeWithLines(r, linesByOrder.get(r.id) ?? []));
     },
   };
 }

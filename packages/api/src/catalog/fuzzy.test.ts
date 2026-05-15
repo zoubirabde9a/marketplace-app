@@ -59,4 +59,23 @@ describe("fuzzyMatch", () => {
   it("supports Unicode letter tokens (French diacritics)", () => {
     expect(fuzzyMatch("électroménager", "Catégorie Électroménager")).toBe(1);
   });
+
+  it("does NOT accept a 1-edit window on ≤3-char tokens (would be noise)", () => {
+    // "tea" → "sea" is edit-distance 1 but a buyer searching for "tea" does
+    // not want sea-themed products. tolerance=0 for ≤3 chars now.
+    expect(fuzzyMatch("tea", "sea kayak")).toBe(0);
+    // exact still works
+    expect(fuzzyMatch("tea", "green tea")).toBe(1);
+  });
+
+  it("does NOT free-match a 1-char query via substring containment", () => {
+    // Previously `t.includes(q)` short-circuited best=0, so query "a"
+    // matched any product whose text contained 'a' — useless wildcard.
+    expect(fuzzyMatch("a", "Samsung Galaxy")).toBe(0);
+  });
+
+  it("preserves long-token substring shortcut", () => {
+    // Substring shortcut is still available for ≥4-char query tokens.
+    expect(fuzzyMatch("phone", "iphone 13")).toBeGreaterThan(0);
+  });
 });

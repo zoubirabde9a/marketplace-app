@@ -57,14 +57,26 @@ export function checkListingShippability(
     return { allowed: false, reason: "buyer_sanctioned_party" };
   }
 
-  const applicable = rules.filter(
-    (r) =>
-      r.countryCode === buyer.shipToCountry &&
-      (!r.subdivisionCode || r.subdivisionCode === buyer.shipToSubdivision) &&
-      r.effectiveFrom <= now &&
-      (!r.effectiveTo || r.effectiveTo > now) &&
-      listing.taxonomyKeys.some((k) => k === r.taxonomyKey || k.startsWith(`${r.taxonomyKey}/`)),
-  );
+  const applicable = rules.filter((r) => {
+    if (r.countryCode !== buyer.shipToCountry) return false;
+    if (r.subdivisionCode && r.subdivisionCode !== buyer.shipToSubdivision) return false;
+    // Fail-closed on Invalid Dates in policy windows. Pre-fix an Invalid
+    // Date on `effectiveFrom` made `Invalid Date <= now` evaluate to
+    // `false` (NaN coercion), so the rule was filtered out as "not yet
+    // effective" — a typo in a prohibited-items policy silently disabled
+    // it and the prohibited item shipped. Treat Invalid as
+    // "already-effective" / "no end" so the rule binds when in doubt,
+    // matching the spirit of a policy-enforcement gate. Same NaN-bypass
+    // family as escrow.releaseAt (pass #122) and velocity location
+    // checks (pass #120).
+    const fromMs = r.effectiveFrom.getTime();
+    if (Number.isFinite(fromMs) && fromMs > now.getTime()) return false;
+    if (r.effectiveTo !== undefined) {
+      const toMs = r.effectiveTo.getTime();
+      if (Number.isFinite(toMs) && toMs <= now.getTime()) return false;
+    }
+    return listing.taxonomyKeys.some((k) => k === r.taxonomyKey || k.startsWith(`${r.taxonomyKey}/`));
+  });
 
   for (const rule of applicable) {
     if (rule.restrictionKind === "prohibited") {
@@ -78,7 +90,13 @@ export function checkListingShippability(
     }
     if (rule.restrictionKind === "license_required") {
       const who = rule.licenseRequiredOf ?? "buyer";
-      if ((who === "buyer" || who === "both") && !buyer.hasOwnProperty("buyerHasLicense")) {
+      // CRITICAL FIX: the previous check was `!buyer.hasOwnProperty("buyerHasLicense")` —
+      // it tested whether the FIELD WAS PRESENT, not whether the license existed.
+      // A buyer explicitly asserting `buyerHasLicense: false` passed the gate
+      // (field present ⇒ check skipped ⇒ rule allows the transaction). That
+      // converted a compliance gate into "are you willing to fill in this field?"
+      // The correct semantics: block when the buyer doesn't have a valid license.
+      if ((who === "buyer" || who === "both") && !buyer.buyerHasLicense) {
         return { allowed: false, reason: "license_required_buyer", triggeredRule: rule };
       }
     }
@@ -99,8 +117,20 @@ export function checkListingShippability(
       }
     }
     if (rule.restrictionKind === "carrier_prohibited") {
+      // Carrier-prohibition must match hierarchically: a carrier banning
+      // "weapons" must also reject "weapons/firearms". Previously the check
+      // was `listing.taxonomyKeys.includes(p)` — exact string equality only —
+      // so a listing tagged ONLY at the leaf ("weapons/firearms") slipped
+      // past a carrier banning the parent ("weapons"). Asymmetric with the
+      // applicable-rules filter at the top, which already handles hierarchy
+      // in the other direction.
+      const isHierarchicalMatch = (prohibited: string, key: string): boolean =>
+        key === prohibited || key.startsWith(`${prohibited}/`);
       const ok = buyer.carriersAvailable.some(
-        (c) => !c.prohibitedItems.some((p) => listing.taxonomyKeys.includes(p)),
+        (c) =>
+          !c.prohibitedItems.some((p) =>
+            listing.taxonomyKeys.some((k) => isHierarchicalMatch(p, k)),
+          ),
       );
       if (!ok) return { allowed: false, reason: "no_carrier_available", triggeredRule: rule };
     }

@@ -34,7 +34,7 @@ describe("passport sign/verify", () => {
     expect(verified.sub).toBe("agt_01");
   });
 
-  it("rejects unknown issuer", async () => {
+  it("rejects unknown issuer (collapsed to signature error to close the kid-enumeration oracle, pass #153)", async () => {
     const key = generateIssuerKey("kid-1");
     const signed = signPassport(baseClaims(), key);
     await expect(
@@ -44,7 +44,7 @@ describe("passport sign/verify", () => {
         resolveIssuerKey: async () => undefined,
         isRevoked: async () => false,
       }),
-    ).rejects.toThrow(/unknown_kid/);
+    ).rejects.toThrow(/passport_signature/);
   });
 
   it("rejects expired passport", async () => {

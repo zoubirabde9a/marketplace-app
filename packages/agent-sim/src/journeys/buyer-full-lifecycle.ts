@@ -205,7 +205,7 @@ export async function runFullLifecycle(input: LifecycleInput): Promise<Lifecycle
     const out = (await reg.invoke(
       "order.apply_event",
       { orderId: "o-lc", current: status, event: t },
-      buildCtx(["order:cancel"]),
+      buildCtx(["order:write", "checkout:execute", "seller:fulfill:execute"]),
     )) as { previous: string; next: string };
     orderTrace.push({ from: out.previous, event: t.kind, to: out.next });
     status = out.next;

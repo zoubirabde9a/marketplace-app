@@ -1,6 +1,7 @@
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { uuidv7 } from "@marketplace/shared/ids";
 import { normalizeAlgerianPhone } from "@marketplace/shared/phone";
+import { sanitizeUntrustedString, safeOrigin } from "@marketplace/shared/untrusted";
 import { organizations } from "../schema/identity.js";
 import { sellerPhones, sellerProfiles } from "../schema/seller.js";
 import { products } from "../schema/catalog.js";
@@ -58,7 +59,14 @@ function shapePhone(row: PhoneRow): SellerPhone {
 }
 
 function shape(row: ProfileRow, phones: SellerPhone[], countryCode?: string | null): StoredSeller {
-  const primary = phones.find((p) => p.isPrimary) ?? phones[0];
+  // Resolve the legacy `phone` field by EXPLICIT primary only. The previous
+  // `?? phones[0]` fallback defeated `updateContact({ phone: null })` —
+  // clearing the primary flag left phones[0] picking up the next-in-line
+  // entry, so the seller's PATCH to remove their phone surfaced as a
+  // different number on the next read. Treat "no isPrimary row" as "no
+  // surfaced legacy phone"; the full `phones[]` array is always available
+  // to callers that need to see every number regardless of flag state.
+  const primary = phones.find((p) => p.isPrimary);
   const whatsapp = phones.find((p) => p.isWhatsapp);
   return {
     sellerId: row.orgId,
@@ -89,15 +97,21 @@ export function makeSellerRepo(db: DbClient) {
   async function phonesForSellers(sellerIds: string[]): Promise<Map<string, SellerPhone[]>> {
     const result = new Map<string, SellerPhone[]>();
     if (sellerIds.length === 0) return result;
-    // Drizzle's `inArray` would be cleaner; this stays simple and lets us
-    // keep the file dependency-free of additional imports.
+    // Push the seller-id filter into SQL via `inArray`. The previous version
+    // pulled EVERY phone row from the table and filtered in JS — a quiet
+    // O(total_phones × queries) cost on what should be a bounded
+    // `O(input_ids × avg_phones_per_seller)` lookup. At ~14k sellers with a
+    // handful of phones each, every listSellers call was scanning ~30k
+    // rows to materialize phones for one page of results. The earlier
+    // comment claimed avoiding the import kept things simple — but the
+    // function lives alongside other Drizzle uses and an `inArray` import
+    // is one identifier added to the existing import line.
     const rows = await db
       .select()
       .from(sellerPhones)
+      .where(inArray(sellerPhones.sellerId, sellerIds))
       .orderBy(desc(sellerPhones.isPrimary), asc(sellerPhones.position), asc(sellerPhones.createdAt));
-    const wanted = new Set(sellerIds);
     for (const row of rows) {
-      if (!wanted.has(row.sellerId)) continue;
       const list = result.get(row.sellerId) ?? [];
       list.push(shapePhone(row));
       result.set(row.sellerId, list);
@@ -125,6 +139,19 @@ export function makeSellerRepo(db: DbClient) {
       const profileId = uuidv7();
       const country = (input.countryCode ?? "DZ").toUpperCase();
       const slug = `seller-${orgId.slice(-12)}`;
+      // Sanitise seller-supplied free text at the write boundary. `displayName`
+      // and `description` flow onto every storefront card and into product
+      // pages — both surfaces are candidates for LLM-rendered summarisation
+      // (catalog Q&A, product recommendations). A seller writing `<system>` /
+      // "ignore previous instructions" into their store name would otherwise
+      // inject any downstream LLM that reads the catalog. Mirrors the order
+      // / dispute / customer scrubs (passes #90 / #91 / #97 / #105) and the
+      // product write-time sanitisation already done in repos/product.ts.
+      const origin = safeOrigin("seller", input.ownerAgentId);
+      const displayName = sanitizeUntrustedString(input.displayName, { maxLength: 120, origin });
+      const description = input.description !== undefined
+        ? sanitizeUntrustedString(input.description, { maxLength: 1000, origin })
+        : undefined;
 
       // Build the normalized phone list. We accept both the new shape
       // (`phones: [...]`) and the legacy single `phone`/`whatsapp` fields.
@@ -173,8 +200,8 @@ export function makeSellerRepo(db: DbClient) {
       return db.transaction(async (tx) => {
         await tx.insert(organizations).values({
           id: orgId,
-          name: input.displayName,
-          legalName: input.displayName,
+          name: displayName,
+          legalName: displayName,
           countryCode: country,
           status: "active",
         });
@@ -186,14 +213,14 @@ export function makeSellerRepo(db: DbClient) {
             id: profileId,
             orgId,
             ownerAgentId: input.ownerAgentId,
-            storeName: input.displayName,
+            storeName: displayName,
             storeSlug: slug,
             // Mirror primary + first-whatsapp into the legacy columns so older
             // readers that still hit seller_profiles.phone keep working.
             phone: primary?.phoneE164 ?? null,
             whatsapp: wa?.phoneE164 ?? null,
             website: input.website ?? null,
-            description: input.description ?? null,
+            description: description ?? null,
             supportEmail: input.supportEmail ?? null,
             city: input.city ?? null,
             active: true,
@@ -280,32 +307,53 @@ export function makeSellerRepo(db: DbClient) {
       if (!isUuid(sellerId)) return undefined;
       const updates: Partial<ProfileRow> = { updatedAt: new Date() };
       // Phone/whatsapp updates keep the legacy single-value columns AND the
-      // seller_phones table in sync. The legacy columns stay populated so
-      // anything still reading from seller_profiles directly keeps working.
+      // seller_phones table in sync. Reject inputs that the phone normaliser
+      // doesn't recognise — the previous code fell back to the RAW string
+      // for the legacy column when normalize returned undefined, so the
+      // legacy `seller_profiles.phone` would land with a junk value while
+      // the new `seller_phones` table got NOTHING (the side-syncing block
+      // below silently no-ops when `e164` is undefined). That left every
+      // seller in an inconsistent state per-row, with the legacy column
+      // showing the typo and the new column missing it.
       if (patch.phone !== undefined) {
-        const e164 = patch.phone === null ? null : normalizeAlgerianPhone(patch.phone) ?? patch.phone;
-        updates.phone = e164;
+        if (patch.phone === null) {
+          updates.phone = null;
+        } else {
+          const e164 = normalizeAlgerianPhone(patch.phone);
+          if (!e164) return undefined; // refuse the whole patch — caller will surface a 400
+          updates.phone = e164;
+        }
       }
       if (patch.whatsapp !== undefined) {
-        const e164 =
-          patch.whatsapp === null ? null : normalizeAlgerianPhone(patch.whatsapp) ?? patch.whatsapp;
-        updates.whatsapp = e164;
+        if (patch.whatsapp === null) {
+          updates.whatsapp = null;
+        } else {
+          const e164 = normalizeAlgerianPhone(patch.whatsapp);
+          if (!e164) return undefined;
+          updates.whatsapp = e164;
+        }
       }
       if (patch.website !== undefined) updates.website = patch.website === null ? null : patch.website;
 
-      const [row] = await db
-        .update(sellerProfiles)
-        .set(updates)
-        .where(eq(sellerProfiles.orgId, sellerId))
-        .returning();
-      if (!row) return undefined;
+      // Wrap the legacy-column update AND the seller_phones sync in a
+      // SINGLE transaction so they commit-or-rollback together. The
+      // previous shape ran the legacy update outside any transaction and
+      // started a NEW transaction for the phones table — if the phones
+      // transaction failed, the legacy column was already committed with
+      // a stale value, leaving the two columns disagreeing.
+      const out = await db.transaction(async (tx) => {
+        const [row] = await tx
+          .update(sellerProfiles)
+          .set(updates)
+          .where(eq(sellerProfiles.orgId, sellerId))
+          .returning();
+        if (!row) return undefined;
 
-      // Mirror the patch into seller_phones for the simple cases. If the
-      // patch sets a phone to null, clear the matching seller_phones row.
-      // If it sets a non-null value, upsert it as the primary. WhatsApp
-      // updates flip is_whatsapp on the matching row (or insert a new row
-      // if the number doesn't yet exist).
-      await db.transaction(async (tx) => {
+        // Mirror the patch into seller_phones for the simple cases. If the
+        // patch sets a phone to null, clear the matching seller_phones row.
+        // If it sets a non-null value, upsert it as the primary. WhatsApp
+        // updates flip is_whatsapp on the matching row (or insert a new row
+        // if the number doesn't yet exist).
         if (patch.phone !== undefined) {
           if (patch.phone === null) {
             await tx
@@ -344,36 +392,59 @@ export function makeSellerRepo(db: DbClient) {
             }
           }
         }
-        if (patch.whatsapp !== undefined && patch.whatsapp !== null) {
-          const e164 = normalizeAlgerianPhone(patch.whatsapp);
-          if (e164) {
-            const existing = await tx
-              .select()
-              .from(sellerPhones)
-              .where(and(eq(sellerPhones.sellerId, sellerId), eq(sellerPhones.phoneE164, e164)))
-              .limit(1);
-            if (existing[0]) {
+        if (patch.whatsapp !== undefined) {
+          if (patch.whatsapp === null) {
+            // Clearing whatsapp must also flip `is_whatsapp` off on every
+            // seller_phones row for this seller — pre-fix only the legacy
+            // `seller_profiles.whatsapp` column was nulled, while the
+            // phones row retained `is_whatsapp = true`, and the `shape()`
+            // function resolves `whatsapp` from `phones.find(p =>
+            // p.isWhatsapp)`. Result: PATCH to clear whatsapp succeeded
+            // but the next read still surfaced the cleared number.
+            await tx
+              .update(sellerPhones)
+              .set({ isWhatsapp: false, updatedAt: new Date() })
+              .where(and(eq(sellerPhones.sellerId, sellerId), eq(sellerPhones.isWhatsapp, true)));
+          } else {
+            const e164 = normalizeAlgerianPhone(patch.whatsapp);
+            if (e164) {
+              // Clear any other rows' is_whatsapp first so only this one
+              // ends up marked — otherwise a previous whatsapp would
+              // co-exist with the new one and `shape()` could pick either.
               await tx
                 .update(sellerPhones)
-                .set({ isWhatsapp: true, updatedAt: new Date() })
-                .where(eq(sellerPhones.id, existing[0].id));
-            } else {
-              await tx.insert(sellerPhones).values({
-                id: uuidv7(),
-                sellerId,
-                phoneE164: e164,
-                isWhatsapp: true,
-                isViber: false,
-                isPrimary: false,
-                position: 999,
-                source: "update-contact",
-              });
+                .set({ isWhatsapp: false, updatedAt: new Date() })
+                .where(and(eq(sellerPhones.sellerId, sellerId), eq(sellerPhones.isWhatsapp, true)));
+              const existing = await tx
+                .select()
+                .from(sellerPhones)
+                .where(and(eq(sellerPhones.sellerId, sellerId), eq(sellerPhones.phoneE164, e164)))
+                .limit(1);
+              if (existing[0]) {
+                await tx
+                  .update(sellerPhones)
+                  .set({ isWhatsapp: true, updatedAt: new Date() })
+                  .where(eq(sellerPhones.id, existing[0].id));
+              } else {
+                await tx.insert(sellerPhones).values({
+                  id: uuidv7(),
+                  sellerId,
+                  phoneE164: e164,
+                  isWhatsapp: true,
+                  isViber: false,
+                  isPrimary: false,
+                  position: 999,
+                  source: "update-contact",
+                });
+              }
             }
           }
         }
+        return row;
       });
+      if (!out) return undefined;
       const phones = await listPhones(sellerId);
-      return shape(row, phones);
+      return shape(out, phones);
     },
 
     async get(sellerId: string): Promise<StoredSeller | undefined> {
@@ -390,11 +461,21 @@ export function makeSellerRepo(db: DbClient) {
     },
 
     async list(): Promise<StoredSeller[]> {
+      // Hard cap on the result set. Pre-fix this returned every seller with
+      // no upper bound — at 1000+ sellers the response gets large and each
+      // row triggers a phone-lookup join (`phonesForSellers`). The route
+      // /v1/sellers filters/paginates in memory after this call, so the
+      // filter only sees this prefix; this is imperfect (a search query
+      // matching a seller past row 5000 would miss) but bounds the memory
+      // and CPU cost while a proper DB-level filter+paginate is wired in.
+      // 5000 covers any realistic dev/staging seller count; production
+      // catalogue currently has ~50 sellers (2026-05-15).
       const rows = await db
         .select({ profile: sellerProfiles, countryCode: organizations.countryCode })
         .from(sellerProfiles)
         .leftJoin(organizations, eq(organizations.id, sellerProfiles.orgId))
-        .orderBy(sellerProfiles.createdAt);
+        .orderBy(sellerProfiles.createdAt)
+        .limit(5000);
       const ids = rows.map((r) => r.profile.orgId);
       const phoneMap = await phonesForSellers(ids);
       return rows.map((r) => shape(r.profile, phoneMap.get(r.profile.orgId) ?? [], r.countryCode));
@@ -426,10 +507,18 @@ export function makeSellerRepo(db: DbClient) {
 
     async countProducts(sellerId: string): Promise<number> {
       if (!isUuid(sellerId)) return 0;
+      // Match the active-only filter every public-read product surface
+      // applies (loadAll / loadOneActive / getProductsByIds / searchIds /
+      // idsBySeller / recentIds / idsByCategory — passes #84 / #134 / #135).
+      // countProducts is surfaced on /v1/sellers and /v1/sellers/:id which
+      // are public-read endpoints. Pre-fix a seller card said "10
+      // products" while the storefront only showed 7 active ones — buyers
+      // hit the store, saw fewer than promised, lost trust. Drafts and
+      // removed listings shouldn't pad the public-facing count.
       const rows = await db
         .select({ n: count() })
         .from(products)
-        .where(eq(products.sellerId, sellerId));
+        .where(and(eq(products.sellerId, sellerId), eq(products.status, "active")));
       return Number(rows[0]?.n ?? 0);
     },
   };

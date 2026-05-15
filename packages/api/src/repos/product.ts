@@ -93,7 +93,10 @@ export interface ProductRepo {
       height?: number;
       altText?: string;
     },
-  ): Promise<MediaRecord | undefined>;
+  ): Promise<MediaRecord | "media_cap_exceeded" | undefined>;
 
-  removeMedia(productId: string, mediaId: string): Promise<boolean>;
+  removeMedia(
+    productId: string,
+    mediaId: string,
+  ): Promise<"removed" | "not_found" | "last_image">;
 }

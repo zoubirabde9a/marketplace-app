@@ -9,10 +9,25 @@
 // present so a route can require whichever it needs.
 
 import type { FastifyInstance, FastifyRequest } from "fastify";
-import type { KeyObject } from "node:crypto";
+import { timingSafeEqual, type KeyObject } from "node:crypto";
 import { UnauthorizedError } from "@marketplace/shared/errors";
 import { identity } from "@marketplace/domain";
 import { isSessionToken, verifySession } from "../auth/session.js";
+
+/**
+ * Constant-time string compare. `===` on shared-secret strings leaks
+ * prefix-match info via timing: the JS engine short-circuits the
+ * character-by-character compare on the first mismatch, so an attacker
+ * can submit guesses and use response timing to extract the secret
+ * one character at a time. `timingSafeEqual` runs the full compare
+ * regardless. Same byte length is a precondition — if lengths differ
+ * we can fail-fast without leaking the secret's length (the attacker
+ * already controls the candidate's length).
+ */
+function safeEqualString(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 export interface RequestPrincipal {
   agentId: string;
@@ -180,7 +195,19 @@ export async function registerAuth(app: FastifyInstance, deps: AuthDeps): Promis
           });
           req.userPrincipal = { userId: claims.sub, email: claims.email };
         } catch (e) {
-          throw new UnauthorizedError(`session_invalid:${(e as Error).message}`);
+          // Sanitise the surfaced detail. verifySession throws stable slugs
+          // (session_format / session_malformed / session_signature /
+          // session_audience / session_expired / session_*_invalid …), but a
+          // JSON.parse upstream of those slugs can throw "Unexpected token h
+          // in JSON at position 1" which would echo the malformed input
+          // position and shape detail to the client. Only allow the
+          // known-safe slug-shaped messages; collapse anything else to a
+          // generic "session_invalid". Full detail still hits the server
+          // logs via the error class.
+          const msg = (e as Error).message;
+          const safe = /^session_[a-z_]+$/.test(msg) ? msg : "session_invalid";
+          req.log.warn({ err: e, tokenLen: token.length }, "session_verify_failed");
+          throw new UnauthorizedError(safe);
         }
       }
     }
@@ -199,24 +226,51 @@ export async function registerAuth(app: FastifyInstance, deps: AuthDeps): Promis
         deps.mcpAdminToken !== undefined &&
         deps.mcpAdminToken.length > 0 &&
         typeof adminTokenHeader === "string" &&
-        adminTokenHeader === deps.mcpAdminToken;
+        safeEqualString(adminTokenHeader, deps.mcpAdminToken);
       if ((deps.devBypass || adminTokenOk) && method === "POST" && path === "/mcp" && !req.principal) {
-        const agentId = (req.headers["x-mp-agent-id"] as string) || "agt_dev";
-        const scopesHeader = (req.headers["x-mp-scopes"] as string) || "";
-        const scopes = new Set(
-          scopesHeader
-            ? scopesHeader.split(",").map((s) => s.trim()).filter(Boolean)
-            : [
-                "catalog:read",
-                "seller:write",
-                "seller:product:write",
-                "seller:order:read",
-                "buyer:cart:read",
-                "buyer:cart:write",
-                "buyer:checkout:write",
-                "buyer:order:read",
-              ],
-        );
+        // Bound the caller-supplied agent-id and scope header. Pre-fix
+        // `x-mp-scopes` was unbounded: a 1 MB comma-blob would split into
+        // ~1 M Set entries that downstream MCP-registry `scopes.has(...)`
+        // checks then walk every tool invocation. Even though this branch
+        // only fires when `adminTokenOk` (production) or `devBypass` (dev)
+        // succeeds, defense-in-depth — the admin token is a shared secret
+        // and the scope set should never need more than the platform's
+        // ~30 declared scope tokens. Cap at 64 entries × 200 chars each.
+        const rawAgent = req.headers["x-mp-agent-id"];
+        // Reject reserved-prefix agentIds. Same defense as passport
+        // issuance (auth.ts pass #154): a `user:` prefix bypasses the
+        // audit middleware (which skips synthetic-user principals), and
+        // `psp_` collides with the platform's passport-id namespace. Even
+        // though this branch only fires under DEV_BYPASS or admin-token,
+        // matching the issuance gate keeps both promotion paths from
+        // diverging.
+        const agentId =
+          typeof rawAgent === "string"
+            && rawAgent.length > 0
+            && rawAgent.length <= 120
+            && !/^(user:|psp_)/i.test(rawAgent)
+            && !/^\s/.test(rawAgent)
+            ? rawAgent
+            : "agt_dev";
+        const rawScopes = req.headers["x-mp-scopes"];
+        const scopesHeader = typeof rawScopes === "string" ? rawScopes.slice(0, 4096) : "";
+        const parsed = scopesHeader
+          ? scopesHeader
+              .split(",")
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0 && s.length <= 200)
+              .slice(0, 64)
+          : [
+              "catalog:read",
+              "seller:write",
+              "seller:product:write",
+              "seller:order:read",
+              "buyer:cart:read",
+              "buyer:cart:write",
+              "buyer:checkout:write",
+              "buyer:order:read",
+            ];
+        const scopes = new Set(parsed);
         req.principal = {
           agentId,
           passportId: `psp_${agentId}`,
@@ -254,7 +308,18 @@ export async function registerAuth(app: FastifyInstance, deps: AuthDeps): Promis
 
     // 2b) Agent-passport path (everything else).
     if (deps.devBypass) {
-      const agentId = (req.headers["x-mp-agent-id"] as string) || "agt_dev";
+      // Same reserved-prefix / length guard as the MCP-elevation path
+      // above and the passport-issuance schema (pass #154). DEV_BYPASS is
+      // a hard-disabled posture in production; this is defense-in-depth.
+      const rawAgent = req.headers["x-mp-agent-id"];
+      const agentId =
+        typeof rawAgent === "string"
+          && rawAgent.length > 0
+          && rawAgent.length <= 120
+          && !/^(user:|psp_)/i.test(rawAgent)
+          && !/^\s/.test(rawAgent)
+          ? rawAgent
+          : "agt_dev";
       const scopesHeader = (req.headers["x-mp-scopes"] as string) || "";
       const scopes = new Set(
         scopesHeader
@@ -292,9 +357,19 @@ export async function registerAuth(app: FastifyInstance, deps: AuthDeps): Promis
       throw new UnauthorizedError("dpop_proof_required");
     }
 
-    const proto = (req.headers["x-forwarded-proto"] as string) || (req.protocol as string) || "https";
-    const host = (req.headers["x-forwarded-host"] as string) || req.headers.host;
-    const url = new URL(req.url, `${proto}://${host}`);
+    // Reconstruct the absolute request URL the way the agent signed it in
+    // the DPoP proof's `htu` claim. Use Fastify's `req.protocol` / `req.hostname`
+    // — with trustProxy=true (set in server.ts) these honour X-Forwarded-* only
+    // when the upstream connection is trusted, and fall back to the actual
+    // connection otherwise. Reading the headers directly (as the previous
+    // code did) bypassed that trust gate: an attacker reaching the origin
+    // could set `Host: anything` AND a matching forged DPoP `htu`, and the
+    // binding check became "did you sign over the same string you also put
+    // in your Host header" — meaningless. The trust-proxy path mirrors the
+    // hostname source used by the /.well-known/agent-card.json discovery
+    // doc (well-known.ts), so the URL an agent signs after reading discovery
+    // matches the URL the middleware reconstructs here.
+    const url = new URL(req.url, `${req.protocol}://${req.hostname}`);
     url.search = "";
     url.hash = "";
 
@@ -325,7 +400,15 @@ export async function registerAuth(app: FastifyInstance, deps: AuthDeps): Promis
         isRevoked: deps.isPassportRevoked,
       });
     } catch (e) {
-      throw new UnauthorizedError(`passport_invalid:${(e as Error).message}`);
+      // Same allow-list defense as the session-token path (pass #151).
+      // verifyPassport's slug-shaped errors are safe to echo; anything
+      // else (a Zod validation message exposing the passport's exact
+      // schema mismatch, a JSON.parse leak of the malformed-input
+      // position) collapses to a generic "passport_invalid".
+      const msg = (e as Error).message;
+      const safe = /^passport_[a-z_]+$/.test(msg) ? msg : "passport_invalid";
+      req.log.warn({ err: e }, "passport_verify_failed");
+      throw new UnauthorizedError(safe);
     }
 
     const passportJkt = await identity.jwkThumbprint(claims.cnf.jwk as Record<string, unknown>);

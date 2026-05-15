@@ -24,6 +24,13 @@ export function enforceMandate(claims: MandateClaims, req: MandateCheckRequest):
   if (claims.cap.currency !== req.currency) {
     throw new MandateError("currency_mismatch", "mandate_currency_mismatch");
   }
+  // Non-positive amounts trivially pass the `cap >= amount` comparison and
+  // every constraint check below. A `req.amountMinor: 0n` dry-run could be
+  // used to bind a mandate to a request that later executes for a larger
+  // amount on a different code path. Reject at the gate.
+  if (req.amountMinor <= 0n) {
+    throw new MandateError("amount_must_be_positive", "mandate_amount_must_be_positive");
+  }
   if (BigInt(claims.cap.amount_minor) < req.amountMinor) {
     throw new MandateError("amount_exceeds_cap", "mandate_amount_exceeds_cap");
   }
@@ -31,6 +38,18 @@ export function enforceMandate(claims: MandateClaims, req: MandateCheckRequest):
   const c = claims.constraints;
   if (c) {
     if (c.merchants && c.merchants.length > 0) {
+      // Empty `req.merchantIds` against a merchant-restricted mandate
+      // would silently bypass the loop — same exemption-via-omission
+      // bypass already closed for `skus` and `jurisdictions` below. A
+      // real purchase always carries at least one merchant (every cart
+      // line has a sellerId); a request with none is either malformed or
+      // an attempt to side-step the restriction.
+      if (req.merchantIds.length === 0) {
+        throw new MandateError(
+          "merchants_required_by_mandate",
+          "mandate_merchant_not_allowed",
+        );
+      }
       const allowed = new Set(c.merchants);
       for (const m of req.merchantIds) {
         if (!allowed.has(m)) {
@@ -39,6 +58,13 @@ export function enforceMandate(claims: MandateClaims, req: MandateCheckRequest):
       }
     }
     if (c.categories && c.categories.length > 0) {
+      // Same omission-bypass fix as merchants/skus.
+      if (req.categoryIds.length === 0) {
+        throw new MandateError(
+          "categories_required_by_mandate",
+          "mandate_category_not_allowed",
+        );
+      }
       const allowed = c.categories;
       for (const cat of req.categoryIds) {
         if (!allowed.some((a) => cat === a || cat.startsWith(`${a}/`))) {
@@ -46,7 +72,17 @@ export function enforceMandate(claims: MandateClaims, req: MandateCheckRequest):
         }
       }
     }
-    if (c.skus && c.skus.length > 0 && req.skus) {
+    if (c.skus && c.skus.length > 0) {
+      // Previous behaviour silently skipped the SKU check when `req.skus`
+      // was missing — a caller could side-step a SKU-restricted mandate
+      // simply by omitting the field. The constraint MUST be enforced;
+      // missing input is a violation, not an exemption.
+      if (!req.skus || req.skus.length === 0) {
+        throw new MandateError(
+          "skus_required_by_mandate",
+          "mandate_sku_not_allowed",
+        );
+      }
       const allowed = new Set(c.skus);
       for (const sku of req.skus) {
         if (!allowed.has(sku)) {
@@ -54,16 +90,21 @@ export function enforceMandate(claims: MandateClaims, req: MandateCheckRequest):
         }
       }
     }
-    if (
-      c.jurisdictions &&
-      c.jurisdictions.length > 0 &&
-      req.shipToCountry &&
-      !c.jurisdictions.includes(req.shipToCountry)
-    ) {
-      throw new MandateError(
-        `jurisdiction_not_allowed:${req.shipToCountry}`,
-        "mandate_jurisdiction_not_allowed",
-      );
+    if (c.jurisdictions && c.jurisdictions.length > 0) {
+      // Same bypass as SKUs: missing `req.shipToCountry` against a
+      // jurisdiction-restricted mandate is a violation, not an exemption.
+      if (!req.shipToCountry) {
+        throw new MandateError(
+          "ship_to_country_required_by_mandate",
+          "mandate_jurisdiction_not_allowed",
+        );
+      }
+      if (!c.jurisdictions.includes(req.shipToCountry)) {
+        throw new MandateError(
+          `jurisdiction_not_allowed:${req.shipToCountry}`,
+          "mandate_jurisdiction_not_allowed",
+        );
+      }
     }
     if (c.maxItems !== undefined && req.itemCount > c.maxItems) {
       throw new MandateError("max_items_exceeded", "mandate_max_items_exceeded");

@@ -6,6 +6,15 @@ import { randomBytes } from "node:crypto";
 const ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // Crockford — no I, L, O, U
 
 export function generatePublicNumber(at: Date = new Date()): string {
+  // Fail-loud on Invalid Date. Pre-fix `at.getUTCFullYear() = NaN` and
+  // `NaN.toString().padStart(2, "0") = "NaN"` produced a malformed
+  // public number like `MP-NaNNaNNaN-XXXXXX` that the regex (and any
+  // caller reading the column) would reject — but only AFTER the order
+  // row was already inserted with the bad value. Throw at the boundary
+  // so the caller's transaction fails cleanly instead of writing junk.
+  if (!Number.isFinite(at.getTime())) {
+    throw new RangeError("generatePublicNumber:invalid_date");
+  }
   const yy = (at.getUTCFullYear() % 100).toString().padStart(2, "0");
   const mm = (at.getUTCMonth() + 1).toString().padStart(2, "0");
   const dd = at.getUTCDate().toString().padStart(2, "0");

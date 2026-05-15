@@ -9,20 +9,28 @@ import {
 } from "@marketplace/domain/catalog/counterfeit";
 import type { McpRegistry } from "../registry.js";
 
+// Bound every numeric signal at its semantic ceiling. Pre-fix several fields
+// admitted any non-negative integer (incl. `Number.MAX_SAFE_INTEGER`); the
+// scorer would then weight that contributor at ~1M× its intended influence,
+// silently saturating the risk score in either direction depending on the
+// contributor's sign. The rate-in-bps fields are 0–10000 by definition
+// (10000 bps = 100%); `priceVsAuthorizedFloorBps` is allowed to exceed 10000
+// (a price 2× the floor is 20000 bps) but the 1M ceiling still protects
+// against MAX_SAFE_INTEGER overflow. Day counts are capped at ~273 years.
 const Signals = z.object({
   brandRegistryMismatch: z.boolean(),
-  priceVsAuthorizedFloorBps: z.number().int().nonnegative().optional(),
-  sellerAgeDays: z.number().int().nonnegative(),
+  priceVsAuthorizedFloorBps: z.number().int().nonnegative().max(1_000_000).optional(),
+  sellerAgeDays: z.number().int().nonnegative().max(100_000),
   sellerReputationBps: z.number().int().min(0).max(10000).optional(),
-  imageHashHits: z.number().int().nonnegative(),
-  descriptionAnomalies: z.number().int().nonnegative(),
-  refundRateBps: z.number().int().nonnegative().optional(),
-  disputeRateBps: z.number().int().nonnegative().optional(),
-  categoryBaselineRefundBps: z.number().int().nonnegative().optional(),
+  imageHashHits: z.number().int().nonnegative().max(1_000_000),
+  descriptionAnomalies: z.number().int().nonnegative().max(1_000_000),
+  refundRateBps: z.number().int().min(0).max(10000).optional(),
+  disputeRateBps: z.number().int().min(0).max(10000).optional(),
+  categoryBaselineRefundBps: z.number().int().min(0).max(10000).optional(),
 });
 
 const Input = z.object({
-  listingId: z.string(),
+  listingId: z.string().min(1).max(200),
   signals: Signals,
 });
 

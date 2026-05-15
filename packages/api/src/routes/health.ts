@@ -40,7 +40,7 @@ export async function registerHealth(app: FastifyInstance, opts: HealthOptions =
   // a TODO that returned "ready" unconditionally — meaning the iter-22 Redis
   // OOM cycle never tripped readyz, and any LB pointing at this endpoint
   // would happily route traffic into a half-broken instance.
-  app.get("/readyz", async (_req, reply) => {
+  app.get("/readyz", async (req, reply) => {
     const probes = opts.probes ?? {};
     const timeoutMs = opts.probeTimeoutMs ?? 1500;
     const names = Object.keys(probes);
@@ -54,13 +54,34 @@ export async function registerHealth(app: FastifyInstance, opts: HealthOptions =
           const r = await withTimeout(probes[name]!(), timeoutMs, name);
           return [name, { ...r, latencyMs: r.latencyMs ?? Date.now() - t0 }] as const;
         } catch (e) {
-          return [name, { ok: false, latencyMs: Date.now() - t0, msg: (e as Error).message }] as const;
+          // Don't leak the raw probe error to the public /readyz response —
+          // a probe failure typically returns a message like
+          // `"connection to server at \"db\" (172.18.0.3), port 5432 failed:
+          // Connection refused"` or `"ECONNREFUSED 172.18.0.4:6379"` which
+          // discloses internal IPs / ports / service names useful to an
+          // attacker mapping the deployment. /readyz is public (no auth
+          // gate per PUBLIC_MATCHERS in middleware/auth.ts), so any caller
+          // can probe and read this. Keep the detail in server logs so
+          // operators investigating an outage still see it.
+          req.log.warn({ probe: name, err: (e as Error).message }, "readiness_probe_failed");
+          return [name, { ok: false, latencyMs: Date.now() - t0, msg: "probe_failed" }] as const;
         }
       }),
     );
     const checks = Object.fromEntries(results);
     const allOk = results.every(([, r]) => r.ok);
     if (!allOk) {
+      // Sanitise probe-returned msg the same way as caught-exception msgs.
+      // A probe that returns `ok: false` directly (e.g. a custom probe that
+      // surfaces "redis.ping returned ECONNREFUSED 10.0.0.5:6379") would
+      // otherwise bypass the catch sanitisation above.
+      for (const k of Object.keys(checks)) {
+        const c = checks[k];
+        if (c && !c.ok && typeof c.msg === "string") {
+          req.log.warn({ probe: k, msg: c.msg }, "readiness_probe_not_ok");
+          c.msg = "probe_failed";
+        }
+      }
       void reply.code(503);
       return { status: "not_ready", checks };
     }

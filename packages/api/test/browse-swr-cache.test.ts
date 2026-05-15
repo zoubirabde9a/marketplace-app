@@ -82,6 +82,44 @@ describe("browse-path SWR cache", () => {
     expect(loadAll).toHaveBeenCalledTimes(2);
   });
 
+  it("does NOT hammer loadAll after a failed background refresh (cooldown)", async () => {
+    // Prime the cache with a successful load, then in the stale window
+    // simulate a sustained DB outage by failing every subsequent loadAll.
+    // The first stale request should attempt one refresh; further stale
+    // requests inside the 30s cooldown must NOT trigger more attempts.
+    let calls = 0;
+    const loadAll = vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) return blankCatalog();
+      throw new Error("db_down");
+    });
+    const reader = makeProductReader({
+      loadAll,
+      loadOne: vi.fn(),
+      getProductsByIds: vi.fn(),
+    });
+    await reader.search({ query: "", filters: { includeOutOfStock: false } });
+    expect(loadAll).toHaveBeenCalledTimes(1);
+
+    // Cross into the stale window.
+    vi.advanceTimersByTime(400_000);
+    // First stale request → kicks off a background refresh that will fail.
+    await reader.search({ query: "", filters: { includeOutOfStock: false } });
+    // Let the in-flight refresh settle + the .catch run.
+    await vi.runOnlyPendingTimersAsync();
+    expect(loadAll).toHaveBeenCalledTimes(2);
+
+    // Three more requests inside the 30s cooldown — none should trigger
+    // another refresh. Previously each request fired one loadAll.
+    vi.advanceTimersByTime(5_000);
+    await reader.search({ query: "", filters: { includeOutOfStock: false } });
+    vi.advanceTimersByTime(5_000);
+    await reader.search({ query: "", filters: { includeOutOfStock: false } });
+    vi.advanceTimersByTime(5_000);
+    await reader.search({ query: "", filters: { includeOutOfStock: false } });
+    expect(loadAll).toHaveBeenCalledTimes(2); // still 2, cooldown held
+  });
+
   it("waits synchronously on the very first call (cold cache)", async () => {
     let resolveLoad: ((v: ReturnType<typeof blankCatalog>) => void) | null = null;
     const loadAll = vi.fn(() => new Promise<ReturnType<typeof blankCatalog>>((res) => { resolveLoad = res; }));

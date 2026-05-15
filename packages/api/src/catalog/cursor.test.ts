@@ -37,4 +37,22 @@ describe("cursor encode/decode", () => {
     const out = encodeCursor({ k: "k+key/with==pad", id: "id+/=" });
     expect(out).toMatch(/^[A-Za-z0-9_-]+$/);
   });
+
+  it("rejects an oversize cursor (DoS guard)", () => {
+    // A legitimate cursor is ~100 bytes; anything past 1KB cannot have been
+    // issued by us. Decoding refuses without paying the JSON.parse cost.
+    const huge = "A".repeat(2000);
+    expect(decodeCursor(huge)).toBeUndefined();
+  });
+
+  it("rejects a cursor with oversize k/id fields", () => {
+    const longK = Buffer.from(
+      JSON.stringify({ k: "x".repeat(300), id: "p1" }),
+    ).toString("base64url");
+    const longId = Buffer.from(
+      JSON.stringify({ k: "1", id: "x".repeat(300) }),
+    ).toString("base64url");
+    expect(decodeCursor(longK)).toBeUndefined();
+    expect(decodeCursor(longId)).toBeUndefined();
+  });
 });

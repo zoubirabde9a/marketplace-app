@@ -39,6 +39,29 @@ export function matchesText(p: StoredProduct, ctx: FilterContext): boolean {
   return fuzzyMatch(ctx.q, blob) > 0;
 }
 
+/**
+ * In-process relevance score used when the Postgres FTS path didn't run.
+ * Returns 1 when there's no query (every product equally relevant) so the
+ * "relevance" sort degenerates to whatever the sort comparator falls back
+ * on, and a real signal otherwise:
+ *   - title substring hit ⇒ high (3)
+ *   - any text substring hit ⇒ medium (2)
+ *   - fuzzy multi-token match ⇒ 1 + token-count
+ * Previously projectHit hard-coded `relevanceScore: 1` for every result
+ * whenever textScores was absent — the sort was effectively a no-op and
+ * agents reading the field for ranking saw a useless flat value.
+ */
+export function relevanceScoreFor(p: StoredProduct, ctx: FilterContext): number {
+  if (ctx.q.length === 0) return 1;
+  if (ctx.textScores) return ctx.textScores.get(p.productId) ?? 1;
+  if (p.titleSanitized.toLowerCase().includes(ctx.q)) return 3;
+  const blob = textBlob(p);
+  if (blob.toLowerCase().includes(ctx.q)) return 2;
+  if (!ctx.fuzzy) return 1;
+  const tokens = fuzzyMatch(ctx.q, blob);
+  return tokens > 0 ? 1 + tokens : 1;
+}
+
 /** Subset of variants in the active currency (or all if no currency filter). */
 function variantsInCurrency(p: StoredProduct, ctx: FilterContext, skip?: FacetDim): StoredVariant[] {
   const currencyActive = skip !== "currency" && ctx.filters.currency !== undefined;
@@ -72,10 +95,29 @@ export function passes(p: StoredProduct, ctx: FilterContext, skip?: FacetDim): b
   }
   if (f.attributes) {
     for (const [k, v] of Object.entries(f.attributes)) {
-      if ((p.attributes[k] ?? "").toLowerCase() !== v.toLowerCase()) return false;
+      // Belt-and-suspenders: the schema already rejects forbidden filter
+      // keys (catalog/types.ts pass #202), but the catalog filter runs
+      // against direct domain callers too (search-stats reporting,
+      // future internal tools) — skip prototype-pollution-prone keys
+      // here as well so a hand-built filter never reaches the lookup.
+      if (k === "__proto__" || k === "prototype" || k === "constructor") continue;
+      // Use Object.hasOwn so `p.attributes["__proto__"]` doesn't surface
+      // a value from Object.prototype if a legacy DB row stored that key
+      // as an own property and the projection-side filter missed it.
+      const attrVal = Object.hasOwn(p.attributes, k) ? p.attributes[k] : undefined;
+      if ((attrVal ?? "").toLowerCase() !== v.toLowerCase()) return false;
     }
   }
-  if (f.minRating !== undefined && (p.rating ?? 0) < f.minRating) return false;
+  if (f.minRating !== undefined) {
+    // `?? 0` does NOT catch NaN — `NaN ?? 0` keeps NaN — so a product
+    // with a corrupted rating row evaluates `NaN < minRating` as `false`
+    // and silently passes any minRating filter (treated as "rating high
+    // enough"). Normalise to 0 via Number.isFinite so a corrupt rating
+    // fails the filter the same way an unset one would. Same NaN-bypass
+    // family as moderation/counterfeit (passes #130/#131).
+    const rating = Number.isFinite(p.rating) ? p.rating! : 0;
+    if (rating < f.minRating) return false;
+  }
   if (f.shipsTo && !(p.shipsTo ?? []).includes(f.shipsTo)) return false;
 
   const candidate = variantsInCurrency(p, ctx, skip);
@@ -98,9 +140,32 @@ export function passes(p: StoredProduct, ctx: FilterContext, skip?: FacetDim): b
   return true;
 }
 
-/** Cheapest variant in the active currency — used as the listed price. */
+/** Cheapest variant in the active currency — used as the listed price.
+ *
+ * Tiebreaker: prefer in-stock variants over OOS, and non-zero prices over 0.
+ * The previous "cheapest wins" rule meant a product with a $0 placeholder
+ * variant (scraper artifact) or an OOS-cheapest variant would advertise the
+ * misleading price on browse — buyer taps "From $0" or "From $10 (in stock)"
+ * and finds the actual variant they can buy is $30. The list page must
+ * advertise a price the buyer can actually pay.
+ *
+ * Sort precedence:
+ *   1. In-stock variants before out-of-stock.
+ *   2. Non-zero prices before zero prices.
+ *   3. Lowest price first.
+ */
 export function displayVariant(p: StoredProduct, ctx: FilterContext): StoredVariant | undefined {
   const cands = variantsInCurrency(p, ctx);
   if (cands.length === 0) return p.variants[0];
-  return [...cands].sort((a, b) => Number(a.priceMinor - b.priceMinor))[0];
+  return [...cands].sort((a, b) => {
+    if (a.inStock !== b.inStock) return a.inStock ? -1 : 1;
+    const aZero = a.priceMinor === 0n;
+    const bZero = b.priceMinor === 0n;
+    if (aZero !== bZero) return aZero ? 1 : -1;
+    // bigint-safe compare — `Number(a.priceMinor - b.priceMinor)` would lose
+    // precision past 2^53 (rare at retail, possible for stablecoin pairs).
+    if (a.priceMinor < b.priceMinor) return -1;
+    if (a.priceMinor > b.priceMinor) return 1;
+    return 0;
+  })[0];
 }

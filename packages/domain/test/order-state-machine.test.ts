@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyEvent, canTransition, isTerminal } from "../src/order/state-machine.js";
+import { allowedOrderEventKinds, applyEvent, canTransition, isTerminal } from "../src/order/state-machine.js";
 import { generatePublicNumber, PUBLIC_NUMBER_REGEX } from "../src/order/public-number.js";
 
 describe("order state machine", () => {
@@ -34,6 +34,17 @@ describe("order state machine", () => {
   it("cancelled is terminal", () => {
     expect(isTerminal("cancelled")).toBe(true);
     expect(isTerminal("delivered")).toBe(false);
+  });
+
+  it("allowedOrderEventKinds enumerates what would apply cleanly", () => {
+    expect(allowedOrderEventKinds("created").sort()).toEqual(["authorize", "cancel"].sort());
+    expect(allowedOrderEventKinds("paid").sort()).toEqual(
+      ["begin_fulfillment", "cancel", "open_dispute", "refund"].sort(),
+    );
+    expect(allowedOrderEventKinds("delivered").sort()).toEqual(
+      ["open_dispute", "refund"].sort(),
+    );
+    expect(allowedOrderEventKinds("cancelled")).toEqual([]);
   });
 });
 

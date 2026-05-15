@@ -1,5 +1,10 @@
-import { asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { uuidv7 } from "@marketplace/shared/ids";
+import {
+  FIELD_LIMITS,
+  sanitizeUntrustedString,
+  safeOrigin,
+} from "@marketplace/shared/untrusted";
 import { products, productVariants, media } from "../schema/catalog.js";
 import { sellerPhones, sellerProfiles } from "../schema/seller.js";
 import type { DbClient } from "../client.js";
@@ -160,8 +165,17 @@ export function makeProductRepo(db: DbClient) {
   }
 
   async function loadAll(): Promise<{ products: StoredProduct[]; sellers: Map<string, StoredSeller> }> {
+    // Filter out non-active products (status enum is draft | active | paused
+    // | removed per migration schema). Browse surfaces should never see
+    // drafts (sellers' work-in-progress), paused listings (seller temporarily
+    // pulled), or removed listings (admin take-down / counterfeit-action
+    // ladder from pass #15's `visible: false`). The create path always sets
+    // status="active" today, but the schema default is "draft" and an admin
+    // tool / future migration could set paused/removed — defending here
+    // ensures those states actually disappear from browse without each
+    // call site needing to remember to filter.
     const [prods, vars, meds, sellerMap] = await Promise.all([
-      db.select().from(products),
+      db.select().from(products).where(eq(products.status, "active")),
       db.select().from(productVariants),
       db.select().from(media),
       loadSellers(),
@@ -186,6 +200,30 @@ export function makeProductRepo(db: DbClient) {
   async function loadOne(productId: string): Promise<StoredProduct | undefined> {
     if (!isUuid(productId)) return undefined;
     const prows = await db.select().from(products).where(eq(products.id, productId)).limit(1);
+    if (!prows[0]) return undefined;
+    const [vrows, mrows] = await Promise.all([
+      db.select().from(productVariants).where(eq(productVariants.productId, productId)),
+      db.select().from(media).where(eq(media.productId, productId)),
+    ]);
+    return shapeProduct(prows[0], vrows, mrows);
+  }
+
+  // Public-read variant: filter to status='active'. Browse paths (loadAll)
+  // already apply this filter, but direct /v1/products/:id fetch by id was
+  // returning draft / paused / removed listings — defeating the
+  // counterfeit-action-ladder takedown (`removed` status sets `visible:
+  // false`), letting seller-pulled drafts leak to a buyer holding a stale
+  // link, and undermining the anti-counterfeit guarantee that a removed
+  // listing actually disappears from public surfaces. Seller-edit paths
+  // (PATCH /v1/products/:id, POST/DELETE media) keep using `loadOne` so
+  // they can still see their own drafts / paused / removed listings.
+  async function loadOneActive(productId: string): Promise<StoredProduct | undefined> {
+    if (!isUuid(productId)) return undefined;
+    const prows = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.id, productId), eq(products.status, "active")))
+      .limit(1);
     if (!prows[0]) return undefined;
     const [vrows, mrows] = await Promise.all([
       db.select().from(productVariants).where(eq(productVariants.productId, productId)),
@@ -232,6 +270,10 @@ export function makeProductRepo(db: DbClient) {
   async function searchIds(q: string, limit = 200): Promise<Array<{ id: string; score: number }>> {
     const trimmed = q.trim();
     if (trimmed.length === 0) return [];
+    // Bound the limit early — the `LIMIT ${limit}` interpolation a few
+    // lines down accepts NaN which Postgres rejects with a
+    // type-conversion error rather than returning a clean empty list.
+    const safeCap = safeLimit(limit, 200);
     // Synonym expansion drives the FTS path: "frigo" → tsquery
     // 'frigo' | 'refrigerateur'. Trigram fallback keeps the literal user
     // input (qtxt) — synonyms shouldn't widen the typo-similarity check or
@@ -272,6 +314,10 @@ export function makeProductRepo(db: DbClient) {
           WHERE ((SELECT qtxt FROM q) <% public.f_normalize_search(p."title_sanitized")
                  OR (SELECT qtxt FROM q) <% public.f_normalize_search(COALESCE(p."brand", '')))
             AND NOT (p."search_text" @@ (SELECT tsq FROM q))
+            -- Mirror the status filter applied to loadAll / idsBySeller /
+            -- recentIds / idsByCategory in pass #84. Search results
+            -- should never return drafts / paused / removed listings.
+            AND p."status" = 'active'
         )`
         : sql``;
       const trgmUnion = isSingleToken ? sql`UNION ALL SELECT id, score FROM trgm_matches` : sql``;
@@ -293,19 +339,33 @@ export function makeProductRepo(db: DbClient) {
                  AS score
           FROM "catalog"."products" p
           WHERE p."search_text" @@ (SELECT tsq FROM q)
+            -- Mirror the status filter applied to loadAll / idsBySeller /
+            -- recentIds / idsByCategory in pass #84. FTS matches must
+            -- never return drafts / paused / removed listings.
+            AND p."status" = 'active'
         )${trgmFallback}
         SELECT id, score FROM (
           SELECT id, score FROM fts_matches
           ${trgmUnion}
         ) m
         ORDER BY score DESC, id ASC
-        LIMIT ${limit}
+        LIMIT ${safeCap}
       `);
       return (rows as Array<{ id: string; score: number | string }>).map((r) => ({
         id: r.id,
         score: Number(r.score),
       }));
     });
+  }
+
+  // Bound a caller-supplied limit. Pre-fix, a NaN or negative `limit` flowed
+  // straight into Drizzle's `.limit()` and produced a `LIMIT NaN` SQL query
+  // that Postgres rejects with a confusing type-conversion error. Same
+  // family as the user.ts NaN-clamp (pass #75) and the search-log
+  // windowHours bound (pass #72).
+  function safeLimit(limit: number, fallback: number, max = 1000): number {
+    if (!Number.isFinite(limit) || limit <= 0) return fallback;
+    return Math.min(Math.floor(limit), max);
   }
 
   // Indexed lookup of one seller's product ids, newest first. Used by the
@@ -317,9 +377,13 @@ export function makeProductRepo(db: DbClient) {
     const rows = await db
       .select({ id: products.id })
       .from(products)
-      .where(eq(products.sellerId, sellerId))
+      // Active-only matches the loadAll filter — public browse should
+      // never see drafts / paused / removed states. The seller's own
+      // dashboard, if it needs draft visibility, should use a separate
+      // owner-scoped read path that doesn't filter.
+      .where(and(eq(products.sellerId, sellerId), eq(products.status, "active")))
       .orderBy(desc(products.createdAt))
-      .limit(limit);
+      .limit(safeLimit(limit, 200));
     return rows.map((r) => r.id);
   }
 
@@ -332,8 +396,12 @@ export function makeProductRepo(db: DbClient) {
     const rows = await db
       .select({ id: products.id })
       .from(products)
+      // Active-only — same rationale as idsBySeller. The home page's
+      // "recent listings" strip is public-browse, must never surface
+      // a draft / paused / removed listing.
+      .where(eq(products.status, "active"))
       .orderBy(desc(products.createdAt))
-      .limit(limit);
+      .limit(safeLimit(limit, 50));
     return rows.map((r) => r.id);
   }
 
@@ -354,9 +422,15 @@ export function makeProductRepo(db: DbClient) {
     const rows = await db
       .select({ id: products.id })
       .from(products)
-      .where(sql`${products.categoryIds} @> ${JSON.stringify([slug])}::jsonb`)
+      // Active-only — same rationale as idsBySeller / recentIds.
+      .where(
+        and(
+          sql`${products.categoryIds} @> ${JSON.stringify([slug])}::jsonb`,
+          eq(products.status, "active"),
+        ),
+      )
       .orderBy(desc(products.createdAt))
-      .limit(limit);
+      .limit(safeLimit(limit, 200));
     return rows.map((r) => r.id);
   }
 
@@ -364,6 +438,7 @@ export function makeProductRepo(db: DbClient) {
     loadAll,
     loadSellers,
     loadOne,
+    loadOneActive,
     searchIds,
     idsBySeller,
     idsByCategory,
@@ -405,6 +480,52 @@ export function makeProductRepo(db: DbClient) {
         // is shared between adjacent generations and would collide on the
         // (seller_id, sku) unique constraint when seeding multiple products.
         const productSku = `prd-${productId.slice(-12)}`;
+        // Same write-time sanitisation as the `update` path (pass #80).
+        // The `*Sanitized` columns are what every downstream LLM-rendering
+        // reader (browse / search / catalog.get_product) consumes —
+        // depositing raw seller text into them was a prompt-injection
+        // bypass that survived every read-side defense. titleRaw and
+        // descriptionRaw stay raw for audit-trail honesty.
+        const origin = safeOrigin("seller", input.sellerId);
+        const titleSanitized = sanitizeUntrustedString(input.title, {
+          maxLength: FIELD_LIMITS.productTitle,
+          origin,
+        });
+        const descriptionSanitized = input.description
+          ? sanitizeUntrustedString(input.description, {
+              maxLength: FIELD_LIMITS.productDescription,
+              origin,
+            })
+          : null;
+        const cleanBrand = input.brand
+          ? sanitizeUntrustedString(input.brand, {
+              maxLength: FIELD_LIMITS.productBrand,
+              origin,
+            })
+          : null;
+        // Clean both keys and values for attributes — the keys flow into
+        // the response as JSON property names and are LLM-readable too
+        // (per pass #36's attribute-key injection vector closure).
+        // Drop prototype-pollution-prone keys (`__proto__`, `prototype`,
+        // `constructor`) up front — `JSON.parse('{"__proto__": …}')`
+        // creates a real own property that downstream `o[key]` lookups
+        // surface as the actual __proto__. Same defense as the catalog
+        // sanitiser (pass #162). Use a null-prototype map for the output.
+        const cleanAttrs: Record<string, string> = Object.create(null) as Record<string, string>;
+        if (input.attributes) {
+          for (const [k, v] of Object.entries(input.attributes)) {
+            if (k === "__proto__" || k === "prototype" || k === "constructor") continue;
+            const ck = sanitizeUntrustedString(k, {
+              maxLength: FIELD_LIMITS.productAttribute,
+              origin,
+            });
+            const cv = sanitizeUntrustedString(v, {
+              maxLength: FIELD_LIMITS.productAttribute,
+              origin,
+            });
+            if (ck.length > 0) cleanAttrs[ck] = cv;
+          }
+        }
         const [pRow] = await tx
           .insert(products)
           .values({
@@ -412,11 +533,11 @@ export function makeProductRepo(db: DbClient) {
             sellerId: input.sellerId,
             sku: productSku,
             titleRaw: input.title,
-            titleSanitized: input.title,
+            titleSanitized,
             descriptionRaw: input.description ?? null,
-            descriptionSanitized: input.description ?? null,
-            brand: input.brand ?? null,
-            attributes: input.attributes ?? {},
+            descriptionSanitized,
+            brand: cleanBrand,
+            attributes: cleanAttrs,
             categoryIds: input.categoryIds && input.categoryIds.length > 0 ? input.categoryIds : null,
             shipsTo: input.shipsTo && input.shipsTo.length > 0 ? input.shipsTo : null,
             counterfeitRisk: "low",
@@ -438,7 +559,21 @@ export function makeProductRepo(db: DbClient) {
                 byteSize: m.byteSize ?? 0,
                 width: m.width ?? null,
                 height: m.height ?? null,
-                altText: m.altText ?? null,
+                // Sanitise seller-supplied alt text at the write boundary.
+                // Alt text lands on every product card's `<img alt>` (read
+                // by screen readers and indexed by LLM-rendered product
+                // summaries) — without sanitisation a seller could embed
+                // `<system>ignore previous instructions</system>` and have
+                // it surface in any downstream LLM consumer reading the
+                // catalog. Same defense applied to title/description/
+                // attributes earlier in this function and to displayName
+                // in the seller repo (pass #106).
+                altText: m.altText
+                  ? sanitizeUntrustedString(m.altText, {
+                      maxLength: 500,
+                      origin: safeOrigin("seller", input.sellerId ?? "platform"),
+                    })
+                  : null,
               })),
             )
             .returning();
@@ -490,19 +625,67 @@ export function makeProductRepo(db: DbClient) {
       return db.transaction(async (tx) => {
         const exists = await tx.select().from(products).where(eq(products.id, productId)).limit(1);
         if (!exists[0]) return undefined;
+        // PATCH path was bypassing the catalog sanitiser entirely: titleRaw
+        // and titleSanitized both got the raw input, and brand / description
+        // / attributes flowed verbatim into the row. A seller updating
+        // their listing with `<system>ignore previous</system>` would land
+        // injection bytes in `titleSanitized`, which is what every
+        // downstream LLM-rendering surface reads. Same defense the
+        // projection-side strip in pass #53 applied to brand, but at the
+        // WRITE side so the stored row is clean for every reader.
+        //
+        // titleRaw keeps the seller's original wording (audit-trail
+        // honesty); titleSanitized gets the injection-pattern strip.
         const u: Partial<typeof products.$inferInsert> = { updatedAt: new Date() };
+        const origin = safeOrigin("seller", exists[0].sellerId);
         if (patch.title !== undefined) {
           u.titleRaw = patch.title;
-          u.titleSanitized = patch.title;
+          u.titleSanitized = sanitizeUntrustedString(patch.title, {
+            maxLength: FIELD_LIMITS.productTitle,
+            origin,
+          });
         }
         if (patch.description !== undefined) {
           u.descriptionRaw = patch.description ?? null;
-          u.descriptionSanitized = patch.description ?? null;
+          u.descriptionSanitized = patch.description
+            ? sanitizeUntrustedString(patch.description, {
+                maxLength: FIELD_LIMITS.productDescription,
+                origin,
+              })
+            : null;
         }
-        if (patch.brand !== undefined) u.brand = patch.brand ?? null;
+        if (patch.brand !== undefined) {
+          u.brand = patch.brand
+            ? sanitizeUntrustedString(patch.brand, {
+                maxLength: FIELD_LIMITS.productBrand,
+                origin,
+              })
+            : null;
+        }
         if (patch.categoryIds !== undefined) u.categoryIds = patch.categoryIds.length > 0 ? patch.categoryIds : null;
         if (patch.shipsTo !== undefined) u.shipsTo = patch.shipsTo.length > 0 ? patch.shipsTo : null;
-        if (patch.attributes !== undefined) u.attributes = patch.attributes;
+        if (patch.attributes !== undefined) {
+          // Strip injection patterns from BOTH attribute keys (per pass #36
+          // — keys flow into the catalog response as JSON property names,
+          // visible to any LLM reading the product) AND values. Skip
+          // prototype-pollution-prone keys and use a null-prototype map,
+          // matching the create-side defense (pass #163) and the catalog
+          // sanitiser (pass #162).
+          const cleaned: Record<string, string> = Object.create(null) as Record<string, string>;
+          for (const [k, v] of Object.entries(patch.attributes)) {
+            if (k === "__proto__" || k === "prototype" || k === "constructor") continue;
+            const cleanKey = sanitizeUntrustedString(k, {
+              maxLength: FIELD_LIMITS.productAttribute,
+              origin,
+            });
+            const cleanValue = sanitizeUntrustedString(v, {
+              maxLength: FIELD_LIMITS.productAttribute,
+              origin,
+            });
+            if (cleanKey.length > 0) cleaned[cleanKey] = cleanValue;
+          }
+          u.attributes = cleaned;
+        }
         await tx.update(products).set(u).where(eq(products.id, productId));
 
         if (patch.variants !== undefined) {
@@ -568,50 +751,124 @@ export function makeProductRepo(db: DbClient) {
         height?: number;
         altText?: string;
       },
-    ): Promise<StoredMedia | undefined> {
-      const prod = await db.select().from(products).where(eq(products.id, productId)).limit(1);
-      if (!prod[0]) return undefined;
-      const id = uuidv7();
-      const [row] = await db
-        .insert(media)
-        .values({
-          id,
-          sellerId: prod[0].sellerId,
-          productId,
-          url: input.url,
-          contentType: input.contentType,
-          byteSize: input.byteSize ?? 0,
-          width: input.width ?? null,
-          height: input.height ?? null,
-          altText: input.altText ?? null,
-        })
-        .returning();
-      if (!prod[0].heroMediaId) {
-        await db.update(products).set({ heroMediaId: id }).where(eq(products.id, productId));
-      }
-      return row ? shapeMedia(row) : undefined;
+    ): Promise<StoredMedia | "media_cap_exceeded" | undefined> {
+      // Wrap the read-product → insert-media → set-hero sequence in a single
+      // transaction. Without it:
+      //   - Between the read and the insert, a concurrent product DELETE
+      //     would let us insert a media row with an FK that just got
+      //     orphaned. The DB raises a FK error, but the function's caller
+      //     sees a raw error instead of a clean undefined.
+      //   - The "set hero if previously null" update was a read-then-update
+      //     race: two concurrent addMedia calls both see heroMediaId=null
+      //     and both run an unconditional UPDATE, last-write-wins. The
+      //     conditional `AND hero_media_id IS NULL` below makes the update
+      //     atomic — only the first concurrent caller's SET sticks; the
+      //     second is a no-op.
+      return db.transaction(async (tx) => {
+        const prod = await tx.select().from(products).where(eq(products.id, productId)).limit(1);
+        if (!prod[0]) return undefined;
+        // Enforce the 20-image cap inside the transaction. Pre-fix the
+        // route handler checked `existing.media.length >= 20` outside the
+        // tx and called addMedia; two concurrent POSTs could each see 19,
+        // both pass the route gate, and both insert — leaving the product
+        // with 21 images and the cap silently defeated. Same race-
+        // closure pattern as `removeMedia`'s last-image guard (pass #156).
+        const before = await tx
+          .select({ n: count() })
+          .from(media)
+          .where(eq(media.productId, productId));
+        if (Number(before[0]?.n ?? 0) >= 20) return "media_cap_exceeded";
+        const id = uuidv7();
+        const [row] = await tx
+          .insert(media)
+          .values({
+            id,
+            sellerId: prod[0].sellerId,
+            productId,
+            url: input.url,
+            contentType: input.contentType,
+            byteSize: input.byteSize ?? 0,
+            width: input.width ?? null,
+            height: input.height ?? null,
+            // Mirror the create-time scrub above — addMedia is the other
+            // entry point for seller-supplied alt text.
+            altText: input.altText
+              ? sanitizeUntrustedString(input.altText, {
+                  maxLength: 500,
+                  origin: safeOrigin("seller", prod[0].sellerId ?? "platform"),
+                })
+              : null,
+          })
+          .returning();
+        // Atomic "only set if currently NULL" — survives the concurrent-
+        // addMedia race without needing SELECT … FOR UPDATE.
+        await tx
+          .update(products)
+          .set({ heroMediaId: id })
+          .where(and(eq(products.id, productId), isNull(products.heroMediaId)));
+        return row ? shapeMedia(row) : undefined;
+      });
     },
 
-    async removeMedia(productId: string, mediaId: string): Promise<boolean> {
-      const m = await db.select().from(media).where(eq(media.id, mediaId)).limit(1);
-      if (!m[0] || m[0].productId !== productId) return false;
-      await db.delete(media).where(eq(media.id, mediaId));
-      const prod = await db.select().from(products).where(eq(products.id, productId)).limit(1);
-      if (prod[0]?.heroMediaId === mediaId) {
-        const remaining = await db.select().from(media).where(eq(media.productId, productId)).limit(1);
-        await db
-          .update(products)
-          .set({ heroMediaId: remaining[0]?.id ?? null })
-          .where(eq(products.id, productId));
-      }
-      return true;
+    async removeMedia(
+      productId: string,
+      mediaId: string,
+    ): Promise<"removed" | "not_found" | "last_image"> {
+      // Same transactional wrap as addMedia: the four-step sequence
+      // (select-media / delete / select-product / set-hero-to-remaining)
+      // was previously non-atomic and could leave a product pointing at
+      // a hero_media_id whose underlying row was deleted between steps,
+      // or could overwrite a fresh hero assigned by a concurrent caller.
+      //
+      // Move the "refuse to delete the last image" invariant check INSIDE
+      // the transaction. Pre-fix the route handler counted media outside
+      // the tx and called removeMedia — two concurrent DELETE requests on
+      // distinct mediaIds could each see count=2, both pass the > 1 check,
+      // both commit, and leave the product with 0 media. The catalog
+      // filter then hides the product from every browse surface
+      // (media.length >= 1 invariant), but the seller's dashboard shows
+      // it as still active — confusing operator state. Atomicity here
+      // closes the race.
+      return db.transaction(async (tx) => {
+        const m = await tx.select().from(media).where(eq(media.id, mediaId)).limit(1);
+        if (!m[0] || m[0].productId !== productId) return "not_found";
+        const before = await tx
+          .select({ n: count() })
+          .from(media)
+          .where(eq(media.productId, productId));
+        if (Number(before[0]?.n ?? 0) <= 1) return "last_image";
+        await tx.delete(media).where(eq(media.id, mediaId));
+        const prod = await tx.select().from(products).where(eq(products.id, productId)).limit(1);
+        if (prod[0]?.heroMediaId === mediaId) {
+          const remaining = await tx
+            .select()
+            .from(media)
+            .where(eq(media.productId, productId))
+            .limit(1);
+          await tx
+            .update(products)
+            .set({ heroMediaId: remaining[0]?.id ?? null })
+            .where(eq(products.id, productId));
+        }
+        return "removed";
+      });
     },
 
     async getProductsByIds(ids: string[]): Promise<Array<StoredProduct | null>> {
       if (ids.length === 0) return [];
       const validIds = ids.filter(isUuid);
+      // Filter to status='active' — same takedown-respect as loadOneActive
+      // (pass #134) and loadAll. Every caller of getProductsByIds is on a
+      // public-read path (the /v1/products/_batch endpoint plus the fast-
+      // path browse code in routes/products.ts at lines 1193/1227/1261/1297).
+      // Without this filter, a removed/paused/draft listing remained
+      // fetchable in bulk — defeating the takedown the loadAll filter
+      // already enforces on the broad-browse path.
       const prows = validIds.length > 0
-        ? await db.select().from(products).where(inArray(products.id, validIds))
+        ? await db
+            .select()
+            .from(products)
+            .where(and(inArray(products.id, validIds), eq(products.status, "active")))
         : [];
       const byId = new Map(prows.map((r) => [r.id, r]));
       const productIdsFound = prows.map((p) => p.id);

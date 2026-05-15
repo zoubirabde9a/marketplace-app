@@ -10,23 +10,31 @@ import type {
   RestrictedItemRule,
   RestrictionKind,
 } from "@marketplace/domain/catalog/restricted-items";
+import { Iso3166Alpha2Schema } from "@marketplace/shared/country";
 import type { McpRegistry } from "../registry.js";
 
 const ListingSchema = z.object({
-  productId: z.string(),
-  listingId: z.string(),
-  taxonomyKeys: z.array(z.string()).min(1),
+  productId: z.string().min(1).max(200),
+  listingId: z.string().min(1).max(200),
+  // Cap taxonomy keys per listing. A real listing carries ≤20 keys
+  // (category, subcategory, brand, tags, attributes); 100 leaves headroom
+  // without letting a caller balloon the rule-match loop.
+  taxonomyKeys: z.array(z.string().min(1).max(200)).min(1).max(100),
   isHazmat: z.boolean(),
   isAgeRestricted: z.boolean(),
-  minAge: z.number().int().nonnegative().optional(),
-  exportControlClass: z.string().optional(),
-  countryOfOrigin: z.string().length(2),
+  // 150 is past the oldest verified human; bounding here prevents an agent
+  // from passing "999" to silently satisfy any age-gated rule.
+  minAge: z.number().int().min(0).max(150).optional(),
+  exportControlClass: z.string().max(60).optional(),
+  countryOfOrigin: Iso3166Alpha2Schema,
 });
 
 const BuyerContextSchema = z.object({
-  shipToCountry: z.string().length(2),
+  // ISO-validated: a bogus code like "XX" would otherwise match no rule's
+  // countryCode and silently allow prohibited items through the gate.
+  shipToCountry: Iso3166Alpha2Schema,
   shipToSubdivision: z.string().optional(),
-  buyerVerifiedAge: z.number().int().nonnegative().optional(),
+  buyerVerifiedAge: z.number().int().min(0).max(150).optional(),
   buyerHasLicense: z.boolean().optional(),
   isSanctionedParty: z.boolean(),
   carriersAvailable: z.array(
@@ -37,29 +45,44 @@ const BuyerContextSchema = z.object({
   ),
 });
 
-const RuleSchema = z.object({
-  taxonomyKey: z.string(),
-  countryCode: z.string().length(2),
-  subdivisionCode: z.string().optional(),
-  restrictionKind: z.enum([
-    "prohibited",
-    "age_restricted",
-    "license_required",
-    "carrier_prohibited",
-    "export_controlled",
-    "hazmat",
-  ]),
-  minAge: z.number().int().nonnegative().optional(),
-  licenseRequiredOf: z.enum(["seller", "buyer", "both"]).optional(),
-  effectiveFrom: z.coerce.date(),
-  effectiveTo: z.coerce.date().optional(),
-  registryVersion: z.string(),
-});
+const RuleSchema = z
+  .object({
+    taxonomyKey: z.string(),
+    countryCode: Iso3166Alpha2Schema,
+    subdivisionCode: z.string().optional(),
+    restrictionKind: z.enum([
+      "prohibited",
+      "age_restricted",
+      "license_required",
+      "carrier_prohibited",
+      "export_controlled",
+      "hazmat",
+    ]),
+    minAge: z.number().int().min(0).max(150).optional(),
+    licenseRequiredOf: z.enum(["seller", "buyer", "both"]).optional(),
+    effectiveFrom: z.coerce.date(),
+    effectiveTo: z.coerce.date().optional(),
+    registryVersion: z.string(),
+  })
+  // A rule whose window collapses (effectiveTo <= effectiveFrom) would silently
+  // never match — `now` can't be both ≥ from AND ≤ to. Reject at the gate so
+  // policy authors notice the typo instead of shipping a no-op rule.
+  .refine((r) => r.effectiveTo === undefined || r.effectiveTo > r.effectiveFrom, {
+    path: ["effectiveTo"],
+    message: "effectiveTo must be after effectiveFrom",
+  });
 
+// Cap both the cart-lines and rules arrays at the gate. The shippability
+// gate is O(lines × rules) per call, so without bounds a single caller
+// passing 1M of each would force ~10^12 inner checks per request. 200 lines
+// covers any plausible cart (the cart-domain MAX_QTY_PER_LINE × 200 = 200k
+// units total) and 10k rules covers a full jurisdiction × taxonomy product
+// (e.g. 250 jurisdictions × 40 categories ≈ 10k); anything larger is a
+// misuse rather than a real policy table.
 const Input = z.object({
-  lines: z.array(ListingSchema).min(1),
+  lines: z.array(ListingSchema).min(1).max(200),
   buyer: BuyerContextSchema,
-  rules: z.array(RuleSchema),
+  rules: z.array(RuleSchema).max(10_000),
   now: z.coerce.date(),
 });
 

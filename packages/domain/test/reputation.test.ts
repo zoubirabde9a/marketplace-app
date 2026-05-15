@@ -125,6 +125,30 @@ describe("signReputationExport", () => {
     );
     expect(ok).toBe(true);
   });
+
+  it("clamps NaN / negative inputs to a finite score (no NaN propagation)", () => {
+    // Pre-fix: `Math.min(NaN * 200, 4000) = NaN`, then arithmetic propagates
+    // NaN through every step and `Math.round(Math.max(0, Math.min(10000, NaN)))`
+    // returns NaN — an invalid `scoreBps` that downstream consumers persist.
+    const r = computeReputation(
+      {
+        settledTxCount: NaN as unknown as number,
+        settledValueMinor: -1n,
+        disputesAgainst: NaN as unknown as number,
+        chargebackRateBps: -500,
+        refundRateBps: 99999,
+        cancellationRateBps: NaN as unknown as number,
+        counterpartyAvgBps: -1,
+        daysOfHistory: -10,
+      },
+      new Date(0),
+      new Date(0),
+    );
+    expect(Number.isFinite(r.scoreBps)).toBe(true);
+    expect(r.scoreBps).toBeGreaterThanOrEqual(0);
+    expect(r.scoreBps).toBeLessThanOrEqual(10000);
+    expect(r.insufficientData).toBe(true); // settledTxCount/daysOfHistory clamped to 0
+  });
 });
 
 describe("scanForCollusion", () => {
@@ -151,5 +175,29 @@ describe("scanForCollusion", () => {
     ];
     const findings = scanForCollusion(events, now);
     expect(findings.find((f) => f.signal === "identical_sequence")).toBeTruthy();
+  });
+
+  it("flags cyclic counterparty when two buyers alternate on the same variant (signal was previously declared but unemitted)", () => {
+    // A_1 < B_1 < A_2 < B_2 produces two A→B→A / B→A→B alternations.
+    const events = [
+      { buyerOrgId: "a", sellerOrgId: "s1", variantId: "v1", proposedUnitPriceMinor: 100n, at: new Date(1) },
+      { buyerOrgId: "b", sellerOrgId: "s1", variantId: "v1", proposedUnitPriceMinor: 99n,  at: new Date(2) },
+      { buyerOrgId: "a", sellerOrgId: "s1", variantId: "v1", proposedUnitPriceMinor: 98n,  at: new Date(3) },
+      { buyerOrgId: "b", sellerOrgId: "s1", variantId: "v1", proposedUnitPriceMinor: 97n,  at: new Date(4) },
+    ];
+    const findings = scanForCollusion(events, now);
+    expect(findings.find((f) => f.signal === "cyclic_counterparty")).toBeTruthy();
+  });
+
+  it("does NOT flag cyclic counterparty when buyers don't alternate", () => {
+    // a, a, a, b — same buyer in a row, then the other. No alternation.
+    const events = [
+      { buyerOrgId: "a", sellerOrgId: "s1", variantId: "v1", proposedUnitPriceMinor: 100n, at: new Date(1) },
+      { buyerOrgId: "a", sellerOrgId: "s1", variantId: "v1", proposedUnitPriceMinor: 99n,  at: new Date(2) },
+      { buyerOrgId: "a", sellerOrgId: "s1", variantId: "v1", proposedUnitPriceMinor: 98n,  at: new Date(3) },
+      { buyerOrgId: "b", sellerOrgId: "s1", variantId: "v1", proposedUnitPriceMinor: 97n,  at: new Date(4) },
+    ];
+    const findings = scanForCollusion(events, now);
+    expect(findings.find((f) => f.signal === "cyclic_counterparty")).toBeFalsy();
   });
 });

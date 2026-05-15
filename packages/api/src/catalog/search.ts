@@ -4,9 +4,10 @@
 // store can reuse the projection logic.
 
 import type { catalog } from "@marketplace/domain";
+import { sanitizeUntrustedString, FIELD_LIMITS, safeOrigin } from "@marketplace/shared/untrusted";
 import type { StoredMedia, StoredProduct, StoredSeller } from "../types/store-types.js";
 import { encodeCursor, decodeCursor, type StableCursor } from "./cursor.js";
-import { displayVariant, type FilterContext } from "./filter.js";
+import { displayVariant, relevanceScoreFor, type FilterContext } from "./filter.js";
 import { passes } from "./filter.js";
 import { keyOf, makeComparator, parseCursorKey, cmpDirection, type Sort } from "./sort.js";
 import { computeFacets, type Facets } from "./facets.js";
@@ -65,21 +66,38 @@ function projectHit(p: StoredProduct, ctx: FilterContext, sellers: Map<string, S
   const variantsForStock = ctx.filters.currency
     ? p.variants.filter((v) => v.currency === ctx.filters.currency)
     : p.variants;
+  // `brand` is seller-controlled and the catalog write-time sanitiser doesn't
+  // touch it — strip injection patterns at projection time so browse cards,
+  // search results, and any downstream LLM rendering surface get a clean
+  // string without changing the wire format (brand stays a plain string).
+  const cleanBrand =
+    p.brand !== undefined && p.brand !== null
+      ? sanitizeUntrustedString(p.brand, {
+          maxLength: FIELD_LIMITS.productBrand,
+          origin: safeOrigin("seller", p.sellerId),
+        })
+      : undefined;
   return {
     productId: p.productId,
     titleSanitized: p.titleSanitized,
-    ...(p.brand !== undefined ? { brand: p.brand } : {}),
+    ...(cleanBrand !== undefined ? { brand: cleanBrand } : {}),
     ...(dv !== undefined ? { priceMinor: dv.priceMinor, currency: dv.currency } : {}),
     ...(priceFrom !== undefined ? { priceFromMinor: priceFrom } : {}),
     ...(priceTo !== undefined ? { priceToMinor: priceTo } : {}),
     variantCount: p.variants.length,
-    ...(p.rating !== undefined ? { rating: p.rating } : {}),
-    ...(p.ratingCount !== undefined ? { ratingCount: p.ratingCount } : {}),
+    // Only project finite ratings. Pre-fix `p.rating !== undefined` admitted
+    // NaN (which is `!== undefined`), and `JSON.stringify(NaN) === "null"`
+    // — so the wire format said `"rating": null` for products whose stored
+    // rating was corrupted, indistinguishable from "no rating". Drop the
+    // field entirely so the client sees a clean "no rating" instead of
+    // a misleading null.
+    ...(typeof p.rating === "number" && Number.isFinite(p.rating) ? { rating: p.rating } : {}),
+    ...(typeof p.ratingCount === "number" && Number.isFinite(p.ratingCount) ? { ratingCount: p.ratingCount } : {}),
     inStock: variantsForStock.some((v) => v.inStock),
     sellerId: p.sellerId,
     ...(sellerName !== undefined ? { sellerDisplayName: sellerName } : {}),
     counterfeitRisk: p.counterfeitRisk,
-    relevanceScore: ctx.textScores?.get(p.productId) ?? 1,
+    relevanceScore: relevanceScoreFor(p, ctx),
     ...(hero ? { heroImage: hero } : {}),
     imageCount: p.media.length,
     ...(p.categoryIds && p.categoryIds.length > 0 ? { categoryIds: [...p.categoryIds] } : {}),
@@ -116,12 +134,20 @@ export function searchProducts(
       startIndex = exact + 1;
     } else {
       const cursorKey = parseCursorKey(cursor.k, sort);
-      startIndex = sorted.findIndex((p) => {
-        const c = cmpDirection(keyOf(p, sort, ctx), cursorKey, sort);
-        if (c !== 0) return c > 0;
-        return p.productId > cursor.id;
-      });
-      if (startIndex < 0) startIndex = sorted.length;
+      // A malformed cursor key (corrupted client state / tampering / wrong
+      // sort) means we can't position by sort-key fallback. Returning empty
+      // is preferable to throwing — the client will see "no more results"
+      // and start a fresh first page rather than a 500.
+      if (cursorKey === undefined) {
+        startIndex = sorted.length;
+      } else {
+        startIndex = sorted.findIndex((p) => {
+          const c = cmpDirection(keyOf(p, sort, ctx), cursorKey, sort);
+          if (c !== 0) return c > 0;
+          return p.productId > cursor.id;
+        });
+        if (startIndex < 0) startIndex = sorted.length;
+      }
     }
   }
 

@@ -8,6 +8,8 @@
 
 import { z } from "zod";
 import { catalog } from "@marketplace/domain";
+import { NotFoundError } from "@marketplace/shared/errors";
+import { safeOrigin, isForbiddenAttrKey } from "@marketplace/shared/untrusted";
 import { McpRegistry, type McpContext } from "../registry.js";
 import { captureSnapshot, snapshotWebUrl, webBase } from "./snapshot-helpers.js";
 
@@ -127,7 +129,11 @@ export function registerCatalogReadTools(
           return {
             productId: h.productId,
             ...(pUrl ? { webUrl: pUrl } : {}),
-            title: { role: "untrusted_content", origin: `seller:${h.sellerId}`, value: h.titleSanitized },
+            title: {
+              role: "untrusted_content",
+              origin: safeOrigin("seller", h.sellerId),
+              value: h.titleSanitized,
+            },
             brand: h.brand,
             priceMinor: h.priceMinor?.toString(),
             currency: h.currency,
@@ -162,7 +168,14 @@ export function registerCatalogReadTools(
     scope: "catalog:read",
     auditEvent: "catalog.get_product",
     idempotent: true,
-    inputSchema: z.object({ productId: z.string() }),
+    errorCatalog: [
+      { code: "not_found", httpStatus: 404, description: "Product id does not resolve to a listing." },
+    ],
+    // Bound productId at the gate. The catalog uses UUIDs/slug ids (≤120
+    // chars); pre-fix an arbitrary unbounded string was accepted and a
+    // multi-MB payload would have flowed through the adapter into the audit
+    // log before being rejected as "not found".
+    inputSchema: z.object({ productId: z.string().min(1).max(200) }),
     outputSchema: z.object({
       productId: z.string(),
       webUrl: z.string().url().optional(),
@@ -185,11 +198,14 @@ export function registerCatalogReadTools(
     }),
     handler: async (input, ctx) => {
       const p = await adapter.getProduct(input.productId, ctx);
-      if (!p) throw new Error(`not_found:${input.productId}`);
-      const origin = `seller:${p.sellerId}`;
+      if (!p) throw new NotFoundError("product", input.productId);
+      const origin = safeOrigin("seller", p.sellerId);
       const wrap = (v: string) => ({ role: "untrusted_content", origin, value: v });
-      const attrs: Record<string, unknown> = {};
-      for (const [k, v] of Object.entries(p.attributes)) attrs[k] = wrap(v);
+      const attrs: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+      for (const [k, v] of Object.entries(p.attributes)) {
+        if (isForbiddenAttrKey(k)) continue;
+        attrs[k] = wrap(v);
+      }
       const pUrl = productWebUrl(p.productId);
       const body = {
         productId: p.productId,
@@ -223,7 +239,11 @@ export function registerCatalogReadTools(
     scope: "catalog:read",
     auditEvent: "catalog.compare",
     idempotent: true,
-    inputSchema: z.object({ productIds: z.array(z.string()).min(2).max(8) }),
+    // Same per-id bound as catalog.get_product above — array length was
+    // already capped at 2..8 but individual ids were not.
+    inputSchema: z.object({
+      productIds: z.array(z.string().min(1).max(200)).min(2).max(8),
+    }),
     outputSchema: z.object({
       result: z.unknown(),
       snapshotUrl: z.string().url().optional(),

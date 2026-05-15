@@ -131,4 +131,28 @@ describe("parseCursorKey", () => {
     expect(parseCursorKey("4.5", "rating")).toEqual({ v: 4.5, isBig: false });
     expect(parseCursorKey("12", "relevance")).toEqual({ v: 12, isBig: false });
   });
+
+  it("returns undefined for a malformed price cursor (no SyntaxError throw)", () => {
+    // BigInt("not-a-number") used to throw and bubble up as a 500.
+    expect(parseCursorKey("not-a-number", "price_asc")).toBeUndefined();
+    expect(parseCursorKey("3.14", "price_asc")).toBeUndefined(); // BigInt rejects decimals
+  });
+
+  it("returns undefined for a non-finite numeric cursor", () => {
+    expect(parseCursorKey("NaN", "newest")).toBeUndefined();
+    expect(parseCursorKey("Infinity", "rating")).toBeUndefined();
+  });
+});
+
+describe("rating sort — guards against bad upstream rating data", () => {
+  it("treats a NaN rating as 0 (sorts last on rating-descending) without engine-defined sort behaviour", () => {
+    // Pre-fix `(p.rating ?? 0)` only caught null/undefined; a NaN that
+    // snuck in propagated as the sort key, leaving Array.sort with NaN
+    // comparators (engine-defined / unstable).
+    const good = product({ productId: "p_good", rating: 4.5 });
+    const bad = product({ productId: "p_bad", rating: NaN as unknown as number });
+    const cmp = makeComparator("rating", baseCtx);
+    const sorted = [bad, good].slice().sort(cmp);
+    expect(sorted.map((p) => p.productId)).toEqual(["p_good", "p_bad"]);
+  });
 });

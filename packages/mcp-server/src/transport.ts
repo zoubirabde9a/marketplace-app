@@ -2,8 +2,24 @@
 // Implements the JSON-RPC 2.0 frame the MCP TS SDK expects.
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import { MarketplaceError } from "@marketplace/shared/errors";
 import type { McpRegistry, McpContext } from "./registry.js";
 import { newRequestId } from "./registry.js";
+
+// Map a MarketplaceError's HTTP status to a JSON-RPC error code. The spec
+// reserves -32600..-32603 for protocol errors; -32000..-32099 are server-
+// defined. We use the well-known -32602 for "Invalid params" (validation,
+// 400) and the server-defined band for everything else so clients can
+// distinguish a malformed call from a permission denial.
+function jsonRpcCodeFor(status: number): number {
+  if (status === 400) return -32602; // Invalid params
+  if (status === 401) return -32001; // Unauthorized
+  if (status === 403) return -32002; // Forbidden
+  if (status === 404) return -32003; // Not found
+  if (status === 409) return -32004; // Conflict
+  if (status === 429) return -32005; // Rate limited
+  return -32000; // Generic server-defined error
+}
 
 export interface McpTransportDeps {
   registry: McpRegistry;
@@ -94,11 +110,40 @@ export async function registerMcpTransport(app: FastifyInstance, deps: McpTransp
       }
       return reply.send({ jsonrpc: "2.0", id: body.id, result } satisfies JsonRpcResponse);
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      // Domain errors carry their own HTTP status (400/401/403/404/409 …);
+      // surface that to the client rather than collapsing every failure to
+      // 500. Returning 500 for a permission denial or a validation failure
+      // triggers SDK retry/backoff loops that can't fix the underlying issue
+      // and floods the audit log with phantom 500s.
+      if (err instanceof MarketplaceError) {
+        const data =
+          Object.keys(err.extensions).length > 0 ? { extensions: err.extensions } : undefined;
+        return reply.code(err.status).send({
+          jsonrpc: "2.0",
+          id: body.id,
+          error: {
+            code: jsonRpcCodeFor(err.status),
+            message: err.message,
+            ...(data ? { data } : {}),
+          },
+        } satisfies JsonRpcResponse);
+      }
+      // Generic-error fallback. Pre-fix the raw `err.message` was echoed to
+      // the client — for an unhandled error that's typically database
+      // schema text ("duplicate key value violates unique constraint
+      // \"sellers_pkey\""), a Node.js internal message ("Cannot read
+      // properties of undefined …"), or an internal service URL
+      // ("ECONNREFUSED 10.0.0.5:5432"). Each leaks platform internals
+      // useful to a fingerprinting attacker. Log the detail server-side
+      // (so on-call still sees what broke) but return a stable, generic
+      // string. MarketplaceError above already carries its own
+      // intentionally-public messages so callers still get actionable
+      // 400/403/404 detail.
+      req.log.error({ err, method: body.method }, "mcp_unhandled_error");
       return reply.code(500).send({
         jsonrpc: "2.0",
         id: body.id,
-        error: { code: -32000, message },
+        error: { code: -32603, message: "internal_server_error" },
       } satisfies JsonRpcResponse);
     }
   });

@@ -21,8 +21,11 @@ const reg = (): McpRegistry => {
   return r;
 };
 
+// Broad scope set for the happy-path tests — granular per-event scope enforcement
+// is exercised in the dedicated scope-enforcement block below.
+const ALL_WRITE = ["order:write", "checkout:execute", "seller:fulfill:execute", "order:cancel", "dispute:write"];
 const apply = (input: unknown) =>
-  reg().invoke("order.apply_event", input, ctx(["order:cancel"]));
+  reg().invoke("order.apply_event", input, ctx(ALL_WRITE));
 const list = (input: unknown) =>
   reg().invoke("order.allowed_events", input, ctx(["order:read"]));
 
@@ -130,7 +133,7 @@ describe("order.allowed_events — read-only planning", () => {
 });
 
 describe("order tools — scope enforcement", () => {
-  it("denies apply without order:cancel scope", async () => {
+  it("denies apply without the base order:write scope", async () => {
     const r = reg();
     await expect(
       r.invoke(
@@ -138,7 +141,61 @@ describe("order tools — scope enforcement", () => {
         { orderId: "o-1", current: "created", event: { kind: "authorize" } },
         ctx([]),
       ),
+    ).rejects.toThrow(/missing_scope:order:write/);
+  });
+
+  it("denies authorize without checkout:execute (granular per-event scope)", async () => {
+    const r = reg();
+    await expect(
+      r.invoke(
+        "order.apply_event",
+        { orderId: "o-1", current: "created", event: { kind: "authorize" } },
+        ctx(["order:write"]),
+      ),
+    ).rejects.toThrow(/missing_scope:checkout:execute/);
+  });
+
+  it("denies ship without seller:fulfill:execute", async () => {
+    const r = reg();
+    await expect(
+      r.invoke(
+        "order.apply_event",
+        { orderId: "o-1", current: "fulfilling", event: { kind: "ship" } },
+        ctx(["order:write"]),
+      ),
+    ).rejects.toThrow(/missing_scope:seller:fulfill:execute/);
+  });
+
+  it("denies cancel without order:cancel", async () => {
+    const r = reg();
+    await expect(
+      r.invoke(
+        "order.apply_event",
+        { orderId: "o-1", current: "created", event: { kind: "cancel", reason: "x" } },
+        ctx(["order:write"]),
+      ),
     ).rejects.toThrow(/missing_scope:order:cancel/);
+  });
+
+  it("denies open_dispute without dispute:write", async () => {
+    const r = reg();
+    await expect(
+      r.invoke(
+        "order.apply_event",
+        { orderId: "o-1", current: "delivered", event: { kind: "open_dispute", reason: "x" } },
+        ctx(["order:write"]),
+      ),
+    ).rejects.toThrow(/missing_scope:dispute:write/);
+  });
+
+  it("allows authorize when both order:write and checkout:execute are granted", async () => {
+    const r = reg();
+    const out = (await r.invoke(
+      "order.apply_event",
+      { orderId: "o-1", current: "created", event: { kind: "authorize" } },
+      ctx(["order:write", "checkout:execute"]),
+    )) as { next: string };
+    expect(out.next).toBe("authorized");
   });
 
   it("denies allowed_events without order:read scope", async () => {

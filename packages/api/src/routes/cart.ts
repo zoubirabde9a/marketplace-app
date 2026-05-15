@@ -113,7 +113,17 @@ export async function registerCartRoutes(app: FastifyInstance, carts: CartRepo):
     try {
       lines = cartDomain.updateLineQty(c.lines, req.params.variantId, body.qty);
     } catch (e) {
-      throw new ValidationError([{ path: "qty", message: (e as Error).message }]);
+      // The domain throws a 404 `cart_line_not_found` MarketplaceError when
+      // the variant isn't in the cart. Wrapping the whole branch in
+      // ValidationError (400) had the REST surface returning 400 for a
+      // missing-line case the MCP cart.update_qty path correctly returns
+      // 404 for. Propagate the typed error so REST and MCP agree on
+      // 404 vs 400 — same fix as the MCP buyer.ts cart.update_qty handler.
+      const msg = (e as Error).message;
+      if (msg.includes("cart_line_not_found")) {
+        throw new NotFoundError("cart_line", req.params.variantId);
+      }
+      throw new ValidationError([{ path: "qty", message: msg }]);
     }
     const updated = await carts.setLines(c.cartId, lines);
     void reply.header("x-mp-cart-id", updated.cartId);

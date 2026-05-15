@@ -13,22 +13,34 @@ import type { McpRegistry } from "../registry.js";
 
 const StatusEnum = z.enum(["active", "paused", "cancelled", "expired"]);
 
+// Bound the integer count fields. Without upper bounds, a caller passing
+// `Number.MAX_SAFE_INTEGER` for retryCount would land outside the 3-rung
+// retry-ladder lookup (1d/3d/7d) and produce an undefined `nextAttemptAt`
+// — silently degrading to "schedule retry: NaN" downstream. cyclesCompleted
+// drives `endAfterCycles` comparisons; a huge value would short-circuit to
+// "expired" regardless of the actual policy. 1M is generous for any real
+// subscription (a daily-tick subscription would need >2700 years to reach it).
 const StateSchema = z.object({
   status: StatusEnum,
   nextRenewalAt: z.coerce.date(),
-  retryCount: z.number().int().min(0),
+  retryCount: z.number().int().min(0).max(1_000_000),
   lastFailureAt: z.coerce.date().optional(),
   mandateRefreshDueAt: z.coerce.date(),
-  totalCapMinor: z.bigint().optional(),
-  consumedMinor: z.bigint(),
-  endAfterCycles: z.number().int().positive().optional(),
-  cyclesCompleted: z.number().int().min(0),
+  // Money values are non-negative; the cap can't be 0 in practice but bound
+  // checks (`consumed > cap`) hold cleanly when 0 is allowed at the boundary.
+  totalCapMinor: z.bigint().nonnegative().optional(),
+  consumedMinor: z.bigint().nonnegative(),
+  endAfterCycles: z.number().int().positive().max(1_000_000).optional(),
+  cyclesCompleted: z.number().int().min(0).max(1_000_000),
 });
 
 const PreviewInput = z.object({
-  subscriptionId: z.string(),
+  subscriptionId: z.string().min(1).max(200),
   state: StateSchema,
-  amountMinor: z.bigint(),
+  // A renewal must charge a positive amount — a `0n` preview would let an
+  // agent claim a renewal "succeeded" without consuming any of the cap, which
+  // breaks the §7.1 total-cap invariant.
+  amountMinor: z.bigint().positive(),
   now: z.coerce.date(),
 });
 
@@ -45,19 +57,19 @@ const OutcomeSchema = z.union([
 ]);
 
 const PreviewOutput = z.object({
-  subscriptionId: z.string(),
+  subscriptionId: z.string().min(1).max(200),
   outcome: OutcomeSchema,
   preChargeNotificationDueAt: z.coerce.date(),
 });
 
 const RetryInput = z.object({
-  subscriptionId: z.string(),
+  subscriptionId: z.string().min(1).max(200),
   state: StateSchema,
   failureAt: z.coerce.date(),
 });
 
 const RetryOutput = z.object({
-  subscriptionId: z.string(),
+  subscriptionId: z.string().min(1).max(200),
   outcome: OutcomeSchema,
 });
 

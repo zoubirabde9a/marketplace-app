@@ -109,6 +109,44 @@ describe("verifyDpop", () => {
     expect(result.jkt).toBeTypeOf("string");
   });
 
+  it("does NOT consume jti when signature fails (replay-cache DoS guard)", async () => {
+    // An attacker submitting a forged proof must not be able to poison the
+    // replay cache for a future legitimate proof reusing the same jti. The
+    // jtiSeen callback should never fire when the signature is invalid.
+    const { proof } = await makeDpopProof({ htm: "POST", htu: "https://api.x/v1/checkout" });
+    // Tamper with the signature segment.
+    const tampered = proof.replace(/\.[^.]+$/, ".AAAA");
+    let jtiSeenCalls = 0;
+    await expect(
+      verifyDpop(tampered, {
+        htm: "POST",
+        htu: "https://api.x/v1/checkout",
+        jtiSeen: async () => {
+          jtiSeenCalls += 1;
+          return false;
+        },
+        now: () => Date.now(),
+      }),
+    ).rejects.toThrow(/dpop_signature/);
+    expect(jtiSeenCalls).toBe(0);
+  });
+
+  it("forged proof with htm mismatch reports signature failure (no oracle leak)", async () => {
+    // Pre-fix, the function reported `htm_mismatch` before checking the
+    // signature, letting an attacker probe payload checks without forging
+    // a signature. Now the signature is the first gate.
+    const { proof } = await makeDpopProof({ htm: "POST", htu: "https://api.x/v1/checkout" });
+    const tampered = proof.replace(/\.[^.]+$/, ".AAAA");
+    await expect(
+      verifyDpop(tampered, {
+        htm: "GET", // would have triggered htm_mismatch first under old order
+        htu: "https://api.x/v1/checkout",
+        jtiSeen: async () => false,
+        now: () => Date.now(),
+      }),
+    ).rejects.toThrow(/dpop_signature/);
+  });
+
   it("rejects mismatched access-token hash", async () => {
     const { proof } = await makeDpopProof({
       htm: "POST",

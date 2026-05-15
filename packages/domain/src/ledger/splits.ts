@@ -53,8 +53,54 @@ export interface ComputedSplit {
 }
 
 export function computeSplitLegs(input: SplitInputs, resolver: AccountResolver): ComputedSplit {
+  // Each bps field must individually be in [0, 10000] (0–100%).
   if (input.marketplaceFeeBps < 0 || input.marketplaceFeeBps > 10000) {
     throw new ConflictError("split_invalid_marketplace_fee");
+  }
+  if (input.affiliateBps !== undefined && (input.affiliateBps < 0 || input.affiliateBps > 10000)) {
+    throw new ConflictError("split_invalid_affiliate_fee");
+  }
+  // …and crucially, their sum must also be ≤ 10000. Otherwise the per-seller
+  // math produces a NEGATIVE seller payable (marketplaceFee + affiliate >
+  // sellerNet), meaning we'd be debiting the seller for the privilege of
+  // selling — guaranteed seller-trust break + reconcile-tomorrow incident.
+  if ((input.affiliateBps ?? 0) + input.marketplaceFeeBps > 10000) {
+    throw new ConflictError(
+      `split_combined_fee_exceeds_100pct:${input.marketplaceFeeBps}+${input.affiliateBps ?? 0}`,
+    );
+  }
+  // `affiliateBps` and `affiliateOrgId` must be set together. Pre-fix a
+  // caller passing `affiliateBps: 500` but omitting `affiliateOrgId`
+  // silently set the per-seller affiliate cut to 0n (because the
+  // `affiliateBps && input.affiliateOrgId` short-circuit went false), so
+  // the affiliate fee never got taken — the marketplace ate the entire
+  // commission and the affiliate partner saw zero payouts forever, with
+  // no error. Fail loudly so the caller fixes the missing id.
+  if ((input.affiliateBps !== undefined && input.affiliateBps > 0) !== (input.affiliateOrgId !== undefined)) {
+    throw new ConflictError(
+      "split_affiliate_bps_and_org_must_be_set_together",
+    );
+  }
+  // A split with no sellers can still arithmetically balance (tip+charity=gross)
+  // but has no payee for any of the goods/services — there's no order to fulfil.
+  if (input.sellers.length === 0) {
+    throw new ConflictError("split_no_sellers");
+  }
+  // Money inputs are non-negative. Negative values flip leg directions
+  // silently and create a balanced-but-wrong ledger that reconciles cleanly
+  // (the bug shows up months later as a seller's payable account that drifts
+  // the wrong way every month-end).
+  if (input.grossMinor <= 0n) throw new ConflictError("split_gross_must_be_positive");
+  if (input.processorFeeMinor < 0n) throw new ConflictError("split_processor_fee_negative");
+  if (input.tipMinor !== undefined && input.tipMinor < 0n) throw new ConflictError("split_tip_negative");
+  if (input.charityMinor !== undefined && input.charityMinor < 0n) throw new ConflictError("split_charity_negative");
+  for (const s of input.sellers) {
+    if (s.sellerNetMinor < 0n) {
+      throw new ConflictError(`split_seller_net_negative:${s.sellerOrgId}`);
+    }
+    if (s.taxMinor < 0n) {
+      throw new ConflictError(`split_seller_tax_negative:${s.sellerOrgId}`);
+    }
   }
   const sumSellerNet = input.sellers.reduce((s, x) => s + x.sellerNetMinor, 0n);
   const sumTax = input.sellers.reduce((s, x) => s + x.taxMinor, 0n);

@@ -66,6 +66,38 @@ describe("English auction", () => {
     const r = settleEnglish(a, new Date(100_000));
     expect(r.reason).toBe("reserve_not_met");
   });
+
+  it("settles by highest amount, not by array position (defends against out-of-order DB load)", () => {
+    // Simulate an auction reloaded from a DB row where bids weren't in
+    // submission order — e.g. sorted by `bid.at` with a tie-breaker that
+    // doesn't preserve amount order. Previously `a.bids.at(-1)` would
+    // pick the wrong winner.
+    const a: EnglishAuction = {
+      ...baseEnglish(),
+      reserveMinor: 0n,
+      bids: [
+        bid({ amountMinor: 100_00n, bidderAgentId: "high", at: new Date(1000) }),
+        bid({ amountMinor: 50_00n,  bidderAgentId: "low",  at: new Date(2000) }),
+      ],
+    };
+    const r = settleEnglish(a, new Date(100_000));
+    expect(r.winnerBid?.bidderAgentId).toBe("high");
+    expect(r.finalPriceMinor).toBe(100_00n);
+  });
+
+  it("rejects zero/negative bidIncrementMinor (would let same-amount bids accumulate)", () => {
+    const a = { ...baseEnglish(), bidIncrementMinor: 0n };
+    expect(() => submitEnglishBid(a, bid({ amountMinor: 10_00n }))).toThrow(
+      /bid_increment_must_be_positive/,
+    );
+  });
+
+  it("rejects negative softCloseSeconds (would extend endsAt into the past)", () => {
+    const a = { ...baseEnglish(), softCloseSeconds: -1 };
+    expect(() => submitEnglishBid(a, bid({ amountMinor: 11_00n }))).toThrow(
+      /soft_close_negative/,
+    );
+  });
 });
 
 describe("Dutch auction", () => {
@@ -97,6 +129,21 @@ describe("Dutch auction", () => {
     expect(updated.acceptedBy).toBeDefined();
     expect(() => acceptDutch(updated, bid({ amountMinor: 90_00n, at: new Date(20_000) }))).toThrow();
   });
+
+  it("dutchPriceAt rejects a 0 decrementIntervalSeconds (divide-by-zero → BigInt(Infinity) throw)", () => {
+    // Pre-fix this fell through `Math.floor(elapsed / 0) = Infinity`, then
+    // `BigInt(Infinity)` threw a raw RangeError. Now surfaces as a domain
+    // ConflictError so callers can branch on the right error class.
+    expect(() => dutchPriceAt({ ...a, decrementIntervalSeconds: 0 }, new Date(10_000))).toThrow(
+      /auction_invalid_decrement_interval/,
+    );
+  });
+
+  it("dutchPriceAt rejects a negative decrementMinor", () => {
+    expect(() => dutchPriceAt({ ...a, decrementMinor: -1n }, new Date(10_000))).toThrow(
+      /auction_invalid_decrement/,
+    );
+  });
 });
 
 describe("Sealed-bid auction", () => {
@@ -118,6 +165,17 @@ describe("Sealed-bid auction", () => {
     s = submitSealedBid(s, bid({ amountMinor: 70_00n, at: new Date(20_000) }));
     expect(s.bids).toHaveLength(1);
     expect(s.bids[0]?.amountMinor).toBe(70_00n);
+  });
+
+  it("settles ties by first-submitted (stable-sort contract preserved)", () => {
+    // Two distinct bidders submit the same amount; the first submission wins.
+    // Pre-fix the comparator returned -1 on equality (technically non-stable);
+    // V8 timsort happened to preserve order, but the comparator now returns
+    // 0 explicitly so the stable-sort contract is honoured portably.
+    let s = submitSealedBid(a, bid({ amountMinor: 80_00n, bidderAgentId: "early", at: new Date(1000) }));
+    s = submitSealedBid(s, bid({ amountMinor: 80_00n, bidderAgentId: "late",  at: new Date(2000) }));
+    const r = settleSealedBid(s, new Date(60_001));
+    expect(r.winnerBid?.bidderAgentId).toBe("early");
   });
 
   it("settles to highest bid above reserve", () => {

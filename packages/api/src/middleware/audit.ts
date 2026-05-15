@@ -28,7 +28,26 @@ export interface AuditDeps {
   onAuditError?: (err: unknown, ctx: { url: string; method: string }) => void;
 }
 
-const SKIP_PATH_PREFIXES = ["/livez", "/readyz", "/.well-known/", "/v1/auth/"];
+// Paths that get filtered out of agent-action auditing. Health, well-known
+// discovery, and auth bootstrap endpoints are deliberately excluded — they
+// happen on EVERY agent connect and would flood the audit table with
+// uninteresting rows. Adding crawler-probe paths (`/favicon.ico`,
+// `/robots.txt`, `/healthz`) and the OAuth / DCR stubs (`/register`,
+// `/oauth/*`) avoids noise from probes that don't carry an authenticated
+// principal anyway — when one of them DOES carry a principal (e.g. an
+// agent client hitting `/.well-known` with their passport attached), we
+// still don't want a per-connect audit row.
+const SKIP_PATH_PREFIXES = [
+  "/livez",
+  "/readyz",
+  "/healthz",
+  "/.well-known/",
+  "/v1/auth/",
+  "/favicon.ico",
+  "/robots.txt",
+  "/register",
+  "/oauth/",
+];
 
 function pathOnly(url: string): string {
   const q = url.indexOf("?");

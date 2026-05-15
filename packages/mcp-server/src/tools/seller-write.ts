@@ -8,6 +8,12 @@
 
 import { z } from "zod";
 import { NotFoundError, UnauthorizedError, ValidationError } from "@marketplace/shared/errors";
+import { ISO_3166_1_ALPHA2, Iso3166Alpha2Schema } from "@marketplace/shared/country";
+import {
+  FIELD_LIMITS,
+  sanitizeUntrustedString,
+  safeOrigin,
+} from "@marketplace/shared/untrusted";
 import type { catalog } from "@marketplace/domain";
 import type { McpRegistry } from "../registry.js";
 import { captureSnapshot, snapshotWebUrl, webBase } from "./snapshot-helpers.js";
@@ -104,30 +110,14 @@ const SellerPhoneInputSchema = z.object({
   isWhatsapp: z.boolean().optional(),
   isViber: z.boolean().optional(),
   isPrimary: z.boolean().optional(),
-  position: z.number().int().nonnegative().optional(),
+  // Bound position. The phones array is already capped at 10 (line 131)
+  // so any sensible position is ≤10. Pre-fix `Number.MAX_SAFE_INTEGER`
+  // was accepted; the listPhones order-by `asc(position)` would then sort
+  // legitimate phones BEHIND any junk-position one — the seller's primary
+  // phone would surface at the bottom of the list, breaking the
+  // "primary first" UX invariant. Cap at 1000.
+  position: z.number().int().nonnegative().max(1000).optional(),
 });
-
-// ISO 3166-1 alpha-2 country codes. Frozen at write time; if a future country
-// is added internationally update this set rather than relaxing validation.
-// Lookup is O(1); the 249-entry list adds ~2KB to the bundle and is fine.
-const ISO_3166_1_ALPHA2 = new Set([
-  "AD","AE","AF","AG","AI","AL","AM","AO","AQ","AR","AS","AT","AU","AW","AX","AZ",
-  "BA","BB","BD","BE","BF","BG","BH","BI","BJ","BL","BM","BN","BO","BQ","BR","BS",
-  "BT","BV","BW","BY","BZ","CA","CC","CD","CF","CG","CH","CI","CK","CL","CM","CN",
-  "CO","CR","CU","CV","CW","CX","CY","CZ","DE","DJ","DK","DM","DO","DZ","EC","EE",
-  "EG","EH","ER","ES","ET","FI","FJ","FK","FM","FO","FR","GA","GB","GD","GE","GF",
-  "GG","GH","GI","GL","GM","GN","GP","GQ","GR","GS","GT","GU","GW","GY","HK","HM",
-  "HN","HR","HT","HU","ID","IE","IL","IM","IN","IO","IQ","IR","IS","IT","JE","JM",
-  "JO","JP","KE","KG","KH","KI","KM","KN","KP","KR","KW","KY","KZ","LA","LB","LC",
-  "LI","LK","LR","LS","LT","LU","LV","LY","MA","MC","MD","ME","MF","MG","MH","MK",
-  "ML","MM","MN","MO","MP","MQ","MR","MS","MT","MU","MV","MW","MX","MY","MZ","NA",
-  "NC","NE","NF","NG","NI","NL","NO","NP","NR","NU","NZ","OM","PA","PE","PF","PG",
-  "PH","PK","PL","PM","PN","PR","PS","PT","PW","PY","QA","RE","RO","RS","RU","RW",
-  "SA","SB","SC","SD","SE","SG","SH","SI","SJ","SK","SL","SM","SN","SO","SR","SS",
-  "ST","SV","SX","SY","SZ","TC","TD","TF","TG","TH","TJ","TK","TL","TM","TN","TO",
-  "TR","TT","TV","TW","TZ","UA","UG","UM","US","UY","UZ","VA","VC","VE","VG","VI",
-  "VN","VU","WF","WS","YE","YT","ZA","ZM","ZW",
-]);
 
 const CreateSellerInput = z
   .object({
@@ -147,10 +137,20 @@ const CreateSellerInput = z
     phones: z.array(SellerPhoneInputSchema).min(1).max(10).optional(),
     /** Shorthand for "the primary number is also on WhatsApp". Ignored when `phones[]` is provided. */
     whatsapp: z.string().min(5).max(32).optional(),
-    website: z.string().url().optional(),
+    // Same scheme-allowlist defense as MediaInput (pass #88) — `z.string().url()`
+    // alone accepts `javascript:`/`data:`/`file:` URLs that become XSS sinks
+    // when the storefront renders the seller's website as a clickable
+    // `<a href>`. Also bound length to 2048 chars (same as media URL).
+    website: z
+      .string()
+      .url()
+      .max(2048)
+      .refine((u) => /^https?:\/\//i.test(u), { message: "website_scheme_not_allowed" })
+      .optional(),
     /** Short store bio shown on the storefront. */
     description: z.string().min(20).max(1000).optional(),
-    supportEmail: z.string().email().optional(),
+    // Same RFC 5321 max as the REST CreateSellerSchema (sellers.ts pass #161).
+    supportEmail: z.string().email().max(254).optional(),
     city: z.string().min(1).max(120).optional(),
   })
   .refine((d) => Boolean(d.phone) || (Array.isArray(d.phones) && d.phones.length > 0), {
@@ -207,7 +207,17 @@ function inferImageContentType(url: string): string {
 
 const MediaInput = z
   .object({
-    url: z.string().url().max(2048),
+    // Zod's `.url()` accepts any WHATWG-valid URL including `javascript:`,
+    // `data:`, `file:`. Catalog media URLs flow into the storefront's
+    // `<img src>` attribute and any LLM-rendered product card — non-http(s)
+    // schemes are XSS / local-disclosure / phishing-payload-hosting
+    // vectors. Same allow-list defense as the REST `MediaInputSchema`
+    // (pass #73) and the messaging-attachment fix (pass #37).
+    url: z
+      .string()
+      .url()
+      .max(2048)
+      .refine((u) => /^https?:\/\//i.test(u), { message: "media_url_scheme_not_allowed" }),
     contentType: z.string().regex(/^image\/[a-z0-9.+-]+$/i).max(64).optional(),
     byteSize: z.number().int().positive().max(50_000_000).optional(),
     width: z.number().int().positive().max(20_000).optional(),
@@ -217,19 +227,43 @@ const MediaInput = z
   .transform((m) => ({ ...m, contentType: m.contentType ?? inferImageContentType(m.url) }));
 
 const CreateProductInput = z.object({
-  sellerId: z.string().min(1),
+  // Bound sellerId at the gate. Same cap as the REST CreateProductSchema
+  // (pass #109) — UUIDs / slug ids are ≤200 chars in this platform.
+  sellerId: z.string().min(1).max(200),
   title: z.string().min(3).max(300),
   /** Required — listings with no description damage buyer trust and search recall. */
   description: z.string().min(30).max(5000),
   brand: z.string().max(120).optional(),
-  attributes: z.record(z.string(), z.string()).optional(),
+  // Bound the attribute map at the gate. Same caps as the REST
+  // AttributesSchema (pass #109) — 32 entries × 64-char keys × 1024-char
+  // values. Pre-fix `z.record(z.string(), z.string()).optional()` accepted
+  // unbounded attribute maps, letting a single MCP call ship 10 MB of
+  // attribute data that the catalog write transaction then walked.
+  attributes: z
+    .record(z.string().max(64), z.string().max(1024))
+    .refine((v) => Object.keys(v).length <= 32, { message: "at_most_32_attributes" })
+    .optional(),
   categoryIds: z.array(z.string().min(1).max(120)).max(20).optional(),
-  shipsTo: z.array(z.string().length(2)).max(250).optional(),
-  variants: z.array(VariantInput).min(1),
+  // Use the canonical ISO 3166-1 alpha-2 allow-list. Pre-fix
+  // `z.string().length(2)` accepted any 2-char pair ("XX", emoji, etc.),
+  // and downstream the search-side ship-to filter would never match,
+  // making the listing invisible to legitimate buyers in those regions.
+  // Same drift fix as buyer.ts pass #96.
+  shipsTo: z.array(Iso3166Alpha2Schema).max(250).optional(),
+  // Cap variants per listing. A real product has at most a few dozen
+  // SKU variants (size × color matrices); 200 leaves headroom while
+  // bounding the create-product write transaction.
+  variants: z.array(VariantInput).min(1).max(200),
   /** Required — at least one publicly fetchable image URL. Listings without images convert poorly and harm storefront quality. */
   media: z.array(MediaInput).min(1).max(20),
   heroMediaIndex: z.number().int().nonnegative().optional(),
-});
+}).refine(
+  // Out-of-bounds heroMediaIndex would silently fall back to media[0] in the
+  // repo — the agent sees a "success" but the wrong image is hero. Reject early
+  // with a clear error so the caller fixes the index.
+  (d) => d.heroMediaIndex === undefined || d.heroMediaIndex < d.media.length,
+  { path: ["heroMediaIndex"], message: "heroMediaIndex must be < media.length" },
+);
 
 const CreateProductOutput = z.object({
   productId: z.string(),
@@ -421,11 +455,17 @@ export function registerSellerWriteTools(
         productId: p.productId,
         sellerId: p.sellerId,
         title: p.titleSanitized,
-        // Description echoes the agent-provided input. The repo doesn't return
-        // the sanitised version on the create-listing surface today, but the
-        // snapshot wants to show buyers what was published; the input is the
-        // same string modulo trim, so this is the most faithful representation.
-        description: input.description,
+        // Run the description through the same sanitiser the repo applies
+        // at write time. The adapter doesn't return the sanitised version
+        // on the create-listing surface today, and echoing the RAW
+        // `input.description` would re-introduce any injection patterns
+        // the seller submitted into the snapshot + every downstream LLM
+        // consumer reading the response. Same defense as title (which is
+        // already `p.titleSanitized`).
+        description: sanitizeUntrustedString(input.description, {
+          maxLength: FIELD_LIMITS.productDescription,
+          origin: safeOrigin("seller", p.sellerId),
+        }),
         ...(p.brand !== undefined ? { brand: p.brand } : {}),
         variants: p.variants.map((v) => ({
           id: v.id,

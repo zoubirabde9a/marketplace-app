@@ -3,7 +3,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { seller as sellerDomain } from "@marketplace/domain";
-import { NotFoundError, UnauthorizedError } from "@marketplace/shared/errors";
+import { ConflictError, NotFoundError, UnauthorizedError } from "@marketplace/shared/errors";
+import { Iso3166Alpha2Schema } from "@marketplace/shared/country";
 import { requirePrincipal } from "../middleware/auth.js";
 import { applyPublicReadCacheHeaders } from "./products.js";
 import type { SellerRepo, SellerRecord } from "../repos/seller.js";
@@ -12,11 +13,21 @@ const CreateSellerSchema = z.object({
   displayName: z.string().min(2).max(120),
   // Phone + country are required at the API layer (best-practice marketplace minimums).
   phone: sellerDomain.SellerPhoneSchema,
-  countryCode: z.string().length(2).transform((v) => v.toUpperCase()),
+  // ISO-validated against the alpha-2 allow-list — the MCP seller.create_account
+  // path has used Iso3166Alpha2Schema since pass #3+#7; REST accepted any
+  // 2-letter pair (`"XX"`, `"!!"`), creating a drift where the same caller hit
+  // different validation surfaces depending on which entrypoint they used.
+  countryCode: Iso3166Alpha2Schema,
   whatsapp: sellerDomain.SellerWhatsappSchema.optional(),
   website: sellerDomain.SellerWebsiteSchema.optional(),
   description: z.string().min(20).max(1000).optional(),
-  supportEmail: z.string().email().optional(),
+  // Bound supportEmail at RFC 5321's 254-char max so a 10 MB payload that
+  // happens to satisfy `.email()`'s regex can't slip through. Pre-fix
+  // `.email().optional()` validated format but not length; the email
+  // surfaces on the storefront and on order-management emails so an
+  // attacker submitting an oversize string would bloat both the
+  // seller_profiles row and downstream rendering.
+  supportEmail: z.string().email().max(254).optional(),
   city: z.string().min(1).max(120).optional(),
 });
 
@@ -73,6 +84,17 @@ export async function registerSellerRoutes(app: FastifyInstance, sellers: Seller
   app.post("/v1/sellers", async (req, reply) => {
     const principal = requirePrincipal(req);
     const body = CreateSellerSchema.parse(req.body);
+    // Duplicate-store guard. The MCP seller.create_account path has rejected
+    // accidental same-name re-creates by the same agent since pass #3; the
+    // REST route was silently creating side-by-side duplicates that looked
+    // identical to the operator but had different sellerIds. Same check
+    // here keeps the two entrypoints aligned.
+    const existingDup = await sellers.findOwnedByName(principal.agentId, body.displayName);
+    if (existingDup) {
+      throw new ConflictError(
+        `duplicate_store_name: you already own a store named "${body.displayName}" (sellerId=${existingDup.sellerId})`,
+      );
+    }
     const seller = await sellers.create({
       displayName: body.displayName,
       ownerAgentId: principal.agentId,

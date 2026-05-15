@@ -28,9 +28,17 @@ export function editDistance(x: string, y: string): number {
   return prev[m]!;
 }
 
-/** How many edits we tolerate in a token of this length. */
+/**
+ * How many edits we tolerate in a token of this length.
+ *
+ * Very short tokens (≤3 chars) get tolerance 0 — a 1-edit window on a 3-char
+ * token is mostly noise ("tea"→"sea"/"the"/"yea"/"ten", "and"→"end", …).
+ * The old code returned 1 here and 1 for ≤6 (two branches with the same
+ * return), which was almost certainly a leftover from an earlier refactor
+ * and silently turned short-word queries into false-positive generators.
+ */
 function toleranceFor(token: string): number {
-  if (token.length <= 3) return 1;
+  if (token.length <= 3) return 0;
   if (token.length <= 6) return 1;
   return 2;
 }
@@ -58,7 +66,16 @@ export function fuzzyMatch(query: string, text: string): number {
     for (const t of tTokens) {
       // Cheap pre-filters before paying the O(n*m) edit-distance cost.
       if (Math.abs(t.length - q.length) > tol) continue;
-      if (t.includes(q) || q.includes(t)) { best = 0; break; }
+      // Substring containment is a free-match SHORTCUT, but only when the
+      // query token is long enough to be discriminating. Previously a 1-2
+      // char query token would `t.includes(q)` against essentially every
+      // text token containing those letters — a query of "a" matched any
+      // product with any token containing 'a'. Require the query token to
+      // be ≥4 chars before allowing the substring shortcut.
+      if (q.length >= 4 && (t.includes(q) || q.includes(t))) {
+        best = 0;
+        break;
+      }
       const d = editDistance(q, t);
       if (d < best) best = d;
       if (best === 0) break;

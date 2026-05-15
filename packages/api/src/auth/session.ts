@@ -60,12 +60,36 @@ export async function verifySession(token: string, opts: VerifySessionOptions): 
   if (header["typ"] !== HEADER_TYP || header["alg"] !== ALG) throw new Error("session_header");
   const kid = String(header["kid"] ?? "");
   const key = await opts.resolveKey(kid);
-  if (!key) throw new Error("session_unknown_kid");
+  // Collapse "kid not registered" and "signature mismatch" into one error.
+  // Returning a distinct `session_unknown_kid` lets an attacker submit
+  // forged session tokens with candidate kids and use the response code
+  // to enumerate which kids the platform's session-signing registry knows
+  // about. Same kid-enumeration oracle the mandate verifier closed.
+  if (!key) throw new Error("session_signature");
 
   const ok = verify(null, Buffer.from(`${hB64}.${pB64}`), key, b64urlDecode(sB64));
   if (!ok) throw new Error("session_signature");
 
   const claims = JSON.parse(b64urlDecode(pB64).toString("utf8")) as SessionClaims;
+  // Runtime type-check critical claims. The `as SessionClaims` cast trusts
+  // JSON.parse — if a forged payload (signature would already be invalid in
+  // practice, but defense-in-depth against a same-kid key compromise or a
+  // future bug that defers signature check) contained `exp: "abc"`, the
+  // comparison `"abc" <= nowSec` evaluates to `false` and the token is
+  // accepted as never-expiring. Force exp/iat to be finite numbers and
+  // sub/email to be strings before any business-logic gate keys off them.
+  if (typeof claims.exp !== "number" || !Number.isFinite(claims.exp)) {
+    throw new Error("session_exp_invalid");
+  }
+  if (typeof claims.iat !== "number" || !Number.isFinite(claims.iat)) {
+    throw new Error("session_iat_invalid");
+  }
+  if (typeof claims.sub !== "string" || claims.sub.length === 0) {
+    throw new Error("session_sub_invalid");
+  }
+  if (typeof claims.email !== "string" || claims.email.length === 0) {
+    throw new Error("session_email_invalid");
+  }
   if (claims.aud !== opts.audience) throw new Error("session_audience");
   const nowSec = Math.floor(opts.now / 1000);
   if (claims.exp <= nowSec) throw new Error("session_expired");
@@ -127,12 +151,30 @@ export async function verifyLinkToken(token: string, opts: VerifyLinkTokenOption
   if (header["typ"] !== LINK_HEADER_TYP || header["alg"] !== ALG) throw new Error("link_header");
   const kid = String(header["kid"] ?? "");
   const key = await opts.resolveKey(kid);
-  if (!key) throw new Error("link_unknown_kid");
+  // Same kid-enumeration mitigation as verifySession — collapse into the
+  // generic signature error so unauthenticated probes can't map the
+  // platform's link-token signer registry by forging tokens.
+  if (!key) throw new Error("link_signature");
 
   const ok = verify(null, Buffer.from(`${hB64}.${pB64}`), key, b64urlDecode(sB64));
   if (!ok) throw new Error("link_signature");
 
   const claims = JSON.parse(b64urlDecode(pB64).toString("utf8")) as LinkTokenClaims;
+  // Same runtime type-check as verifySession — without it, a payload with
+  // `exp: "abc"` would compare `"abc" <= nowSec` as false and yield a
+  // never-expiring link token. Defense-in-depth past the signature check.
+  if (typeof claims.exp !== "number" || !Number.isFinite(claims.exp)) {
+    throw new Error("link_exp_invalid");
+  }
+  if (typeof claims.iat !== "number" || !Number.isFinite(claims.iat)) {
+    throw new Error("link_iat_invalid");
+  }
+  if (typeof claims.sub !== "string" || claims.sub.length === 0) {
+    throw new Error("link_sub_invalid");
+  }
+  if (typeof claims.agent_id !== "string" || claims.agent_id.length === 0) {
+    throw new Error("link_agent_id_invalid");
+  }
   if (claims.aud !== opts.audience) throw new Error("link_audience");
   const nowSec = Math.floor(opts.now / 1000);
   if (claims.exp <= nowSec) throw new Error("link_expired");

@@ -11,7 +11,15 @@
 import { z } from "zod";
 import { sign, verify, createHash, type KeyObject } from "node:crypto";
 import { MandateError } from "@marketplace/shared/errors";
+import { Iso3166Alpha2Schema } from "@marketplace/shared/country";
 import { base64url, base64urlDecode } from "../identity/dpop.js";
+
+// Decimal-integer big-int strings carried in JSON (amounts, totals). Pre-fix
+// `z.string()` accepted arbitrary payloads — "abc", "1e10", " 100 ", "-5" —
+// that downstream `BigInt()` parse threw on, producing a generic 500 instead
+// of a clean `MandateError("invalid_amount")`. 78 chars covers a 256-bit
+// integer in decimal, way past any realistic spend cap.
+const BigIntDecimalString = z.string().regex(/^[0-9]+$/).max(78);
 
 export const MandateKind = z.enum(["intent", "cart", "payment", "recurring_intent"]);
 export type MandateKindT = z.infer<typeof MandateKind>;
@@ -20,7 +28,13 @@ export const MandateConstraintsSchema = z.object({
   merchants: z.array(z.string()).optional(),
   categories: z.array(z.string()).optional(),
   skus: z.array(z.string()).optional(),
-  jurisdictions: z.array(z.string().length(2)).optional(),
+  // Use the canonical ISO 3166-1 alpha-2 allow-list. Pre-fix `length(2)`
+  // accepted any 2-char pair ("XX", "!!", emoji-pair) and the downstream
+  // jurisdiction-match check (mandate-enforce) keyed on this value — a
+  // typo silently widened the mandate's allowed-jurisdictions set to
+  // "none of the real codes match, so the filter never bites". Same drift
+  // fix as cart restrictions (pass #101), buyer.ts (#96), checkout (#105).
+  jurisdictions: z.array(Iso3166Alpha2Schema).optional(),
   maxItems: z.number().int().positive().optional(),
 });
 export type MandateConstraints = z.infer<typeof MandateConstraintsSchema>;
@@ -28,9 +42,9 @@ export type MandateConstraints = z.infer<typeof MandateConstraintsSchema>;
 export const MandateRecurrenceSchema = z.object({
   interval: z.enum(["day", "week", "month", "year"]),
   intervalCount: z.number().int().positive(),
-  maxPerPeriodMinor: z.string(), // BigInt as string in JSON
+  maxPerPeriodMinor: BigIntDecimalString,
   endAfter: z.number().int().positive().optional(),
-  totalCapMinor: z.string().optional(),
+  totalCapMinor: BigIntDecimalString.optional(),
   delegateTo: z.string().optional(),
 });
 export type MandateRecurrence = z.infer<typeof MandateRecurrenceSchema>;
@@ -49,7 +63,7 @@ export const MandateClaimsSchema = z.object({
   step_up_proof_at: z.number().optional(), // unix ms; required for tier ≥ 4
   cap: z.object({
     currency: z.string().regex(/^[A-Z]{3}$/),
-    amount_minor: z.string(),
+    amount_minor: BigIntDecimalString,
   }),
   constraints: MandateConstraintsSchema.optional(),
   recurrence: MandateRecurrenceSchema.optional(),
@@ -87,6 +101,23 @@ export async function verifyMandate(
     JSON.parse(new TextDecoder().decode(base64urlDecode(pB64))),
   );
 
+  // Signature first, before any payload-derived check. Otherwise an
+  // unauthenticated attacker submitting forged VDCs can probe payload
+  // checks via the distinct error codes (`mandate_expired` leaks server
+  // time, `mandate_audience_mismatch` confirms the expected audience,
+  // and — most importantly — a distinct `mandate_signer_unknown` lets
+  // them enumerate which signer keys the server can resolve, mapping
+  // out the platform's signer registry. Same oracle / fail-fast posture
+  // as DPoP proof verification.
+  const signerKey = await opts.resolveSignerKey(claims);
+  // Collapse "signer not resolved" and "signature mismatch" into the
+  // same error so the response doesn't distinguish "wrong key" from
+  // "unknown key". An attacker probing for known signers sees the
+  // identical `mandate_bad_signature` either way.
+  if (!signerKey) throw new MandateError("signature", "mandate_bad_signature");
+  const ok = verify(null, Buffer.from(`${hB64}.${pB64}`), signerKey, base64urlDecode(sB64));
+  if (!ok) throw new MandateError("signature", "mandate_bad_signature");
+
   if (claims.aud !== opts.audience) {
     throw new MandateError("audience", "mandate_audience_mismatch");
   }
@@ -98,12 +129,6 @@ export async function verifyMandate(
   if (claims.step_up_tier >= 4 && !claims.step_up_proof_at) {
     throw new MandateError("step_up_proof_required", "mandate_missing_step_up_proof");
   }
-
-  const signerKey = await opts.resolveSignerKey(claims);
-  if (!signerKey) throw new MandateError("signer_unknown", "mandate_signer_unknown");
-
-  const ok = verify(null, Buffer.from(`${hB64}.${pB64}`), signerKey, base64urlDecode(sB64));
-  if (!ok) throw new MandateError("signature", "mandate_bad_signature");
 
   if (await opts.isRevoked(claims.jti)) {
     throw new MandateError("revoked", "mandate_revoked");

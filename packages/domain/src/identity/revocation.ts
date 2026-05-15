@@ -58,14 +58,37 @@ export class RevocationService {
   constructor(private readonly store: RevocationStore) {}
 
   async start(): Promise<void> {
-    const recent = await this.store.list(0);
-    for (const e of recent) this.cache.add(e.passportId, e.revokedAtMs);
-    log.info({ loaded: this.cache.size() }, "revocation_cache_warm");
-
+    // Subscribe BEFORE listing — otherwise a revocation that fires between
+    // `list()` returning and `subscribe()` registering would be missed
+    // entirely (it isn't in the snapshot, and the handler isn't installed
+    // yet to receive the push). A revoked passport silently slipping
+    // through the kill-switch is exactly the failure mode this service
+    // exists to prevent.
+    //
+    // Pushes that arrive *during* the initial list() are buffered, then
+    // drained into the cache after the snapshot is loaded. Adding the same
+    // passport twice (once from the list, once from the buffer) is a safe
+    // no-op — cache.add is idempotent on the id.
+    const buffer: RevocationEntry[] = [];
+    let bootstrapping = true;
     this.unsubscribe = this.store.subscribe((e) => {
+      if (bootstrapping) {
+        buffer.push(e);
+        return;
+      }
       this.cache.add(e.passportId, e.revokedAtMs);
       log.info({ passportId: e.passportId }, "revocation_pushed");
     });
+
+    const recent = await this.store.list(0);
+    for (const e of recent) this.cache.add(e.passportId, e.revokedAtMs);
+    // Drain any pushes that landed during list().
+    for (const e of buffer) this.cache.add(e.passportId, e.revokedAtMs);
+    bootstrapping = false;
+    log.info(
+      { loaded: this.cache.size(), drained: buffer.length },
+      "revocation_cache_warm",
+    );
   }
 
   async stop(): Promise<void> {
@@ -75,7 +98,16 @@ export class RevocationService {
   async isRevoked(passportId: string): Promise<boolean> {
     if (this.cache.has(passportId)) return true;
     // Authoritative recheck for tokens older than 60s — handled by callers' freshness logic.
-    return this.store.isRevoked(passportId);
+    const revoked = await this.store.isRevoked(passportId);
+    if (revoked) {
+      // Promote to cache so subsequent requests for the same revoked
+      // passport short-circuit on the in-memory path instead of round-
+      // tripping the authoritative store on every request — without this,
+      // a revocation that arrives via the authoritative-fallback path
+      // (slow propagation of LISTEN/NOTIFY) stays cold forever.
+      this.cache.add(passportId, Date.now());
+    }
+    return revoked;
   }
 
   async revoke(passportId: string, reason: string, now: number): Promise<void> {

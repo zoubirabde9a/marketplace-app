@@ -3,7 +3,16 @@ import { randomBytes } from "node:crypto";
 const UUID_V7_VARIANT = 0b10;
 
 export function uuidv7(now: number = Date.now()): string {
-  const ms = BigInt(now);
+  // Reject non-finite/negative `now`. `BigInt(NaN)` throws a raw
+  // `SyntaxError: Cannot convert NaN to a BigInt`; `BigInt(-1)` would
+  // produce a UUIDv7 with all-1 timestamp bytes (via two's-complement
+  // truncation) that sorts as if it were from year ~10889 and breaks
+  // every UUIDv7-sorted index. Same boundary defense as
+  // `generatePublicNumber` (pass #189).
+  if (!Number.isFinite(now) || now < 0) {
+    throw new RangeError(`uuidv7:invalid_now:${now}`);
+  }
+  const ms = BigInt(Math.floor(now));
   const rand = randomBytes(10);
 
   const bytes = new Uint8Array(16);
@@ -25,6 +34,14 @@ export function uuidv7(now: number = Date.now()): string {
 }
 
 export function timestampFromUuidv7(uuid: string): number {
+  // Reject malformed input — pre-fix `BigInt("0x" + <junk>)` threw a raw
+  // `SyntaxError` out of the function for any non-UUIDv7 string a caller
+  // happened to pass. Now returns NaN for invalid input so callers can
+  // branch on `Number.isFinite(...)` instead of try/catching. (NaN is
+  // the conventional "not a timestamp" sentinel used by `Date.parse`
+  // and the existing audit / sort code paths already check
+  // `Number.isFinite` after parsing.)
+  if (!UUID_V7_REGEX.test(uuid)) return Number.NaN;
   const hex = uuid.replace(/-/g, "");
   return Number(BigInt("0x" + hex.slice(0, 12)));
 }

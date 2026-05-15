@@ -46,17 +46,31 @@ export function scoreCounterfeit(signals: CounterfeitSignals): RiskScore {
     score += W.brandRegistryMismatch;
     contributors.push({ name: "brand_registry_mismatch", weight: W.brandRegistryMismatch });
   }
-  if (
-    signals.priceVsAuthorizedFloorBps !== undefined &&
-    signals.priceVsAuthorizedFloorBps < 6500
-  ) {
-    score += W.priceAnomaly;
-    contributors.push({ name: "price_anomaly_below_floor", weight: W.priceAnomaly });
+  // For every numeric signal: treat a non-finite value (NaN / Infinity from
+  // a broken upstream signal pipeline) as flag-worthy rather than letting
+  // the comparison silently evaluate `false` and skip the contribution.
+  // Same NaN-bypass family as moderation (pass #130). A scoring pipeline
+  // that quietly stops detecting counterfeits because the price-feed
+  // aggregator NaN'd out is exactly what this module exists to prevent.
+  if (signals.priceVsAuthorizedFloorBps !== undefined) {
+    if (!Number.isFinite(signals.priceVsAuthorizedFloorBps)) {
+      score += W.priceAnomaly;
+      contributors.push({ name: "price_signal_invalid", weight: W.priceAnomaly });
+    } else if (signals.priceVsAuthorizedFloorBps < 6500) {
+      score += W.priceAnomaly;
+      contributors.push({ name: "price_anomaly_below_floor", weight: W.priceAnomaly });
+    }
   }
-  if (
-    signals.sellerAgeDays < 90 &&
-    (signals.sellerReputationBps ?? 0) < 5000
-  ) {
+  // `?? 0` does NOT catch NaN — `NaN ?? 0` keeps NaN — so a NaN reputation
+  // makes `NaN < 5000` evaluate `false` and treats a new seller as if they
+  // already had high reputation. Force NaN → 0 via Number.isFinite so the
+  // new-seller-low-rep flag fires when reputation is unmeasurable.
+  const repBps = signals.sellerReputationBps !== undefined && Number.isFinite(signals.sellerReputationBps)
+    ? signals.sellerReputationBps
+    : 0;
+  const sellerAgeOk = Number.isFinite(signals.sellerAgeDays) && signals.sellerAgeDays >= 0;
+  const effectiveSellerAge = sellerAgeOk ? signals.sellerAgeDays : 0;
+  if (effectiveSellerAge < 90 && repBps < 5000) {
     score += W.newSellerHighRiskSku;
     contributors.push({ name: "new_low_reputation_seller", weight: W.newSellerHighRiskSku });
   }
@@ -76,6 +90,15 @@ export function scoreCounterfeit(signals: CounterfeitSignals): RiskScore {
   ) {
     score += W.buyerSideAnomaly;
     contributors.push({ name: "elevated_refund_rate", weight: W.buyerSideAnomaly });
+  }
+  // Dispute-rate signal: declared on the input but previously never read — a
+  // seller could fly under the radar by absorbing buyer refunds privately
+  // while quietly accruing disputes, and counterfeit scoring would see none
+  // of it. Without a category baseline we use an absolute 200 bps (2%) cutoff;
+  // typical authorised-brand baselines are <50 bps, so 2% is a clear outlier.
+  if (signals.disputeRateBps !== undefined && signals.disputeRateBps > 200) {
+    score += W.buyerSideAnomaly;
+    contributors.push({ name: "elevated_dispute_rate", weight: W.buyerSideAnomaly });
   }
 
   let risk: CounterfeitRiskT = "low";

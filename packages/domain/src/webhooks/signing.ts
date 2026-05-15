@@ -49,7 +49,27 @@ export function verifyWebhook(opts: {
   now: number;
   toleranceSeconds?: number;
 }): boolean {
-  const tol = opts.toleranceSeconds ?? 300;
+  // Default to 300s. Reject a non-finite caller-supplied tolerance: `??`
+  // only handles nullish, so passing `Number.NaN` would otherwise leave
+  // `tol = NaN` and make `Math.abs(...) > NaN` evaluate to `false` — the
+  // freshness gate would silently pass any timestamp, including ones years
+  // in the past. Fail-closed when the tolerance itself is malformed.
+  const rawTol = opts.toleranceSeconds ?? 300;
+  if (!Number.isFinite(rawTol) || rawTol < 0) return false;
+  const tol = rawTol;
+  // `Math.abs(NaN) > tol` evaluates to `false` — a header timestamp that's
+  // non-finite (NaN, Infinity, or a coerced-to-NaN string from a loosely-
+  // typed caller bypassing parseSignatureHeader) would silently pass the
+  // freshness gate. The signature check downstream would catch it via
+  // mismatch, but the freshness gate is supposed to fail closed on
+  // malformed timestamps. Same fail-closed defense pattern as the DPoP
+  // verifier (pass #22) and mandate verifier (pass #24).
+  if (!Number.isFinite(opts.header.timestamp)) return false;
+  // Signature, kid, and body must be non-empty strings — accepting empty
+  // would let a caller submit `{signature: ""}` and rely on the verify
+  // call to fail at the crypto layer rather than at the input gate.
+  if (typeof opts.header.signature !== "string" || opts.header.signature.length === 0) return false;
+  if (typeof opts.header.kid !== "string" || opts.header.kid.length === 0) return false;
   const nowSec = Math.floor(opts.now / 1000);
   if (Math.abs(nowSec - opts.header.timestamp) > tol) return false;
   const message = `${opts.header.kid}.${opts.header.timestamp}.${opts.body}`;

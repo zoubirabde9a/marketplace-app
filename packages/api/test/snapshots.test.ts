@@ -112,4 +112,60 @@ describe("RedisSnapshotStore", () => {
     expect(got?.id).toBe("abc123");
     expect(got?.kind).toBe("search");
   });
+
+  it("survives bigints in the snapshot input (Zod-coerced filter values)", async () => {
+    // The MCP transport stringifies bigints on the wire but the snapshot
+    // captures the tool input pre-serialization — a Zod schema that
+    // coerces price filters to bigint would otherwise crash put() with
+    // "Do not know how to serialize a BigInt".
+    const fake: Record<string, string> = {};
+    const fakeRedis = {
+      async set(key: string, value: string) {
+        fake[key] = value;
+      },
+      async get(key: string) {
+        return fake[key] ?? null;
+      },
+    };
+    const store = new RedisSnapshotStore(fakeRedis as unknown as ConstructorParameters<typeof RedisSnapshotStore>[0]);
+    const now = Date.now();
+    const snap: catalog.Snapshot = {
+      id: "big-1",
+      kind: "search",
+      input: { priceMinMinor: 9999999999999n, q: "phones" } as unknown as catalog.Snapshot["input"],
+      output: { totalEstimate: 0 },
+      createdAt: now,
+      expiresAt: now + catalog.SNAPSHOT_TTL_MS,
+    };
+    // Should NOT throw.
+    await store.put(snap);
+    const got = (await store.get("big-1")) as catalog.Snapshot & {
+      input: { priceMinMinor: string };
+    };
+    expect(got).not.toBeNull();
+    // BigInt persisted as a JSON string (lossless replay-safe form).
+    expect(got.input.priceMinMinor).toBe("9999999999999");
+  });
+
+  it("returns null for a corrupt JSON entry in Redis (no crash)", async () => {
+    const fakeRedis = {
+      async set() {},
+      async get() {
+        return "{not valid json";
+      },
+    };
+    const store = new RedisSnapshotStore(fakeRedis as unknown as ConstructorParameters<typeof RedisSnapshotStore>[0]);
+    expect(await store.get("anything")).toBeNull();
+  });
+
+  it("returns null when the parsed entry doesn't match the Snapshot shape", async () => {
+    const fakeRedis = {
+      async set() {},
+      async get() {
+        return JSON.stringify({ random: "object", not: "a snapshot" });
+      },
+    };
+    const store = new RedisSnapshotStore(fakeRedis as unknown as ConstructorParameters<typeof RedisSnapshotStore>[0]);
+    expect(await store.get("anything")).toBeNull();
+  });
 });

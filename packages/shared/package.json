@@ -50,6 +50,11 @@
       "types": "./dist/phone.d.ts",
       "development": "./src/phone.ts",
       "default": "./dist/phone.js"
+    },
+    "./country": {
+      "types": "./dist/country.d.ts",
+      "development": "./src/country.ts",
+      "default": "./dist/country.js"
     }
   },
   "scripts": {

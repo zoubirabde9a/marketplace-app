@@ -26,16 +26,22 @@ describe("A2ARegistry", () => {
     expect(() => reg.register(negotiatePriceSkill)).toThrow(/already_registered/);
   });
 
-  it("rejects invocation of unknown skill", async () => {
+  it("rejects invocation of unknown skill (404 NotFoundError)", async () => {
     const reg = new A2ARegistry();
-    await expect(reg.invoke("unknown", {}, ctx())).rejects.toThrow(/not_found/);
+    // Error class is NotFoundError (HTTP 404) — title "a2a_skill not found".
+    // Pre-fix this was a ConflictError (409) with message "a2a_skill_not_found:…",
+    // which had the right substring but wrong HTTP status class.
+    await expect(reg.invoke("unknown", {}, ctx())).rejects.toThrow(/not found/);
   });
 
-  it("rejects invocation with bad input", async () => {
+  it("rejects invocation with bad input (400 ValidationError)", async () => {
     const reg = new A2ARegistry();
     reg.register(negotiatePriceSkill);
+    // Bad input is ValidationError (HTTP 400) with structured per-field
+    // issues, not a ConflictError. The thrown message contains the
+    // standard "Validation failed" title plus the offending field path.
     await expect(reg.invoke("negotiate_price", { nope: true }, ctx())).rejects.toThrow(
-      /input_validation/,
+      /Validation failed/,
     );
   });
 
@@ -100,9 +106,14 @@ describe("negotiate_price skill", () => {
         },
       },
       ctx(),
-    )) as { accepted: boolean; counterUnitPriceMinor: bigint; reason: string };
+    )) as { accepted: boolean; counterUnitPriceMinor?: bigint; reason: string };
     expect(result.accepted).toBe(false);
-    expect(result.counterUnitPriceMinor).toBe(800n);
     expect(result.reason).toBe("below_floor_price");
+    // Spec §7b: the floor is PRIVATE. Pre-fix the response returned
+    // `counterUnitPriceMinor: floor` which leaked the floor to any
+    // buyer probing with a token-low offer. Counter is now omitted on
+    // below-floor rejections — the buyer iterates upward without
+    // ever seeing the secret floor in the response.
+    expect(result.counterUnitPriceMinor).toBeUndefined();
   });
 });

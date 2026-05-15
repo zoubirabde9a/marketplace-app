@@ -83,7 +83,7 @@ function makeMockRepos(): Repos & {
       return undefined;
     },
     async removeMedia() {
-      return false;
+      return "not_found" as const;
     },
   };
 

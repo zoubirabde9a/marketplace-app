@@ -51,7 +51,20 @@ export function makeSearchLogRepo(db: DbClient) {
      * non-issue.
      */
     async getStats(opts: { windowHours?: number } = {}): Promise<SearchStats> {
-      const windowHours = opts.windowHours ?? 24;
+      // Bound windowHours at the repo even though the route validator
+      // (search-stats.ts) already enforces (0, 720]. Two reasons:
+      //   1. Defense in depth — direct in-process callers (operator
+      //      scripts, future internal tools) might bypass the route.
+      //   2. A 0 / negative window produces `NOW() - '0 hours'` which
+      //      equals NOW(), so the WHERE clause `occurred_at >= NOW()`
+      //      matches nothing and the function returns silent-zero stats
+      //      — easy to mistake for "no search traffic" when really the
+      //      window is unusable.
+      const rawWindow = opts.windowHours ?? 24;
+      const windowHours =
+        Number.isFinite(rawWindow) && rawWindow > 0
+          ? Math.min(rawWindow, 24 * 30)
+          : 24;
 
       const aggRows = await db.execute<{
         total: number; distinct_count: number; zero_result_count: number;

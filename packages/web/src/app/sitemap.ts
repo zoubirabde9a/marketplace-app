@@ -347,6 +347,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       "maison", "decoration", "salon",
       "motos", "voitures",
     ];
+    // Dedupe alias slugs against the live `categories` facet. If a product
+    // ever gets tagged directly with one of the alias slugs (e.g. a new
+    // listing tagged "smartphones" rather than only "telephones/smartphones"),
+    // the alias loop AND the categories loop both emit `/c/smartphones`.
+    // Google logs duplicate URLs as a soft sitemap warning; the editorial
+    // landing (categories side) wins because it has the full prose/FAQ +
+    // priority 0.8, identical to the alias entry.
+    const categorySet = new Set(categories);
     categoryEntries = [
       ...categories.flatMap((c) => [
         {
@@ -362,7 +370,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           priority: 0.7,
         },
       ]),
-      ...ALIAS_SLUGS.map((slug) => ({
+      ...ALIAS_SLUGS.filter((slug) => !categorySet.has(slug)).map((slug) => ({
         url: `${SITE_URL}/c/${encodeURIComponent(slug)}`,
         lastModified: now,
         changeFrequency: "daily" as const,

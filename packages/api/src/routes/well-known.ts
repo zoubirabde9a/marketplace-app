@@ -18,10 +18,17 @@ export async function registerWellKnown(app: FastifyInstance): Promise<void> {
     // URL. trustProxy=true (server.ts) makes req.protocol / req.hostname
     // reflect the public origin from X-Forwarded-* headers.
     const envBase = process.env.PUBLIC_BASE_URL;
-    const host = (req.headers.host as string | undefined) ?? req.hostname;
+    // Use `req.hostname` (not `req.headers.host`). With trustProxy=true,
+    // `req.hostname` resolves through X-Forwarded-Host, while the raw Host
+    // header is attacker-controlled — feeding it into the agent-card would
+    // let any caller poison the discovery doc and steer AI agents that
+    // follow capabilities.mcp.endpoint / auth.oauth2.token_endpoint to an
+    // attacker-controlled origin. The fallback is only reachable when
+    // PUBLIC_BASE_URL is unset (dev / misconfig), but the bound still has
+    // to be safe.
     const base = envBase
       ? envBase.replace(/\/$/, "")
-      : `${req.protocol}://${host}`;
+      : `${req.protocol}://${req.hostname}`;
     return {
       name: "Teno Store",
       description:

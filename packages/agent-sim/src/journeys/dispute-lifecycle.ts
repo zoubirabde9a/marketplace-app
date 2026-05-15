@@ -73,7 +73,7 @@ export async function runDisputeLifecycle(input: DisputeJourneyInput): Promise<D
       current: input.orderStatus,
       event: { kind: "open_dispute", reason: "buyer_dispute" },
     },
-    buildCtx(["order:cancel"]),
+    buildCtx(["order:write", "dispute:write"]),
   )) as { previous: string; next: string; terminal: boolean };
   trace.push({ from: orderEvt.previous, event: "open_dispute", to: orderEvt.next, terminal: orderEvt.terminal });
 
@@ -86,7 +86,7 @@ export async function runDisputeLifecycle(input: DisputeJourneyInput): Promise<D
       openedAt: input.openedAt.toISOString(),
       now: input.now.toISOString(),
     },
-    buildCtx(["dispute:write"]),
+    buildCtx(["dispute:read"]),
   )) as { shouldAutoEscalate: boolean; hoursToDeadline: number };
 
   // 3) Seller might or might not respond.
@@ -214,7 +214,7 @@ export async function runDisputeLifecycle(input: DisputeJourneyInput): Promise<D
       current: orderEvt.next,
       event: { kind: "refund", amountMinor: refundMinor },
     },
-    buildCtx(["order:cancel"]),
+    buildCtx(["order:write", "order:cancel"]),
   )) as { previous: string; next: string };
   trace.push({ from: orderRefund.previous, event: "refund", to: orderRefund.next, terminal: false });
   finalOrderStatus = orderRefund.next;

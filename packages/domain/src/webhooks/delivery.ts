@@ -33,24 +33,47 @@ export interface ScheduleNextInput {
 
 export function scheduleNextAttempt(input: ScheduleNextInput): DeliveryAttempt {
   const opts = { ...DEFAULT_BACKOFF, ...(input.options ?? {}) };
+  // Sanitise critical numeric options. A caller passing `jitterRatio > 1`
+  // produces a jitter range `[-(1+r)·exp, +(1+r)·exp]` that can drive the
+  // scheduled time INTO THE PAST (`exp + jitter < 0`). A negative
+  // `baseSeconds` or zero `maxSeconds` similarly breaks the backoff math.
+  // Defensive clamp: jitter to [0, 1], base/max to positive.
+  const jitterRatio = Math.max(0, Math.min(1, opts.jitterRatio));
+  const baseSeconds = Math.max(1, opts.baseSeconds);
+  const maxSeconds = Math.max(baseSeconds, opts.maxSeconds);
+  // Sanitise maxAttempts. Pre-fix a non-finite value (`NaN`, `Infinity`)
+  // made `attempt >= NaN` evaluate to `false` forever — the dead-letter
+  // gate never fired and the scheduler kept producing retry attempts
+  // until something else broke. Clamp to a sensible upper bound; default
+  // is 12 so anything past 1000 is misconfiguration.
+  const maxAttempts = Number.isFinite(opts.maxAttempts) && opts.maxAttempts >= 0
+    ? Math.floor(opts.maxAttempts)
+    : DEFAULT_BACKOFF.maxAttempts;
+  // `attempt` is an iteration counter; negative is nonsense. Treat junk
+  // input as attempt 0 rather than producing fractional `2 ** negative`
+  // exponents and a `scheduledFor` that may already be past.
+  const attempt = Number.isFinite(input.attempt) && input.attempt >= 0 ? Math.floor(input.attempt) : 0;
   const rng = input.rng ?? Math.random;
   const status = classifyResponse(input.responseStatus);
   if (status === "delivered") {
-    return { attempt: input.attempt, scheduledFor: input.now, status: "delivered", ...(input.responseStatus !== undefined ? { responseStatus: input.responseStatus } : {}) };
+    return { attempt, scheduledFor: input.now, status: "delivered", ...(input.responseStatus !== undefined ? { responseStatus: input.responseStatus } : {}) };
   }
-  if (input.attempt >= opts.maxAttempts || status === "permanent_failure") {
+  if (attempt >= maxAttempts || status === "permanent_failure") {
     return {
-      attempt: input.attempt,
+      attempt,
       scheduledFor: input.now,
       status: "failed_dead",
       ...(input.responseStatus !== undefined ? { responseStatus: input.responseStatus } : {}),
     };
   }
-  const exp = Math.min(opts.baseSeconds * 2 ** input.attempt, opts.maxSeconds);
-  const jitter = exp * opts.jitterRatio * (rng() * 2 - 1);
-  const next = new Date(input.now.getTime() + (exp + jitter) * 1000);
+  const exp = Math.min(baseSeconds * 2 ** attempt, maxSeconds);
+  const jitter = exp * jitterRatio * (rng() * 2 - 1);
+  // `exp + jitter` is guaranteed non-negative now because jitterRatio ≤ 1,
+  // so the worst case is `exp - exp = 0`. Keep the Math.max for paranoia.
+  const delaySeconds = Math.max(0, exp + jitter);
+  const next = new Date(input.now.getTime() + delaySeconds * 1000);
   return {
-    attempt: input.attempt + 1,
+    attempt: attempt + 1,
     scheduledFor: next,
     status: "failed_retry",
     ...(input.responseStatus !== undefined ? { responseStatus: input.responseStatus } : {}),

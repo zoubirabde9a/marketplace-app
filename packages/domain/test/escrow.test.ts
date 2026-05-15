@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { applyEscrowEvent, ESCROW_RELEASE_DAYS, type EscrowHold } from "../src/escrow/hold.js";
+import {
+  allowedEscrowEventKinds,
+  applyEscrowEvent,
+  canApplyEscrowEvent,
+  computeReleaseAt,
+  ESCROW_RELEASE_DAYS,
+  type EscrowHold,
+} from "../src/escrow/hold.js";
 
 const hold = (overrides: Partial<EscrowHold> = {}): EscrowHold => ({
   holdId: "h1",
@@ -51,5 +58,36 @@ describe("escrow events", () => {
   it("standard release windows defined per reason", () => {
     expect(ESCROW_RELEASE_DAYS.new_seller).toBe(30);
     expect(ESCROW_RELEASE_DAYS.high_risk_category).toBe(14);
+  });
+
+  it("computeReleaseAt derives the standard window for a reason", () => {
+    const now = new Date("2026-05-15T00:00:00Z");
+    const r = computeReleaseAt("new_seller", now);
+    // 30 days
+    expect(r.toISOString()).toBe("2026-06-14T00:00:00.000Z");
+  });
+
+  it("canApplyEscrowEvent previews transitions without throwing", () => {
+    const held = hold();
+    expect(canApplyEscrowEvent(held, "open_dispute")).toBe(true);
+    expect(canApplyEscrowEvent(held, "release", new Date("2026-05-01"))).toBe(false); // premature
+    expect(canApplyEscrowEvent(held, "release", new Date("2026-06-03"))).toBe(true);
+    const released = applyEscrowEvent(held, { kind: "release", at: new Date("2026-06-03") });
+    expect(canApplyEscrowEvent(released, "claw_back")).toBe(false);
+    expect(canApplyEscrowEvent(released, "release")).toBe(false);
+  });
+
+  it("allowedEscrowEventKinds enumerates what would apply cleanly right now", () => {
+    const held = hold();
+    expect(allowedEscrowEventKinds(held, new Date("2026-05-01")).sort()).toEqual(
+      ["claw_back", "open_dispute"].sort(),
+    );
+    expect(allowedEscrowEventKinds(held, new Date("2026-06-03")).sort()).toEqual(
+      ["claw_back", "open_dispute", "release"].sort(),
+    );
+    const inDispute = applyEscrowEvent(held, { kind: "open_dispute" });
+    expect(allowedEscrowEventKinds(inDispute).sort()).toEqual(
+      ["claw_back", "close_dispute"].sort(),
+    );
   });
 });

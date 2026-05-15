@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  allowedDisputeEventKinds,
   applyDisputeEvent,
+  canApplyDisputeEvent,
   evaluateSla,
   isDisputeTerminal,
   type DisputeStatus,
@@ -47,5 +49,31 @@ describe("evaluateSla", () => {
   it("escalated SLA is 14 days from open", () => {
     const r = evaluateSla("escalated", opened, new Date("2026-05-13T13:00:00Z"));
     expect(r.shouldNotifyApproachingDeadline).toBe(true);
+  });
+
+  it("clock-skew: `now < openedAt` clamps elapsed to 0 (no auto-escalate, full window remains)", () => {
+    // Pre-fix, a negative elapsed went into `remaining = SLA - (negative)` so
+    // hoursToDeadline showed a value larger than the SLA window.
+    const r = evaluateSla("open", opened, new Date("2026-04-30T00:00:00Z"));
+    expect(r.shouldAutoEscalate).toBe(false);
+    expect(r.hoursToDeadline).toBe(7 * 24);
+  });
+});
+
+describe("dispute state-machine read parity helpers", () => {
+  it("canApplyDisputeEvent previews transitions without throwing", () => {
+    expect(canApplyDisputeEvent("open", "seller_respond")).toBe(true);
+    expect(canApplyDisputeEvent("open", "withdraw")).toBe(true);
+    expect(canApplyDisputeEvent("resolved_buyer", "seller_respond")).toBe(false);
+  });
+
+  it("allowedDisputeEventKinds enumerates what would apply cleanly", () => {
+    expect(allowedDisputeEventKinds("open").sort()).toEqual(
+      ["escalate", "resolve_buyer", "resolve_seller", "seller_respond", "withdraw"].sort(),
+    );
+    expect(allowedDisputeEventKinds("escalated").sort()).toEqual(
+      ["resolve_buyer", "resolve_seller", "withdraw"].sort(),
+    );
+    expect(allowedDisputeEventKinds("resolved_buyer")).toEqual([]);
   });
 });

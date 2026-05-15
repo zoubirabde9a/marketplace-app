@@ -20,4 +20,23 @@ describe("PKCE", () => {
     const c = codeChallengeS256(generateCodeVerifier());
     expect(verifyPkce(a, c, "S256")).toBe(false);
   });
+
+  it("rejects an empty verifier (RFC 7636 length floor)", () => {
+    // Without the length check, an attacker could submit "" plus the well-known
+    // SHA-256 challenge of "" and pass — the binding to the original challenge
+    // is meaningless without verifier entropy.
+    const emptyChallenge = codeChallengeS256("");
+    expect(verifyPkce("", emptyChallenge, "S256")).toBe(false);
+  });
+
+  it("rejects a verifier shorter than 43 chars (RFC 7636)", () => {
+    const short = "abc";
+    expect(verifyPkce(short, codeChallengeS256(short), "S256")).toBe(false);
+  });
+
+  it("rejects a verifier with disallowed characters", () => {
+    // 43 chars but contains `+/=` (not in the unreserved set).
+    const bad = "a".repeat(40) + "+/=";
+    expect(verifyPkce(bad, codeChallengeS256(bad), "S256")).toBe(false);
+  });
 });

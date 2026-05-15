@@ -297,6 +297,14 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
   await registerMcpTransport(app, {
     registry: mcpRegistry,
     buildContext: async (req): Promise<McpContext> => {
+      // Use Fastify's `req.id` (set from incoming x-request-id header or
+      // genReqId) as the MCP context's requestId so the Fastify access log
+      // line, the audit middleware row, and the MCP tool-invocation
+      // identifier all share the same correlation id. Pre-fix the
+      // registry minted a separate `newRequestId()` per call — operators
+      // tracing an issue saw one id in the API log and a different id in
+      // the audit/tool layer with no link between them.
+      const reqId = typeof req.id === "string" && req.id.length > 0 ? req.id : newRequestId();
       const principal = req.principal;
       if (!principal) {
         // No auth + no DEV_BYPASS. Tool calls will fail scope checks; tools/list
@@ -307,7 +315,7 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
           scopes: new Set(),
           ownerKind: "user",
           ownerId: "anonymous",
-          requestId: newRequestId(),
+          requestId: reqId,
           now: () => Date.now(),
           emitAudit: async () => undefined,
         };
@@ -319,7 +327,7 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
         ownerKind: principal.ownerKind,
         ownerId: principal.ownerId,
         ...(principal.mandateId !== undefined ? { mandateId: principal.mandateId } : {}),
-        requestId: newRequestId(),
+        requestId: reqId,
         now: () => Date.now(),
         emitAudit: async () => undefined,
       };

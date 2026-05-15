@@ -1,7 +1,15 @@
 // Cart domain — line-item math, totals, currency consistency.
 // Real persistence lives in @marketplace/db; this module owns deterministic logic.
 
-import { MarketplaceError, ValidationError } from "@marketplace/shared/errors";
+import { ConflictError, MarketplaceError, ValidationError } from "@marketplace/shared/errors";
+
+// Per-line qty cap. The MCP buyer.cart.add_item / cart.update_qty surfaces cap
+// at 999, but the domain accepts up to MAX_QTY_PER_LINE for adapters that bulk-
+// import seller-side. The cap exists because (a) DB integer columns are int4 in
+// practice, (b) `existing.qty + line.qty` is a JS Number — safe up to 2^53 but
+// only a fool relies on that, and (c) a runaway agent looping `add_item` with
+// `qty: 1` should be bounded by the schema, not by the database overflowing.
+export const MAX_QTY_PER_LINE = 10_000;
 
 export interface CartLine {
   variantId: string;
@@ -46,25 +54,73 @@ export function totalsFor(cart: PriceableCart): CartTotals {
 }
 
 export function addLine(lines: ReadonlyArray<CartLine>, line: CartLine): CartLine[] {
+  // Number.isInteger rejects NaN, Infinity, and non-integers (1.5). Pre-fix
+  // `NaN <= 0` evaluated to `false`, `NaN > MAX_QTY_PER_LINE` likewise, so
+  // a non-integer qty slipped past both gates — then `existing.qty + NaN`
+  // produced a NaN-qty cart line that crashed totalsFor's `BigInt(qty)`
+  // coercion downstream. Fail loudly at the entry point.
+  if (!Number.isInteger(line.qty)) {
+    throw new ValidationError([{ path: "qty", message: "must be a finite integer" }]);
+  }
   if (line.qty <= 0) throw new ValidationError([{ path: "qty", message: "must be > 0" }]);
+  if (line.qty > MAX_QTY_PER_LINE) {
+    throw new ValidationError([
+      { path: "qty", message: `must be ≤ ${MAX_QTY_PER_LINE}` },
+    ]);
+  }
+  if (line.unitPriceMinor <= 0n) {
+    // A 0 or negative unit price would let an agent build a cart that totals
+    // 0 (or negative — which crashes the checkout invariant). The domain
+    // refuses to accept such a line at all rather than relying on later
+    // surfaces to filter it.
+    throw new ValidationError([
+      { path: "unitPriceMinor", message: "must be > 0" },
+    ]);
+  }
   const found = lines.findIndex((l) => l.variantId === line.variantId);
   if (found === -1) return [...lines, line];
   const existing = lines[found]!;
   if (existing.sellerId !== line.sellerId) {
     throw new ValidationError([{ path: "sellerId", message: "variant<->seller mismatch" }]);
   }
+  if (existing.unitPriceMinor !== line.unitPriceMinor) {
+    // The catalog price changed between the first add and this one. Silently
+    // re-pricing the already-added units (previous behaviour) would make the
+    // buyer pay more than the price they agreed to when they first added it.
+    // Force the caller to handle this explicitly — typically by surfacing
+    // the new price to the buyer and re-adding once they accept it.
+    throw new ConflictError(
+      `cart_line_price_changed: existing=${existing.unitPriceMinor} new=${line.unitPriceMinor}`,
+    );
+  }
+  const mergedQty = existing.qty + line.qty;
+  if (mergedQty > MAX_QTY_PER_LINE) {
+    throw new ValidationError([
+      { path: "qty", message: `merged qty ${mergedQty} exceeds ${MAX_QTY_PER_LINE}` },
+    ]);
+  }
   const updated: CartLine[] = [...lines];
   updated[found] = {
     ...existing,
-    qty: existing.qty + line.qty,
-    unitPriceMinor: line.unitPriceMinor,
+    qty: mergedQty,
     ...(line.negotiatedQuoteId !== undefined ? { negotiatedQuoteId: line.negotiatedQuoteId } : {}),
   };
   return updated;
 }
 
 export function updateLineQty(lines: ReadonlyArray<CartLine>, variantId: string, qty: number): CartLine[] {
+  // Same Number.isInteger gate as addLine — without it NaN/Infinity/floats
+  // bypass the `< 0` and `> MAX` checks and land a non-integer qty on the
+  // cart line.
+  if (!Number.isInteger(qty)) {
+    throw new ValidationError([{ path: "qty", message: "must be a finite integer" }]);
+  }
   if (qty < 0) throw new ValidationError([{ path: "qty", message: "must be ≥ 0" }]);
+  if (qty > MAX_QTY_PER_LINE) {
+    throw new ValidationError([
+      { path: "qty", message: `must be ≤ ${MAX_QTY_PER_LINE}` },
+    ]);
+  }
   if (qty === 0) return lines.filter((l) => l.variantId !== variantId);
   const idx = lines.findIndex((l) => l.variantId === variantId);
   if (idx === -1) throw new MarketplaceError({

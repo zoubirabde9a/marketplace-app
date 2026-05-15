@@ -37,6 +37,68 @@ describe("priceQuote", () => {
     expect(q.cartHash).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it("rejects an unknown preferredShipping option (no silent fallback)", () => {
+    expect(() =>
+      priceQuote({
+        cart: {
+          cartId: "c1",
+          currency: "USD",
+          lines: [{ variantId: "v1", sellerId: "s1", qty: 1, unitPriceMinor: 100_00n }],
+        },
+        shippingOptions: [
+          { carrier: "ups", service: "ground", costMinor: 5_00n, estDeliveryDays: 5 },
+          { carrier: "ups", service: "express", costMinor: 15_00n, estDeliveryDays: 2 },
+        ],
+        preferredShipping: { carrier: "ups", service: "ULTRA_EXPRESS" },
+        taxBreakdown: [],
+        classifications: [],
+        buyer,
+        rules: [],
+        now: new Date("2026-05-03"),
+      }),
+    ).toThrow(/unknown_shipping_option:ups\/ULTRA_EXPRESS/);
+  });
+
+  it("uses the specifically requested preferredShipping when it exists", () => {
+    const q = priceQuote({
+      cart: {
+        cartId: "c1",
+        currency: "USD",
+        lines: [{ variantId: "v1", sellerId: "s1", qty: 1, unitPriceMinor: 100_00n }],
+      },
+      shippingOptions: [
+        { carrier: "ups", service: "ground", costMinor: 5_00n, estDeliveryDays: 5 },
+        { carrier: "ups", service: "express", costMinor: 15_00n, estDeliveryDays: 2 },
+      ],
+      preferredShipping: { carrier: "ups", service: "express" },
+      taxBreakdown: [],
+      classifications: [],
+      buyer,
+      rules: [],
+      now: new Date("2026-05-03"),
+    });
+    expect(q.selectedShipping?.service).toBe("express");
+    expect(q.totals.shippingMinor).toBe(15_00n);
+  });
+
+  it("rejects a negative tax line (would silently credit the buyer)", () => {
+    expect(() =>
+      priceQuote({
+        cart: {
+          cartId: "c1",
+          currency: "USD",
+          lines: [{ variantId: "v1", sellerId: "s1", qty: 1, unitPriceMinor: 100_00n }],
+        },
+        shippingOptions: [],
+        taxBreakdown: [{ variantId: "v1", taxMinor: -500n, zoneId: "z1", rateBps: 0 }],
+        classifications: [],
+        buyer,
+        rules: [],
+        now: new Date("2026-05-03"),
+      }),
+    ).toThrow(/negative_tax:v1/);
+  });
+
   it("blocks via restricted-items rule", () => {
     expect(() =>
       priceQuote({

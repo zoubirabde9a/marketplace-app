@@ -46,5 +46,13 @@ export function reconcileOrder(input: OrderRecon): ReconResult {
 }
 
 export function shouldHaltPayouts(results: ReadonlyArray<ReconResult>, toleranceMinor = 0n): boolean {
+  // A negative tolerance would invert the comparison: `diff < -(-5) = 5` and
+  // `diff > -5` together cover [-5, 5] but in the OPPOSITE polarity — the
+  // function would HALT payouts for in-tolerance diffs and PASS out-of-
+  // tolerance diffs. Caller bug, but the failure mode (silent payout of
+  // unreconciled money) is the most expensive kind to discover late.
+  if (toleranceMinor < 0n) {
+    throw new RangeError(`shouldHaltPayouts:negative_tolerance:${toleranceMinor}`);
+  }
   return results.some((r) => !r.ok && (r.diffMinor < -toleranceMinor || r.diffMinor > toleranceMinor));
 }

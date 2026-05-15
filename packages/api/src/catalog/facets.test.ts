@@ -110,6 +110,41 @@ describe("computeFacets", () => {
     expect(f.priceRanges).toEqual([{ currency: "DZD", minMinor: 1500n, maxMinor: 1500n }]);
   });
 
+  it("collapses case-variant brands into one facet entry (matching filter behaviour)", () => {
+    // The brand FILTER is case-insensitive (`p.brand.toLowerCase() !==
+    // f.brand.toLowerCase()`), so the facet COUNT must be too. Previously
+    // "Samsung" / "samsung" / "SAMSUNG" produced three separate facet
+    // entries, each undercounting what clicking the chip would actually
+    // return.
+    const all = [
+      p({ brand: "Samsung", sellerId: "s-1" }),
+      p({ brand: "samsung", sellerId: "s-1" }),
+      p({ brand: "SAMSUNG", sellerId: "s-2" }),
+    ];
+    const f = computeFacets(all, ctx(), sellers);
+    const samsungEntries = f.brands.filter((b) => b.value.toLowerCase() === "samsung");
+    expect(samsungEntries).toHaveLength(1);
+    expect(samsungEntries[0]?.count).toBe(3);
+  });
+
+  it("excludes zero-priced variants from the price-range facet", () => {
+    // Scraper placeholders (Ouedkniss listings without a price field) come
+    // through as priceMinor=0. Including them dragged the slider's min
+    // anchor to 0 and showed a misleading "From 0 DZD" range to the buyer.
+    const all = [
+      p({
+        variants: [
+          { id: "v0", sku: "z", priceMinor: 0n, currency: "DZD", inStock: true },
+          { id: "v1", sku: "a", priceMinor: 2500n, currency: "DZD", inStock: true },
+          { id: "v2", sku: "b", priceMinor: 9999n, currency: "DZD", inStock: true },
+        ],
+      }),
+    ];
+    const f = computeFacets(all, ctx(), sellers);
+    const dzd = f.priceRanges.find((r) => r.currency === "DZD");
+    expect(dzd).toEqual({ currency: "DZD", minMinor: 2500n, maxMinor: 9999n });
+  });
+
   it("omits displayName when the seller isn't in the sellers map", () => {
     const all = [p({ sellerId: "s-ghost", brand: "Acme" })];
     const f = computeFacets(all, ctx(), sellers);

@@ -24,6 +24,28 @@ describe("scoreCounterfeit", () => {
     expect(r.risk).toBe("elevated");
   });
 
+  it("flags elevated dispute rate (>2%) — was previously declared but unused", () => {
+    const r = scoreCounterfeit({
+      brandRegistryMismatch: false,
+      sellerAgeDays: 365,
+      imageHashHits: 0,
+      descriptionAnomalies: 0,
+      disputeRateBps: 350, // 3.5% — well above 2% absolute cutoff
+    });
+    expect(r.contributors.map((c) => c.name)).toContain("elevated_dispute_rate");
+  });
+
+  it("does NOT flag dispute rate at or under the 200bps cutoff", () => {
+    const r = scoreCounterfeit({
+      brandRegistryMismatch: false,
+      sellerAgeDays: 365,
+      imageHashHits: 0,
+      descriptionAnomalies: 0,
+      disputeRateBps: 150, // 1.5% — under the 2% cutoff
+    });
+    expect(r.contributors.map((c) => c.name)).not.toContain("elevated_dispute_rate");
+  });
+
   it("high risk for brand mismatch + image hash hit", () => {
     const r = scoreCounterfeit({
       brandRegistryMismatch: true,
