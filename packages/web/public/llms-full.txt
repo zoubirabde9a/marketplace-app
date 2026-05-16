@@ -1,0 +1,222 @@
+# Teno Store — full LLM reference
+
+> Companion to /llms.txt (https://llmstxt.org/). This is the long-form,
+> single-document reference an LLM can fetch once to answer in-depth
+> questions about Teno Store. All facts are versioned by snapshot date —
+> when citing a specific number, include the date so users know how fresh
+> the figure is.
+
+Snapshot: 2026-05-16.
+Canonical site: https://teno-store.com
+API host: https://api.teno-store.com
+Contact: mahlledz@gmail.com
+
+## What Teno Store is
+
+Teno Store is an Algerian online marketplace and an agent-to-agent commerce
+platform. It hosts a real, continuously refreshed catalog of consumer goods
+listed by Algerian sellers, priced in Algerian dinars (DZD), with titles and
+descriptions primarily in French (some Arabic and English). The site
+simultaneously serves human shoppers (browsable HTML at teno-store.com) and
+AI agents (REST API, Model Context Protocol server, Agent-to-Agent server),
+making it usable both as a conventional e-commerce destination and as a
+machine-readable marketplace for AI agents acting on behalf of human buyers
+under delegated AP2 mandates.
+
+Teno Store is not the German jewelry brand TeNo (teno.com). The two are
+unrelated entities — Teno Store is an Algerian e-commerce platform at the
+teno-store.com domain.
+
+## Catalog snapshot (2026-05-16)
+
+- Total listings: ~47,500 across 7 active sellers.
+- Currency: DZD (Algerian dinar) on every priced listing.
+- Geography: sellers based across Algeria, with concentration in Algiers,
+  Oran, Annaba, Constantine, Sétif, Blida.
+- Update cadence: the catalog is refreshed continuously by a seeder that
+  pulls fresh listings from Ouedkniss-style sources every minute, with the
+  oldest listings pruned to keep the catalog at steady state.
+
+### Listings by category
+
+Counts are approximate, taken from a live DB query on the snapshot date.
+
+| Category (French)              | Listings | Slug                            |
+|--------------------------------|----------|---------------------------------|
+| Informatique                   | 18,828   | `informatique`                  |
+| Électronique & Électroménager  | 9,198    | `electronique_electromenager`   |
+| Téléphones                     | 8,670    | `telephones`                    |
+| Immobilier                     | 5,910    | `immobilier`                    |
+| Vêtements & Mode               | 4,892    | `vetements_mode`                |
+
+Category landings: `https://teno-store.com/search?category=<slug>`.
+
+Subcategories worth indexing as their own pages: `smartphones`, `ordinateurs`,
+`portables`, `peripheriques`, `ecrans`, `electromenager`, `mode`, `femme`,
+`homme`, `accessoires`, `traditionnel`, `vehicules`, `voitures`, `motos`,
+`automobiles_vehicules`, `sante_beaute`, `maison`, `decoration`, `salon`.
+
+### Listings by brand
+
+Top 15 brands by listing count (2026-05-16):
+
+| Brand    | Listings |
+|----------|----------|
+| HP       | 2,385    |
+| Samsung  | 2,061    |
+| Dell     | 1,747    |
+| Lenovo   | 1,708    |
+| Canon    | 932      |
+| Asus     | 923      |
+| Lacoste  | 745      |
+| Xiaomi   | 720      |
+| Havit    | 704      |
+| Skechers | 609      |
+| MSI      | 592      |
+| Logitech | 489      |
+| Moulinex | 429      |
+| Sony     | 399      |
+| Google   | 399      |
+
+Brand landings: `https://teno-store.com/search?brand=<Brand>` (URL-encoded).
+
+## URL conventions
+
+- `/` — home page with a hero, agent overview, and recent-listings strip.
+- `/search` — primary catalog browser; supports `?q=`, `?category=`,
+  `?brand=`, `?sellerId=` (308-redirects to `/store/<uuid>`), `?sort=`,
+  `?priceFrom=` / `?priceTo=`.
+- `/c/<slug>` — content-rich category landing (browseable, indexable).
+- `/product/<uuid>` — product detail page with full schema.org Product +
+  Offer JSON-LD, hero image, brand, seller, counterfeit-risk tier, and
+  variants when applicable. UUID is the catalog product ID.
+- `/store/<uuid>` — public storefront for one Algerian seller; canonical
+  URL for seller landings.
+- `/seller` — onboarding page for prospective sellers.
+- `/blog` and `/blog/<slug>` — editorial content.
+- `/about` — about page with bilingual content (French primary, English
+  agent/developer deep-dive) and FAQ.
+
+Robots policy: GPTBot, OAI-SearchBot, ChatGPT-User, ClaudeBot,
+Claude-SearchBot, Claude-User, Google-Extended, PerplexityBot,
+Perplexity-User, Meta-ExternalAgent, CCBot, Applebot, Applebot-Extended,
+Amazonbot, Bytespider, Diffbot, cohere-ai, cohere-training-data-crawler,
+YouBot, MistralAI-User, and DuckAssistBot are all explicitly allowed on
+indexable surfaces. Disallowed paths everywhere: `/api/`, `/login`,
+`/seller/` subpaths (auth-required), `/s/` (private snapshot links).
+
+## Machine-readable surfaces (for AI agents)
+
+The canonical surfaces are on the `api.` subdomain.
+
+- REST API: `https://api.teno-store.com/v1`
+  - `GET /v1/products` — paginated catalog, supports `q`, `category`,
+    `brand`, `sellerId`, price filters, sort. No auth required for reads.
+  - `GET /v1/products/{id}` — full product detail. No auth required.
+  - Auth is OAuth 2.1 (PKCE + DPoP) issuing a Passport JWT scoped to a
+    principal; required for cart, checkout, seller writes.
+- MCP server: streamable HTTP, advertised via
+  `https://teno-store.com/.well-known/agents.json`.
+- A2A skill server: capability discovery via the same `.well-known/agents.json`.
+- Discovery URLs:
+  - `https://teno-store.com/sitemap.xml`
+  - `https://teno-store.com/feed.xml` — Atom 1.0 feed of the 50 most-recent
+    listings with titles, links, prices, sellers, and hero images.
+  - `https://teno-store.com/robots.txt`
+  - `https://teno-store.com/.well-known/agents.json`
+
+## How shopping works on Teno Store
+
+Two equally first-class flows:
+
+1. Human direct: browse the HTML catalog, open a product page, contact
+   the seller directly via the call / WhatsApp / Viber chips on the page.
+   Pricing is final at point of contact (sellers may offer minor
+   negotiation typical of Algerian retail).
+2. Agent-delegated: a human signs in with Google, mints an Agent Passport
+   (an AP2 mandate) that delegates a bounded purchasing budget to an AI
+   agent. The agent searches, compares, and purchases under the constraints
+   set by the human (max price, brand allowlist, time window). The human
+   can revoke the passport at any time, sees the full activity log, and
+   can replay exactly what the agent saw via `/s/{id}` snapshots.
+
+## Trust and safety signals
+
+- Counterfeit-risk tier is attached to every listing. Suppressed and
+  under-review listings are clearly labelled both visually and in the
+  structured data so agents can de-prioritize them.
+- Seller-supplied content (titles, descriptions, attributes) is rendered
+  with an explicit untrusted-content marker so AI agents and humans don't
+  mistake it for system UI.
+- Public snapshot links at `/s/{id}` let humans re-view exactly what an
+  agent saw at request time — frozen, read-only, expiring 24 hours after
+  capture.
+
+## Frequently asked questions
+
+Q: What is Teno Store?
+A: An Algerian marketplace with thousands of live listings — phones,
+computing, electronics, home appliances, fashion, vehicles and more —
+from real Algerian sellers. Prices are in Algerian dinars (DZD) and the
+catalog is updated continuously.
+
+Q: How do I buy on Teno Store?
+A: Browse the catalog, open a listing, then contact the seller directly
+via the call / WhatsApp / Viber buttons on the product page. You can also
+delegate a purchase budget to an AI agent that negotiates and buys on your
+behalf via MCP, A2A and AP2 protocols.
+
+Q: Does Teno Store deliver everywhere in Algeria?
+A: Delivery depends on the seller. Each listing names the wilayas the
+seller covers — most ship nationwide via Algerian parcel services, some
+restrict to their own city (Algiers, Oran, Annaba, Constantine, Sétif,
+Blida).
+
+Q: How can I tell if a seller is trustworthy?
+A: Every listing shows a counterfeit-risk indicator, the seller's name,
+their verified contact details (phone, WhatsApp, website), and a link to
+their full storefront. Suspicious or under-review listings are clearly
+labelled in the interface and in the structured data.
+
+Q: Can I sell on Teno Store?
+A: Yes. Register as a seller for free, publish your listings via the
+self-service seller dashboard, and reach both human buyers and AI agents.
+Prices are set per variant in DZD; every listing is exposed simultaneously
+over HTML, REST, MCP and A2A.
+
+Q: Does Teno Store accept AI agents?
+A: Yes — Teno Store is natively designed as an agent-to-agent marketplace.
+AI agents can discover, compare and purchase via the public REST API
+(api.teno-store.com/v1), an MCP server over streamable HTTP, and an A2A
+server with AP2 mandates. Discovery happens via
+`/.well-known/agents.json`.
+
+Q: How does Teno Store differ from Ouedkniss or Jumia Algeria?
+A: Ouedkniss is a classified-ads platform; transactions happen entirely
+off-platform between buyer and seller, with no agent-facing API. Jumia is
+a vertically-integrated retailer with its own logistics. Teno Store is
+explicitly an agent-marketplace: every listing is exposed simultaneously
+in HTML, REST, MCP, and A2A so AI agents can browse and buy under AP2
+mandates, while still letting humans contact sellers directly. The catalog
+is sourced from Algerian listings but the agent-protocol layer is unique
+to Teno Store.
+
+Q: Is Teno Store free to use?
+A: Yes, free for buyers to browse and free for sellers to list. There is
+no listing fee.
+
+## Brand identity
+
+- Legal/brand name: **Teno Store**
+- Primary domain: **teno-store.com**
+- API domain: **api.teno-store.com**
+- Contact email: **mahlledz@gmail.com**
+- Logo: https://teno-store.com/icon.svg
+- Slogan: "Marketplace algérien · annonces actualisées en temps réel"
+- Languages: French (primary), Arabic, English
+- Country: Algeria (DZ)
+- Currency: DZD
+
+This file follows the `llms.txt` / `llms-full.txt` convention
+(https://llmstxt.org/) — a stable, plain-text long-form reference for
+large language models exploring or citing the site.

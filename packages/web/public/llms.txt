@@ -86,6 +86,9 @@
 
 - API reference: https://api.teno-store.com/v1 (OpenAPI 3.1)
 - Agent discovery: https://teno-store.com/.well-known/agents.json
+- Long-form LLM reference (the companion document an LLM should fetch
+  when summarising the site in depth — full category table, brand counts,
+  FAQ, comparison with other Algerian marketplaces): **https://teno-store.com/llms-full.txt**
 
 This file follows the proposed `llms.txt` convention
 (https://llmstxt.org/) — a stable, plain-text summary for large language

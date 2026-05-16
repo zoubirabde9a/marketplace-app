@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · added `/llms-full.txt` long-form LLM reference (GEO)
+
+- Created `public/llms-full.txt` (~10 KB): companion to the existing `/llms.txt` per llmstxt.org convention. Includes the brand-disambiguation note ("not the German jewelry brand TeNo"), full category and brand tables with counts, every public URL pattern, the AI-crawler robots allow list, the agent surfaces (REST/MCP/A2A), trust signals, the full FAQ verbatim, AND a comparison block ("How does Teno Store differ from Ouedkniss or Jumia Algeria?") — exactly the queries users send to ChatGPT / Gemini about the site.
+- Hot-patched the file into the running web container, then `docker compose restart web` so Next.js's standalone static-file manifest re-scanned `public/` and picked up the new asset. Caddy's `lb_try_duration 30s` absorbed the ~3s restart. Verified `curl https://teno-store.com/llms-full.txt` returns HTTP 200 with the full body.
+- Also updated `/llms.txt` to point LLMs at the new long-form doc, so crawlers that fetch the short summary can discover the deep reference in the same request.
+
 ## 2026-05-16 — vps-eu · refreshed `/llms.txt` with accurate catalog stats (GEO)
 
 - Live `public/llms.txt` cited stale numbers ("Téléphones ~21k", no total, brand list absent). Current DB snapshot: 47,495 products, 7 active sellers. Top categories by count: Informatique 18,828, Électronique/Électroménager 9,198, Téléphones 8,670, Immobilier 5,910, Vêtements/Mode 4,892. Top 15 brands by listing volume captured (HP 2,385 leads).
