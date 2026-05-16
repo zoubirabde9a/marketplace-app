@@ -333,17 +333,30 @@ def refresh_llms_full_txt(stats: dict) -> bool:
     sellers = stats["active_sellers"]
     cat_counts = {c["slug"]: c["listings"] for c in stats["top_categories"]}
     # 1. Snapshot line at the top.
+    # Snapshot line now interpolates the empirical growth rate alongside
+    # the timestamp. Anchor must accept the old "~500/hour" wording so
+    # the first refresh can replace it.
+    rate = stats.get("growth_per_hour") or 350
     text = re.sub(
         r"^Snapshot: [\d-]+(?: \d\d:\d\d UTC)?[^\n]*\.",
-        f"Snapshot: {now.strftime('%Y-%m-%d %H:%M UTC')} (catalog grows ~500/hour from the live scraper).",
+        f"Snapshot: {now.strftime('%Y-%m-%d %H:%M UTC')} "
+        f"(catalog grows ~{rate}/hour from the live scraper).",
         text,
         count=1,
         flags=re.M,
     )
-    # 2. Total-listings prose line.
+    # Total-listings prose — match the iter-36 agents.json size-blurb
+    # truthfulness rewrite. Instead of "across N active sellers" (the
+    # false-precision pattern), describe the attributed/imported
+    # breakdown explicitly. Anchor accepts BOTH the old "across N active
+    # sellers" wording and the new "— ~X from onboarded sellers ..."
+    # wording so re-runs are idempotent.
+    attributed = stats.get("listings_attributed_to_a_seller", 0)
+    imported = stats.get("listings_unattributed_imports", 0)
     text = re.sub(
-        r"^- Total listings: ~[\d,]+ across \d+ active sellers[^\n]*",
-        f"- Total listings: ~{round_to_100(total):,} across {sellers} active sellers (and growing).",
+        r"^- Total listings: ~[\d,]+ (across \d+ active sellers[^\n]*|— ~[\d,]+ from onboarded sellers[^\n]*)",
+        f"- Total listings: ~{round_to_100(total):,} — ~{attributed:,} from onboarded sellers "
+        f"plus ~{imported:,} imported from the broader Algerian marketplace.",
         text,
         count=1,
         flags=re.M,

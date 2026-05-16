@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · two more truthfulness propagations into llms-full.txt prose + good_for[2] de-numbered
+
+- llms-full.txt prose still had two stale tokens that the auto-refresher didn't touch:
+  - Line 9 `Snapshot: ... (catalog grows ~500/hour from the live scraper)` — same "500" overstate fixed in agents.json iter-35, hadn't propagated.
+  - Line 32 `Total listings: ~49,000 across 7 active sellers` — same "7 sellers" misleading framing fixed in agents.json `size` iter-36, hadn't propagated.
+- Patched `refresh_llms_full_txt()` to interpolate `growth_per_hour` from the empirical-metrics computation (was hard-coded "~500/hour" string) and to use the attributed/imported breakdown format instead of "across N active sellers". Both anchors accept the OLD wording so the first auto-refresh self-heals; subsequent re-runs are idempotent.
+- Live verified: `Snapshot: 2026-05-16 18:16 UTC (catalog grows ~353/hour from the live scraper)` and `Total listings: ~49,100 — ~2,387 from onboarded sellers plus ~46,741 imported from the broader Algerian marketplace.`
+- Also propagating the iter-38 `good_for[2]` change (removed the `~19k listings` static and pointed at `top_categories` self-reference) which was committed live but missed the IndexNow push when SSH timed out — retried successfully (1/1 accepted), now in this commit.
+
 ## 2026-05-16 — vps-eu · refreshed visible category counts on /about + added refresh-cadence note in JSX comment
 
 - Truthfulness pattern caught one more place: visible HTML category counts on /about, hard-coded back in iter-10 when I added the "Comparaison avec les autres marketplaces algériens" section. Auto-refresher handles the three machine-readable manifests (agents.json, llms.txt, llms-full.txt) hourly but the visible JSX stays manual — regex-editing TSX from Python is too brittle. Drift snapshot: Informatique was "~18 800 annonces" in JSX, actual count is 19,696 (~900 stale, ~5%). Electroménager and Mode also slightly behind.
