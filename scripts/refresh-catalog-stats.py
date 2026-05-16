@@ -199,6 +199,13 @@ def update_manifest(stats: dict) -> bool:
     catalog["sellers_with_meaningful_inventory"] = stats["sellers_with_meaningful_inventory"]
     catalog["listings_attributed_to_a_seller"] = stats["listings_attributed_to_a_seller"]
     catalog["listings_unattributed_imports"] = stats["listings_unattributed_imports"]
+    # Top-level last_audited timestamp. catalog.snapshot_* tells AI consumers
+    # when the listing counts were sampled; this top-level field tells them
+    # when the empirical capability claims (filter behaviors, MCP tools,
+    # scopes, error envelopes, known_limitations) were last verified against
+    # the live system. They co-update on every refresh tick so the two
+    # freshness signals stay in lockstep. iter-73.
+    data["last_audited"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     # Empirical growth rate (24h rolling avg from scrape-loop metrics).
     # Replaces the static `growth_rate_per_hour: 500` that audit caught as
     # being ~42% too high. Only write when we computed a real number;

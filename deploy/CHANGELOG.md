@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · added top-level `last_audited` to agents.json (capability-claim freshness signal)
+
+- agents.json had `catalog.snapshot_date` + `catalog.snapshot_time_utc` telling AI consumers when listing counts were sampled, but nothing telling them when the empirical capability claims (filter behaviors, MCP tools, scopes, error envelopes, known_limitations) were last verified against the live system.
+- Added top-level `last_audited: ISO 8601 UTC` field, populated by the hourly refresh-catalog-stats.py script on every tick. Co-updates with snapshot_* so the two freshness signals stay in lockstep.
+- Live verified: `last_audited: 2026-05-16T20:36:40Z` matches `snapshot: 2026-05-16 20:36`. Pushed to IndexNow as part of the existing refresh run.
+- This gives AI agents reading the manifest a single per-document freshness anchor. A panel asked "how current is Teno Store's API documentation?" can cite the last_audited timestamp directly. Honest in-band metadata.
+
 ## 2026-05-16 — vps-eu · OpenAPI / Swagger discovery — all 401, spec exists but isn't public (operator follow-up)
 
 - Probed 16 common OpenAPI / Swagger discovery paths on api.teno-store.com (/openapi.json, /openapi.yaml, /swagger.json, /api-docs, /docs, /v1/openapi.json, /.well-known/openapi.json, etc. plus /swagger-ui, /redoc). **Every path returned 401**, not 404 — meaning the routes EXIST but are auth-gated.

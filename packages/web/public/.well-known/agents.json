@@ -4,11 +4,11 @@
   "homepage": "https://teno-store.com",
   "contact": "mahlledz@gmail.com",
   "catalog": {
-    "size": "49,945 live listings — ~2,387 from onboarded sellers plus ~47,558 imported from the broader Algerian marketplace, refreshed continuously (snapshot 2026-05-16 20:02 UTC)",
+    "size": "50,115 live listings — ~2,387 from onboarded sellers plus ~47,728 imported from the broader Algerian marketplace, refreshed continuously (snapshot 2026-05-16 20:36 UTC)",
     "snapshot_date": "2026-05-16",
-    "snapshot_time_utc": "20:02",
-    "total_listings": 49945,
-    "growth_rate_per_hour": 351,
+    "snapshot_time_utc": "20:36",
+    "total_listings": 50115,
+    "growth_rate_per_hour": 346,
     "active_sellers": 7,
     "geography": {
       "country": "Algeria",
@@ -76,17 +76,17 @@
     "top_categories": [
       {
         "slug": "informatique",
-        "listings": 20251,
+        "listings": 20373,
         "label": "Informatique"
       },
       {
         "slug": "electronique_electromenager",
-        "listings": 9957,
+        "listings": 9999,
         "label": "Électronique & Électroménager"
       },
       {
         "slug": "telephones",
-        "listings": 8792,
+        "listings": 8798,
         "label": "Téléphones"
       },
       {
@@ -103,31 +103,31 @@
     "top_brands": [
       {
         "name": "HP",
-        "listings": 2492
+        "listings": 2500
       },
       {
         "name": "Samsung",
-        "listings": 2106
+        "listings": 2108
       },
       {
         "name": "Dell",
-        "listings": 1813
+        "listings": 1816
       },
       {
         "name": "Lenovo",
-        "listings": 1746
+        "listings": 1750
       },
       {
         "name": "Canon",
-        "listings": 1028
+        "listings": 1045
       },
       {
         "name": "Asus",
-        "listings": 952
+        "listings": 954
       },
       {
         "name": "Havit",
-        "listings": 798
+        "listings": 801
       },
       {
         "name": "Lacoste",
@@ -135,11 +135,11 @@
       },
       {
         "name": "Xiaomi",
-        "listings": 742
+        "listings": 744
       },
       {
         "name": "MSI",
-        "listings": 619
+        "listings": 620
       },
       {
         "name": "Skechers",
@@ -147,24 +147,24 @@
       },
       {
         "name": "Logitech",
-        "listings": 515
+        "listings": 518
       },
       {
         "name": "Moulinex",
-        "listings": 487
+        "listings": 489
       },
       {
         "name": "Sony",
-        "listings": 418
+        "listings": 419
       },
       {
         "name": "Google",
-        "listings": 412
+        "listings": 415
       }
     ],
     "sellers_with_meaningful_inventory": 1,
     "listings_attributed_to_a_seller": 2387,
-    "listings_unattributed_imports": 47558,
+    "listings_unattributed_imports": 47728,
     "subcategory_slugs_note": "No bare-slug subcategories currently meet the >=5-listings threshold. The compound slugs in top_categories above carry the full catalog mass. Audit 2026-05-16: bare slugs smartphones / ordinateurs / electromenager etc. had 0 listings each — they were dead navigation. Updated to honest posture."
   },
   "discovery": {
@@ -501,5 +501,6 @@
     ],
     "verified_behaviour": "Sent If-Modified-Since: <Last-Modified> back to /llms.txt — server returned HTTP 304 Not Modified. Conditional GET works on the supported list above. Audit 2026-05-16.",
     "operator_followup": "sitemap.xml + robots.txt should ship ETag + Last-Modified to enable 304-NotModified responses for crawlers that already have a fresh copy. Localized change to the Next.js metadata routes or via middleware that hashes the response body."
-  }
+  },
+  "last_audited": "2026-05-16T20:36:40Z"
 }
