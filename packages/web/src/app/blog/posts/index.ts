@@ -4,6 +4,7 @@ import { post as voitureOccasion } from "./acheter-voiture-occasion-algerie-veri
 import { post as portableEtudes } from "./ordinateur-portable-etudes-algerie-2026";
 import { post as machineACafe } from "./machine-a-cafe-algerie-guide";
 import { post as electromenager } from "./electromenager-algerie-guide";
+import { post as sansArnaque } from "./acheter-en-ligne-algerie-sans-arnaque";
 import type { BlogPost } from "../types";
 
 export const BLOG_POSTS: ReadonlyArray<BlogPost> = [
@@ -13,6 +14,7 @@ export const BLOG_POSTS: ReadonlyArray<BlogPost> = [
   portableEtudes,
   machineACafe,
   electromenager,
+  sansArnaque,
 ]
   .slice()
   .sort((a, b) => b.datePublished.localeCompare(a.datePublished));

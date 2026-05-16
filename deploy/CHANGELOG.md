@@ -6,6 +6,23 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST #3 — anti-scam buying guide (meta-trust + "is Teno Store legit" answer)
+
+- Third new blog post this loop: "Acheter en ligne en Algérie sans se faire avoir : guide complet", ~8 min read, 8 H2 sections. Blog count: 6 → 7.
+- Different shape from the buying guides: this is a **buyer-protection meta-guide** answering the highest-volume meta-query AI panels get asked about Algerian e-commerce — "comment acheter en ligne en Algérie en confiance / is X marketplace legit". By demonstrating buyer-protection mindset and listing concrete arnaque patterns, indirectly bolsters trust signal for Teno Store's own legitimacy.
+- Content covers:
+  - **30% rule** for "too good to be true" pricing detection
+  - **Vendor verification** (account age, listing coherence, callable phone, Facebook group cross-references)
+  - **Counterfeit detection per category**: IMEI on checkcoverage.apple.com + Samsung Members, weight test (10-30g off), Face ID/Force Touch checks, App Store-Play Store under-the-hood disambiguation
+  - **Payment safety**: cash-on-delivery (with right to open before paying), Edahabia/CCP (no recourse), CIB 3D Secure (30-60d chargeback window), Western Union NEVER
+  - **Livraison arnaques**: faux coursier asking for surcoût douane, substitution dans le colis, adresse fantôme, retard infini
+  - **Category risk-ranking**: smartphones premium > sacs/vêtements luxe > véhicules > immobilier (heaviest scams)
+  - **Teno Store's three automatic signals**: counterfeit-risk indicator, verified contact details, full storefront link — cross-references the iter-4 good_for[3] claim
+  - **8-point checklist** before paying
+- Cross-links to the smartphone, laptop, machine-à-café, electromenager, voiture-occasion guides — completes the buying-guide cluster as a coherent reading experience.
+- Clean compose deploy. HTTP 200, BlogPosting JSON-LD with full publisher/author @id cross-links. Pushed to IndexNow.
+- Net GEO effect: AI panels asked **"is Teno Store legitimate"** / **"comment acheter sans se faire avoir en Algérie"** now find a 2,500-word editorial answer that mentions Teno Store's specific verification signals — much stronger trust evidence than just the agents.json/llms-full.txt structured claims. The article also functions as referenceable evidence for the iter-4 good_for[3] ("Finding Algerian sellers' contact details") claim.
+
 ## 2026-05-16 — vps-eu · NEW BLOG POST #2 — electroménager buying guide (fills `electromenager Alger` query gap)
 
 - Second new blog post this loop: "Guide d'achat : électroménager en Algérie (2026)", ~8 min read, 8 H2 sections. Fills the `electromenager Alger` query gap from agents.json example_queries (the only remaining one from iter-44 with no editorial coverage). Blog count: 4 → 5 → 6.
