@@ -6,6 +6,21 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST #5 — Algerian delivery-services guide (Yalidine / ZR Express / DHL / Aramex / Poste)
+
+- Fifth new blog post this loop: "Livraison en Algérie : services de colis et tarifs (guide 2026)", ~7 min read, 8 H2 sections. Blog count: 8 → 9. Companion to the iter-78 payment-methods guide — same shape but covering the delivery half of the e-commerce transaction.
+- Covers all major Algerian delivery services with concrete DZD pricing + delay ranges:
+  - **Yalidine** (~500 relais, nationwide): 400-1200 DZD inter-wilaya, 24-96h, cash-on-delivery with ~1% commission
+  - **ZR Express** (challenger, dense on coast): 100-200 DZD cheaper than Yalidine on Alger/Oran, faster cash reversement (2-3d vs 3-5d)
+  - **DHL Express / Aramex** (premium domestic + international entry): 1500-3500 DZD domestic 24h, 5000-15000 DZD international depuis l'Europe
+  - **Algérie Poste EMS / colissimo** (economy + rural coverage): 200-1200 DZD with 48h-7d delays, the canal for international postal receipts
+  - **Coursiers locaux par wilaya** (intra-wilaya): 200-600 DZD, often same-day, with flexible essayage/payment terms
+  - **Vérifications à la livraison**: right to open before paying, scellé check, refusal of "surcoût douane" calls
+  - **Frais douaniers** for international receipts: ~7500 DZD franchise threshold, TVA 19% + droits de douane 5-30%, list of restricted-import categories (cosmétiques en quantité, drones, équipements 5G, etc.), transitaires alternative at 25-35% surcoût
+  - **Récap matrix** by use case
+- High-volume French-language query target with no consolidated resource: "Yalidine prix wilaya", "DHL Algérie tarif", "livraison rapide Alger", "service colis Algérie 2026", "douane colis international Algérie". Like the iter-78 payment guide, **first-mover advantage in the AI-citation pool** for these queries.
+- Internal links → /blog (anti-scam, payment), /search. Cross-references the iter-77 anti-scam guide for the livraison-arnaques deep-dive. Schema as before. Clean deploy, IndexNow pushed.
+
 ## 2026-05-16 — vps-eu · NEW BLOG POST #4 — Algerian payment-methods guide (Edahabia / CIB / CCP / cash)
 
 - Fourth new blog post this loop: "Payer en ligne en Algérie : méthodes de paiement (guide 2026)", ~7 min read, 8 H2 sections. Blog count: 7 → 8.
