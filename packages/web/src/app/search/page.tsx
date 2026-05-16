@@ -206,6 +206,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
       // slice; multi-filter combinations canonical back to bare /search).
       languages: {
         "fr-DZ": `${SITE_URL}${canonical}`,
+        "ar-DZ": `${SITE_URL}${canonical}`,
         "x-default": `${SITE_URL}${canonical}`,
       },
     },

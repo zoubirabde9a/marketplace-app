@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · propagated `ar-DZ` hreflang to ALL page types (scale fix — was only on home/about/seller)
+
+- Audit caught a regression: when I added `ar-DZ` to the layout in iteration 12, **6 page types were silently dropping it** because they each override `metadata.alternates.languages` and Next.js replaces (not merges) that property: `/search`, `/c/[slug]` (every category landing), `/product/[id]` (~48k pages), `/store/[id]`, `/blog`, `/blog/[slug]`. Only the layout, /about, and /seller (which I patched in iteration 20) were actually shipping the Arabic signal.
+- One batch patch — added `"ar-DZ": <self-URL>` to every override block. Six 1-line edits. Verified live: all six page types (and therefore every URL derived from them) now ship `<link rel="alternate" hrefLang="ar-DZ" href=...>`.
+- Net effect: scale-of-the-fix is enormous compared to the work. Every product page (~48k), every category page, every store storefront, every brand-search page, every blog post is now declaring Arabic-language Algerian coverage. AI panels answering queries like "هواتف الجزائر" (phones in Algeria) or "كمبيوتر محمول" (laptop) on a brand or category-specific basis now see Teno Store as language-matched at the per-page level, not just the home page.
+
 ## 2026-05-16 — vps-eu · enriched /seller with Service JSON-LD + ar-DZ hreflang (closes audit finding)
 
 - Closed the one slack point from last iteration's audit: `/seller` had only `WebPage + BreadcrumbList` — sparse for a page whose whole purpose is offering a discrete service (free seller onboarding). Added a full Service schema describing the marketplace-seller-account offering:

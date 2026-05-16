@@ -30,6 +30,7 @@ export async function generateMetadata({
       // x-default language signal.
       languages: {
         "fr-DZ": `${SITE_URL}/blog/${post.slug}`,
+        "ar-DZ": `${SITE_URL}/blog/${post.slug}`,
         "x-default": `${SITE_URL}/blog/${post.slug}`,
       },
     },

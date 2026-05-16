@@ -70,6 +70,7 @@ export async function generateMetadata({
       // signal Google uses to route fr-DZ users to fr-DZ pages.
       languages: {
         "fr-DZ": `${SITE_URL}/c/${slug}`,
+        "ar-DZ": `${SITE_URL}/c/${slug}`,
         "x-default": `${SITE_URL}/c/${slug}`,
       },
     },

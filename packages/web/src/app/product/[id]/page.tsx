@@ -273,6 +273,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       // unless restored here.
       languages: {
         "fr-DZ": `${SITE_URL}${canonical}`,
+        "ar-DZ": `${SITE_URL}${canonical}`,
         "x-default": `${SITE_URL}${canonical}`,
       },
       // Tell AI search crawlers + agent-discovery tools that the same product

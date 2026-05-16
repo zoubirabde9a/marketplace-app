@@ -81,6 +81,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       // wholesale on child pages.
       languages: {
         "fr-DZ": `${SITE_URL}/store/${s.sellerId}`,
+        "ar-DZ": `${SITE_URL}/store/${s.sellerId}`,
         "x-default": `${SITE_URL}/store/${s.sellerId}`,
       },
     },

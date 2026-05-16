@@ -16,6 +16,7 @@ export const metadata: Metadata = {
     // signal.
     languages: {
       "fr-DZ": `${SITE_URL}/blog`,
+      "ar-DZ": `${SITE_URL}/blog`,
       "x-default": `${SITE_URL}/blog`,
     },
     // Declare the RSS feed as an alternate representation. Browsers and
