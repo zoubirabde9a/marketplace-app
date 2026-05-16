@@ -253,7 +253,22 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
         totalCount < 5) ||
       Boolean(q)
         ? { index: false, follow: true }
-        : { index: true, follow: true },
+        : {
+            // Indexable path — keep the layout-level rich-result hints
+            // (max-image-preview:large, max-snippet:-1, max-video-preview:-1).
+            // Next.js wholesale-replaces `robots` on child pages, so without
+            // re-declaring these the SERP/AI-Overviews preview for indexable
+            // /search slices falls back to small thumbnails + ~155-char
+            // snippets, while every other indexable page on the site gets
+            // large-image + unlimited-snippet previews. Same wholesale-
+            // replace bug class as the openGraph / alternates.languages
+            // fixes earlier in this session.
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+          },
     // Also override openGraph and twitter so social-share scrapers
     // (FB/Discord/Slack/X) render the slice-specific title and description
     // instead of inheriting the layout default ("Teno Store — the agent-to-

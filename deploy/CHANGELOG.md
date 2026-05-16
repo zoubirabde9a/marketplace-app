@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · fixed missing rich-result preview hints on /search (third wholesale-replace fix)
+
+- Third instance of the same Next.js wholesale-replace bug class hit /search. The layout sets `robots: { index, follow, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 }` — those three preview-budget hints tell Google AI Overviews and Bing SERP that they can use full-size images and unlimited-length snippets for the page. /search overrides `robots` to switch between `{index: false, follow: true}` for noindex slices and `{index: true, follow: true}` for indexable slices — but the indexable branch dropped the three preview hints.
+- Net effect before fix: indexable /search slices (brand pages /search?brand=Samsung etc., category-and-brand combos, and the bare /search index) were getting small-thumbnail + truncated-155-char previews in SERPs and AI panels, while the same product appearing on /c/{slug} or /product/{id} got a full-width image + unlimited snippet. Inconsistent and worse-than-necessary for the brand-search surface.
+- Patched the indexable branch to re-declare all three hints. Verified all three states: indexable slice ships the full hint set, noindex slice correctly stays `noindex, follow`, sanity-check on home still shows the layout-level hints. Pushed top brand-search URLs to IndexNow.
+
 ## 2026-05-16 — vps-eu · fixed missing OpenGraph fields on /about, /seller, /blog (same wholesale-replace bug class)
 
 - Same root-cause class as the ar-DZ fix: Next.js wholesale-replaces `openGraph` on child pages, no shallow-merge. Three pages had stripped-down openGraph blocks that lost layout-level fields:
