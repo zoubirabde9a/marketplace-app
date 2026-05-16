@@ -6,6 +6,19 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · honest-geography-breakdown added to agents.json (extends the seller-truthfulness fix)
+
+- Same pattern as last iteration's seller-breakdown work. The static `geography.cities` array listed "Algiers, Oran, Annaba, Constantine, Sétif, Blida" as if they were six equally-represented hubs. DB query revealed the truth:
+  - Only 2,382 of 48,856 listings (~4.9%) have any wilaya tag at all — matches the seller-attributed subset; the 46k+ bulk import has no per-listing location data.
+  - Of the tagged subset: **Alger dominates with 1,778** (75%), followed by Blida (79), Oran (59), Mostaganem (46), Jijel (37), Sétif (34), Tizi Ouzou (33), Batna (22), Constantine (21), Annaba (17).
+  - The named array's Annaba/Constantine claims (#10 and #9 by actual count) outrank actual top-of-list cities Mostaganem, Jijel, Tizi Ouzou which weren't in the array.
+- Fix: extended `refresh-catalog-stats.py` to compute and write three new fields under `geography`:
+  - `top_wilayas` — ranked list with counts (same shape as `top_brands`), HAVING count(*) >= 5
+  - `wilaya_tagged_listings` — explicit numerator for "what fraction has location data"
+  - `wilaya_tagged_note` — prose explaining the coverage caveat so AI consumers don't over-cite
+- Kept the static `cities` array for backward compatibility. Re-ran the script live; new fields visible at `/.well-known/agents.json` and pushed to IndexNow.
+- Cumulative effect: AI panels asked "which Algerian cities does Teno Store cover" now get the genuinely correct answer ("Alger primary, then 9 other wilayas in descending order — but per-listing location data is only on ~5% of the catalog") rather than the aspirational-equal-six framing that would erode trust on click-through.
+
 ## 2026-05-16 — vps-eu · sitemap validation pass (clean) + honest-seller-breakdown fields added to agents.json (GEO truthfulness)
 
 - **Sitemap validation**: parsed `/sitemap.xml` (48,824 URLs) with Python `xml.etree`. Zero entries missing `<loc>`, zero missing `<lastmod>`, zero bad lastmod formats, **99.8% of product entries carry `<image:image>`** for AI image-search. Shape distribution: 48,731 products / 57 search variants / 26 category landings / 6 blog posts / 2 other / 1 home / 1 store / matches reality.

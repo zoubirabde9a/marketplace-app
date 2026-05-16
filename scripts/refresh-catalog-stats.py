@@ -86,6 +86,26 @@ def fetch_stats() -> dict:
     unattributed = int(psql("SELECT count(*) FROM catalog.products WHERE seller_id IS NULL"))
     onboarded = int(psql("SELECT count(*) FROM catalog.products WHERE seller_id IS NOT NULL"))
     sellers_meaningful = int(psql("SELECT count(*) FROM (SELECT seller_id FROM catalog.products WHERE seller_id IS NOT NULL GROUP BY seller_id HAVING count(*) >= 10) s"))
+    # Top wilayas with actual listings — same pattern as the static
+    # cities[] array, but ranked by real count and including only wilayas
+    # that actually have ≥5 listings. The wilaya field is populated only
+    # on seller-attributed listings (~4.9% of the catalog as of
+    # 2026-05-16), but those are the listings whose location signals
+    # matter for "[product] available in [city]" AI panel queries.
+    wilayas_raw = psql(
+        "SELECT attributes->>'wilaya' || '|' || count(*) "
+        "FROM catalog.products WHERE attributes->>'wilaya' IS NOT NULL "
+        "AND attributes->>'wilaya' <> '' "
+        "GROUP BY attributes->>'wilaya' HAVING count(*) >= 5 "
+        "ORDER BY count(*) DESC LIMIT 10"
+    )
+    top_wilayas: list[dict] = []
+    for line in wilayas_raw.splitlines():
+        name, n = line.split("|", 1)
+        top_wilayas.append({"name": name, "listings": int(n)})
+    wilaya_tagged = int(psql(
+        "SELECT count(*) FROM catalog.products WHERE attributes->>'wilaya' IS NOT NULL"
+    ))
     cats_raw = psql(
         "SELECT category_ids->>0 || '|' || count(*) "
         "FROM catalog.products GROUP BY category_ids->>0 "
@@ -118,6 +138,8 @@ def fetch_stats() -> dict:
         "listings_unattributed_imports": unattributed,
         "top_categories": top_categories,
         "top_brands": top_brands,
+        "top_wilayas": top_wilayas,
+        "wilaya_tagged_listings": wilaya_tagged,
     }
 
 
@@ -136,6 +158,19 @@ def update_manifest(stats: dict) -> bool:
     catalog["sellers_with_meaningful_inventory"] = stats["sellers_with_meaningful_inventory"]
     catalog["listings_attributed_to_a_seller"] = stats["listings_attributed_to_a_seller"]
     catalog["listings_unattributed_imports"] = stats["listings_unattributed_imports"]
+    # Replace the static geography.cities array with a ranked, count-
+    # bearing wilaya list reflecting the actual seller-tagged geographic
+    # distribution. Mirrors the top_brands shape so AI consumers can do
+    # the same "rank by listing count" reasoning on cities.
+    if "geography" in catalog:
+        catalog["geography"]["top_wilayas"] = stats["top_wilayas"]
+        catalog["geography"]["wilaya_tagged_listings"] = stats["wilaya_tagged_listings"]
+        catalog["geography"]["wilaya_tagged_note"] = (
+            "Wilaya / city data is populated only on seller-onboarded listings "
+            "(currently ~5% of the catalog). The 95% bulk-imported portion has "
+            "no per-listing location attribution. The ranked list below is the "
+            "true distribution within the tagged subset."
+        )
     catalog["snapshot_date"] = now.strftime("%Y-%m-%d")
     catalog["snapshot_time_utc"] = now.strftime("%H:%M")
     catalog["size"] = (
