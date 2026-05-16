@@ -6,6 +6,19 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · JSON-LD validity sweep across 15 key pages — all clean (GEO baseline audit)
+
+- Diagnostic iteration: AI panels silently drop malformed structured data, so a typo anywhere in JSON-LD wastes all the discoverability work. Wrote a one-shot Python validator (`/tmp/jsonld-validate.py`, cleaned up after) that fetches each page with `User-Agent: GPTBot/1.0`, extracts every `<script type="application/ld+json">` block, JSON-parses each, and recursively walks the structure to enumerate every `@type` value.
+- Audited 15 pages: home, /about, /search, the top-5 category landings, a product page, a store page, /blog, a blog post, /seller, top-2 brand-search pages. **15/15 pages OK, zero parse errors, zero missing blocks.** Every page has the right shape for its purpose:
+  - Home: 17 types incl. the new FAQPage
+  - /about: AboutPage + FAQPage (7 Q&As) + BreadcrumbList
+  - /c/{slug}: CollectionPage + ProductGroup + FAQPage + BreadcrumbList — 9 types per category
+  - /product/{id}: Product + Offer + Brand + Country + BreadcrumbList
+  - /store/{uuid}: Store + ItemList + Product + Offer + Brand
+  - /blog/{slug}: BlogPosting + SpeakableSpecification
+  - Brand-search pages: CollectionPage + ItemList + Brand + Product + Offer
+  - /seller: WebPage + BreadcrumbList — least rich; the one page where Service or Offer schema could be added if we ever want richer agent-side discoverability for the "sign up to sell" flow. Not a defect — it's a marketing landing — but the only structured-data slack point on the site.
+
 ## 2026-05-16 — vps-eu · re-snapshotted 6 substantially-changed URLs to Wayback (GEO archive refresh)
 
 - Earlier today I pushed 20 high-value URLs to the Wayback Machine, but 6 of those have since been substantially updated: the home page (FAQPage added), /about (Ouedkniss/Jumia comparison, 7th FAQ entry, dateModified), llms.txt + llms-full.txt + agents.json (hourly refresher now driving exact counts) and ai-policy.json (referenced from agents.json). AI tools that fall back to Wayback for verification would see outdated content otherwise.
