@@ -6,6 +6,20 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · empirically grounded example_queries (most English ones returned 0 catalog hits)
+
+- Until this iteration, agents.json `example_queries` had 8 English-language entries I'd written from a "what would a user ask ChatGPT" perspective. Ran each through the public catalog API (`/v1/products?q=...`) to verify the implicit "this site can answer these" claim. Results:
+  - "Where can I buy a Samsung phone in Algiers?" — **0 catalog hits** (location words don't match because product titles don't contain wilayas)
+  - "Find Xiaomi phones for sale in DZD" — **0 catalog hits** (DZD is the currency, not in titles)
+  - "What home appliances does Teno Store have?" — **0 catalog hits** (English; catalog is French)
+  - "What laptops are for sale in Algeria under 100,000 DZD?" — 0 hits (same)
+- Cross-checked with French equivalents — they all return hits: `ordinateur portable` ✅, `smartphone Samsung` ✅, `telephone Xiaomi` ✅, `machine à café` ✅, `Lenovo ThinkPad` ✅, `imprimante` ✅, `écran ordinateur` ✅.
+- **Fix**: rewrote `example_queries` to two distinct query classes:
+  - **6 French-language catalog-discovery queries** empirically verified to return catalog hits: `ordinateur portable Algerie`, `smartphone Samsung Algerie`, `iPhone occasion Algerie`, `machine a cafe`, `Lenovo ThinkPad`, `electromenager Alger`.
+  - **3 English meta-about-the-site queries** that AI panels actually surface (legitimacy, comparison, agent-shopping). These don't go through `/v1/products` — they're answered via /about and /llms-full.txt.
+- Also added `example_queries_note` field explaining the catalog-French-only constraint so future readers don't have to re-derive it: *"Catalog product searches work best in French (titles are predominantly French even when products are international brands). English / Arabic catalog queries return few or no hits. Meta queries about Teno Store itself ... are answered via /about and /llms-full.txt rather than the catalog search."*
+- Pushed to IndexNow. AI panels asked "what can Teno Store answer" now get queries that genuinely work, separated from queries about the site itself.
+
 ## 2026-05-16 — vps-eu · TLS / HTTP-3 / OG-image audits — all clean
 
 - Verified OG image generation across all page types. Most pages serve auto-generated PNGs at the expected `/.../opengraph-image` endpoint (sizes 92-135 KB, valid PNG magic bytes). Product pages don't use that endpoint — their `og:image` points directly at the Ouedkniss CDN URL with the upscaled 1200-edge image — so the missing/transient endpoint for `/product/<id>/opengraph-image` doesn't matter (nothing references it).

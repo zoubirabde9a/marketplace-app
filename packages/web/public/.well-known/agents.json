@@ -4,50 +4,188 @@
   "homepage": "https://teno-store.com",
   "contact": "mahlledz@gmail.com",
   "catalog": {
-    "size": "48,000+ live listings across 7 active sellers, refreshed continuously (snapshot 2026-05-16 16:30 UTC)",
+    "size": "49,128 live listings — ~2,387 from onboarded sellers plus ~46,741 imported from the broader Algerian marketplace, refreshed continuously (snapshot 2026-05-16 18:16 UTC)",
     "snapshot_date": "2026-05-16",
-    "snapshot_time_utc": "16:30",
-    "total_listings": 48062,
-    "growth_rate_per_hour": 500,
+    "snapshot_time_utc": "18:16",
+    "total_listings": 49128,
+    "growth_rate_per_hour": 353,
     "active_sellers": 7,
     "geography": {
       "country": "Algeria",
       "country_code": "DZ",
-      "cities": ["Algiers", "Oran", "Annaba", "Constantine", "Sétif", "Blida"]
+      "cities": [
+        "Algiers",
+        "Oran",
+        "Annaba",
+        "Constantine",
+        "Sétif",
+        "Blida"
+      ],
+      "top_wilayas": [
+        {
+          "name": "Alger",
+          "listings": 1778
+        },
+        {
+          "name": "Blida",
+          "listings": 79
+        },
+        {
+          "name": "Oran",
+          "listings": 59
+        },
+        {
+          "name": "Mostaganem",
+          "listings": 46
+        },
+        {
+          "name": "Jijel",
+          "listings": 37
+        },
+        {
+          "name": "Sétif",
+          "listings": 34
+        },
+        {
+          "name": "Tizi Ouzou",
+          "listings": 33
+        },
+        {
+          "name": "Batna",
+          "listings": 22
+        },
+        {
+          "name": "Constantine",
+          "listings": 21
+        },
+        {
+          "name": "Annaba",
+          "listings": 17
+        }
+      ],
+      "wilaya_tagged_listings": 2382,
+      "wilaya_tagged_note": "Wilaya / city data is populated only on seller-onboarded listings (currently ~5% of the catalog). The 95% bulk-imported portion has no per-listing location attribution. The ranked list below is the true distribution within the tagged subset."
     },
     "currency": "DZD",
-    "languages": ["fr", "ar", "en"],
+    "languages": [
+      "fr",
+      "ar",
+      "en"
+    ],
     "primary_language": "fr",
     "top_categories": [
-      { "slug": "informatique", "listings": 19190, "label": "Informatique" },
-      { "slug": "electronique_electromenager", "listings": 9344, "label": "Électronique & Électroménager" },
-      { "slug": "telephones", "listings": 8670, "label": "Téléphones" },
-      { "slug": "immobilier", "listings": 5910, "label": "Immobilier" },
-      { "slug": "vetements_mode", "listings": 4943, "label": "Vêtements & Mode" }
+      {
+        "slug": "informatique",
+        "listings": 19787,
+        "label": "Informatique"
+      },
+      {
+        "slug": "electronique_electromenager",
+        "listings": 9646,
+        "label": "Électronique & Électroménager"
+      },
+      {
+        "slug": "telephones",
+        "listings": 8756,
+        "label": "Téléphones"
+      },
+      {
+        "slug": "immobilier",
+        "listings": 5910,
+        "label": "Immobilier"
+      },
+      {
+        "slug": "vetements_mode",
+        "listings": 5024,
+        "label": "Vêtements & Mode"
+      }
     ],
     "subcategory_slugs": [
-      "smartphones", "ordinateurs", "portables", "peripheriques", "ecrans",
-      "electromenager", "maison", "decoration", "salon", "mode", "femme",
-      "homme", "accessoires", "traditionnel", "sante_beaute",
-      "vehicules", "voitures", "motos", "automobiles_vehicules"
+      "smartphones",
+      "ordinateurs",
+      "portables",
+      "peripheriques",
+      "ecrans",
+      "electromenager",
+      "maison",
+      "decoration",
+      "salon",
+      "mode",
+      "femme",
+      "homme",
+      "accessoires",
+      "traditionnel",
+      "sante_beaute",
+      "vehicules",
+      "voitures",
+      "motos",
+      "automobiles_vehicules"
     ],
     "top_brands": [
-      { "name": "HP", "listings": 2412 },
-      { "name": "Samsung", "listings": 2066 },
-      { "name": "Dell", "listings": 1757 },
-      { "name": "Lenovo", "listings": 1721 },
-      { "name": "Canon", "listings": 954 },
-      { "name": "Asus", "listings": 934 },
-      { "name": "Lacoste", "listings": 758 },
-      { "name": "Xiaomi", "listings": 722 },
-      { "name": "Havit", "listings": 715 },
-      { "name": "Skechers", "listings": 612 },
-      { "name": "MSI", "listings": 600 },
-      { "name": "Logitech", "listings": 491 },
-      { "name": "Moulinex", "listings": 440 },
-      { "name": "Google", "listings": 401 },
-      { "name": "Sony", "listings": 399 }
-    ]
+      {
+        "name": "HP",
+        "listings": 2461
+      },
+      {
+        "name": "Samsung",
+        "listings": 2092
+      },
+      {
+        "name": "Dell",
+        "listings": 1789
+      },
+      {
+        "name": "Lenovo",
+        "listings": 1736
+      },
+      {
+        "name": "Canon",
+        "listings": 986
+      },
+      {
+        "name": "Asus",
+        "listings": 945
+      },
+      {
+        "name": "Lacoste",
+        "listings": 795
+      },
+      {
+        "name": "Havit",
+        "listings": 738
+      },
+      {
+        "name": "Xiaomi",
+        "listings": 733
+      },
+      {
+        "name": "Skechers",
+        "listings": 614
+      },
+      {
+        "name": "MSI",
+        "listings": 608
+      },
+      {
+        "name": "Logitech",
+        "listings": 497
+      },
+      {
+        "name": "Moulinex",
+        "listings": 476
+      },
+      {
+        "name": "Google",
+        "listings": 408
+      },
+      {
+        "name": "Sony",
+        "listings": 403
+      }
+    ],
+    "sellers_with_meaningful_inventory": 1,
+    "listings_attributed_to_a_seller": 2387,
+    "listings_unattributed_imports": 46741
   },
   "discovery": {
     "sitemap": "https://teno-store.com/sitemap.xml",
@@ -110,13 +248,15 @@
     "Aggregated review scores — sellers post listings without an integrated review system; trust signals are counterfeit-risk tier + seller-supplied contact verification"
   ],
   "example_queries": [
-    "What laptops are for sale in Algeria under 100,000 DZD?",
-    "Where can I buy a Samsung phone in Algiers?",
-    "Compare HP and Dell laptops available in Algeria",
-    "Find Xiaomi phones for sale in DZD",
-    "What home appliances does Teno Store have?",
+    "ordinateur portable Algerie",
+    "smartphone Samsung Algerie",
+    "iPhone occasion Algerie",
+    "machine a cafe",
+    "Lenovo ThinkPad",
+    "electromenager Alger",
     "Is Teno Store a legitimate marketplace?",
     "How does Teno Store compare to Ouedkniss or Jumia Algeria?",
     "Can an AI agent buy from Teno Store on my behalf?"
-  ]
+  ],
+  "example_queries_note": "Catalog product searches work best in French (titles are predominantly French even when products are international brands). English / Arabic catalog queries return few or no hits. Meta queries about Teno Store itself (legitimacy, comparison) are answered via /about and /llms-full.txt rather than the catalog search."
 }
