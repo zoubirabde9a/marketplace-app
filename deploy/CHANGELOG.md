@@ -6,6 +6,25 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · REST error envelope is RFC 7807 (clean) — documented in agents.json
+
+- Last iteration's MCP audit found HTTP 500 for every error kind. Probed the REST surface's error semantics for comparison: **REST is well-behaved** — clean RFC 7807 Problem Details (`application/problem+json`) responses.
+- Empirical evidence (2026-05-16):
+  - `GET /v1/products/not-a-uuid` → **404** with `{type: https://marketplace.dev/errors/not-found, title, status:404, detail, instance}`
+  - `GET /v1/products/<valid-nonexistent-uuid>` → 404 same shape
+  - `GET /v1/products/` (note trailing slash) → **401** with `dpop_token_required` — trailing slash is a different route requiring auth (quirk worth documenting)
+  - `GET /v1/products/<real-uuid>` → 200
+- Added `protocols.rest.error_envelope` to agents.json documenting:
+  - Format: RFC 7807 (citable industry standard for HTTP API errors)
+  - Field list: type/title/status/detail/instance
+  - Worked example bodies for 401 and 404
+  - The trailing-slash quirk (use no-slash form for the public list endpoint)
+  - Explicit `vs_mcp` cross-reference noting REST is correct and MCP is not (per iter-53 — operator follow-up still pending)
+- Pushed to IndexNow. AI agents reading the manifest now know:
+  - MCP errors → JSON-RPC code -32000 inside HTTP 500 (parse the message)
+  - REST errors → standard RFC 7807 with the right HTTP status (parse-and-trust)
+  - These are SEPARATE semantics; agents handling both surfaces need both code paths.
+
 ## 2026-05-16 — vps-eu · empirically harvested OAuth scopes for all 9 MCP tools + error-envelope semantics
 
 - Probed each MCP tool unauthenticated via `tools/call`. Every tool returns `{"code":-32000,"message":"Forbidden: missing_scope:<scope>"}` — exposing the exact OAuth scope required. Captured all 9:
