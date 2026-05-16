@@ -6,6 +6,23 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST #11 — lave-linge deep-dive + /about cluster patch (completes electromenager quartet)
+
+- Eleventh new blog post this loop: "Guide d'achat : choisir un lave-linge en Algérie (2026)", ~9 min read, 10 H2 sections, ~3,700 words. Blog count: 14 → 15. Completes the electromenager quartet (climatiseur + téléviseur + réfrigérateur + **lave-linge**).
+- 10 dimensions covered with Algerian-specific framing:
+  - **Capacité** in kg of dry laundry per household size (1p → 6+ with ramadan multi-generationnel scaling)
+  - **Frontal vs top** ergonomic + capacity + water-consumption trade-offs
+  - **Vitesse d'essorage** thresholds (800/1000/1200/1400-1600 rpm) translated to étendoir-drying-time tradeoffs
+  - **Moteur inverter** (Direct Drive, brushless): vs moteur à charbon, full Sonelgaz electricity + durability math, 4-6y ROI
+  - **Calcaire (eau dure)**: the dominant Algerian-specific failure mode for Alger/Oran water — résistance protection (ceramic/émaillage), programme de détartrage auto, accessible filter — three concrete contre-mesures to demand
+  - **Programmes utiles vs marketing**: 5-6 used / 12-15 advertised
+  - **Classe énergétique 2021** with kWh/an per class
+  - **Brand-fiability**: Samsung/LG (inverter leaders), Bosch/Siemens (15+ years), Beko (Algerian SAV density), Whirlpool, Condor (entry only, avoid >9kg or inverter), Haier/Hisense (selective)
+  - **Prix DZD** for 5 tiers (5-6kg top entry 35k → lavante-séchante 200-350k)
+  - **Occasion vérifications**: full cycle test (chauffe + essorage + vidange), joint hublot inspection (moisi/calcaire), roulements tambour test, date de fabrication 8-12y thresholds
+- Also patched /about cluster section (introduced iter-86) to include both the réfrigérateur post (missed in iter-86 ordering) AND the new lave-linge post. /about now links to ALL 10 buying-category posts.
+- agents.json editorial_content: 14 → 15 posts. Pushed 3 URLs to IndexNow (lave-linge post + /about + agents.json).
+
 ## 2026-05-16 — vps-eu · NEW BLOG POST #10 — réfrigérateur deep-dive (inverter ROI, no-frost, Sonelgaz 10y TCO)
 
 - Tenth new blog post this loop: "Guide d'achat : choisir un réfrigérateur en Algérie (2026)", ~9 min read, 8 H2 sections, ~3,500 words. Blog count: 13 → 14. Completes the electromenager deep-dive triplet (climatiseur iter-80 + téléviseur iter-81 + **réfrigérateur** now).

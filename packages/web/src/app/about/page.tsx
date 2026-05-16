@@ -220,7 +220,9 @@ export default function AboutPage() {
             <Link href="/blog/ordinateur-portable-etudes-algerie-guide-2026" className="text-accent hover:underline">ordinateur portable</Link>,{" "}
             <Link href="/blog/guide-achat-televiseur-algerie-2026" className="text-accent hover:underline">téléviseur</Link>,{" "}
             <Link href="/blog/guide-achat-climatiseur-algerie-2026" className="text-accent hover:underline">climatiseur</Link>,{" "}
-            <Link href="/blog/guide-achat-electromenager-algerie-2026" className="text-accent hover:underline">électroménager</Link>,{" "}
+            <Link href="/blog/guide-achat-refrigerateur-algerie-2026" className="text-accent hover:underline">réfrigérateur</Link>,{" "}
+            <Link href="/blog/guide-achat-lave-linge-algerie-2026" className="text-accent hover:underline">lave-linge</Link>,{" "}
+            <Link href="/blog/guide-achat-electromenager-algerie-2026" className="text-accent hover:underline">électroménager général</Link>,{" "}
             <Link href="/blog/machine-a-cafe-algerie-guide-achat-2026" className="text-accent hover:underline">machine à café</Link>,{" "}
             <Link href="/blog/guide-mode-vetements-marques-algerie-2026" className="text-accent hover:underline">mode et vêtements de marque</Link>,{" "}
             <Link href="/blog/acheter-voiture-occasion-algerie-10-verifications" className="text-accent hover:underline">véhicule d&rsquo;occasion</Link>.

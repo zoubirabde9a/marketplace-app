@@ -82,6 +82,11 @@ POSTS = [
         "title": "Guide d'achat : choisir un réfrigérateur en Algérie",
         "answers": ["refrigerateur Algerie", "frigo inverter Algerie", "no-frost frigo", "side-by-side americain DZD", "capacite frigo famille", "Samsung LG Beko Condor frigo"],
     },
+    {
+        "url": "https://teno-store.com/blog/guide-achat-lave-linge-algerie-2026",
+        "title": "Guide d'achat : choisir un lave-linge en Algérie",
+        "answers": ["lave-linge Algerie", "machine a laver inverter", "calcaire lave-linge Alger Oran", "essorage 1200 1400 rpm", "frontal vs top loading", "Samsung LG Bosch Beko lave-linge"],
+    },
 ]
 
 p = pathlib.Path(

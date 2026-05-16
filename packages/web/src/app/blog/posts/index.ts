@@ -12,6 +12,7 @@ import { post as televiseur } from "./televiseur-algerie-guide-2026";
 import { post as modeMarques } from "./mode-vetements-algerie-guide-2026";
 import { post as vendreDemarrer } from "./vendre-en-ligne-algerie-demarrer-2026";
 import { post as refrigerateur } from "./refrigerateur-algerie-guide-2026";
+import { post as laveLinge } from "./lave-linge-algerie-guide-2026";
 import type { BlogPost } from "../types";
 
 export const BLOG_POSTS: ReadonlyArray<BlogPost> = [
@@ -29,6 +30,7 @@ export const BLOG_POSTS: ReadonlyArray<BlogPost> = [
   modeMarques,
   vendreDemarrer,
   refrigerateur,
+  laveLinge,
 ]
   .slice()
   .sort((a, b) => b.datePublished.localeCompare(a.datePublished));
