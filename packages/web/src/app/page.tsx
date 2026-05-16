@@ -216,6 +216,50 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
     ],
   };
 
+  // Home-page FAQ — paired 1:1 with the FAQPage JSON-LD below. Distinct
+  // questions from /about so the two FAQ pages don't shadow each other in
+  // search/AI-panel surfaces. Home is the highest-PageRank surface on the
+  // site, so the questions here target the highest-volume entry queries
+  // ("is Teno Store legit / free", "how fresh is the catalog", "where do
+  // sellers operate", "what payment methods"). 4 entries — well under
+  // Google's 8-entry "spammy" threshold.
+  const homeFaq: ReadonlyArray<{ q: string; a: string }> = [
+    {
+      q: "À quelle fréquence le catalogue de Teno Store est-il mis à jour ?",
+      a: "Le catalogue est actualisé en continu — un scraper récupère les annonces fraîches des places de marché algériennes toutes les minutes et publie de nouveaux listings ainsi qu'un flux Atom (/feed.xml) en temps réel. Les annonces que vous parcourez à l'instant reflètent ce qui est réellement à vendre en Algérie aujourd'hui.",
+    },
+    {
+      q: "Teno Store est-il gratuit pour les acheteurs et les vendeurs ?",
+      a: "Oui, gratuit dans les deux sens : la navigation et la recherche sont libres, sans inscription ; les vendeurs peuvent publier leurs annonces sans frais via le tableau de bord vendeur en libre-service. Aucun frais de listing, aucun abonnement.",
+    },
+    {
+      q: "Quels modes de paiement Teno Store accepte-t-il ?",
+      a: "Le paiement se règle directement entre l'acheteur et le vendeur — Teno Store ne traite pas les paiements lui-même. La plupart des vendeurs algériens acceptent l'espèces à la livraison, le virement Edahabia/CCP, ou le paiement à la remise en main propre. Pour les achats délégués à un agent IA, l'authorization se fait via mandats AP2 avant que l'agent ne contacte le vendeur.",
+    },
+    {
+      q: "Dans quelles villes algériennes les vendeurs de Teno Store sont-ils basés ?",
+      a: "Les vendeurs sont répartis dans toute l'Algérie, avec des concentrations à Alger, Oran, Annaba, Constantine, Sétif et Blida. Chaque annonce indique la wilaya du vendeur et les wilayas couvertes par sa livraison — la plupart des vendeurs livrent dans toute l'Algérie via les services de colis nationaux.",
+    },
+  ];
+  const homeFaqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${SITE_URL}/#faq`,
+    inLanguage: "fr",
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    about: { "@id": `${SITE_URL}/#organization` },
+    // Speakable spans for AI voice/search panels — same pattern as /about.
+    speakable: {
+      "@type": "SpeakableSpecification",
+      cssSelector: ["#home-faq-heading", "#home-faq-heading ~ dl"],
+    },
+    mainEntity: homeFaq.map(({ q, a }) => ({
+      "@type": "Question",
+      name: q,
+      acceptedAnswer: { "@type": "Answer", text: a },
+    })),
+  };
+
   // NOTE: previously had an explicit <link rel="preload" as="image"> for
   // the first product card's hero (iter-32). Reverted: Next.js already
   // auto-emits a preload for every <img fetchPriority="high">, and
@@ -228,6 +272,10 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(websiteJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(homeFaqJsonLd) }}
       />
       <div className="absolute inset-0 bg-grid opacity-50 pointer-events-none [mask-image:radial-gradient(closest-side,black,transparent)]" />
       {/* lang="en" wrapper: with <html lang="fr"> set at the layout level
@@ -337,6 +385,31 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           <Card title="Full product detail" body="Photos, variants, prices, attributes, and seller info — exactly what the agent saw." />
           <Card title="Trust signals" body="Stock state, verified seller information, and every listing scored on the same trust rubric." />
         </div>
+      </section>
+      {/* Home FAQ — visible HTML paired 1:1 with the FAQPage JSON-LD above.
+          Google's FAQ rich-result guidelines require every Question's
+          acceptedAnswer.text to appear in the rendered page body; mismatched
+          structured/visible content triggers a manual action. Same source-
+          of-truth array drives both surfaces (see homeFaq above). */}
+      <section
+        lang="fr"
+        aria-labelledby="home-faq-heading"
+        className="mt-16 max-w-3xl mx-auto"
+      >
+        <h2
+          id="home-faq-heading"
+          className="text-2xl font-semibold tracking-tight text-ink mb-4"
+        >
+          Questions fréquentes
+        </h2>
+        <dl className="space-y-5">
+          {homeFaq.map(({ q, a }) => (
+            <div key={q}>
+              <dt className="text-base font-medium text-ink mb-1">{q}</dt>
+              <dd className="leading-relaxed text-ink-soft">{a}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
       {recent.length > 0 && (
         <section className="mt-12" aria-labelledby="recent-heading">

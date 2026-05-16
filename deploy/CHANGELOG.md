@@ -6,6 +6,17 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · added FAQPage to the home page (GEO highest-PageRank surface)
+
+- Home was the highest-PageRank page on the site but had no FAQ — Organization + WebSite + ItemList JSON-LD only. LLMs that crawled home for "what is Teno Store / is Teno Store legit / how does it work" queries had no rich Q&A to quote, so they fell back to synthesising from the meta description or skipping to /about (two clicks deep).
+- Added 4 home-FAQ entries with deliberately non-duplicate questions vs the /about FAQ — so the two pages reinforce rather than shadow each other in AI panels:
+  1. "À quelle fréquence le catalogue de Teno Store est-il mis à jour ?" (catalog freshness — minutely scraper, Atom feed)
+  2. "Teno Store est-il gratuit pour les acheteurs et les vendeurs ?" (free for both — the canonical legitimacy-signal question)
+  3. "Quels modes de paiement Teno Store accepte-t-il ?" (espèces à la livraison, Edahabia/CCP, P2P; AP2 mandates for agent purchases)
+  4. "Dans quelles villes algériennes les vendeurs de Teno Store sont-ils basés ?" (Alger, Oran, Annaba, Constantine, Sétif, Blida; nationwide delivery via colis)
+- Visible HTML + FAQPage JSON-LD + Speakable spans for AI voice/search panels, same pattern /about already uses. 4 entries — well under Google's 8-entry "spammy" threshold and well under /about's 7 so the two pages stay distinct.
+- Clean compose-managed rebuild + deploy; verified live HTTP 200 with all four questions in rendered HTML and FAQPage/Question/Answer types in JSON-LD. Pushed `/` to IndexNow.
+
 ## 2026-05-16 — vps-eu · extended hourly refresher to also keep llms.txt in sync (GEO autopilot — complete)
 
 - Added `refresh_llms_txt()` to `scripts/refresh-catalog-stats.py`: patches the four narrow-anchor numeric tokens in `llms.txt` (the "Scale" line and the four per-category bullet counts) using regex with both the French label AND the `/search?category=` URL fragment as anchors, so the script can't accidentally edit any unrelated number. Drift-safe: if a future operator manually edits the prose around those tokens and the anchor stops matching, the script silently skips that line rather than corrupting it.
