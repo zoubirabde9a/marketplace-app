@@ -6,6 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · audit pass — 5 GEO dimensions checked, no new bugs surfaced
+
+- Continued the wholesale-replace audit pattern that found 3 bugs over iterations 21-23 (hreflang ar-DZ across 6 page types, openGraph siteName/type/url on /about + /seller, robots preview hints on /search). This iteration's audit dimensions all came back clean:
+  - `geo.region` + `geo.placename` + `geo.position` + `ICBM`: present on all 9 page types (my first audit script had a quoting bug that produced false negatives — re-ran with direct curl confirming).
+  - `keywords`: present on all 9 page types.
+  - Title brand-chrome (`%s · Teno Store` template): correctly applied on every page type EXCEPT `/product/[id]` — where the bypass is documented and intentional (the comment at line 261 explains: title template eats 13 chars, Google SERP truncates at 55-65, brand visibility is already covered by URL/breadcrumb/JSON-LD/og:site_name).
+  - Canonical URLs: all 13 spot-checked URLs self-reference correctly.
+  - Image alt-text coverage: 0 empty-alt across home/category/product/store. Every image has descriptive alt text.
+- No code changes this iteration — the value is in ruling out 5 issue classes I'd otherwise want to double-check later.
+
 ## 2026-05-16 — vps-eu · fixed missing rich-result preview hints on /search (third wholesale-replace fix)
 
 - Third instance of the same Next.js wholesale-replace bug class hit /search. The layout sets `robots: { index, follow, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 }` — those three preview-budget hints tell Google AI Overviews and Bing SERP that they can use full-size images and unlimited-length snippets for the page. /search overrides `robots` to switch between `{index: false, follow: true}` for noindex slices and `{index: true, follow: true}` for indexable slices — but the indexable branch dropped the three preview hints.
