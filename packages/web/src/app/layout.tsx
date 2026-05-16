@@ -183,6 +183,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           title="Teno Store — Annonces récentes"
           href="/feed.xml"
         />
+        {/* LLM-discovery hints. The `llms.txt` / `llms-full.txt` convention
+            (https://llmstxt.org/) ships the site as a plain-text bundle an
+            LLM can ingest in one fetch — short summary + long-form reference.
+            Declaring them as <link rel="alternate"> in every page's head
+            means HTML-walking crawlers (ChatGPT search, Perplexity, Bing
+            Chat, Google AI Overviews) discover them through standard HTML
+            parsing instead of having to guess at the URL or only finding
+            them via the well-known path probe. Same discovery mechanism
+            already used for feed.xml above. */}
+        <link
+          rel="alternate"
+          type="text/plain; charset=utf-8"
+          title="Teno Store — LLM site summary"
+          href="/llms.txt"
+        />
+        <link
+          rel="alternate"
+          type="text/plain; charset=utf-8"
+          title="Teno Store — LLM site reference (long-form)"
+          href="/llms-full.txt"
+        />
       </head>
       <body className="min-h-screen antialiased">
         <a

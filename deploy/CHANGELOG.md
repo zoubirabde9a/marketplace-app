@@ -6,6 +6,11 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · added `<link rel="alternate">` tags advertising /llms.txt + /llms-full.txt on every page (GEO)
+
+- Until now, an HTML crawler that didn't already know the llmstxt.org convention had no way to discover `/llms.txt` and `/llms-full.txt` from the rendered page — they were only reachable via the `Sitemap:` line in robots.txt or via well-known-path probing. Added two `<link rel="alternate" type="text/plain; charset=utf-8">` tags to the root `<head>` in `layout.tsx`, advertising both files the same way every page already advertises `feed.xml`. ChatGPT search, Perplexity, Bing Chat, and Google AI Overviews all parse `<link rel="alternate">` natively.
+- Rebuilt the web image (`docker compose build web`), then `docker compose up -d web` to roll it out. Caddy's `lb_try_duration 30s` was meant to absorb the recreate gap, but I tripped a docker-compose orphan-container race during the rollout: `docker rm -f marketplace-web` removed the *live* container (the name was still pointing at it, not the dead-marked one), causing a ~30-60s 502 window before a subsequent `docker compose up -d web` recreated it from the rebuilt image. Site is back HTTP 200; both new `<link>` tags are present in the rendered head; lesson — to clean up an orphan after a compose recreate hiccup, use `docker compose down web --remove-orphans` and let compose decide what to delete, never `docker rm -f` by name.
+
 ## 2026-05-16 — vps-eu · refreshed `.well-known/ai-plugin.json` (legacy ChatGPT-plugins manifest used by some bots) (GEO)
 
 - `ai-plugin.json` is the deprecated ChatGPT-plugins descriptor but some legacy AI tools and crawlers still probe `/.well-known/ai-plugin.json` on every domain they visit. The file existed but had stale catalog claims, used relative `/sitemap.xml` instead of an absolute URL, and made no reference to any of the new GEO discovery surfaces (`llms-full.txt`, `ai-policy.json`, `agents.json`).
