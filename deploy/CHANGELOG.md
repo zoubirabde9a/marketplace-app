@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · added /c/[slug] + /blog + /blog/[slug] to the middleware cache-control allowlist (BIG GEO + perf win)
+
+- Audit caught it: `/c/informatique` and `/blog/[slug]` were returning `cache-control: private, no-cache, no-store, max-age=0, must-revalidate` — the Next.js framework default for dynamic routes. Both are indexable, both are major AI-panel destinations.
+- Root cause: `packages/web/src/middleware.ts` rewrites Cache-Control to `public, s-maxage=300, stale-while-revalidate=1800` for anonymous traffic — but the allowlist only covered `/`, `/about`, `/seller`, `/search`, `/product/:id`, `/store/:id`. `/c/[slug]` and `/blog`/`/blog/[slug]` were never added.
+- Net effect of the gap (before fix): every Googlebot / ClaudeBot / PerplexityBot / Bingbot hit on the LARGEST indexable surface (`/c/informatique` lists ~19k products) hit origin uncached, with Cloudflare unable to cache them at all. Same iter-22-style origin-pressure issue product pages used to have before they were added to the allowlist. Plus `no-store` is a soft signal to some AI crawlers that they shouldn't retain the content for citation.
+- Added the three missing regexes to `CACHEABLE_PATHS` and three matchers to `config.matcher`. Verified live: `/c/informatique`, `/c/telephones`, `/blog`, `/blog/guide-achat-smartphone-occasion-algerie-2026` all now ship `Cache-Control: public, max-age=0, s-maxage=300, stale-while-revalidate=1800`. Sanity-checked /product/* still public (was already).
+- Operational note: cache-rule in Cloudflare for these new paths should mirror the existing one (cookie `mp_session` absent → cache the HTML); no immediate operator action required since Cloudflare's default is conservative when Vary: Cookie is present.
+
 ## 2026-05-16 — vps-eu · audit pass — 5 GEO dimensions checked, no new bugs surfaced
 
 - Continued the wholesale-replace audit pattern that found 3 bugs over iterations 21-23 (hreflang ar-DZ across 6 page types, openGraph siteName/type/url on /about + /seller, robots preview hints on /search). This iteration's audit dimensions all came back clean:

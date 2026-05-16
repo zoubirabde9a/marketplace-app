@@ -39,6 +39,20 @@ const CACHEABLE_PATHS = [
   /^\/search$/,
   /^\/product\/[^/]+$/,
   /^\/store\/[^/]+$/,
+  // Category landings — the largest indexable surface (e.g. /c/informatique
+  // hosts ~19k products) and a major SERP/AI-panel destination for queries
+  // like "best laptops in Algeria" / "smartphones Algérie". Without this
+  // entry the page was returning the Next.js default `private, no-cache,
+  // no-store` and every Googlebot / ClaudeBot / PerplexityBot hit went
+  // straight to origin uncached — the exact pattern the iter-22 caddy-log
+  // analysis flagged on /product/* before product was added here.
+  /^\/c\/[^/]+$/,
+  // Blog index and posts — editorial content that AI panels cite for
+  // "guide d'achat smartphone Algérie" style queries. Pages were also
+  // shipping no-store, which both bleeds origin and may signal "don't
+  // retain" to AI crawlers.
+  /^\/blog$/,
+  /^\/blog\/[^/]+$/,
 ];
 
 export function middleware(req: NextRequest): NextResponse {
@@ -100,5 +114,8 @@ export const config = {
     "/search",
     "/product/:id",
     "/store/:id",
+    "/c/:slug",
+    "/blog",
+    "/blog/:slug",
   ],
 };
