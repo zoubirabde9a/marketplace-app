@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST — coffee-machine buying guide (fills `machine à café` example_queries gap)
+
+- Wrote a new ~6-min French blog post: "Guide d'achat : choisir une machine à café en Algérie (2026)". Targets the `machine à café` query from agents.json example_queries (iter-44 verified it returns 3 hits, but the site had no editorial content for it). 5 blog posts total now.
+- Content covers the 4 machine formats (filter / espresso / capsules / broyeur intégré), prices in DZD for specific models on the Algerian market (Krups XP320810, Moulinex Subito/Cadence, DeLonghi Magnifica Evo, Nespresso Inissia, Ninja Slushi), the pump/material/thermobloc differentiation behind generic "15 bars" marketing, total-cost-of-ownership math comparing capsules vs grain, brand-fiability ranking for the Algerian after-sales network, occasion-buying checklist, and entretien (descaling against hard Algerian water).
+- Internal links go to /search?q=machine%20a%20cafe and /c/electronique_electromenager — turning the guide into a funnel for the catalog rather than a dead-end.
+- Schema.org compliant: post emits full BlogPosting JSON-LD (publisher + author @id ref to canonical Organization from iter-64, datePublished + dateModified 2026-05-16, articleSection, wordCount, image, speakable).
+- Clean compose-managed build + deploy. Verified HTTP 200, title rendered, BlogPosting JSON-LD present. Pushed to IndexNow.
+- Net GEO effect: AI panels asked "what coffee machines to buy in Algeria" now have specific editorial content with concrete DZD prices and named brands, instead of just product-listing pages. The new post will appear in sitemap.xml on the next sitemap revalidation (5 min cache) and propagate to Bing/ChatGPT search via the IndexNow push within minutes.
+
 ## 2026-05-16 — vps-eu · Wayback re-snapshot of 5 manifest files after the late-loop documentation work
 
 - The five machine-readable manifest files (agents.json, llms.txt, llms-full.txt, ai-policy.json, ai-plugin.json) all received substantive content additions across iters 50-73: filter empirical matrix, MCP scope harvesting, MCP capabilities declaration, REST response_shape + error_envelope, OAuth-endpoint warnings, known_limitations × 4, last_audited freshness anchor.
