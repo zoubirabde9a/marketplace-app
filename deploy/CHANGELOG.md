@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · audit pass + Wayback re-snapshot of 11 recently-changed pages
+
+- This iteration's audits all came back clean (no new bugs surfaced):
+  - **Internal link integrity**: walked 80 unique internal links from home + 2 top category pages + /about + /seller + /blog. Every link returns 200 except `/seller/products/new` which 307s to login (expected — auth-required surface).
+  - **`<html lang>` consistency**: all 9 page types ship `<html lang="fr">` matching the metadata-declared language.
+  - **`twitter:card` type appropriateness**: all 9 page types ship `summary_large_image` (correct for visual/commerce content, not the default `summary` small-thumbnail card).
+  - Two false positives along the way from transient shell-loop output glitches (CRLF or buffered pipe artifacts) — re-verified each directly and confirmed all-clean.
+- In parallel: re-pushed 11 substantially-changed pages to the Wayback Machine. Since the last Wayback batch (iter-18) I've shipped home FAQ, /about Ouedkniss-comparison, /seller Service schema, /search rich-result hints, ar-DZ across all page types, OG siteName/type/url fixes, /c+/blog cache-control allowlist, and og:image dimensions on /product. The earlier captures predate every one of those changes. 8s spacing, all 11 returned 302 (capture-initiated).
+
 ## 2026-05-16 — vps-eu · added og:image:width/height/type to product pages (~48k URLs, link-preview quality)
 
 - Audit dimension this iteration: og:image metadata completeness. Found product pages had `og:image` + `og:image:alt` only — missing `og:image:width`, `og:image:height`, `og:image:type` AND the entire `twitter:image:*` dimension chain. Every other page on the site had them.
