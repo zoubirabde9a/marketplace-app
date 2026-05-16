@@ -225,8 +225,9 @@
   },
   "policies": {
     "rate_limits": {
-      "anonymous": "60 req/min per IP",
-      "authenticated": "600 req/min per agent"
+      "note": "No per-IP or per-token rate limiting is currently enforced on public read endpoints (/v1/products, /v1/products/{id}). Operate responsibly. Write endpoints (cart/checkout/seller) require OAuth + DPoP authentication, which inherently bounds load.",
+      "observed": "A burst of 70 anonymous requests/second to /v1/products returned 70x 200, 0x 429 (2026-05-16 audit).",
+      "recommended_client_behaviour": "Cap polling rate at the recommended sitemap/feed cadence rather than relying on server-side throttling: sitemap revalidates every 5 min, feed.xml every 5 min, agents.json hourly via the refresh timer."
     },
     "data_freshness": "products: 5 min cache; orders: real-time"
   },

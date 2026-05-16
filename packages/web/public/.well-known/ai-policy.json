@@ -10,7 +10,12 @@
     "crawl": {
       "allowed": true,
       "scope": "All paths listed as Allow in /robots.txt — currently /, /search, /product/, /store/, /seller, /about, /blog, /c/.",
-      "disallowed_paths": ["/api/", "/login", "/seller/", "/s/"]
+      "disallowed_paths": [
+        "/api/",
+        "/login",
+        "/seller/",
+        "/s/"
+      ]
     },
     "cite": {
       "allowed": true,
@@ -34,7 +39,9 @@
     "train": {
       "allowed": true,
       "scope": "Public catalog pages and editorial content may be used for LLM training. User accounts, snapshot links (/s/), seller dashboards, and any auth-required surface are out of scope and disallowed via robots.txt.",
-      "exclusions": ["Personal data of buyers or sellers beyond the verified contact details a seller publishes on their own listing"]
+      "exclusions": [
+        "Personal data of buyers or sellers beyond the verified contact details a seller publishes on their own listing"
+      ]
     },
     "transact": {
       "allowed": true,
@@ -50,18 +57,23 @@
   },
   "rate_limits": {
     "crawl": {
-      "anonymous": "60 requests/minute per IP",
-      "guidance": "Crawlers should respect HTTP 429 responses with the Retry-After header. For sustained high-rate crawling, request a static export via the catalog API rather than scraping the HTML."
+      "enforced": false,
+      "note": "No per-IP rate limiting is currently enforced on public reads. Operate responsibly. Verified 2026-05-16 by burst test (70 requests, 70x 200, 0x 429).",
+      "recommended_cadence": "Re-fetch the sitemap/feed/manifests at their cache-control intervals (5 min for sitemap+feed, 1 hour for the .well-known/* discovery files). Honor 429 if it ever appears."
     },
     "api": {
-      "anonymous": "60 requests/minute per IP",
-      "authenticated": "600 requests/minute per agent"
+      "public_reads_enforced": false,
+      "authenticated_writes": "OAuth 2.1 + DPoP required; rate per-token bounded by token issuance rather than per-minute counts."
     }
   },
   "content_provenance": {
     "catalog_source": "Listings are sourced from real Algerian sellers and aggregated from public marketplace data (Ouedkniss-style listings). Each product page exposes a counterfeit-risk tier and the seller's verified contact details.",
     "freshness": "Catalog is refreshed continuously; product page lastmod timestamps and the Atom feed at /feed.xml are the authoritative freshness signals.",
-    "languages": ["French (primary)", "Arabic", "English"]
+    "languages": [
+      "French (primary)",
+      "Arabic",
+      "English"
+    ]
   },
   "brand_disambiguation": {
     "this_entity": "Teno Store — Algerian e-commerce marketplace at teno-store.com",

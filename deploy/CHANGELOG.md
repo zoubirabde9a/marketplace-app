@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · empirically falsified rate_limit claim (60/min "per IP" — actually unenforced)
+
+- Continuing the empirical-verification sweep. agents.json `policies.rate_limits` and ai-policy.json `rate_limits.crawl` both claimed `"60 requests/minute per IP"`. Burst-tested from vps-eu: **70 anonymous requests to /v1/products?limit=1 in rapid succession returned 70× HTTP 200, 0× HTTP 429.** No throttle in place. The claim was aspirational, not enforced.
+- Also verified that `good_for[5]` ("Finding Algerian sellers' contact details (phone, WhatsApp, Viber)") IS empirically true — sample product page exposes `tel:`, `+213` (Algerian country code), `wa.me` (WhatsApp deep-link) tokens. That claim stands.
+- Fix: rewrote `policies.rate_limits` in agents.json and `rate_limits` in ai-policy.json to honest posture. Both now say `enforced: false`, cite the 2026-05-16 burst-test as evidence, and direct clients to honor cache-control intervals instead (sitemap+feed 5 min, .well-known/* 1 hour) rather than rely on server-side throttling that doesn't exist. Authenticated writes still gated by OAuth+DPoP, which inherently bounds load by token issuance rate.
+- Pushed both manifests to IndexNow. AI agents reading the rate-limit posture now back-off based on observed reality, not phantom 429s — and won't mis-attribute later errors to a throttle that isn't there.
+
 ## 2026-05-16 — vps-eu · empirically grounded example_queries (most English ones returned 0 catalog hits)
 
 - Until this iteration, agents.json `example_queries` had 8 English-language entries I'd written from a "what would a user ask ChatGPT" perspective. Ran each through the public catalog API (`/v1/products?q=...`) to verify the implicit "this site can answer these" claim. Results:
