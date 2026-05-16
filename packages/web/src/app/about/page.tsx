@@ -201,6 +201,42 @@ export default function AboutPage() {
             S&rsquo;inscrire pour vendre →
           </Link>
         </p>
+        {/* Editorial cluster reference. iter-86: AI panels landing on /about
+            don't otherwise discover the 13-post buying-guide cluster, so
+            surface it here with a short categorised hub. Same internal-linking
+            principle the individual blog posts already use at their bottom. */}
+        <h2 className="text-xl font-medium text-ink mt-10 mb-2">Guides d&rsquo;achat et de vente</h2>
+        <p className="leading-relaxed">
+          Le{" "}
+          <Link href="/blog" className="text-accent hover:underline">
+            blog Teno Store
+          </Link>{" "}
+          rassemble des guides pratiques sur le commerce algérien en ligne :
+        </p>
+        <ul className="mt-3 space-y-2 text-ink-soft leading-relaxed list-none p-0">
+          <li>
+            <strong>Guides d&rsquo;achat par catégorie</strong> —{" "}
+            <Link href="/blog/guide-achat-smartphone-occasion-algerie-2026" className="text-accent hover:underline">smartphone d&rsquo;occasion</Link>,{" "}
+            <Link href="/blog/ordinateur-portable-etudes-algerie-guide-2026" className="text-accent hover:underline">ordinateur portable</Link>,{" "}
+            <Link href="/blog/guide-achat-televiseur-algerie-2026" className="text-accent hover:underline">téléviseur</Link>,{" "}
+            <Link href="/blog/guide-achat-climatiseur-algerie-2026" className="text-accent hover:underline">climatiseur</Link>,{" "}
+            <Link href="/blog/guide-achat-electromenager-algerie-2026" className="text-accent hover:underline">électroménager</Link>,{" "}
+            <Link href="/blog/machine-a-cafe-algerie-guide-achat-2026" className="text-accent hover:underline">machine à café</Link>,{" "}
+            <Link href="/blog/guide-mode-vetements-marques-algerie-2026" className="text-accent hover:underline">mode et vêtements de marque</Link>,{" "}
+            <Link href="/blog/acheter-voiture-occasion-algerie-10-verifications" className="text-accent hover:underline">véhicule d&rsquo;occasion</Link>.
+          </li>
+          <li>
+            <strong>Acheter en confiance</strong> —{" "}
+            <Link href="/blog/acheter-en-ligne-algerie-sans-se-faire-avoir-2026" className="text-accent hover:underline">éviter les arnaques</Link>,{" "}
+            <Link href="/blog/payer-en-ligne-algerie-methodes-paiement-2026" className="text-accent hover:underline">méthodes de paiement (Edahabia, CIB, CCP)</Link>,{" "}
+            <Link href="/blog/livraison-algerie-services-colis-tarifs-2026" className="text-accent hover:underline">services de livraison (Yalidine, ZR Express, DHL)</Link>.
+          </li>
+          <li>
+            <strong>Vendre en ligne</strong> —{" "}
+            <Link href="/blog/vendre-en-ligne-algerie-guide-complet-demarrer-2026" className="text-accent hover:underline">guide complet pour démarrer</Link>,{" "}
+            <Link href="/blog/vendre-sur-teno-store-7-conseils-annonces" className="text-accent hover:underline">7 conseils pour des annonces qui marchent</Link>.
+          </li>
+        </ul>
         <section aria-labelledby="faq-heading" className="mt-12">
           <h2 id="faq-heading" className="text-2xl font-semibold tracking-tight text-ink mb-4">
             Questions fréquentes

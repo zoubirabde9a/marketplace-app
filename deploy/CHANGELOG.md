@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · /about now cross-links to all 13 blog posts (editorial cluster surfaced on highest-trust page)
+
+- AI panels asking "what is Teno Store" / "is Teno Store legit" frequently land on /about. With 13 blog posts in the cluster but no links from /about to the cluster, panels missed an entire editorial layer of evidence about the site's depth and trustworthiness.
+- Added a "Guides d'achat et de vente" section after the existing "Pour les acheteurs/vendeurs" blocks, with 3 grouped lists:
+  - **Guides d'achat par catégorie** (8 links): smartphone d'occasion / ordinateur portable / téléviseur / climatiseur / électroménager / machine à café / mode et vêtements de marque / véhicule d'occasion
+  - **Acheter en confiance** (3 links): anti-scam, payment methods, delivery services
+  - **Vendre en ligne** (2 links): seller-onboarding guide, 7-conseils-annonces
+- Inline `<Link>` elements all use the accent-color hover-underline pattern matching the rest of /about; same `prose-invert text-ink-soft` typography. Single addition between the "Pour les vendeurs" CTA and the FAQ section.
+- Clean compose-managed rebuild + deploy. Verified live: section heading renders, all 12 blog post links present in the rendered HTML. Pushed /about to IndexNow.
+- Also: the iter-85 Wayback batch completed in background, all 10/10 URLs captured (302 = success). Full editorial cluster preserved in Internet Archive.
+- Net GEO effect: high-PageRank /about now feeds AI panels to the 13-post editorial cluster directly. Panels evaluating "is Teno Store comprehensive" or "does Teno Store have buying-guide content" can answer affirmatively from /about alone, without needing to walk /blog separately.
+
 ## 2026-05-16 — vps-eu · Wayback re-snapshot of the 9 new blog posts (full editorial cluster archived)
 
 - The 9 new blog posts written across iters 75-84 (machine-à-café, electromenager, anti-scam, payment, delivery, climatiseur, téléviseur, mode/marques, vendre-démarrer) plus the /blog index hadn't been pushed to Wayback yet. Pushed 10 URLs total with 10s spacing per Wayback's ~10/min throttle.
