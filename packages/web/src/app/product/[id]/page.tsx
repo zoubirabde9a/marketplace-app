@@ -484,7 +484,14 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           ...(p.sellerId && p.sellerDisplayName
             ? {
                 seller: {
-                  "@type": "Organization",
+                  // @type Store matches the canonical Store node on
+                  // /store/<uuid> (iter-62). @id reference connects the
+                  // two pages' entity graphs — KG bots resolve @id
+                  // cross-page so the Offer.seller and the storefront
+                  // Store are seen as the same entity, not two
+                  // independent organisations with the same name.
+                  "@type": "Store",
+                  "@id": `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
                   name: p.sellerDisplayName,
                   identifier: p.sellerId,
                   url: `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
@@ -508,7 +515,14 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           ...(p.sellerId && p.sellerDisplayName
             ? {
                 seller: {
-                  "@type": "Organization",
+                  // @type Store matches the canonical Store node on
+                  // /store/<uuid> (iter-62). @id reference connects the
+                  // two pages' entity graphs — KG bots resolve @id
+                  // cross-page so the Offer.seller and the storefront
+                  // Store are seen as the same entity, not two
+                  // independent organisations with the same name.
+                  "@type": "Store",
+                  "@id": `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
                   name: p.sellerDisplayName,
                   identifier: p.sellerId,
                   url: `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
@@ -525,6 +539,15 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     name: p.title.value,
     productID: p.productId,
     url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
+    // isPartOf links every product to the canonical Teno Store Organization
+    // node on the home page. Without this, ~48k product pages look like
+    // orphan entities to KG bots and AI panels — Brand is cross-linked,
+    // Seller is cross-linked when present (Offer.seller above), but
+    // marketplace tenancy was unstated. iter-63 fix.
+    isPartOf: { "@id": `${SITE_URL}/#organization` },
+    // Cross-link to the canonical /product/<id> WebPage that hosts this
+    // Product entity. Same `@id` resolves both nodes.
+    mainEntityOfPage: { "@id": `${SITE_URL}/product/${encodeURIComponent(p.productId)}#webpage` },
   };
   // JSON-LD description feeds Google product rich-cards. Use the same
   // structured fallback we built for <meta description> when the seller

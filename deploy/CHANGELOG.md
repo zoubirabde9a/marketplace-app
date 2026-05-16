@@ -6,6 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · Product JSON-LD: isPartOf + mainEntityOfPage + Offer.seller cross-link upgrade (~48k pages)
+
+- Continuing the entity-graph audit. Last iteration linked /store/<uuid> to the canonical Organization. This iteration: ~48k product pages had Product JSON-LD with NO cross-links to seller / marketplace — `seller`, `offeredBy`, `isPartOf`, `mainEntityOfPage` all absent on the Product. (Offer.seller WAS emitted for seller-attributed products but used inline `@type: Organization` rather than the canonical Store node.)
+- Three fixes on `app/product/[id]/page.tsx`:
+  - Added `Product.isPartOf: { @id: "${SITE_URL}/#organization" }` — every product now declared as part of Teno Store marketplace
+  - Added `Product.mainEntityOfPage: { @id: "${SITE_URL}/product/<id>#webpage" }` — schema.org-blessed cross-link to the hosting WebPage entity
+  - Upgraded `Offer.seller` from `@type: Organization` (inline) to `@type: Store` + `@id: ".../store/<uuid>"` (matches the canonical Store node from iter-62) — KG bots resolve the `@id` cross-page so Offer.seller and the /store/<uuid> Store now resolve to the SAME entity instead of two independent same-named orgs.
+- Live verification: bulk-imported product (no seller_id) ships isPartOf + mainEntityOfPage ✅. Seller-attributed product additionally ships Offer.seller as `@type: Store + @id` ✅. Pushed sample product to IndexNow.
+- **Operator follow-up flagged**: while verifying, noticed the seller's `display_name` ("Smart Phone DZ â€" Alger Centre") carries mojibaked em-dash bytes (`c3 a2 e2 82 ac e2 80 9d` instead of `e2 80 94`) — same double-encode pattern as the manifest.webmanifest issue from iter-40, but this time at the DB-write layer. Tracing the source table requires deeper investigation (seller.seller_profiles.store_name had no matching row for the id, suggesting the displayName is constructed from a join I didn't find). Operator: investigate and one-shot-rewrite the affected seller_profiles row(s).
+
 ## 2026-05-16 — vps-eu · /store/<uuid> Store JSON-LD now cross-links to canonical Organization
 
 - Following last iteration's home-Organization enrichment, audited whether other pages CORRECTLY cross-link to the canonical node. /about cleanly uses `about: { @id: "...#organization" }` (good — no duplicate node, just a reference). But /store/<uuid> Store JSON-LD had NO `parentOrganization` link. Storefronts looked like standalone Store entities with no obvious tenancy on Teno Store.
