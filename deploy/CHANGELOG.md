@@ -6,6 +6,17 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · automated hourly refresh of agents.json from live DB (GEO autopilot, stops manifest drift)
+
+- Built `scripts/refresh-catalog-stats.py`: pulls fresh counts from Postgres (`SELECT count(*)`, GROUP BY category/brand), rewrites `/.well-known/agents.json` on the host AND inside the running web container (no rebuild), then pushes the URL to IndexNow so Bing re-fetches the new payload. Idempotent — re-running with no DB changes is a no-op. Pure Python stdlib, no pip deps; uses `docker compose exec postgres psql` and `docker cp` for the heavy lifting.
+- First test run on the live server: total moved from 48,062 → 48,092 in the few minutes since my last manual refresh (the scraper genuinely runs every minute). Manifest now shows `snapshot_time_utc: "16:18"` and `size: "48,092+ live listings..."` — both written automatically.
+- Installed `marketplace-refresh-catalog-stats.service` + `.timer`, `OnCalendar=hourly` with 5-min jitter, `Persistent=true`. Next fire: 45 min from now, then every hour thereafter. Copied both unit files into `deploy/systemd/` for the repo-as-source-of-truth pattern.
+- Open follow-up: this only touches the JSON manifest. The two prose files (`llms.txt`, `llms-full.txt`) still need an operator to refresh — they have natural-language phrasing that regex substitution would corrupt. Suitable cadence for those is monthly or whenever crossing a round number (50k listings, 10 sellers, etc.).
+
+## 2026-05-16 — vps-eu · wayback machine retries completed (all 20 high-value URLs now archived)
+
+- Last iteration's 10 rate-limited Wayback submissions were retried with 8s spacing — all 11 (the 10 originally rate-limited + the /blog that got a transient 520) returned HTTP 302 = capture-initiated. Combined with the 9 that succeeded on the first pass, all 20 high-value URLs (home, /about, /blog, /seller, the four `.well-known/*` manifests, /llms.txt + /llms-full.txt, top-5 category landings, top-5 brand landings) are now permanently archived in the Internet Archive's Wayback Machine.
+
 ## 2026-05-16 — vps-eu · re-synced GEO manifests with live catalog count after 1h scraper growth (GEO freshness)
 
 - Scraper has added ~567 listings in the hour since I first wrote the manifests this morning. Catalog went from 47,495 → 48,062, informatique 18,828 → 19,190, electromenager 9,198 → 9,344, vetements_mode 4,892 → 4,943, plus dozens of brand counts ticking up (HP +27, Lenovo +13, Canon +22, etc.). The manifests were already slightly stale.

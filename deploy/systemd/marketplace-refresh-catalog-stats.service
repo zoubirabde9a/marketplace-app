@@ -1,0 +1,24 @@
+[Unit]
+Description=Refresh /.well-known/agents.json catalog stats from the live DB
+Documentation=file:/opt/marketplace/scripts/refresh-catalog-stats.py
+After=docker.service
+Requires=docker.service
+
+[Service]
+# Pulls fresh counts from Postgres, rewrites agents.json on the host AND
+# inside the running web container (no rebuild), then pushes the URL to
+# IndexNow so Bing re-fetches the new payload. Idempotent — re-running
+# with no DB changes is a no-op.
+#
+# This is how the GEO manifest stays continuously honest as the scrape
+# loop grows the catalog (~500 listings/hour). Without this timer, the
+# numbers in agents.json drift further from reality every hour and AI
+# crawlers eventually cite stale figures.
+#
+# Only touches agents.json. The two prose files (llms.txt, llms-full.txt)
+# need an operator to refresh — they have natural-language phrasing that
+# regex substitution would corrupt.
+Type=oneshot
+ExecStart=/opt/marketplace/scripts/refresh-catalog-stats.py
+User=root
+Group=root

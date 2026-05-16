@@ -1,0 +1,16 @@
+[Unit]
+Description=Hourly refresh of agents.json catalog stats from live DB
+Documentation=file:/etc/systemd/system/marketplace-refresh-catalog-stats.service
+
+[Timer]
+# Hourly. Scrape loop adds ~500 listings/hour, so an hourly refresh
+# cadence keeps the manifest's stated count within ~500 of truth — well
+# inside the resolution AI crawlers care about. Randomized delay is
+# small (5 min) since the work itself is cheap (~3s end-to-end).
+OnCalendar=hourly
+RandomizedDelaySec=5min
+Persistent=true
+Unit=marketplace-refresh-catalog-stats.service
+
+[Install]
+WantedBy=timers.target
