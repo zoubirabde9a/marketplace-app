@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · enabled monthly IndexNow systemd timer (GEO autopilot)
+
+- Installed `marketplace-indexnow-sitemap.service` + `marketplace-indexnow-sitemap.timer` in `/etc/systemd/system/`. Fires monthly with a 2h randomized delay so the catalog stays fully synced with Bing (and via Bing's index: DuckDuckGo and ChatGPT search) without manual intervention. The scrape loop's incremental push handles fresh URLs; this monthly re-push catches the long tail of URLs that age out of the incremental window.
+- Dry-ran the service to validate: completed in ~2m, accepted 47,793 / 47,793 URLs, `Deactivated successfully`. Next scheduled fire: 2026-06-01 ~01:25 CEST.
+- Copied both unit files to `deploy/systemd/` so the repo is the durable source of truth (matching the convention used by `marketplace-scrape-loop.service`). A fresh server provision can reinstall them with one `cp` per file + `systemctl daemon-reload`.
+
 ## 2026-05-16 — vps-eu · IndexNow full-sitemap push: 47,793 / 47,793 URLs accepted (GEO)
 
 - The IndexNow submitter at `scripts/indexnow-submit.mjs` has been in the repo since May 10 but was never scheduled — only the scraper's incremental newly-seeded-URL push (wired into `run-loop.sh` step 3.5) has been firing. That means today's new GEO discovery files (`/llms-full.txt`, `/.well-known/ai-policy.json`) and the refreshed `/llms.txt` + `/.well-known/agents.json` had never been pushed, and the full 47k-URL product catalog was last fully submitted... never.

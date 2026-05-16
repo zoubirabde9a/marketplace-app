@@ -1,0 +1,18 @@
+[Unit]
+Description=Monthly IndexNow full-sitemap re-submission
+Documentation=file:/etc/systemd/system/marketplace-indexnow-sitemap.service
+
+[Timer]
+# First of the month, ~01:25 server-local with up to 2h randomized delay
+# so we don't all hit api.indexnow.org at the same instant. The scrape
+# loop runs every minute and IndexNow is already invoked incrementally on
+# new URLs; this monthly timer is the long-tail safety net for catalog
+# entries that were seeded before the IndexNow push was wired up, plus
+# anything Bing has aged out of its index.
+OnCalendar=monthly
+RandomizedDelaySec=2h
+Persistent=true
+Unit=marketplace-indexnow-sitemap.service
+
+[Install]
+WantedBy=timers.target

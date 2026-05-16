@@ -1,0 +1,19 @@
+[Unit]
+Description=Re-submit full sitemap to IndexNow (Bing/Yandex/DuckDuckGo/ChatGPT search)
+Documentation=file:/opt/marketplace/scripts/indexnow-submit.mjs
+After=docker.service
+Requires=docker.service
+
+[Service]
+# Walks /sitemap.xml and POSTs every <loc> to api.indexnow.org in chunks of
+# 500. Bing feeds DuckDuckGo and ChatGPT search; Yandex picks up the same
+# submission. Idempotent — duplicate URL submissions are deduplicated
+# server-side. Roughly 90 s for ~47k URLs.
+#
+# The scrape-and-seed loop already pushes newly-seeded URLs incrementally
+# (run-loop.sh step 3.5). This monthly re-push catches URLs that have aged
+# out of the incremental window so the catalog stays fully synced with Bing.
+Type=oneshot
+ExecStart=/usr/bin/docker run --rm --network marketplace_default -v /opt/marketplace/scripts:/scripts node:22-alpine node /scripts/indexnow-submit.mjs
+User=root
+Group=root
