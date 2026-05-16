@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · feed.xml Atom-1.0 validation pass + IndexNow/Wayback push
+
+- Audit dimension: Atom feed structure. AI tools that ingest RSS for fresh-content discovery (ChatGPT search, Perplexity, Bing Chat, Claude-SearchBot) silently skip malformed feeds — worth confirming clean.
+- Parsed `/feed.xml` with Python's xml.etree against the Atom 1.0 namespace. Results: well-formed, 50 entries (matches the documented "50 most-recent listings" cap), every feed-level required field present (id, title, updated), every first-entry required field present (id, title, updated). Bonus checks: every entry carries `rel=alternate` (HTML view link), `rel=enclosure` (hero image), and a `<summary>` (price + brand line). Content-Type `application/atom+xml; charset=utf-8` correct.
+- Pushed `/feed.xml` to IndexNow (1/1 accepted) and Wayback (302 capture-initiated). The feed had only been incidentally archived; this is its first dedicated push since the catalog grew past 47k listings. Fresh capture means an AI tool falling back to Wayback for freshness verification now sees the current entries.
+
 ## 2026-05-16 — vps-eu · CRITICAL FINDING — Cloudflare proxy is OFF on all three subdomains (operator action required)
 
 - Auditing whether the middleware cache-control fix from iter-25 was actually being used by a CDN, I checked for `cf-*` response headers. **None present on any URL.** Investigated further:
