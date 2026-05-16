@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · second clean audit pass (3 more dimensions confirmed) + Wayback batch complete
+
+- Three more audit dimensions checked, all clean:
+  - **404 status integrity**: spot-checked 5 nonexistent URLs across all page types (`/nonexistent-page-xyz`, fake product UUID, fake category slug, fake store UUID, fake blog slug). All return real HTTP 404 — no soft-404 200 responses anywhere. Google Search Console wouldn't flag any soft-404 risks.
+  - **Heading hierarchy**: every page type ships exactly 1 H1, with appropriate H2/H3 nesting. No multi-H1 pages (which would dilute the primary topic signal for AI extractors), no skipped levels (H1 → H3 jumps that break document outlines). Storefront has 60 H3s (one per product card — appropriate).
+  - **Image sitemap (`<image:image>`)**: the main sitemap.xml already includes `<image:image><image:loc>...</image:loc></image:image>` for every product URL — the Google Image Sitemap extension that lets Google Images and AI image-search find product hero photos directly. Already in place from earlier work.
+- Wayback batch from iter-27 completed: 9/11 first-pass success. Retried the 2 rate-limited URLs (`/c/informatique`, `/c/telephones` — high-traffic category endpoints get throttled more aggressively) with 30s spacing — both succeeded on retry. All 11 URLs from the iter-27 batch now successfully re-archived with all 2026-05-16 session improvements captured.
+- Combined record: across 27 iterations of GEO work today, **the audit pattern has now confirmed 11+ dimensions clean** (geo/keywords/title/canonical/alt-text, duplicate-tag, internal links, html lang, twitter:card, 404 status, heading hierarchy, image sitemap, structured-data validity) **and surfaced 5 real bugs** (hreflang-on-6-page-types, openGraph-on-3-pages, robots-on-search, cache-control-on-3-paths, og:image-dimensions-on-products). The structured-data + metadata surface is in genuinely solid shape.
+
 ## 2026-05-16 — vps-eu · audit pass + Wayback re-snapshot of 11 recently-changed pages
 
 - This iteration's audits all came back clean (no new bugs surfaced):
