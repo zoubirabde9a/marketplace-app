@@ -156,6 +156,10 @@ export default async function CategoryLandingPage({
       ? `${fmtCount} ${annonce} ${human.toLowerCase()} de vendeurs algériens sur Teno Store.`
       : `Annonces ${human.toLowerCase()} sur Teno Store.`,
     isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/#website` },
+    // Cross-link to the canonical Organization. iter-64: every CollectionPage
+    // should declare who publishes it so AI panels can attribute the
+    // category landing to the marketplace entity.
+    publisher: { "@id": `${SITE_URL}/#organization` },
     inLanguage: "fr",
     about: {
       "@type": "ProductGroup",

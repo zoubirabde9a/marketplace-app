@@ -528,6 +528,10 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
     name: collectionName,
     description: collectionDescription,
     isPartOf: { "@type": "WebSite", "@id": `${SITE_URL}/#website` },
+    // Cross-link to canonical Organization (iter-64) so AI panels see the
+    // CollectionPage as published BY Teno Store rather than as an
+    // anonymous list page. Mirrors the same field on /c/[slug] and /blog.
+    publisher: { "@id": `${SITE_URL}/#organization` },
     mainEntity: itemListJsonLd,
   };
   if (contentLang) collectionPageJsonLd.inLanguage = contentLang;
@@ -549,7 +553,18 @@ async function Results({ input, sp }: { input: ReturnType<typeof parseSearchPara
       areaServed: { "@type": "Country", name: "Algeria" },
     };
   } else if (input.brand) {
-    collectionPageJsonLd.about = { "@type": "Brand", name: input.brand };
+    // Brand object matches the shape product pages emit (`@type: Brand`,
+    // `@id: SITE_URL/search?brand=<name>`, `url`). Cross-page @id makes
+    // KG bots resolve the Brand on /search?brand=Samsung and the Brand
+    // node on every Samsung product page as the SAME entity rather than
+    // two independent same-named brands. iter-64 entity-graph fix.
+    const brandUrl = `${SITE_URL}/search?brand=${encodeURIComponent(input.brand)}`;
+    collectionPageJsonLd.about = {
+      "@type": "Brand",
+      "@id": brandUrl,
+      name: input.brand,
+      url: brandUrl,
+    };
   } else if (humanCategory) {
     collectionPageJsonLd.about = {
       "@type": "ProductGroup",

@@ -6,6 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · publisher cross-link on /c/<slug> + /search?brand= CollectionPages; Brand @id upgrade
+
+- Continuing the entity-graph audit. /blog/<slug> already had top-tier schema (publisher + author + isPartOf + mainEntityOfPage all @id-ref'd to canonical Organization). But /c/<slug> and /search (brand/category/seller landings) had `isPartOf: WebSite` but NO `publisher` field.
+- Three fixes:
+  - **/c/<slug>**: added `publisher: { @id: ".../#organization" }` to CollectionPage JSON-LD. Every category landing now declares Teno Store as publisher.
+  - **/search**: same publisher field added to the CollectionPage emitted for brand/category/seller/q landings.
+  - **/search?brand=X**: upgraded `about.Brand` from minimal `{ @type: Brand, name: X }` to **`{ @type: Brand, @id: ".../search?brand=X", name: X, url: ... }`** — matching the shape product pages emit when they declare their brand. Cross-page `@id` resolution now connects the Brand on `/search?brand=Samsung` and the Brand on every Samsung product page as the SAME entity rather than two independent same-named brands.
+- Live verification: /c/informatique ships publisher @id ref ✅; /search?brand=Samsung ships publisher @id ref ✅ AND Brand with @id matching the product-page shape ✅.
+- Pushed top category + brand URLs to IndexNow.
+
 ## 2026-05-16 — vps-eu · Product JSON-LD: isPartOf + mainEntityOfPage + Offer.seller cross-link upgrade (~48k pages)
 
 - Continuing the entity-graph audit. Last iteration linked /store/<uuid> to the canonical Organization. This iteration: ~48k product pages had Product JSON-LD with NO cross-links to seller / marketplace — `seller`, `offeredBy`, `isPartOf`, `mainEntityOfPage` all absent on the Product. (Offer.seller WAS emitted for seller-attributed products but used inline `@type: Organization` rather than the canonical Store node.)
