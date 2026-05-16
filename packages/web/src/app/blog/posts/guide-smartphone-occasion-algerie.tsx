@@ -33,18 +33,20 @@ export const post: BlogPost = {
         </p>
         <ul>
           <li>
-            <strong>iPhone 13 / 13 Pro</strong> en bon état : 75 000 – 110 000
-            DZD selon le stockage.
+            <strong>Haut de gamme Apple récent (2-3 ans)</strong> en bon état :
+            75 000 – 110 000 DZD selon le stockage.
           </li>
           <li>
-            <strong>Samsung Galaxy S22 / S23</strong> : 55 000 – 95 000 DZD.
+            <strong>Haut de gamme Android récent (Samsung, etc.)</strong> :
+            55 000 – 95 000 DZD.
           </li>
           <li>
-            <strong>Xiaomi / Redmi Note 12-13</strong> : 25 000 – 45 000 DZD.
+            <strong>Milieu de gamme Android récent</strong> : 25 000 – 45 000
+            DZD.
           </li>
           <li>
-            <strong>Modèles d&rsquo;entrée de gamme récents</strong> (Itel,
-            Tecno, Infinix) : 12 000 – 25 000 DZD.
+            <strong>Entrée de gamme Android récente</strong> : 12 000 – 25 000
+            DZD.
           </li>
         </ul>
         <p>
@@ -88,9 +90,10 @@ export const post: BlogPost = {
         </p>
         <ol>
           <li>
-            <strong>Le poids.</strong> Un iPhone 13 pèse 174 g, un Galaxy S22
-            167 g. Une copie est presque toujours plus légère (plastique au
-            lieu d&rsquo;aluminium / verre).
+            <strong>Le poids.</strong> Les téléphones haut de gamme pèsent
+            généralement 165–200 g. Une copie est presque toujours plus
+            légère (plastique au lieu d&rsquo;aluminium / verre) — pesez ou
+            comparez en main avec un modèle connu.
           </li>
           <li>
             <strong>L&rsquo;écran.</strong> Activez la fonction zoom dans les

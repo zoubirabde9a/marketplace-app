@@ -187,9 +187,9 @@ export const post: BlogPost = {
         <ul>
           <li>
             <strong>Première phrase = pitch produit</strong>. Pas une
-            longue intro générique. Exemple : &laquo; iPhone 13 Pro 256 GB
-            graphite, état excellent, batterie 92%, garanti contre vol
-            par facture initiale. &raquo;
+            longue intro générique. Exemple : &laquo; Smartphone haut de
+            gamme récent, 256 Go coloris graphite, état excellent, batterie
+            92%, garanti contre vol par facture initiale. &raquo;
           </li>
           <li>
             <strong>Caractéristiques techniques exhaustives</strong> :

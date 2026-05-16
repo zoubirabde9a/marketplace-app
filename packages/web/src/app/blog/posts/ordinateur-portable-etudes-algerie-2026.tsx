@@ -70,10 +70,10 @@ export const post: BlogPost = {
           </li>
           <li>
             <strong>Le processeur.</strong> Pour 2026, visez au minimum un
-            Intel Core i3 de 12e génération ou un AMD Ryzen 3 série 7000 — en
-            dessous, vous achetez du matériel qui sera déjà lent dans deux
-            ans. Pour la programmation ou le design : Core i5 / Ryzen 5
-            minimum.
+            processeur Intel ou AMD d&rsquo;entrée de gamme de génération
+            récente (deux ans max) — en dessous, vous achetez du matériel qui
+            sera déjà lent dans deux ans. Pour la programmation ou le
+            design : un processeur milieu de gamme récent minimum.
           </li>
           <li>
             <strong>L&rsquo;écran.</strong> Évitez les dalles 1366×768 (TN)
@@ -87,13 +87,13 @@ export const post: BlogPost = {
         <h2>3. Ce qui ne sert presque à rien (mais qu&rsquo;on vous vendra)</h2>
         <ul>
           <li>
-            <strong>Les cartes graphiques bas de gamme</strong> (MX450,
-            GTX 1650) sur un PC qui sert à la bureautique : elles consomment
-            la batterie sans rien apporter.
+            <strong>Les cartes graphiques dédiées d&rsquo;entrée de gamme</strong>
+            {" "}sur un PC qui sert à la bureautique : elles consomment la
+            batterie sans rien apporter.
           </li>
           <li>
-            <strong>Les processeurs Celeron / Pentium / Athlon Silver</strong>
-            {" "}en 2026 — ils ne tiendront pas trois ans.
+            <strong>Les processeurs très bas de gamme</strong> en 2026 — ils
+            ne tiendront pas trois ans.
           </li>
           <li>
             <strong>Les écrans tactiles</strong> sur un PC d&rsquo;études
@@ -115,13 +115,14 @@ export const post: BlogPost = {
           quotidienne. À chercher :
         </p>
         <ul>
-          <li>Processeur : Intel Core i3-1215U ou Ryzen 3 7320U.</li>
+          <li>Processeur : entrée de gamme Intel ou AMD récent (génération
+            actuelle ou n-1).</li>
           <li>RAM : 8 Go DDR4 (vérifiez qu&rsquo;elle est extensible).</li>
           <li>SSD : 256 Go NVMe.</li>
           <li>Écran : 15,6 pouces Full HD.</li>
           <li>
-            Modèles courants à ce prix : HP 250 G10, Lenovo IdeaPad 1, Acer
-            Aspire 3.
+            Marques courantes à ce prix : HP, Lenovo, Acer dans leur série
+            entrée de gamme.
           </li>
         </ul>
 
@@ -131,7 +132,7 @@ export const post: BlogPost = {
           année, polyvalence. À chercher :
         </p>
         <ul>
-          <li>Processeur : Intel Core i5-1335U ou Ryzen 5 7530U.</li>
+          <li>Processeur : milieu de gamme Intel ou AMD récent.</li>
           <li>RAM : 16 Go DDR4 ou DDR5.</li>
           <li>SSD : 512 Go NVMe.</li>
           <li>
@@ -139,8 +140,8 @@ export const post: BlogPost = {
             vous transportez tous les jours.
           </li>
           <li>
-            Modèles courants : Lenovo IdeaPad Slim 5, HP Pavilion 14, Asus
-            VivoBook S.
+            Marques courantes : Lenovo, HP, Asus dans leur série milieu de
+            gamme grand public.
           </li>
         </ul>
 
@@ -150,16 +151,18 @@ export const post: BlogPost = {
           de montage vidéo. À chercher :
         </p>
         <ul>
-          <li>Processeur : Core i7-13700H ou Ryzen 7 7735HS.</li>
+          <li>Processeur : haut de gamme mobile Intel ou AMD récent.</li>
           <li>RAM : 16 Go minimum, idéalement 32 Go.</li>
           <li>SSD : 1 To NVMe.</li>
           <li>
-            Carte graphique : RTX 3050 ou 4050 si vous faites du montage ou
-            de la 3D ; iGPU intégrée suffit pour la programmation seule.
+            Carte graphique : GPU dédié milieu de gamme récent si vous faites
+            du montage ou de la 3D ; iGPU intégrée suffit pour la
+            programmation seule.
           </li>
           <li>Écran : Full HD 144 Hz ou QHD pour le design.</li>
           <li>
-            Modèles courants : Lenovo Legion Slim 5, Asus TUF A15, HP Victus.
+            Marques courantes : Lenovo, Asus, HP dans leur série créateur ou
+            gaming d&rsquo;entrée de gamme.
           </li>
         </ul>
 
@@ -220,7 +223,7 @@ export const post: BlogPost = {
 
         <h2>7. Et les Mac dans tout ça ?</h2>
         <p>
-          Un MacBook Air M2 ou M3 d&rsquo;occasion (250 000 – 320 000 DZD) est
+          Un MacBook récent d&rsquo;occasion (250 000 – 320 000 DZD) est
           excellent pour les études : autonomie de 12 heures, silence total,
           longévité supérieure à dix ans. Le défaut : la réparation en Algérie
           coûte cher et les pièces sont rares. À envisager si vous restez sur

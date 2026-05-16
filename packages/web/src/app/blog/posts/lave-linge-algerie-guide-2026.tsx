@@ -129,11 +129,11 @@ export const post: BlogPost = {
             pièce + main d&rsquo;œuvre).
           </li>
           <li>
-            <strong>Moteur inverter (Direct Drive, brushless)</strong> :
+            <strong>Moteur inverter (brushless / sans balais)</strong> :
             sans charbons, donc sans cette usure. Plus silencieux,
             consomme 15-30% de moins, dure typiquement 12-15 ans contre
             8-10 ans pour un universel. Garanti souvent 10 ans par les
-            grandes marques (Samsung Digital Inverter, LG Direct Drive).
+            grandes marques.
           </li>
         </ul>
         <p>
@@ -269,7 +269,7 @@ export const post: BlogPost = {
           </li>
           <li>
             <strong>Bosch / Siemens</strong> (groupe BSH) : excellence
-            allemande, prix premium, moteur EcoSilence Drive très durable
+            allemande, prix premium, motorisation silencieuse très durable
             (15+ ans courants). Pièces plus chères et moins faciles à
             trouver que Samsung/LG mais réputation justifiée.
           </li>
@@ -280,8 +280,8 @@ export const post: BlogPost = {
           </li>
           <li>
             <strong>Whirlpool</strong> (américain, fabrication
-            Europe/Turquie) : milieu de gamme solide. Moteur 6th Sense
-            avec dosage automatique de lessive et eau.
+            Europe/Turquie) : milieu de gamme solide. Capteurs de dosage
+            automatique de lessive et eau sur certains modèles.
           </li>
           <li>
             <strong>Condor</strong> (assembleur algérien) : entrée de
@@ -291,8 +291,8 @@ export const post: BlogPost = {
           </li>
           <li>
             <strong>Haier / Hisense</strong> (chinois) : entrée et milieu
-            de gamme, qualité variable. À chercher dans les modèles
-            haut de gamme spécifiques (Haier I-Pro Series par exemple).
+            de gamme, qualité variable. À privilégier dans leurs séries
+            haut de gamme uniquement.
           </li>
         </ul>
 
@@ -312,7 +312,7 @@ export const post: BlogPost = {
           </li>
           <li>
             <strong>10-11 kg frontal inverter haut de gamme</strong>{" "}
-            (Samsung AddWash, LG TwinWash, Bosch Serie 8) :
+            (séries premium des grandes marques) :
             150 000 – 230 000 DZD.
           </li>
           <li>

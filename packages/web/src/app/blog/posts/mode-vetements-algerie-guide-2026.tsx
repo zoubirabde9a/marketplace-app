@@ -135,8 +135,8 @@ export const post: BlogPost = {
             étiquette imprimée à la maison.
           </li>
           <li>
-            <strong>Les coutures</strong> : sur une vraie Nike Air Force 1
-            par exemple, les coutures sont parfaitement parallèles,
+            <strong>Les coutures</strong> : sur une vraie sneaker de marque,
+            les coutures sont parfaitement parallèles,
             espacées identiquement, jamais en biais. Les copies montrent
             presque toujours des écarts de 1-2 mm visibles à l&rsquo;œil
             nu.
@@ -155,10 +155,10 @@ export const post: BlogPost = {
           </li>
         </ul>
         <p>
-          <strong>Prix de référence</strong> : Nike Air Force 1 classique
-          autour de 17 000 – 25 000 DZD en Algérie pour un original ;
-          Adidas Stan Smith 12 000 – 18 000 DZD. Une paire annoncée à
-          5 000 – 8 000 DZD est une copie.
+          <strong>Prix de référence</strong> : une sneaker classique de
+          grande marque coûte autour de 12 000 – 25 000 DZD en Algérie pour
+          un original selon le modèle. Une paire « grande marque » annoncée
+          à 5 000 – 8 000 DZD est presque toujours une copie.
         </p>
 
         <h2>4. Skechers : moins copié, plus accessible</h2>

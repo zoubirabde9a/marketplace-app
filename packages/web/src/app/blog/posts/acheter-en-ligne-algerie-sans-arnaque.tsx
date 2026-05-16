@@ -27,8 +27,9 @@ export const post: BlogPost = {
         <h2>1. Le prix qui ne dit pas son nom : la règle des 30%</h2>
         <p>
           La première arnaque, la plus fréquente, est aussi la plus simple :
-          le prix est trop bas. Un iPhone 15 Pro annoncé à 80 000 DZD au lieu
-          de 280 000 DZD &laquo; cause départ urgent &raquo; — c&rsquo;est
+          le prix est trop bas. Un smartphone récent haut de gamme annoncé à
+          80 000 DZD au lieu de 280 000 DZD &laquo; cause départ urgent
+          &raquo; — c&rsquo;est
           presque toujours :
         </p>
         <ul>

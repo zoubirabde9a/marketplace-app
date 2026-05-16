@@ -204,8 +204,8 @@ export const post: BlogPost = {
             110 000 – 170 000 DZD.
           </li>
           <li>
-            <strong>55 pouces QLED Samsung</strong> ou{" "}
-            <strong>NanoCell LG</strong> : 150 000 – 230 000 DZD.
+            <strong>55 pouces LCD premium (QLED, mini-LED, etc.)</strong> :
+            150 000 – 230 000 DZD.
           </li>
           <li>
             <strong>65 pouces 4K milieu/haut de gamme</strong> :

@@ -41,18 +41,18 @@ export const post: BlogPost = {
         </p>
         <ul>
           <li>
-            ❌ &laquo;&nbsp;iPhone à vendre urgent&nbsp;&raquo;
+            ❌ &laquo;&nbsp;Smartphone à vendre urgent&nbsp;&raquo;
           </li>
           <li>
-            ✅ &laquo;&nbsp;iPhone 13 Pro 256 Go bleu — très bon état, sous
-            garantie&nbsp;&raquo;
+            ✅ &laquo;&nbsp;Smartphone haut de gamme récent (256 Go,
+            coloris bleu) — très bon état, sous garantie&nbsp;&raquo;
           </li>
         </ul>
         <p>
-          Le deuxième titre apparaît dans les recherches sur &laquo;&nbsp;iPhone
-          13 Pro&nbsp;&raquo;, &laquo;&nbsp;iPhone 256 Go&nbsp;&raquo;, et
-          &laquo;&nbsp;iPhone garantie&nbsp;&raquo;. Le premier
-          n&rsquo;apparaît nulle part.
+          Le deuxième titre apparaît dans les recherches qui contiennent
+          marque, capacité et garantie. Le premier n&rsquo;apparaît nulle
+          part. Indiquez toujours marque, capacité, coloris et état dans le
+          titre.
         </p>
 
         <h2>3. Prix : aligné, pas optimiste</h2>

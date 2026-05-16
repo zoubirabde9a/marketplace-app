@@ -18,8 +18,9 @@ export const post: BlogPost = {
         <p className="lead">
           Avec la fermeture progressive des importations de véhicules neufs ces
           dernières années, le marché de l&rsquo;occasion en Algérie a explosé
-          — et les prix avec. Une Clio 4 de 2018 peut dépasser les 300 millions
-          de centimes, une Polo 6 récente flirte avec les 500. À ces niveaux,
+          — et les prix avec. Une citadine populaire d&rsquo;il y a 7-8 ans
+          peut dépasser les 300 millions de centimes, une compacte récente
+          flirte avec les 500. À ces niveaux,
           une vérification bâclée coûte cher. Voici les dix points à contrôler
           systématiquement, dans l&rsquo;ordre, avant de payer.
         </p>
@@ -169,21 +170,24 @@ export const post: BlogPost = {
         </p>
         <ul>
           <li>
-            <strong>Renault Symbol 2015-2017</strong> : 110 – 150 millions de
-            centimes.
+            <strong>Berline compacte d&rsquo;entrée de gamme (2015-2017)</strong> :
+            110 – 150 millions de centimes.
           </li>
           <li>
-            <strong>Renault Clio 4 2017-2019</strong> : 230 – 320 millions.
+            <strong>Citadine populaire récente (2017-2019)</strong> : 230 – 320
+            millions.
           </li>
           <li>
-            <strong>Volkswagen Polo 6 2018-2020</strong> : 400 – 520 millions.
+            <strong>Compacte européenne récente (2018-2020)</strong> : 400 – 520
+            millions.
           </li>
           <li>
-            <strong>Hyundai i10 2018-2020</strong> : 180 – 240 millions.
+            <strong>Mini-citadine asiatique (2018-2020)</strong> : 180 – 240
+            millions.
           </li>
           <li>
-            <strong>Dacia Sandero Stepway 2019-2021</strong> : 290 –
-            360 millions.
+            <strong>SUV urbain d&rsquo;entrée de gamme (2019-2021)</strong> : 290
+            – 360 millions.
           </li>
         </ul>
         <p>
