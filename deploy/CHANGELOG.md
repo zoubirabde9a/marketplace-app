@@ -6,6 +6,19 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · documented /v1/products response shape + facets in agents.json (agent navigation gold)
+
+- Verified cursor pagination empirically: walked 3 pages of /v1/products with limit=10. All 3 pages distinct, page boundaries clean (last id of page N != first id of page N+1), opaque base64 cursors. **Cursor pagination is solid** — agents that hit the limit=100 cap (iter-51) can paginate deeper without issue.
+- Looked at the `facets` object every /v1/products response carries. Found it surprisingly rich:
+  - `brands`: top 50 brands globally (constant across queries) — useful for agent-side brand discovery
+  - `currencies`: subset-aware {value, count}, currently always DZD
+  - `sellers`: subset-aware seller list, e.g. ?brand=HP yields just Smart Phone DZ
+  - `categories`: subset-aware category cross-distribution. **Example: ?brand=HP shows informatique=2429 / telephones=43 / electromenager=3 — i.e. HP in Algeria is overwhelmingly computing.** Gold for agent queries like "is HP a phone brand or a laptop brand here?"
+  - `priceRanges`: subset min/max in minor units. ?brand=HP returns 100..110.5M minor (range of HP listings)
+  - Plus `snapshotUrl` envelope on every list response (24h TTL, replay any query state)
+- Documented all of this in a new `protocols.rest.response_shape` block in agents.json. Before this, agents reading the manifest knew the endpoint URLs but had to discover the response shape and facet semantics by trial-and-error. Now they know `data` field shape, `pagination` semantics (with the WARNING about the totalEstimate filter bug from iter-51), and that the facets carry rich cross-distribution data. Pushed to IndexNow.
+- Also note: facet category list returned 6 entries (informatique 20k / electromenager 9.8k / telephones 8.8k / immobilier 5.9k / vetements_mode 5k / **automobiles_vehicules 3**). My auto-refresher's `LIMIT 5` in the top_categories SQL correctly excludes the 3-listing automobiles entry — not a bug, the truncation is intentional.
+
 ## 2026-05-16 — vps-eu · documented two real API bugs in agents.json `known_limitations` block (operator follow-up)
 
 - Continued empirical sweep of /v1/products. Two new bugs surfaced:

@@ -246,6 +246,27 @@
           "note": "pagination.totalEstimate reports the true catalog total ONLY for unfiltered queries and ?brand= filters. For ?category= and ?sellerId= filters, totalEstimate returns the hit-count of the response page, not the underlying total. To get a true filtered total, walk the cursor until pagination.cursor is null and count locally.",
           "evidence": "audit 2026-05-16: ?brand=HP&limit=1 -> totalEstimate=2475 (correct); ?category=telephones&limit=1 -> totalEstimate=1 (wrong, true total ~8700); ?sellerId=<id>&limit=1 -> totalEstimate=1 (wrong)."
         }
+      },
+      "response_shape": {
+        "list_endpoint": "/v1/products and /v1/products?<filters>",
+        "top_level_keys": [
+          "data",
+          "pagination",
+          "facets",
+          "snapshotUrl",
+          "snapshotCreatedAt",
+          "snapshotExpiresAt"
+        ],
+        "data": "Array of product hits. Each hit includes productId, viewUrl, title{role,origin,value}, brand, priceMinor/From/To, variantCount, currency, inStock, sellerId, sellerDisplayName, categoryIds, counterfeitRisk, heroImageUrl, imageCount, postedAt, updatedAt.",
+        "pagination": "Object {cursor, totalEstimate}. cursor: opaque, pass back as ?cursor=. WARNING: totalEstimate is accurate ONLY for unfiltered queries and ?brand= filter.",
+        "facets": {
+          "brands": "Top 50 brands globally regardless of filter, each {value, count}.",
+          "currencies": "Currencies in the filtered result subset (currently always DZD), each {value, count}.",
+          "sellers": "Sellers present in the filtered subset, each {sellerId, displayName, count}.",
+          "categories": "Category slugs present in the filtered subset, each {value, count}. Cross-distribution gold for brand+category queries.",
+          "priceRanges": "Price spread of the filtered subset, each {currency, minMinor, maxMinor}."
+        },
+        "snapshot_envelope": "Every list response carries snapshotUrl + snapshotCreatedAt + snapshotExpiresAt — fresh 24h-TTL snapshot of WHAT THIS QUERY SAW. Pass snapshotUrl to a human to let them replay the exact state the agent observed at request time."
       }
     },
     "ap2": {
