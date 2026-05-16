@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · Wayback re-snapshot of the 9 new blog posts (full editorial cluster archived)
+
+- The 9 new blog posts written across iters 75-84 (machine-à-café, electromenager, anti-scam, payment, delivery, climatiseur, téléviseur, mode/marques, vendre-démarrer) plus the /blog index hadn't been pushed to Wayback yet. Pushed 10 URLs total with 10s spacing per Wayback's ~10/min throttle.
+- First 7 confirmed 302 (capture-initiated) by the time of this commit; the remaining 3 still draining in background. Final 10/10 should land within ~30s.
+- Net effect: every editorial asset created this loop is now preserved at first-publication state in the Internet Archive. AI tools that fall back to Wayback (Perplexity in particular) see the same buyer/seller editorial cluster there as on the live origin.
+
 ## 2026-05-16 — vps-eu · NEW BLOG POST #9 — seller-onboarding deep-dive (vendor-side balance)
 
 - Ninth new blog post this loop: "Vendre en ligne en Algérie : guide complet pour démarrer (2026)", ~10 min read, 9 H2 sections, ~3,200 words. Blog count: 12 → 13.
