@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · TLS / HTTP-3 / OG-image audits — all clean
+
+- Verified OG image generation across all page types. Most pages serve auto-generated PNGs at the expected `/.../opengraph-image` endpoint (sizes 92-135 KB, valid PNG magic bytes). Product pages don't use that endpoint — their `og:image` points directly at the Ouedkniss CDN URL with the upscaled 1200-edge image — so the missing/transient endpoint for `/product/<id>/opengraph-image` doesn't matter (nothing references it).
+- TLS handshake from server-local openssl s_client: **TLS 1.3 negotiated**, ALPN advertises h2 (HTTP/2), certificate chain verifies (Let's Encrypt via Caddy auto-issuance). HTTP/3 over QUIC actually works — `curl --http3` returns HTTP/3 200. OCSP stapling absent but N/A — Let's Encrypt deprecated OCSP responder support in 2024 in favor of CRLs, so "no OCSP response" is the expected modern posture, not a defect.
+- Transient note: Windows-msys2 curl on this machine occasionally fails to connect to `152.53.147.77:443` after 21s timeout. Direct EU-VPS connections from this side of the world are vulnerable to that latency — exactly the symptom Cloudflare proxy would mask (iter-31's open operator action would also fix this).
+
 ## 2026-05-16 — vps-eu · HSTS preload audit — base domain ready, www.* redirect missing header (operator action)
 
 - Verifying HSTS preload eligibility (Chromium/Firefox baked-in HTTPS-only enforcement, submitted at https://hstspreload.org/). Required directive `max-age ≥ 31536000; includeSubDomains; preload`:
