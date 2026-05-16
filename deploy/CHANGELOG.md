@@ -6,6 +6,11 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · added `ar-DZ` hreflang on layout + /about (GEO bilingual)
+
+- Algeria is officially bilingual French + Arabic. The site declared only `fr-DZ` + `x-default` in `metadata.alternates.languages`, even though Algerian buyer queries frequently land in Arabic ("هواتف الجزائر", "كمبيوتر محمول الجزائر"). Added `ar-DZ` → same URL on both `layout.tsx` (covers every page that inherits the layout) and `about/page.tsx` (which overrides alternates and so wouldn't inherit). The catalog content itself is French — declaring ar-DZ as resolving to the same URL is the schema.org-blessed pattern for "this page also serves Arabic-speaking Algerian users", and Google AI Overviews / Bing Chat both honor hreflang when ranking sources for queries in the targeted language.
+- Clean compose-managed rebuild + deploy, no outage. Verified rendered HTML on `/` and `/about` shows all three `<link rel="alternate" hrefLang="...">` tags (fr-DZ, ar-DZ, x-default). Pushed both URLs to IndexNow so Bing re-fetches with the new language signal.
+
 ## 2026-05-16 — vps-eu · submitted 20 high-value URLs to the Internet Archive Wayback Machine (GEO)
 
 - Until today the Wayback Machine had no 2026-era captures of teno-store.com. AI tools (notably Perplexity, and ChatGPT when the live page is unreachable) sometimes cite Wayback URLs directly as fallback sources — and a captured page is also a citable, verifiable historical record for any later "what did this site claim on date X" question.

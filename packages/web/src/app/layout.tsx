@@ -99,6 +99,16 @@ export const metadata: Metadata = {
     // <html lang="fr"> in body.tsx for the matching signals.
     languages: {
       "fr-DZ": SITE_URL,
+      // Algeria is officially bilingual French + Arabic. The catalog content
+      // itself is predominantly French (every product title/description), but
+      // Algerian buyer queries are frequently Arabic ("هواتف الجزائر",
+      // "كمبيوتر محمول الجزائر"). Declaring ar-DZ as an alternate that
+      // resolves to the same URL is the schema.org-blessed way to tell
+      // search/AI engines "this page also serves Arabic-speaking Algerian
+      // users" without requiring a translated build. Google AI Overviews and
+      // Bing Chat both honor hreflang when ranking sources for queries in
+      // the targeted language.
+      "ar-DZ": SITE_URL,
       "x-default": SITE_URL,
     },
     // Atom feed alternate link is rendered inline in the <head> below

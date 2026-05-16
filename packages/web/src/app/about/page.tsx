@@ -17,6 +17,9 @@ export const metadata: Metadata = {
     // alternates doesn't drop the fr-DZ / x-default signal on this page.
     languages: {
       "fr-DZ": `${SITE_URL}/about`,
+      // Match the layout-level ar-DZ hreflang declaration. See layout.tsx
+      // for the rationale.
+      "ar-DZ": `${SITE_URL}/about`,
       "x-default": `${SITE_URL}/about`,
     },
   },
