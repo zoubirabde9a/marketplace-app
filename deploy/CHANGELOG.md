@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · OpenAPI / Swagger discovery — all 401, spec exists but isn't public (operator follow-up)
+
+- Probed 16 common OpenAPI / Swagger discovery paths on api.teno-store.com (/openapi.json, /openapi.yaml, /swagger.json, /api-docs, /docs, /v1/openapi.json, /.well-known/openapi.json, etc. plus /swagger-ui, /redoc). **Every path returned 401**, not 404 — meaning the routes EXIST but are auth-gated.
+- The OpenAPI spec is generated (every modern Node API has one) but not publicly readable. Currently AI agents reading agents.json + llms-full.txt get manually-curated empirical docs for the 2 public endpoints (/v1/products + /v1/products/{id}) plus the 9 MCP tools with required_args/all_args. They have NO machine-readable surface for the 401-gated endpoints they'd hit after authenticating (cart, checkout, seller writes, order management).
+- **Operator follow-up flagged** (8th item on the queue): expose /openapi.json (or /.well-known/openapi.json) publicly with `auth: false` in the route registration. AI agents would gain: per-endpoint validation schemas, required/optional param docs, response shape per status code, auto-generated typed-client codegen. This is the highest-leverage remaining agent-discoverability win after the iter-31 Cloudflare proxy flip.
+- The catch-all 401 IS the correct security posture for the bulk of the API (write endpoints, agent-mandates, etc.). Just need to whitelist the spec endpoint.
+
 ## 2026-05-16 — vps-eu · sitemap lastmod accuracy confirmed (per-millisecond match with API updatedAt)
 
 - Sampled 6 older + 3 newest product URLs from sitemap.xml and compared `<lastmod>` against the API list response's `updatedAt` field. **Perfect match per-millisecond across both populations**:
