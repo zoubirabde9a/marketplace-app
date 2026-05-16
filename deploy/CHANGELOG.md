@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · rewrote `.well-known/agents.json` with accurate catalog (GEO)
+
+- File claimed `"size": "10k+ live listings"` while real catalog is 47,495. `top_categories` listed `automobiles_vehicules` at position 3 even though that category has only 4 listings, and buried `informatique` (18,828 listings, by far the largest) at position 8. An LLM agent reading the manifest to plan a session would have queried for cars first and missed the actual catalog mass.
+- Restructured the manifest:
+  - Promoted `total_listings` (47495), `active_sellers` (7), and `snapshot_date` to first-class numeric fields agents can consume without parsing the prose `size` blurb.
+  - Sorted `top_categories` by real listing count with explicit `{slug, listings, label}` objects so agents know which slug is worth crawling first.
+  - Added `top_brands` with counts (HP 2,385 leads, Samsung 2,061, Dell 1,747, Lenovo 1,708, ...) so brand-targeted agents have a ranked list.
+  - Split sparse `subcategory_slugs` (mode/femme/homme/etc.) into their own array — they're real navigable URLs but shouldn't compete with the actual top categories.
+  - Added `discovery.llms_full_txt` pointing at the new long-form LLM reference.
+  - Added the "not the German jewelry brand TeNo" disambiguation note to the top-level description.
+- Validated JSON, hot-patched both host and container copies, verified live `curl https://teno-store.com/.well-known/agents.json` returns the new structure.
+
 ## 2026-05-16 — vps-eu · added `/llms-full.txt` long-form LLM reference (GEO)
 
 - Created `public/llms-full.txt` (~10 KB): companion to the existing `/llms.txt` per llmstxt.org convention. Includes the brand-disambiguation note ("not the German jewelry brand TeNo"), full category and brand tables with counts, every public URL pattern, the AI-crawler robots allow list, the agent surfaces (REST/MCP/A2A), trust signals, the full FAQ verbatim, AND a comparison block ("How does Teno Store differ from Ouedkniss or Jumia Algeria?") — exactly the queries users send to ChatGPT / Gemini about the site.
