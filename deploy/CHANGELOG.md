@@ -6,6 +6,23 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · empirically harvested OAuth scopes for all 9 MCP tools + error-envelope semantics
+
+- Probed each MCP tool unauthenticated via `tools/call`. Every tool returns `{"code":-32000,"message":"Forbidden: missing_scope:<scope>"}` — exposing the exact OAuth scope required. Captured all 9:
+  | Tool | Scope |
+  |---|---|
+  | seller.create_account | `seller:write` |
+  | product.create_listing | `seller:product:write` |
+  | cart.add_item / .update_qty / .remove_item | `buyer:cart:write` |
+  | cart.get | `buyer:cart:read` |
+  | checkout.confirm | `buyer:checkout:write` |
+  | order.get | `buyer:order:read` |
+  | seller.list_orders | `seller:order:read` |
+- Pattern: `<role>:<resource>:<action>` — clean OAuth scope hierarchy. Buyer side (cart, checkout, order) + seller side (write, product:write, order:read).
+- **Real bug surfaced**: MCP tool errors return HTTP 500 for everything — auth errors, tool-not-found, server errors all collapse to 500. JSON-RPC error code (-32000) and structured message are correct, but HTTP semantics are wrong. Clients using HTTP-status-based retry/backoff will hammer 500s. Documented as `protocols.mcp.error_envelope` warning so agents parse `error.message` instead.
+- Added `scope` field to each entry in `protocols.mcp.tools[]`, plus a top-level `protocols.mcp.scope_format` description and the `error_envelope` doc. AI agents reading the manifest now know exactly which OAuth scopes to mint for any subset of tools they plan to invoke — no trial-and-error bootstrap. Pushed to IndexNow.
+- Operator follow-up flagged: HTTP 500 → 401/403/404 mapping in the MCP route handler. Localized change, low risk.
+
 ## 2026-05-16 — vps-eu · documented /v1/products response shape + facets in agents.json (agent navigation gold)
 
 - Verified cursor pagination empirically: walked 3 pages of /v1/products with limit=10. All 3 pages distinct, page boundaries clean (last id of page N != first id of page N+1), opaque base64 cursors. **Cursor pagination is solid** — agents that hit the limit=100 cap (iter-51) can paginate deeper without issue.
