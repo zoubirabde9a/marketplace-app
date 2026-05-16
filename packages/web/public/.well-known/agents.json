@@ -456,5 +456,37 @@
     "How does Teno Store compare to Ouedkniss or Jumia Algeria?",
     "Can an AI agent buy from Teno Store on my behalf?"
   ],
-  "example_queries_note": "Catalog product searches work best in French (titles are predominantly French even when products are international brands). English / Arabic catalog queries return few or no hits. Meta queries about Teno Store itself (legitimacy, comparison) are answered via /about and /llms-full.txt rather than the catalog search."
+  "example_queries_note": "Catalog product searches work best in French (titles are predominantly French even when products are international brands). English / Arabic catalog queries return few or no hits. Meta queries about Teno Store itself (legitimacy, comparison) are answered via /about and /llms-full.txt rather than the catalog search.",
+  "conditional_get_support": {
+    "supported": [
+      {
+        "url": "https://teno-store.com/feed.xml",
+        "headers": "ETag + Last-Modified"
+      },
+      {
+        "url": "https://teno-store.com/llms.txt",
+        "headers": "ETag (weak) + Last-Modified"
+      },
+      {
+        "url": "https://teno-store.com/llms-full.txt",
+        "headers": "ETag (weak) + Last-Modified"
+      },
+      {
+        "url": "https://teno-store.com/.well-known/agents.json",
+        "headers": "ETag (weak) + Last-Modified"
+      }
+    ],
+    "not_supported": [
+      {
+        "url": "https://teno-store.com/sitemap.xml",
+        "note": "no ETag, no Last-Modified. Multi-MB file; without 304 every crawler fetch returns the full body. Poll no more often than once per hour."
+      },
+      {
+        "url": "https://teno-store.com/robots.txt",
+        "note": "no ETag, no Last-Modified. Small file but heavily polled."
+      }
+    ],
+    "verified_behaviour": "Sent If-Modified-Since: <Last-Modified> back to /llms.txt — server returned HTTP 304 Not Modified. Conditional GET works on the supported list above. Audit 2026-05-16.",
+    "operator_followup": "sitemap.xml + robots.txt should ship ETag + Last-Modified to enable 304-NotModified responses for crawlers that already have a fresh copy. Localized change to the Next.js metadata routes or via middleware that hashes the response body."
+  }
 }

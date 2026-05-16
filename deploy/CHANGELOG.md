@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · TTFB baseline + conditional-GET audit — sitemap/robots lack ETag (operator follow-up)
+
+- **TTFB baseline** across 13 surfaces (3 samples median, measured from vps-eu so excludes trans-Atlantic latency). All HTML pages 50-100ms, API 32ms, feed.xml 38ms, llms-full.txt 32ms, agents.json 34ms, manifest.webmanifest 35ms. The only outlier is sitemap.xml at 332ms — expected for a multi-MB file, still well within crawler budget. Origin performance is excellent.
+- **Conditional-GET audit**:
+  - ✅ /feed.xml ships ETag + Last-Modified
+  - ✅ /llms.txt ships weak ETag + Last-Modified — empirically returns **304 Not Modified** when `If-Modified-Since` is sent with the same date
+  - ✅ /llms-full.txt + /.well-known/agents.json same shape
+  - ❌ **/sitemap.xml has NO ETag and NO Last-Modified** — multi-MB file, every crawler hit returns the full body even when unchanged
+  - ❌ **/robots.txt same** — small but heavily polled
+- Added `conditional_get_support` block to agents.json listing each discovery file's headers + verified 304 behavior. AI crawlers that poll bandwidth-efficiently now know to send `If-Modified-Since` to feed/llms/agents (gets 304), but to throttle sitemap/robots polling since they can't get 304s either way. Saves catalog-side bandwidth and crawler time.
+- **Operator follow-up flagged**: sitemap.xml + robots.txt should ship ETag + Last-Modified. Localized fix — set `ETag` from a hash of the response body in middleware, set `Last-Modified` from harvest timestamp. The middleware already wraps these paths from iter-25.
+
 ## 2026-05-16 — vps-eu · embedded per-tool required_args + all_args from live MCP inputSchema
 
 - AI agents reading agents.json previously knew each MCP tool's name, summary, scope, and the JSON-RPC error envelope — but not which arguments were required vs optional. Bootstrap-checking each tool by calling it with empty args (the iter-53 / iter-53 pattern) reveals the scope but not the param list.
