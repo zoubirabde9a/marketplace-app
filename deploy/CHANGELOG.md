@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · embedded per-tool required_args + all_args from live MCP inputSchema
+
+- AI agents reading agents.json previously knew each MCP tool's name, summary, scope, and the JSON-RPC error envelope — but not which arguments were required vs optional. Bootstrap-checking each tool by calling it with empty args (the iter-53 / iter-53 pattern) reveals the scope but not the param list.
+- Fetched the live `tools/list` response and harvested each tool's `inputSchema.required` array and `inputSchema.properties` keys. Embedded as compact `required_args` / `all_args` arrays on each entry in `protocols.mcp.tools[]`. Examples:
+  - **product.create_listing** required=[sellerId, title, description, variants, media]; optional=[brand, attributes, categoryIds, shipsTo, heroMediaIndex]
+  - **cart.add_item** required=[variantId, qty]; optional=[cartId] (omitted cartId = create a new cart)
+  - **checkout.confirm** required=[cartId, customer]; optional=[shipsTo, shipping]
+  - **order.get** required=[orderId]; optional=[orderToken] (orderToken is the COD-flow anonymous-order path)
+- Added a top-level `protocols.mcp.schemas_note` directing AI agents to call `tools/list` on the MCP endpoint for full schemas (types, enums, descriptions, sub-object shapes) — the embedded form is intentionally compact so agents can validate calls without a round-trip but still have the live source for deep details.
+- Pushed to IndexNow.
+- Net effect on agent flow: AI agents reading agents.json now know exactly what fields each tool needs before invoking. No "what does product.create_listing want?" trial-and-error roundtrips. Concrete agent-task-success improvement.
+
 ## 2026-05-16 — vps-eu · `?inStock=` silent ambiguity flagged + combined-filter + snapshot-envelope documented
 
 - Three empirical probes this iteration:

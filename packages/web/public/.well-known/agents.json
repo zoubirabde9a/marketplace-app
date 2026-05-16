@@ -190,47 +190,137 @@
         {
           "name": "seller.create_account",
           "summary": "Create a seller (store) owned by the calling agent.",
-          "scope": "seller:write"
+          "scope": "seller:write",
+          "required_args": [
+            "displayName",
+            "countryCode"
+          ],
+          "all_args": [
+            "displayName",
+            "countryCode",
+            "phone",
+            "phones",
+            "whatsapp",
+            "website",
+            "description",
+            "supportEmail",
+            "city"
+          ]
         },
         {
           "name": "product.create_listing",
           "summary": "Publish a product under a seller you own.",
-          "scope": "seller:product:write"
+          "scope": "seller:product:write",
+          "required_args": [
+            "sellerId",
+            "title",
+            "description",
+            "variants",
+            "media"
+          ],
+          "all_args": [
+            "sellerId",
+            "title",
+            "description",
+            "brand",
+            "attributes",
+            "categoryIds",
+            "shipsTo",
+            "variants",
+            "media",
+            "heroMediaIndex"
+          ]
         },
         {
           "name": "cart.add_item",
           "summary": "Add a product variant to a cart.",
-          "scope": "buyer:cart:write"
+          "scope": "buyer:cart:write",
+          "required_args": [
+            "variantId",
+            "qty"
+          ],
+          "all_args": [
+            "cartId",
+            "variantId",
+            "qty"
+          ]
         },
         {
           "name": "cart.update_qty",
           "summary": "Change the quantity of one line in an existing cart.",
-          "scope": "buyer:cart:write"
+          "scope": "buyer:cart:write",
+          "required_args": [
+            "cartId",
+            "variantId",
+            "qty"
+          ],
+          "all_args": [
+            "cartId",
+            "variantId",
+            "qty"
+          ]
         },
         {
           "name": "cart.remove_item",
           "summary": "Remove a line from a cart by variantId.",
-          "scope": "buyer:cart:write"
+          "scope": "buyer:cart:write",
+          "required_args": [
+            "cartId",
+            "variantId"
+          ],
+          "all_args": [
+            "cartId",
+            "variantId"
+          ]
         },
         {
           "name": "cart.get",
           "summary": "Fetch the current state of a cart by id, including all line items (with product titles, SKUs,",
-          "scope": "buyer:cart:read"
+          "scope": "buyer:cart:read",
+          "required_args": [
+            "cartId"
+          ],
+          "all_args": [
+            "cartId"
+          ]
         },
         {
           "name": "checkout.confirm",
           "summary": "Place an order for the contents of `cartId`.",
-          "scope": "buyer:checkout:write"
+          "scope": "buyer:checkout:write",
+          "required_args": [
+            "cartId",
+            "customer"
+          ],
+          "all_args": [
+            "cartId",
+            "shipsTo",
+            "shipping",
+            "customer"
+          ]
         },
         {
           "name": "order.get",
           "summary": "Fetch a placed order by id.",
-          "scope": "buyer:order:read"
+          "scope": "buyer:order:read",
+          "required_args": [
+            "orderId"
+          ],
+          "all_args": [
+            "orderId",
+            "orderToken"
+          ]
         },
         {
           "name": "seller.list_orders",
           "summary": "List orders that contain at least one item sold by `sellerId`.",
-          "scope": "seller:order:read"
+          "scope": "seller:order:read",
+          "required_args": [
+            "sellerId"
+          ],
+          "all_args": [
+            "sellerId"
+          ]
         }
       ],
       "tools_source": "tools/list MCP method on the live endpoint (audit 2026-05-16)",
@@ -244,7 +334,8 @@
         "completion": false,
         "instructions_field_in_initialize": false,
         "note": "Tools-only MCP server (audit 2026-05-16). Probing resources/list or prompts/list returns method_not_found (-32601). Per-tool guidance is in protocols.mcp.tools[].summary and the live tool descriptions from tools/list. The initialize response carries no 'instructions' string."
-      }
+      },
+      "schemas_note": "Per-tool required_args + all_args are compact summaries derived from the live tools/list inputSchema. For full schemas (types, enums, descriptions, sub-object shapes), call tools/list directly on the MCP endpoint. Audit 2026-05-16."
     },
     "a2a": {
       "endpoint": "https://api.teno-store.com/a2a",
