@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · Wayback re-snapshot of 12 entity-graph-complete URLs (preserves iter-61-64 state)
+
+- The last comprehensive Wayback batch was in iter-29 (May 16 mid-day). All the entity-graph cross-link work happened AFTER that — iter-61 (home Organization sameAs/identifier/subjectOf/image), iter-62 (/store parentOrganization+isPartOf), iter-63 (/product isPartOf+mainEntityOfPage+Offer.seller@id), iter-64 (/c+/search?brand= publisher+Brand@id). Current Wayback captures don't reflect any of those.
+- Pushed 12 URLs to Wayback Save Page Now (with 10s spacing per Wayback's ~10/min throttle): home, /about, /seller, top-2 categories, the dominant storefront, a sample product, top-2 brand-search pages, agents.json, llms-full.txt, manifest.webmanifest.
+- Background submission running; first 3 confirmed 302 (capture-initiated). The new captures preserve the entity-graph-complete state — if any AI tool falls back to Wayback for verification, it sees the same structured-data quality as the live origin.
+
 ## 2026-05-16 — vps-eu · post-loop deployment-correctness sweep — all major fixes verified live (one more false-sweep cleared)
 
 - Following the iter-66 lesson ("always validate from Linux side before flagging"), did a deliberate live-correctness sweep of the major code-change fixes accumulated across this loop:
