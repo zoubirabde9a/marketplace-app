@@ -6,6 +6,19 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · empirically enumerated `?sort=` values — only 3 work (newest, price_asc, price_desc)
+
+- llms-full.txt documented `?sort=newest` but not the two sort values that ALSO work (`price_asc`, `price_desc`) and the **9 plausible values that DON'T work** (`oldest`, `popular`, `relevance`, `price-asc` with hyphen, `cheapest`, `most-expensive`, `recent`, `random`, others). Most return empty pages without error.
+- Empirical result table:
+  | Sort value | Behavior |
+  |---|---|
+  | `newest` | ✅ latest postedAt first (2026-05-16 sample matched audit date) |
+  | `price_asc` | ✅ cheapest first (returned 100 minor = 1 DZD product) |
+  | `price_desc` | ✅ most expensive first (returned 75M DZD Jijel real-estate listing) |
+  | `oldest` / `popular` / `relevance` / `price-asc` (hyphen) / others | ❌ empty |
+- Rewrote the `?sort=` line in llms-full.txt to (a) list all 3 working values explicitly, (b) call out the **underscore-vs-hyphen footgun** (`price_asc` works, `price-asc` doesn't — the kind of trap that wastes agent budget), (c) enumerate the unsupported names so agents don't try them. Pushed to IndexNow.
+- AI agents reading the manifest now know the complete sort surface — no trial-and-error needed.
+
 ## 2026-05-16 — vps-eu · MCP capability declaration — tools-only, no resources/prompts
 
 - Empirical probe: `resources/list` and `prompts/list` both return JSON-RPC -32601 (method_not_found). HTTP status varies (404 for prompts/list, transient 000 on a second probe of resources/list — likely connectivity not protocol). The server's `initialize` response declares only `capabilities.tools: {}`, no instructions field. Tools-only server.

@@ -88,7 +88,10 @@ Brand landings: `https://teno-store.com/search?brand=<Brand>` (URL-encoded).
   best; catalog titles are French), `?category=<compound-slug>` (use values
   from `top_categories[].slug` in `agents.json`; bare subcategory slugs
   silently return empty), `?brand=` (case-sensitive — e.g. `?brand=HP`),
-  `?sellerId=` (308-redirects to `/store/<uuid>`), `?sort=newest`.
+  `?sellerId=` (308-redirects to `/store/<uuid>`), `?sort=` (3 empirically
+  verified values: `newest`, `price_asc`, `price_desc` — note the
+  underscore, NOT hyphen; `price-asc` returns empty. `oldest`, `popular`,
+  `relevance`, `cheapest`, `recent`, `random` all return empty/unsupported).
   Price filters (`?priceFrom=` / `?priceTo=`) are currently NOT enforced
   on the API — values are accepted but the filter is silently ignored.
   Don't rely on them; do client-side filtering on `priceMinor` from the
