@@ -6,6 +6,22 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST #7 — téléviseur deep-dive (taille/distance, dalle types, NileSat tuner, Sonelgaz TCO)
+
+- Seventh new blog post this loop: "Guide d'achat : choisir un téléviseur en Algérie (2026)", ~8 min read, 9 H2 sections. Blog count: 10 → 11.
+- Distinct angle from electromenager guide: focuses on the buyer-perception variables that matter at this purchase scale (TV is a 7-10y commitment):
+  - **Taille/distance formula** (taille en pouces = distance cm ÷ 5), 4 worked thresholds 2m/2.5m/3m/3.5m
+  - **Résolution**: 4K standard; 8K to defer (no content); 1080p only for <32"
+  - **Smart TV OS choice**: Tizen (Samsung) / WebOS (LG) / Google TV (Sony, TCL, Hisense) / Vidaa (Hisense propre) — comparison on update longevity (5-7y Tizen/WebOS vs 3-4y Android), plus the Chromecast/Fire TV decoupling option
+  - **Connectique critical-mass**: 3 HDMI minimum, 1 HDMI 2.1 for next-gen consoles, DVB-S2 tuner for NileSat/Astra parabole (Algerian-specific), DVB-T2 for new TNT, Wi-Fi 5/6, HDMI ARC/eARC for soundbars
+  - **Type de dalle**: LED < QLED < mini-LED < OLED with burn-in caveat for OLED on >10h/day static-content use
+  - **Prix de référence DZD** for 43-75"+ across LED / QLED / OLED tiers (45k DZD entry to 700k+ DZD premium)
+  - **Brand-fiability** for Algerian SAV: Samsung/LG (top, dense SAV), Sony (premium cinephile), Hisense/TCL (30-40% cheaper), Condor (entry locally-warranty-fast), Panasonic/Philips (limited distribution)
+  - **Consommation Sonelgaz**: 220-310 kWh/year for 55" 6h/d use → 3.5-7k DZD/year, energy label A-G check
+  - **Occasion vérifications**: pixels morts test (rouge/vert/bleu/blanc/noir), burn-in test for OLED, date de fabrication
+- High-volume French query target: "choisir TV Algérie", "écran plat 55 pouces DZD", "Smart TV LG Samsung", "OLED vs QLED Algérie", "TV avec DVB-S2 parabole". The NileSat tuner check is Algerian-specific knowledge no other consolidated source provides.
+- Schema-correct BlogPosting JSON-LD with publisher/author @id refs. Clean compose deploy. IndexNow pushed.
+
 ## 2026-05-16 — vps-eu · NEW BLOG POST #6 — climatiseur deep-dive (R-22 trap, inverter ROI, Sonelgaz electricity TCO)
 
 - Sixth new blog post this loop: "Guide d'achat : choisir un climatiseur en Algérie (2026)", ~9 min read, 8 H2 sections. Blog count: 9 → 10. Deep-dive on a topic that was a section in the iter-76 electromenager guide but deserves its own post given Algerian summer demand and the cost stakes.
