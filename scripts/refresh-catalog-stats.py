@@ -47,10 +47,11 @@ MANIFEST_HOST = PUBLIC_HOST / ".well-known/agents.json"
 MANIFEST_CONTAINER = f"{PUBLIC_CONTAINER}/.well-known/agents.json"
 LLMS_HOST = PUBLIC_HOST / "llms.txt"
 LLMS_CONTAINER = f"{PUBLIC_CONTAINER}/llms.txt"
-INDEXNOW_URLS = [
-    "https://teno-store.com/.well-known/agents.json",
-    "https://teno-store.com/llms.txt",
-]
+LLMS_FULL_HOST = PUBLIC_HOST / "llms-full.txt"
+LLMS_FULL_CONTAINER = f"{PUBLIC_CONTAINER}/llms-full.txt"
+INDEXNOW_AGENTS = "https://teno-store.com/.well-known/agents.json"
+INDEXNOW_LLMS = "https://teno-store.com/llms.txt"
+INDEXNOW_LLMS_FULL = "https://teno-store.com/llms-full.txt"
 
 DRY_RUN = os.environ.get("REFRESH_DRY_RUN") == "1"
 
@@ -170,6 +171,74 @@ def round_to_100(n: int) -> int:
     return round(n / 100) * 100
 
 
+CATEGORY_TABLE_LABELS = {
+    "informatique": "Informatique",
+    "electronique_electromenager": "Électronique & Électroménager",
+    "telephones": "Téléphones",
+    "immobilier": "Immobilier",
+    "vetements_mode": "Vêtements & Mode",
+}
+
+
+def refresh_llms_full_txt(stats: dict) -> bool:
+    """Patch the exact-count markdown tables in llms-full.txt plus the
+    snapshot/total prose lines. Tables show precise figures (not rounded
+    — they're structured data, like JSON cells). Drift-safe: rows whose
+    label anchor isn't found are skipped silently."""
+    import re
+    text = LLMS_FULL_HOST.read_text(encoding="utf-8")
+    original = text
+    now = datetime.now(timezone.utc)
+    total = stats["total_listings"]
+    sellers = stats["active_sellers"]
+    cat_counts = {c["slug"]: c["listings"] for c in stats["top_categories"]}
+    # 1. Snapshot line at the top.
+    text = re.sub(
+        r"^Snapshot: [\d-]+(?: \d\d:\d\d UTC)?[^\n]*\.",
+        f"Snapshot: {now.strftime('%Y-%m-%d %H:%M UTC')} (catalog grows ~500/hour from the live scraper).",
+        text,
+        count=1,
+        flags=re.M,
+    )
+    # 2. Total-listings prose line.
+    text = re.sub(
+        r"^- Total listings: ~[\d,]+ across \d+ active sellers[^\n]*",
+        f"- Total listings: ~{round_to_100(total):,} across {sellers} active sellers (and growing).",
+        text,
+        count=1,
+        flags=re.M,
+    )
+    # 3. Per-category markdown table rows. Anchor on the French label at
+    #    column start so we can't match the unrelated `informatique` slug
+    #    column.
+    for slug, label in CATEGORY_TABLE_LABELS.items():
+        if slug not in cat_counts:
+            continue
+        # Pattern: "| Label<padding>| <count> ... |"
+        # Use a non-greedy match so we don't span multiple table rows.
+        pattern = re.compile(
+            r"(\| " + re.escape(label) + r"\s+\| )[\d,]+(\s+\| `" + re.escape(slug) + r"`)"
+        )
+        text = pattern.sub(lambda m, n=cat_counts[slug]: f"{m.group(1)}{n:,}{m.group(2)}", text)
+    # 4. Brand markdown table rows. Anchor on the brand name at column
+    #    start. Iterate over the live top-brands list so we capture
+    #    every brand currently in the table.
+    for brand in stats["top_brands"]:
+        name = brand["name"]
+        count = brand["listings"]
+        pattern = re.compile(
+            r"(\| " + re.escape(name) + r"\s+\| )[\d,]+(\s+\|)"
+        )
+        text = pattern.sub(lambda m, n=count: f"{m.group(1)}{n:,}{m.group(2)}", text)
+    if text == original:
+        return False
+    if DRY_RUN:
+        print("DRY_RUN llms-full.txt diff: (would patch)")
+        return True
+    LLMS_FULL_HOST.write_text(text, encoding="utf-8")
+    return True
+
+
 def refresh_llms_txt(stats: dict) -> bool:
     """Patch numeric tokens in llms.txt. Safe against prose drift — if the
     expected pattern isn't found, the line is left alone."""
@@ -221,7 +290,8 @@ def main() -> int:
     )
     json_changed = update_manifest(stats)
     llms_changed = refresh_llms_txt(stats)
-    if not json_changed and not llms_changed:
+    llms_full_changed = refresh_llms_full_txt(stats)
+    if not (json_changed or llms_changed or llms_full_changed):
         print("nothing changed — no push needed")
         return 0
     if DRY_RUN:
@@ -229,12 +299,18 @@ def main() -> int:
     changed_urls = []
     if json_changed:
         hot_copy_to_web_container(MANIFEST_HOST, MANIFEST_CONTAINER)
-        changed_urls.append(INDEXNOW_URLS[0])
+        changed_urls.append(INDEXNOW_AGENTS)
     if llms_changed:
         hot_copy_to_web_container(LLMS_HOST, LLMS_CONTAINER)
-        changed_urls.append(INDEXNOW_URLS[1])
+        changed_urls.append(INDEXNOW_LLMS)
+    if llms_full_changed:
+        hot_copy_to_web_container(LLMS_FULL_HOST, LLMS_FULL_CONTAINER)
+        changed_urls.append(INDEXNOW_LLMS_FULL)
     push_to_indexnow(changed_urls)
-    print(f"refreshed: json={json_changed} llms={llms_changed} · pushed {len(changed_urls)} URL(s) to IndexNow")
+    print(
+        f"refreshed: json={json_changed} llms={llms_changed} "
+        f"llms_full={llms_full_changed} · pushed {len(changed_urls)} URL(s) to IndexNow"
+    )
     return 0
 
 

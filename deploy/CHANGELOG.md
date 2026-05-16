@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · closed the GEO autopilot loop: llms-full.txt tables now auto-refresh too
+
+- Last remaining drift: `llms-full.txt` has exact markdown tables (5 category rows + 15 brand rows + snapshot/total prose lines) that the hourly script wasn't touching. Added `refresh_llms_full_txt()` to patch all 22 rows + 2 prose lines using narrow-anchor regexes — table rows use the French label OR brand name at column start as the anchor, plus the markdown column separator pattern, so the script can't accidentally edit cells in unrelated tables.
+- Tables keep exact counts (e.g. HP=2,414, not rounded) because they're structured data; the prose "Total listings" line keeps rounded-to-100 phrasing (~48,200) since it's read as natural language.
+- Test run live: `total=48,189, refreshed: json=True llms=True llms_full=True, pushed 3 URL(s) to IndexNow`. Verified all four targets (snapshot timestamp, total-listings prose, category table, brand table) re-read with the new values via `curl`.
+- The hourly systemd timer that already exists now keeps all three manifests in sync — `agents.json` with exact JSON figures, `llms.txt` with rounded prose, `llms-full.txt` with exact tables. Nothing in the GEO surface decays anymore.
+
 ## 2026-05-16 — vps-eu · added FAQPage to the home page (GEO highest-PageRank surface)
 
 - Home was the highest-PageRank page on the site but had no FAQ — Organization + WebSite + ItemList JSON-LD only. LLMs that crawled home for "what is Teno Store / is Teno Store legit / how does it work" queries had no rich Q&A to quote, so they fell back to synthesising from the meta description or skipping to /about (two clicks deep).
