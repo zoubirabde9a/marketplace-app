@@ -67,6 +67,11 @@ POSTS = [
         "title": "Guide d'achat : choisir un téléviseur en Algérie",
         "answers": ["choisir TV Algerie", "OLED QLED Algerie", "smart TV Samsung LG", "ecran plat 55 pouces DZD", "DVB-S2 NileSat tuner"],
     },
+    {
+        "url": "https://teno-store.com/blog/guide-mode-vetements-marques-algerie-2026",
+        "title": "Mode et vêtements de marque en Algérie : reconnaître l'original",
+        "answers": ["Lacoste original ou copie Algerie", "Nike Adidas authentique Algerie", "vetements de marque Algerie verification", "polo Lacoste vraie ou fausse", "sneakers contrefacon Algerie"],
+    },
 ]
 
 p = pathlib.Path(

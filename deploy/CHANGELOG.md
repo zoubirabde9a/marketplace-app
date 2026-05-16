@@ -6,6 +6,22 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST #8 — mode/vêtements de marque anti-counterfeit deep-dive
+
+- Eighth new blog post this loop: "Mode et vêtements de marque en Algérie : reconnaître l'original (2026)", ~8 min read, 8 H2 sections. Blog count: 11 → 12. Targets the 1,357 Lacoste + Skechers listings in our top-15 brands.
+- Distinct angle from the iter-77 anti-scam guide (general) — this one goes deep on **fashion-specific counterfeit detection** per brand:
+  - **Why the Algerian market is saturated**: distribution gaps + 1A-copy cultural acceptance + perverse margin incentives
+  - **Lacoste**: brodé-vs-imprimé crocodile, étiquette intérieure format, piqué grain test, nacre buttons, sachet d'origine. **Prix de référence**: 12-18k DZD authentic, 3-6k DZD copies
+  - **Nike + Adidas sneakers**: SKU code on languette → verify on site officiel, boîte authentic vs générique, coutures parallèles 1-2mm tolerance, exact weight, "no plastic smell" test
+  - **Skechers**: less copied, larger official distribution; same SKU/box/coutures rules
+  - **Tommy Hilfiger / Calvin Klein license trap**: licensed-by-X is not licensed-by-original; étiquette composition obligatoire en français/anglais; drapeaux brodés relief vs patch plat
+  - **"Copie 1A" warning**: 30-50% prix authentique, cuir véritable, hologramme + QR copiés. Only cumulative-verification detects them
+  - **Where to buy in confidence**: official Algerian boutiques (Lacoste Alger, Adidas/Nike centres commerciaux), e-commerce with return policy, vendors who publish étiquette-intérieure photos
+  - **Special case bébé/enfant**: Oeko-Tex compliance more important than brand authenticity
+- Also added the post to agents.json `editorial_content` block (now 12 posts). The script `scripts/add-editorial-content.py` re-runs and updates the manifest's `count`, `posts[]`, etc. — pattern established for future blog additions.
+- High-volume French query targets: "Lacoste original ou copie Algerie", "Nike Adidas authentique Algerie", "vetements de marque Algerie verification", "polo Lacoste vraie ou fausse", "sneakers contrefacon Algerie". Like prior fashion-counterfeit topics, no consolidated French resource elsewhere.
+- Pushed both URLs to IndexNow.
+
 ## 2026-05-16 — vps-eu · agents.json `editorial_content` block enumerating all 11 blog posts (cluster discoverable to AI agents)
 
 - After writing 7 new blog posts this loop (machine-à-café, electromenager, anti-scam, payment, delivery, climatiseur, téléviseur — bringing blog count from 4 to 11), the cluster was crawlable but not declared as a distinct asset in any discovery manifest.
