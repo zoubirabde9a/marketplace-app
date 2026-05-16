@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · cross-consistency + API-shape audit — all clean
+
+- Two more empirical-claim audits this iteration:
+  - **robots.txt vs ai-policy.json `disallowed_paths`**: both files list the SAME paths (`/api/`, `/login`, `/seller/`, `/s/`) as disallowed across the wildcard user-agent and every per-bot block. Zero drift between the two sources of authority — an AI panel won't see contradicting policies depending on which file it parses.
+  - **API `/v1/products/{id}` shape vs HTML schema.org Product**: API returns 18 fields (variants, attributes, counterfeitRisk, shipsTo, seller info, **snapshotUrl/snapshotCreatedAt/snapshotExpiresAt** + standard product fields). HTML JSON-LD has 13 fields. Different surfaces, complementary — API is richer for transactional metadata (snapshots, ships-to, counterfeit-tier); JSON-LD is shaped for SERP rich-result eligibility.
+  - **Bonus empirical confirmation**: the `good_for[7]` claim from iter-4 (*"Replaying what an AI agent saw at a given moment via /s/<id> snapshot links"*) was previously only confirmed by visible HTML containing snapshot links. The API explicitly returning a `snapshotUrl` + freshness timestamps on every product proves the feature is structurally real, not aspirational. No agents.json change needed — good_for entry already captures it.
+
 ## 2026-05-16 — vps-eu · embedded empirical MCP tools list (9 tools) into agents.json (concrete agent surface)
 
 - Continuing the empirical-verification sweep. The MCP `initialize` handshake in iter-46 revealed `capabilities.tools: {}` — server advertises tools as a supported capability. Followed up with a `tools/list` JSON-RPC call to see what's actually exposed.
