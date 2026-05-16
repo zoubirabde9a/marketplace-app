@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · Wayback re-snapshot of 5 manifest files after the late-loop documentation work
+
+- The five machine-readable manifest files (agents.json, llms.txt, llms-full.txt, ai-policy.json, ai-plugin.json) all received substantive content additions across iters 50-73: filter empirical matrix, MCP scope harvesting, MCP capabilities declaration, REST response_shape + error_envelope, OAuth-endpoint warnings, known_limitations × 4, last_audited freshness anchor.
+- The last Wayback snapshot of these files was in iter-68 (before the iter-69 ?currency=, iter-70 ?shipsTo= / ?counterfeitRisk= work, iter-72 OpenAPI audit log, iter-73 last_audited addition).
+- Pushed all 5 to Wayback Save Page Now: 5/5 returned 302 (capture-initiated). The new captures preserve the fully-empirically-grounded state.
+
 ## 2026-05-16 — vps-eu · added top-level `last_audited` to agents.json (capability-claim freshness signal)
 
 - agents.json had `catalog.snapshot_date` + `catalog.snapshot_time_utc` telling AI consumers when listing counts were sampled, but nothing telling them when the empirical capability claims (filter behaviors, MCP tools, scopes, error envelopes, known_limitations) were last verified against the live system.
