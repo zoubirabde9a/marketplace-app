@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · refreshed `/llms.txt` with accurate catalog stats (GEO)
+
+- Live `public/llms.txt` cited stale numbers ("Téléphones ~21k", no total, brand list absent). Current DB snapshot: 47,495 products, 7 active sellers. Top categories by count: Informatique 18,828, Électronique/Électroménager 9,198, Téléphones 8,670, Immobilier 5,910, Vêtements/Mode 4,892. Top 15 brands by listing volume captured (HP 2,385 leads).
+- Rewrote the "Catalog at a glance" section with current counts + total + brand block, dated snapshot 2026-05-16. This is the file ChatGPT / Gemini / Perplexity crawlers consume directly when summarizing the site, so accuracy here drives accuracy of LLM citations.
+- Hot-patched both `/opt/marketplace/packages/web/public/llms.txt` and the `web` container's `/app/packages/web/public/llms.txt` (no compose recreate; static file served by Next directly). Verified `curl https://teno-store.com/llms.txt` returns the new content. Image rebuild not needed unless container is recreated before next deploy — committed source in repo so the next image build picks it up.
+
+---
+
 ## 2026-05-13 — vps-eu · reclaimed 117 GB of docker build cache (disk 52% → 3%)
 
 - Disk audit: `/` was at 124 GB used / 251 GB (52%), with `docker system df` showing **124.8 GB of build cache (99% reclaimable)** plus 111.8 GB of intermediate image layers. Source: my ~30 `docker compose build` cycles across this loop session (api + web rebuilds for each scraper / brand / category / sitemap / alias fix).

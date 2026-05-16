@@ -13,31 +13,32 @@
 - Geography: Algeria (sellers based in Algiers, Oran, Annaba, Blida and other
   Algerian cities). Currency: DZD (Algerian Dinar). Language: predominantly
   French; some Arabic and English.
-- Scale: thousands of live product listings sourced from real Algerian
-  marketplaces, refreshed continuously.
-- Top categories (browse pages — each indexable as its own landing). The
-  compound underscore-joined slugs are the highest-volume Ouedkniss top-level
-  categories and host the bulk of the catalog; the bare slugs are
-  subcategories.
-  - Téléphones (~21k products) — `/search?category=telephones`,
-    `/search?category=smartphones`
-  - Automobiles & Véhicules — `/search?category=automobiles_vehicules`,
-    `/search?category=vehicules`, `/search?category=voitures`,
-    `/search?category=motos`
-  - Électronique & Électroménager — `/search?category=electronique_electromenager`,
+- Scale: ~47,000 live product listings across 7 active sellers, sourced from
+  real Algerian marketplaces and refreshed continuously (snapshot 2026-05-16).
+- Top categories by listing count (browse pages — each indexable as its own
+  landing). The compound underscore-joined slugs are the highest-volume
+  Ouedkniss top-level categories and host the bulk of the catalog; the bare
+  slugs are subcategories.
+  - Informatique (~18,800 listings) — `/search?category=informatique`,
+    `/search?category=ordinateurs`, `/search?category=portables`,
+    `/search?category=peripheriques`, `/search?category=ecrans`
+  - Électronique & Électroménager (~9,200 listings) —
+    `/search?category=electronique_electromenager`,
     `/search?category=electromenager`
-  - Vêtements & Mode — `/search?category=vetements_mode`,
+  - Téléphones (~8,700 listings) — `/search?category=telephones`,
+    `/search?category=smartphones`
+  - Immobilier (~5,900 listings) — `/search?category=immobilier`
+  - Vêtements & Mode (~4,900 listings) — `/search?category=vetements_mode`,
     `/search?category=mode`, `/search?category=femme`,
     `/search?category=homme`, `/search?category=accessoires`,
     `/search?category=traditionnel`
-  - Santé & Beauté — `/search?category=sante_beaute`
-  - Immobilier — `/search?category=immobilier`
-  - Informatique — `/search?category=informatique`,
-    `/search?category=ordinateurs`, `/search?category=portables`,
-    `/search?category=peripheriques`, `/search?category=ecrans`
   - Maison & Déco — `/search?category=maison`,
     `/search?category=decoration`, `/search?category=salon`
-- Brand landings: `/search?brand=<Brand>` (e.g. Apple, Samsung, Xiaomi, HP, LG).
+  - Santé & Beauté — `/search?category=sante_beaute`
+- Top brands by listing count: HP (~2,400), Samsung (~2,100), Dell (~1,700),
+  Lenovo (~1,700), Canon (~930), Asus (~920), Lacoste (~745), Xiaomi (~720),
+  Havit (~700), Skechers (~610), MSI (~590), Logitech (~490), Moulinex (~430),
+  Sony (~400), Google (~400). Brand landings: `/search?brand=<Brand>`.
 - Seller landings: `/store/<uuid>` — each Algerian seller's full storefront
   on one indexable URL. The older `/search?sellerId=<uuid>` form 308-redirects
   here for backward-compat (commit bb8be2a).
