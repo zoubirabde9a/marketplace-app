@@ -6,6 +6,17 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · enriched home Organization JSON-LD with image/identifier/sameAs/subjectOf (KG entity disambiguation)
+
+- Audited the home page's Organization JSON-LD against schema.org's commonly-KG-cared-about properties. Already present (13): @id, @type, additionalType, address, areaServed, contactPoint, currenciesAccepted, description, email, knowsLanguage, logo, name, slogan, url. Missing: `sameAs`, `image`, `identifier`, `subjectOf`. Of those, `sameAs` is the highest-value for Google KG and AI-panel entity disambiguation.
+- Added four fields in `app/page.tsx`'s Organization @graph node:
+  - `image: SITE_URL/opengraph-image` — separate from `logo` (which is the small icon); this is the OG-card image that entity panels render at full size.
+  - `identifier: { @type: PropertyValue, propertyID: "domain", value: "teno-store.com" }` — links entity firmly to its domain so KG can disambiguate Teno Store from the German jewelry brand TeNo at teno.com (the iter-4 brand-disambiguation concern).
+  - `sameAs: [4 URLs]` — we don't have external profiles (Wikipedia, X, LinkedIn) to point at yet, but we DO have authoritative same-entity surfaces hosted by us across domains/paths: the API agent-card on the api subdomain, llms.txt, llms-full.txt, agents.json. These prove entity-graph connectivity without fabrication.
+  - `subjectOf: [{type: WebPage, url: /about}]` — schema.org-blessed "this URL is ABOUT the entity" (distinct from sameAs which says "this URL IS the entity").
+- Clean compose-managed rebuild + deploy, verified all 4 fields rendered in live JSON-LD. Pushed home to IndexNow.
+- Net effect for GEO: Google's knowledge graph and AI-panel entity cards now see Teno Store with all its authoritative surfaces cross-linked at the structured-data layer. The brand-disambiguation against the German jewelry brand TeNo is now anchored in the schema.org graph (via `identifier` + `sameAs`), not just in prose.
+
 ## 2026-05-16 — vps-eu · multi-value filter syntaxes all silently fail — documented + workaround
 
 - Empirical: tested 5 common multi-value-filter syntaxes against /v1/products. All failed:

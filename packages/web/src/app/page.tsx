@@ -211,6 +211,37 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         currenciesAccepted: "DZD",
         knowsLanguage: ["fr", "ar", "en"],
         email: "mahlledz@gmail.com",
+        // `image` separate from `logo` — OG-card image is what KG entity
+        // panels and AI link previews actually render at full size.
+        image: `${SITE_URL}/opengraph-image`,
+        // `identifier` links the entity firmly to the domain. Google KG
+        // uses this to disambiguate organisations with similar names
+        // (Teno Store / TeNo jewelry — see slogan comment above).
+        identifier: {
+          "@type": "PropertyValue",
+          propertyID: "domain",
+          value: "teno-store.com",
+        },
+        // `sameAs` links to other authoritative URLs identifying the same
+        // entity. We don't have external profiles (Wikipedia, X, LinkedIn)
+        // to point at yet, but we DO have authoritative same-entity surfaces
+        // hosted by us across domains/paths: the API agent-card on the
+        // api subdomain, the long-form LLM reference, and the agent
+        // discovery manifests. These prove the entity-graph connectivity
+        // without fabrication.
+        sameAs: [
+          "https://api.teno-store.com/.well-known/agent-card.json",
+          `${SITE_URL}/llms.txt`,
+          `${SITE_URL}/llms-full.txt`,
+          `${SITE_URL}/.well-known/agents.json`,
+        ],
+        // `subjectOf` enumerates CreativeWorks that describe this entity.
+        // Same shape as a Wikipedia article about an org, just hosted by us.
+        // Distinct from sameAs (which says "this URL IS the entity"); subjectOf
+        // says "this URL is ABOUT the entity".
+        subjectOf: [
+          { "@type": "WebPage", url: `${SITE_URL}/about`, name: "About Teno Store" },
+        ],
       },
       ...(recentItemList ? [recentItemList] : []),
     ],
