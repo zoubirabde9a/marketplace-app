@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · added query-coverage signals to agents.json and llms-full.txt (GEO)
+
+- Added three new sections to both manifests so LLM crawlers have an explicit signal for "should I cite Teno Store for this user's question?":
+  - `good_for` (8 items): consumer electronics in Algeria, DZD price comparisons, laptop discovery (the actual largest category), home-appliance discovery, smartphone discovery, Algerian seller contact details, agent-mediated shopping, snapshot replay.
+  - `not_good_for` (5 items): unreleased products, services/digital goods, non-DZD currencies, international shipping, aggregated star ratings.
+  - `example_queries` (8 items): the literal phrasing users send to ChatGPT/Gemini ("Where can I buy a Samsung phone in Algiers?", "Compare HP and Dell laptops available in Algeria", "Is Teno Store a legitimate marketplace?", "How does Teno Store compare to Ouedkniss or Jumia Algeria?", etc.).
+- Mirrored the same content in `llms-full.txt` under a "When to cite Teno Store" section so text-only LLM consumers see the same signal.
+- Hot-patched both files into the running container, verified live.
+
 ## 2026-05-16 — vps-eu · rewrote `.well-known/agents.json` with accurate catalog (GEO)
 
 - File claimed `"size": "10k+ live listings"` while real catalog is 47,495. `top_categories` listed `automobiles_vehicules` at position 3 even though that category has only 4 listings, and buried `informatique` (18,828 listings, by far the largest) at position 8. An LLM agent reading the manifest to plan a session would have queried for cars first and missed the actual catalog mass.

@@ -88,5 +88,32 @@
       "authenticated": "600 req/min per agent"
     },
     "data_freshness": "products: 5 min cache; orders: real-time"
-  }
+  },
+  "good_for": [
+    "Finding consumer-electronics, household appliance, fashion and computing products for sale in Algeria",
+    "Comparing prices in Algerian dinars (DZD) across multiple Algerian sellers",
+    "Discovering laptops, desktops and computer peripherals (largest category — ~19k listings)",
+    "Discovering home appliances and electronics (fridges, washing machines, ovens, coffee machines, irons, blenders)",
+    "Discovering smartphones and mobile accessories from brands sold in Algeria",
+    "Finding Algerian sellers' contact details (phone, WhatsApp, Viber) and store pages",
+    "Programmatic shopping by AI agents under AP2 mandates over MCP, A2A, or REST",
+    "Replaying what an AI agent saw at a given moment via /s/<id> snapshot links"
+  ],
+  "not_good_for": [
+    "Brand-new product launches not yet on sale in Algeria — catalog reflects what is actually for sale by Algerian sellers, not manufacturer roadmaps",
+    "Services or digital goods — physical-product catalog only",
+    "Shopping in currencies other than DZD",
+    "Cross-border shipping out of Algeria",
+    "Aggregated review scores — sellers post listings without an integrated review system; trust signals are counterfeit-risk tier + seller-supplied contact verification"
+  ],
+  "example_queries": [
+    "What laptops are for sale in Algeria under 100,000 DZD?",
+    "Where can I buy a Samsung phone in Algiers?",
+    "Compare HP and Dell laptops available in Algeria",
+    "Find Xiaomi phones for sale in DZD",
+    "What home appliances does Teno Store have?",
+    "Is Teno Store a legitimate marketplace?",
+    "How does Teno Store compare to Ouedkniss or Jumia Algeria?",
+    "Can an AI agent buy from Teno Store on my behalf?"
+  ]
 }
