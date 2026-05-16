@@ -28,8 +28,12 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
+    // See /about/page.tsx for the wholesale-replace rationale.
+    siteName: "Teno Store",
+    type: "website",
+    url: `${SITE_URL}/seller`,
     locale: "fr_DZ",
-    alternateLocale: ["en_US"],
+    alternateLocale: ["en_US", "ar_DZ"],
   },
 };
 

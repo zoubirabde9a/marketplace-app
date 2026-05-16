@@ -28,7 +28,9 @@ export const metadata: Metadata = {
     title: "Blog Teno Store — guides d'achat et conseils vendeurs",
     description:
       "Guides d'achat et conseils vendeurs pour le marché algérien — téléphones, électroménager, mode, véhicules. Prix en DZD, conseils pratiques.",
+    siteName: "Teno Store",
     locale: "fr_DZ",
+    alternateLocale: ["ar_DZ"],
     type: "website",
     url: `${SITE_URL}/blog`,
   },

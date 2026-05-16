@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · fixed missing OpenGraph fields on /about, /seller, /blog (same wholesale-replace bug class)
+
+- Same root-cause class as the ar-DZ fix: Next.js wholesale-replaces `openGraph` on child pages, no shallow-merge. Three pages had stripped-down openGraph blocks that lost layout-level fields:
+  - `/about` and `/seller`: only declared `locale` + `alternateLocale`, were missing `siteName`, `type`, and `url`. Social/AI preview cards rendered the bare domain instead of "Teno Store" as the publisher chrome, had no type category, and used redirect-resolved URLs instead of the canonical.
+  - `/blog`: declared 6 of the 7 expected fields, was missing `siteName`. The blog preview card showed "teno-store.com" instead of "Teno Store" as the publisher.
+- Patched all three with the missing fields. Also added `alternateLocale: ["ar_DZ"]` to each (mirrors the ar-DZ hreflang propagation from last iteration — same Algerian bilingual signal at the OG layer).
+- Verified all three now ship full 7-field OG coverage (`og:description`, `og:image`, `og:locale`, `og:site_name`, `og:title`, `og:type`, `og:url`). Pushed all three URLs to IndexNow. Other pages (home, /search, /c/[slug], /product/[id], /store/[id], /blog/[slug]) already had complete coverage.
+
 ## 2026-05-16 — vps-eu · propagated `ar-DZ` hreflang to ALL page types (scale fix — was only on home/about/seller)
 
 - Audit caught a regression: when I added `ar-DZ` to the layout in iteration 12, **6 page types were silently dropping it** because they each override `metadata.alternates.languages` and Next.js replaces (not merges) that property: `/search`, `/c/[slug]` (every category landing), `/product/[id]` (~48k pages), `/store/[id]`, `/blog`, `/blog/[slug]`. Only the layout, /about, and /seller (which I patched in iteration 20) were actually shipping the Arabic signal.

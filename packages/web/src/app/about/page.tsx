@@ -24,8 +24,16 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
+    // Next.js wholesale-replaces openGraph on child pages (no shallow-merge),
+    // so re-declare the fields the layout would otherwise supply: siteName,
+    // type, url. Without these the social/AI preview card loses the
+    // "Teno Store" publisher chrome, the type category, and the canonical
+    // URL — defaults to a bare-domain preview.
+    siteName: "Teno Store",
+    type: "website",
+    url: `${SITE_URL}/about`,
     locale: "fr_DZ",
-    alternateLocale: ["en_US"],
+    alternateLocale: ["en_US", "ar_DZ"],
   },
 };
 
