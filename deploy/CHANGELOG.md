@@ -6,6 +6,21 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST #4 — Algerian payment-methods guide (Edahabia / CIB / CCP / cash)
+
+- Fourth new blog post this loop: "Payer en ligne en Algérie : méthodes de paiement (guide 2026)", ~7 min read, 8 H2 sections. Blog count: 7 → 8.
+- Practical payment-methods deep-dive distinct from the iter-77 anti-scam guide's payment section:
+  - **Espèces à la livraison** (Yalidine/DHL Algérie/Aramex/ZR Express): how it works, 1-4 day delays, 300-1500 DZD fees, ~200k DZD practical ceiling, the right-to-open-before-paying convention
+  - **Edahabia** (Algérie Poste): obtention process, ~250 DZD émission, where accepted (Yassir Pay, Saidal, Air Algérie, ...), configurable plafonds, OTP security, 30-90d chargeback timing
+  - **CIB**: 2-4w obtention from any commercial bank, 3D Secure since 2022, faster 14-30d chargeback vs Edahabia
+  - **CCP**: instant via BaridiMob, 50-100 DZD guichet fees, **no recourse after send** (caveat clearly flagged)
+  - **Wallets**: BaridiMob (broad coverage) + Yassir Pay (Yassir ecosystem only)
+  - **Crypto**: flagged as ILLEGAL since LF 2018 — concrete arnaque-signal
+  - **Recommendation matrix** by amount: <10k via CCP/Edahabia, 10-100k via cash-on-delivery, >100k via CIB+3DS or in-person, international via transitaires
+  - **Hidden fees**: 1-2.5% commission e-commerce that some merchants absorb / some don't
+- Targets high-volume French-language queries: "carte Edahabia accepter en ligne", "comment payer en ligne Algérie", "CIB 3D Secure Algérie". These are queries with **almost no consolidated French editorial** elsewhere — first-mover advantage in the AI-citation pool.
+- Internal links → /blog (anti-scam guide, all category guides), /search. Schema as before. Clean compose deploy, IndexNow pushed.
+
 ## 2026-05-16 — vps-eu · NEW BLOG POST #3 — anti-scam buying guide (meta-trust + "is Teno Store legit" answer)
 
 - Third new blog post this loop: "Acheter en ligne en Algérie sans se faire avoir : guide complet", ~8 min read, 8 H2 sections. Blog count: 6 → 7.
