@@ -6,6 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · enriched /seller with Service JSON-LD + ar-DZ hreflang (closes audit finding)
+
+- Closed the one slack point from last iteration's audit: `/seller` had only `WebPage + BreadcrumbList` — sparse for a page whose whole purpose is offering a discrete service (free seller onboarding). Added a full Service schema describing the marketplace-seller-account offering:
+  - `@type: Service` with `serviceType: "Marketplace seller account"`, `provider` linked to the existing `#organization` node so the entity graph is connected.
+  - `areaServed: Country: Algeria` + `availableChannel` with `serviceUrl` and trilingual `availableLanguage`.
+  - `audience: BusinessAudience` named "Vendeurs algériens" with explicit `geographicArea` — the schema.org shape Google + AI panels look for when ranking sources for "comment vendre en ligne en Algérie" / "how to sell online in Algeria" queries.
+  - `offers: Offer` with `price: "0"`, `priceCurrency: "DZD"`, `eligibleRegion: Algeria`, and a French description of the free-tier — the exact signal AI panels look for when answering "is X free to sell on" queries.
+- Also added `ar-DZ` hreflang to /seller's per-page alternates (it overrides the layout's so wouldn't inherit otherwise). Page now ships all three hreflangs.
+- Verified: 8 JSON-LD types on /seller (up from 2 — WebPage, BreadcrumbList, Service, Offer, Country, BusinessAudience, ServiceChannel, ListItem), all three hreflangs (fr-DZ, ar-DZ, x-default) present, HTTP 200. Pushed `/seller` to IndexNow.
+
 ## 2026-05-16 — vps-eu · JSON-LD validity sweep across 15 key pages — all clean (GEO baseline audit)
 
 - Diagnostic iteration: AI panels silently drop malformed structured data, so a typo anywhere in JSON-LD wastes all the discoverability work. Wrote a one-shot Python validator (`/tmp/jsonld-validate.py`, cleaned up after) that fetches each page with `User-Agent: GPTBot/1.0`, extracts every `<script type="application/ld+json">` block, JSON-parses each, and recursively walks the structure to enumerate every `@type` value.

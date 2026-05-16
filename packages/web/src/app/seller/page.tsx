@@ -22,6 +22,8 @@ export const metadata: Metadata = {
     // wholesale on child pages.
     languages: {
       "fr-DZ": `${SITE_URL}/seller`,
+      // Match the layout-level ar-DZ hreflang declaration. See layout.tsx.
+      "ar-DZ": `${SITE_URL}/seller`,
       "x-default": `${SITE_URL}/seller`,
     },
   },
@@ -60,6 +62,50 @@ export default async function SellerLandingPage() {
       { "@type": "ListItem", position: 2, name: "Vendre", item: `${SITE_URL}/seller` },
     ],
   };
+  // Service schema for the seller-onboarding offering. The audit on
+  // 2026-05-16 (deploy/CHANGELOG.md) flagged /seller as the only page
+  // with sparse structured data — just WebPage + BreadcrumbList. That
+  // was appropriate for a marketing landing but undersold what the page
+  // actually offers: a free, machine-discoverable, geo-scoped commerce
+  // service. Service + Offer + areaServed + audience is the schema.org
+  // shape Google + AI panels look for when ranking sources for
+  // "comment vendre en ligne en Algérie / how to sell online in Algeria"
+  // queries — exactly the entry-query class for /seller.
+  const sellerServiceJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    "@id": `${SITE_URL}/seller#service`,
+    name: "Vendre sur Teno Store — compte vendeur",
+    serviceType: "Marketplace seller account",
+    description:
+      "Compte vendeur gratuit sur Teno Store, marketplace algérien. Publiez vos annonces de téléphones, informatique, électroménager, mode et autres produits ; recevez des commandes directement (nom, téléphone, wilaya) ; et soyez automatiquement exposé aux agents IA qui achètent via MCP, A2A et AP2.",
+    provider: { "@id": `${SITE_URL}/#organization` },
+    areaServed: { "@type": "Country", name: "Algeria" },
+    availableChannel: {
+      "@type": "ServiceChannel",
+      serviceUrl: `${SITE_URL}/seller`,
+      availableLanguage: ["fr", "ar", "en"],
+    },
+    audience: {
+      "@type": "BusinessAudience",
+      name: "Vendeurs algériens",
+      audienceType: "Sellers based in Algeria",
+      geographicArea: { "@type": "Country", name: "Algeria" },
+    },
+    // Offers block declares "free to use" — the exact signal AI panels
+    // look for when answering "is X free to sell on" queries. priceCurrency
+    // is required by schema.org even when price is 0.
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "DZD",
+      eligibleRegion: { "@type": "Country", name: "Algeria" },
+      availability: "https://schema.org/InStock",
+      description: "Gratuit — aucun frais d'inscription ni de listing.",
+    },
+    termsOfService: `${SITE_URL}/about`,
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+  };
 
   return (
     <section className="max-w-xl mx-auto pt-16 pb-24">
@@ -70,6 +116,10 @@ export default async function SellerLandingPage() {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(sellerJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(sellerServiceJsonLd) }}
       />
       <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-8 backdrop-blur">
         <h1 className="text-3xl font-semibold tracking-tight">Vendre sur Teno Store</h1>
