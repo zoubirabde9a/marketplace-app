@@ -6,6 +6,21 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · post-loop deployment-correctness sweep — all major fixes verified live (one more false-sweep cleared)
+
+- Following the iter-66 lesson ("always validate from Linux side before flagging"), did a deliberate live-correctness sweep of the major code-change fixes accumulated across this loop:
+  - iter-21 ar-DZ hreflang on 7 page types: all OK ✅
+  - iter-22 OG siteName/type/url on /about /seller /blog: all OK ✅ (sweep grep showed 0/3 on /seller, but direct curl on the same URL showed 7/7 fields rendered — transient sweep glitch, not a regression. Direct check is authoritative.)
+  - iter-23 /search max-image-preview:large rich-result hints: OK on /search and /search?brand=Samsung ✅
+  - iter-25 Cache-Control public on /c/<slug> + /blog + /blog/<slug>: all 4 paths showing `public, max-age=0, s-maxage=300, ...` (not `private, no-cache, no-store`) ✅
+  - iter-26 /product og:image:width / height / type (~48k pages): OK on sampled product ✅
+  - iter-40 manifest.webmanifest UTF-8: server-side python confirms em-dash UTF-8 (e2 80 94) present, é UTF-8 (c3 a9) present, double-encoded mojibake bytes absent ✅
+  - iter-61 home Organization with sameAs/identifier/subjectOf/image: all 4 ✅
+  - iter-62 /store/<uuid> parentOrganization + isPartOf: both ✅
+  - iter-63 /product Product isPartOf + mainEntityOfPage; Offer.seller @type:Store + @id: all ✅
+  - iter-64 /c/* + /search?brand= CollectionPage publisher + Brand @id: all ✅
+- **Every major code-change fix from 67 iterations is correctly deployed and serving on the live server.** Operator-action list stays at 7 items.
+
 ## 2026-05-16 — vps-eu · iter-63 seller-name "mojibake" was a Windows-side display artifact (FALSE ALARM cleared)
 
 - iter-63's CHANGELOG flagged a seller display_name mojibake operator follow-up: `Smart Phone DZ â€" Alger Centre` showing double-encoded em-dash bytes in the API response. Re-investigated from inside vps-eu this iteration.
