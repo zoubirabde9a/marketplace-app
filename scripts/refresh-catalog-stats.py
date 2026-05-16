@@ -75,7 +75,17 @@ def psql(sql: str) -> str:
 
 def fetch_stats() -> dict:
     total = int(psql("SELECT count(*) FROM catalog.products"))
-    sellers = int(psql("SELECT count(DISTINCT seller_id) FROM catalog.products"))
+    sellers = int(psql("SELECT count(DISTINCT seller_id) FROM catalog.products WHERE seller_id IS NOT NULL"))
+    # Honesty fields: the bare "active_sellers" count is misleading because
+    # most listings (~95% on 2026-05-16) are imported from the broader
+    # Algerian marketplace and have NULL seller_id (not attributed to any
+    # account), while the seller-onboarded portion is currently dominated
+    # by a single account. AI panels that cite "7 active sellers" without
+    # this nuance produce false-precision claims. Surface the breakdown
+    # explicitly so consumers of the manifest can frame correctly.
+    unattributed = int(psql("SELECT count(*) FROM catalog.products WHERE seller_id IS NULL"))
+    onboarded = int(psql("SELECT count(*) FROM catalog.products WHERE seller_id IS NOT NULL"))
+    sellers_meaningful = int(psql("SELECT count(*) FROM (SELECT seller_id FROM catalog.products WHERE seller_id IS NOT NULL GROUP BY seller_id HAVING count(*) >= 10) s"))
     cats_raw = psql(
         "SELECT category_ids->>0 || '|' || count(*) "
         "FROM catalog.products GROUP BY category_ids->>0 "
@@ -103,6 +113,9 @@ def fetch_stats() -> dict:
     return {
         "total_listings": total,
         "active_sellers": sellers,
+        "sellers_with_meaningful_inventory": sellers_meaningful,
+        "listings_attributed_to_a_seller": onboarded,
+        "listings_unattributed_imports": unattributed,
         "top_categories": top_categories,
         "top_brands": top_brands,
     }
@@ -116,6 +129,13 @@ def update_manifest(stats: dict) -> bool:
     new_total = stats["total_listings"]
     catalog["total_listings"] = new_total
     catalog["active_sellers"] = stats["active_sellers"]
+    # See fetch_stats() for why these breakdown fields exist. Surfacing them
+    # in the manifest lets AI consumers cite "Teno Store has X seller-
+    # onboarded listings plus Y imported listings from the broader Algerian
+    # marketplace" instead of the false-precision "7 active sellers".
+    catalog["sellers_with_meaningful_inventory"] = stats["sellers_with_meaningful_inventory"]
+    catalog["listings_attributed_to_a_seller"] = stats["listings_attributed_to_a_seller"]
+    catalog["listings_unattributed_imports"] = stats["listings_unattributed_imports"]
     catalog["snapshot_date"] = now.strftime("%Y-%m-%d")
     catalog["snapshot_time_utc"] = now.strftime("%H:%M")
     catalog["size"] = (

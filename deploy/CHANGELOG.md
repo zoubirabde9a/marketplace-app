@@ -6,6 +6,21 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · sitemap validation pass (clean) + honest-seller-breakdown fields added to agents.json (GEO truthfulness)
+
+- **Sitemap validation**: parsed `/sitemap.xml` (48,824 URLs) with Python `xml.etree`. Zero entries missing `<loc>`, zero missing `<lastmod>`, zero bad lastmod formats, **99.8% of product entries carry `<image:image>`** for AI image-search. Shape distribution: 48,731 products / 57 search variants / 26 category landings / 6 blog posts / 2 other / 1 home / 1 store / matches reality.
+- **Drilling into store coverage** flagged a real data-honesty issue. Only 1 `/store/<id>` URL in the sitemap (Smart Phone DZ), but the manifest claims "7 active sellers". DB query revealed why:
+  - 46,469 listings (95%) have `seller_id IS NULL` — bulk-imported from the broader Algerian marketplace, not attributed to any onboarded seller account.
+  - 2,381 listings from Smart Phone DZ (the one real seller with meaningful inventory).
+  - 6 sellers with exactly 1 listing each (test/stub accounts).
+  - `count(DISTINCT seller_id)` = 7 — technically correct but materially misleading.
+- **Fix**: extended `refresh-catalog-stats.py` to compute and write three new honesty fields alongside the bare `active_sellers` count:
+  - `sellers_with_meaningful_inventory: 1` (sellers with ≥10 listings)
+  - `listings_attributed_to_a_seller: 2,387`
+  - `listings_unattributed_imports: 46,469`
+- Kept `active_sellers: 7` for backward compatibility with any external consumer that's already reading it. Re-ran the script live — all three breakdown fields now in `agents.json` and pushed to IndexNow.
+- AI panels (Perplexity, ChatGPT search) that drill into the manifest can now frame the catalog accurately: "Teno Store has one anchor seller (Smart Phone DZ) + ~2.4k attributed listings + a 46.5k-listing bulk import from the broader Algerian marketplace" — instead of the false-precision "7 active sellers" that would erode trust on click-through.
+
 ## 2026-05-16 — vps-eu · feed.xml Atom-1.0 validation pass + IndexNow/Wayback push
 
 - Audit dimension: Atom feed structure. AI tools that ingest RSS for fresh-content discovery (ChatGPT search, Perplexity, Bing Chat, Claude-SearchBot) silently skip malformed feeds — worth confirming clean.
