@@ -248,10 +248,20 @@ export default function AboutPage() {
           <li className="flex items-start gap-3">
             <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
             <span>
+              {/* Per-category listing counts. Auto-refresher handles the
+                  three machine-readable manifests (agents.json, llms.txt,
+                  llms-full.txt) hourly, but this visible HTML stays manual
+                  — regex-editing TSX from a Python script is too brittle.
+                  Refresh manually when any category crosses a thousand
+                  boundary: pull current counts from agents.json
+                  `top_categories[].listings` and round to the nearest 100.
+                  Last refreshed 2026-05-16 (catalog ~48,950, scraper
+                  +~350/hr) — drift is slow (Informatique grows by
+                  ~5% per week relative to the displayed value). */}
               <strong className="text-ink">Catalogue commun</strong> avec les
               grandes catégories du commerce algérien — informatique
-              (~18 800 annonces, la plus grande catégorie), électroménager
-              (~9 200), téléphones (~8 700), immobilier (~5 900) et mode
+              (~19 700 annonces, la plus grande catégorie), électroménager
+              (~9 400), téléphones (~8 700), immobilier (~5 900) et mode
               (~4 900) — issues de vendeurs algériens, prix en dinars (DZD).
             </span>
           </li>

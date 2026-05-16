@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · refreshed visible category counts on /about + added refresh-cadence note in JSX comment
+
+- Truthfulness pattern caught one more place: visible HTML category counts on /about, hard-coded back in iter-10 when I added the "Comparaison avec les autres marketplaces algériens" section. Auto-refresher handles the three machine-readable manifests (agents.json, llms.txt, llms-full.txt) hourly but the visible JSX stays manual — regex-editing TSX from Python is too brittle. Drift snapshot: Informatique was "~18 800 annonces" in JSX, actual count is 19,696 (~900 stale, ~5%). Electroménager and Mode also slightly behind.
+- Refreshed all five visible counts to current values: Informatique ~19 700, Électroménager ~9 400, Téléphones ~8 700, Immobilier ~5 900, Mode ~4 900. Added an inline JSX comment documenting the refresh-cadence convention: pull from `agents.json` `top_categories[].listings`, round to the nearest 100, refresh whenever any category crosses a thousand boundary (Informatique grows ~5% per week relative to display, so ~3-month manual-refresh cadence keeps the gap small).
+- Clean compose rebuild + deploy, verified `~19 700 annonces` renders live. Pushed `/about` to IndexNow (Bing re-fetches) and Wayback (fresh snapshot captures the corrected state).
+- Also re-audited `api.teno-store.com/.well-known/agent-card.json` while in the area — it has zero catalog numbers (just `name`, `description`, `homepage`, `capabilities`, `auth`, `version`), so there's nothing to drift. Sparse-and-correct beats rich-and-stale; leaving it.
+
 ## 2026-05-16 — vps-eu · fixed prose blurbs that contradicted the structured truthfulness fields
 
 - Audit drilling for the truthfulness pattern surfaced two more contradictions:
