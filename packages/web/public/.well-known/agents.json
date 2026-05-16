@@ -4,11 +4,11 @@
   "homepage": "https://teno-store.com",
   "contact": "mahlledz@gmail.com",
   "catalog": {
-    "size": "49,128 live listings — ~2,387 from onboarded sellers plus ~46,741 imported from the broader Algerian marketplace, refreshed continuously (snapshot 2026-05-16 18:16 UTC)",
+    "size": "49,482 live listings — ~2,387 from onboarded sellers plus ~47,095 imported from the broader Algerian marketplace, refreshed continuously (snapshot 2026-05-16 19:04 UTC)",
     "snapshot_date": "2026-05-16",
-    "snapshot_time_utc": "18:16",
-    "total_listings": 49128,
-    "growth_rate_per_hour": 353,
+    "snapshot_time_utc": "19:04",
+    "total_listings": 49482,
+    "growth_rate_per_hour": 347,
     "active_sellers": 7,
     "geography": {
       "country": "Algeria",
@@ -76,17 +76,17 @@
     "top_categories": [
       {
         "slug": "informatique",
-        "listings": 19787,
+        "listings": 20001,
         "label": "Informatique"
       },
       {
         "slug": "electronique_electromenager",
-        "listings": 9646,
+        "listings": 9767,
         "label": "Électronique & Électroménager"
       },
       {
         "slug": "telephones",
-        "listings": 8756,
+        "listings": 8773,
         "label": "Téléphones"
       },
       {
@@ -96,34 +96,34 @@
       },
       {
         "slug": "vetements_mode",
-        "listings": 5024,
+        "listings": 5026,
         "label": "Vêtements & Mode"
       }
     ],
     "top_brands": [
       {
         "name": "HP",
-        "listings": 2461
+        "listings": 2474
       },
       {
         "name": "Samsung",
-        "listings": 2092
+        "listings": 2100
       },
       {
         "name": "Dell",
-        "listings": 1789
+        "listings": 1800
       },
       {
         "name": "Lenovo",
-        "listings": 1736
+        "listings": 1741
       },
       {
         "name": "Canon",
-        "listings": 986
+        "listings": 1001
       },
       {
         "name": "Asus",
-        "listings": 945
+        "listings": 948
       },
       {
         "name": "Lacoste",
@@ -131,40 +131,40 @@
       },
       {
         "name": "Havit",
-        "listings": 738
+        "listings": 773
       },
       {
         "name": "Xiaomi",
-        "listings": 733
+        "listings": 740
+      },
+      {
+        "name": "MSI",
+        "listings": 614
       },
       {
         "name": "Skechers",
         "listings": 614
       },
       {
-        "name": "MSI",
-        "listings": 608
-      },
-      {
         "name": "Logitech",
-        "listings": 497
+        "listings": 505
       },
       {
         "name": "Moulinex",
-        "listings": 476
+        "listings": 480
       },
       {
         "name": "Google",
-        "listings": 408
+        "listings": 409
       },
       {
         "name": "Sony",
-        "listings": 403
+        "listings": 407
       }
     ],
     "sellers_with_meaningful_inventory": 1,
     "listings_attributed_to_a_seller": 2387,
-    "listings_unattributed_imports": 46741,
+    "listings_unattributed_imports": 47095,
     "subcategory_slugs_note": "No bare-slug subcategories currently meet the >=5-listings threshold. The compound slugs in top_categories above carry the full catalog mass. Audit 2026-05-16: bare slugs smartphones / ordinateurs / electromenager etc. had 0 listings each — they were dead navigation. Updated to honest posture."
   },
   "discovery": {
@@ -236,7 +236,17 @@
         "GET /v1/products",
         "GET /v1/products/{id}"
       ],
-      "auth": "oauth2.1+pkce+dpop (writes); none (public_endpoints above)"
+      "auth": "oauth2.1+pkce+dpop (writes); none (public_endpoints above)",
+      "known_limitations": {
+        "list_limit_cap": {
+          "note": "GET /v1/products silently returns an empty body when limit > 100. Cap requests at limit=100 (the safe ceiling); use cursor pagination for deeper traversal.",
+          "evidence": "limit=100 → 100 hits; limit=120 → 0 hits (audit 2026-05-16)."
+        },
+        "total_estimate_filter_bug": {
+          "note": "pagination.totalEstimate reports the true catalog total ONLY for unfiltered queries and ?brand= filters. For ?category= and ?sellerId= filters, totalEstimate returns the hit-count of the response page, not the underlying total. To get a true filtered total, walk the cursor until pagination.cursor is null and count locally.",
+          "evidence": "audit 2026-05-16: ?brand=HP&limit=1 -> totalEstimate=2475 (correct); ?category=telephones&limit=1 -> totalEstimate=1 (wrong, true total ~8700); ?sellerId=<id>&limit=1 -> totalEstimate=1 (wrong)."
+        }
+      }
     },
     "ap2": {
       "version": "0.2.0",

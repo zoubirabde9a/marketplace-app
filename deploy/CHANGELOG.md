@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · documented two real API bugs in agents.json `known_limitations` block (operator follow-up)
+
+- Continued empirical sweep of /v1/products. Two new bugs surfaced:
+  - **Bug A — `limit=100` is a hard silent cutoff**. `limit=100` → 100 hits; **`limit=120` → 0 hits**. No 400 error, no warning header — just an empty page. AI agents passing common values like `limit=200/250/500` silently get nothing. The fix would be either to honor the requested limit up to some documented ceiling OR to return 400 when the requested limit exceeds the cap.
+  - **Bug B — `pagination.totalEstimate` is broken for `?category=` and `?sellerId=` filters**. Reports the hit-count of the returned page, not the underlying catalog total. So `?category=telephones&limit=1` returns `totalEstimate=1` (true total ~8,700). `?brand=HP&limit=1` correctly returns `totalEstimate=2,475`. AI agents using totalEstimate to answer "how many phones?" or "how big is seller X?" get the count of THIS page, not the catalog total.
+- **Operator follow-up flagged** (can't autonomously fix — API service code change). Both bugs are localized to /v1/products handler logic.
+- **Mitigation deployed**: added `protocols.rest.known_limitations` block to agents.json with both issues, complete with empirical evidence (`limit=100 → 100 hits; limit=120 → 0 hits` and the totalEstimate-by-filter table). AI agents reading the manifest now know to cap `limit` at 100 and not rely on totalEstimate for filtered queries — they walk the cursor and count locally instead. Pushed to IndexNow.
+- This is the structurally correct posture in the meantime: documented-and-accurate beats undocumented-and-buggy. Same pattern as the rate_limit fix from iter-45 — when a feature doesn't work as claimed, honest documentation prevents AI panels from amplifying broken behavior.
+
 ## 2026-05-16 — vps-eu · empirically tested every advertised filter param — `priceFrom`/`priceTo` are silently ignored
 
 - Continuing the empirical-claim sweep. llms-full.txt advertised six filter params on /search (and the underlying /v1/products API): `?q=`, `?category=`, `?brand=`, `?sellerId=`, `?sort=`, `?priceFrom=` / `?priceTo=`. Ran each against /v1/products to verify:
