@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · extended hourly refresher to also keep llms.txt in sync (GEO autopilot — complete)
+
+- Added `refresh_llms_txt()` to `scripts/refresh-catalog-stats.py`: patches the four narrow-anchor numeric tokens in `llms.txt` (the "Scale" line and the four per-category bullet counts) using regex with both the French label AND the `/search?category=` URL fragment as anchors, so the script can't accidentally edit any unrelated number. Drift-safe: if a future operator manually edits the prose around those tokens and the anchor stops matching, the script silently skips that line rather than corrupting it.
+- Prose counts are rounded to the nearest 100 ("~48,200" instead of "~48,158") so the file doesn't churn on every single listing add. The structured JSON keeps exact counts; rounded prose is for the human-readable surface.
+- Same hourly timer now drives both manifests. Test run live: `total=48,158, refreshed: json=True llms=True, pushed 2 URL(s) to IndexNow`. Verified `curl https://teno-store.com/llms.txt | grep Scale:` returns the new rounded figure.
+
 ## 2026-05-16 — vps-eu · automated hourly refresh of agents.json from live DB (GEO autopilot, stops manifest drift)
 
 - Built `scripts/refresh-catalog-stats.py`: pulls fresh counts from Postgres (`SELECT count(*)`, GROUP BY category/brand), rewrites `/.well-known/agents.json` on the host AND inside the running web container (no rebuild), then pushes the URL to IndexNow so Bing re-fetches the new payload. Idempotent — re-running with no DB changes is a no-op. Pure Python stdlib, no pip deps; uses `docker compose exec postgres psql` and `docker cp` for the heavy lifting.

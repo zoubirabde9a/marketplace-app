@@ -41,9 +41,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 COMPOSE = "/opt/marketplace/docker-compose.prod.yml"
-MANIFEST_HOST = Path("/opt/marketplace/packages/web/public/.well-known/agents.json")
-MANIFEST_CONTAINER = "/app/packages/web/public/.well-known/agents.json"
-INDEXNOW_URL = "https://teno-store.com/.well-known/agents.json"
+PUBLIC_HOST = Path("/opt/marketplace/packages/web/public")
+PUBLIC_CONTAINER = "/app/packages/web/public"
+MANIFEST_HOST = PUBLIC_HOST / ".well-known/agents.json"
+MANIFEST_CONTAINER = f"{PUBLIC_CONTAINER}/.well-known/agents.json"
+LLMS_HOST = PUBLIC_HOST / "llms.txt"
+LLMS_CONTAINER = f"{PUBLIC_CONTAINER}/llms.txt"
+INDEXNOW_URLS = [
+    "https://teno-store.com/.well-known/agents.json",
+    "https://teno-store.com/llms.txt",
+]
 
 DRY_RUN = os.environ.get("REFRESH_DRY_RUN") == "1"
 
@@ -129,18 +136,18 @@ def update_manifest(stats: dict) -> bool:
     return True
 
 
-def hot_copy_to_web_container() -> None:
+def hot_copy_to_web_container(host_path: Path, container_path: str) -> None:
     cid = subprocess.check_output(
         ["docker", "compose", "-f", COMPOSE, "ps", "-q", "web"], text=True
     ).strip()
     if not cid:
         raise SystemExit("web container not running")
     subprocess.check_call([
-        "docker", "cp", str(MANIFEST_HOST), f"{cid}:{MANIFEST_CONTAINER}"
+        "docker", "cp", str(host_path), f"{cid}:{container_path}"
     ])
 
 
-def push_to_indexnow() -> None:
+def push_to_indexnow(urls: list[str]) -> None:
     subprocess.run(
         [
             "docker", "run", "--rm", "-i",
@@ -149,10 +156,60 @@ def push_to_indexnow() -> None:
             "node:22-alpine",
             "node", "/scripts/indexnow-submit.mjs", "--stdin",
         ],
-        input=INDEXNOW_URL + "\n",
+        input="\n".join(urls) + "\n",
         text=True,
         check=False,  # IndexNow failure shouldn't fail the refresh
     )
+
+
+# Round to the nearest 100 for prose phrasing — keeps the manifest from
+# churning on every single listing add (e.g. 48,103 → 48,107 isn't worth
+# rewriting the file for). The structured JSON keeps exact counts; this
+# is just for the human-readable text.
+def round_to_100(n: int) -> int:
+    return round(n / 100) * 100
+
+
+def refresh_llms_txt(stats: dict) -> bool:
+    """Patch numeric tokens in llms.txt. Safe against prose drift — if the
+    expected pattern isn't found, the line is left alone."""
+    import re
+    text = LLMS_HOST.read_text(encoding="utf-8")
+    original = text
+    now = datetime.now(timezone.utc)
+    total_rounded = round_to_100(stats["total_listings"])
+    sellers = stats["active_sellers"]
+    # Build {slug: rounded_count} from the fetched top categories.
+    cat_counts = {c["slug"]: round_to_100(c["listings"]) for c in stats["top_categories"]}
+    # 1. "Scale" line — total + sellers + snapshot timestamp.
+    text = re.sub(
+        r"- Scale: ~[\d,]+ live product listings across \d+ active sellers, sourced from\n"
+        r"  real Algerian marketplaces and refreshed continuously \(snapshot [\d-]+(?: \d\d:\d\d UTC)?[^)]*\)\.",
+        f"- Scale: ~{total_rounded:,} live product listings across {sellers} active sellers, sourced from\n"
+        f"  real Algerian marketplaces and refreshed continuously (snapshot "
+        f"{now.strftime('%Y-%m-%d %H:%M UTC')} — catalog grows by ~500/hour from the live scraper).",
+        text,
+    )
+    # 2. Per-category bullet counts. Narrow anchors: the French label and
+    #    the search?category= URL fragment so we can't accidentally match
+    #    an unrelated number.
+    cat_patterns = [
+        ("informatique", r"(- Informatique \(~)[\d,]+(\s+listings\) — `/search\?category=informatique)"),
+        ("electronique_electromenager", r"(- Électronique & Électroménager \(~)[\d,]+(\s+listings\) —\n    `/search\?category=electronique_electromenager)"),
+        ("telephones", r"(- Téléphones \(~)[\d,]+(\s+listings\) — `/search\?category=telephones)"),
+        ("immobilier", r"(- Immobilier \(~)[\d,]+(\s+listings\) — `/search\?category=immobilier)"),
+        ("vetements_mode", r"(- Vêtements & Mode \(~)[\d,]+(\s+listings\) — `/search\?category=vetements_mode)"),
+    ]
+    for slug, pattern in cat_patterns:
+        if slug in cat_counts:
+            text = re.sub(pattern, lambda m, c=cat_counts[slug]: f"{m.group(1)}{c:,}{m.group(2)}", text)
+    if text == original:
+        return False
+    if DRY_RUN:
+        print("DRY_RUN llms.txt diff: (would patch)")
+        return True
+    LLMS_HOST.write_text(text, encoding="utf-8")
+    return True
 
 
 def main() -> int:
@@ -162,15 +219,22 @@ def main() -> int:
         f"sellers={stats['active_sellers']} "
         f"top1={stats['top_categories'][0]['slug']}={stats['top_categories'][0]['listings']}"
     )
-    changed = update_manifest(stats)
-    if not changed:
-        print("manifest unchanged — nothing to push")
+    json_changed = update_manifest(stats)
+    llms_changed = refresh_llms_txt(stats)
+    if not json_changed and not llms_changed:
+        print("nothing changed — no push needed")
         return 0
     if DRY_RUN:
         return 0
-    hot_copy_to_web_container()
-    push_to_indexnow()
-    print("manifest refreshed + hot-copied to container + pushed to IndexNow")
+    changed_urls = []
+    if json_changed:
+        hot_copy_to_web_container(MANIFEST_HOST, MANIFEST_CONTAINER)
+        changed_urls.append(INDEXNOW_URLS[0])
+    if llms_changed:
+        hot_copy_to_web_container(LLMS_HOST, LLMS_CONTAINER)
+        changed_urls.append(INDEXNOW_URLS[1])
+    push_to_indexnow(changed_urls)
+    print(f"refreshed: json={json_changed} llms={llms_changed} · pushed {len(changed_urls)} URL(s) to IndexNow")
     return 0
 
 
