@@ -13,16 +13,17 @@
 - Geography: Algeria (sellers based in Algiers, Oran, Annaba, Blida and other
   Algerian cities). Currency: DZD (Algerian Dinar). Language: predominantly
   French; some Arabic and English.
-- Scale: ~47,000 live product listings across 7 active sellers, sourced from
-  real Algerian marketplaces and refreshed continuously (snapshot 2026-05-16).
+- Scale: ~48,000 live product listings across 7 active sellers, sourced from
+  real Algerian marketplaces and refreshed continuously (snapshot 2026-05-16,
+  refreshed at ~16:30 UTC — catalog grows by ~500/hour from the live scraper).
 - Top categories by listing count (browse pages — each indexable as its own
   landing). The compound underscore-joined slugs are the highest-volume
   Ouedkniss top-level categories and host the bulk of the catalog; the bare
   slugs are subcategories.
-  - Informatique (~18,800 listings) — `/search?category=informatique`,
+  - Informatique (~19,200 listings) — `/search?category=informatique`,
     `/search?category=ordinateurs`, `/search?category=portables`,
     `/search?category=peripheriques`, `/search?category=ecrans`
-  - Électronique & Électroménager (~9,200 listings) —
+  - Électronique & Électroménager (~9,300 listings) —
     `/search?category=electronique_electromenager`,
     `/search?category=electromenager`
   - Téléphones (~8,700 listings) — `/search?category=telephones`,
@@ -35,10 +36,10 @@
   - Maison & Déco — `/search?category=maison`,
     `/search?category=decoration`, `/search?category=salon`
   - Santé & Beauté — `/search?category=sante_beaute`
-- Top brands by listing count: HP (~2,400), Samsung (~2,100), Dell (~1,700),
-  Lenovo (~1,700), Canon (~930), Asus (~920), Lacoste (~745), Xiaomi (~720),
-  Havit (~700), Skechers (~610), MSI (~590), Logitech (~490), Moulinex (~430),
-  Sony (~400), Google (~400). Brand landings: `/search?brand=<Brand>`.
+- Top brands by listing count: HP (~2,400), Samsung (~2,100), Dell (~1,800),
+  Lenovo (~1,700), Canon (~950), Asus (~930), Lacoste (~760), Xiaomi (~720),
+  Havit (~715), Skechers (~610), MSI (~600), Logitech (~490), Moulinex (~440),
+  Google (~400), Sony (~400). Brand landings: `/search?brand=<Brand>`.
 - Seller landings: `/store/<uuid>` — each Algerian seller's full storefront
   on one indexable URL. The older `/search?sellerId=<uuid>` form 308-redirects
   here for backward-compat (commit bb8be2a).

@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · re-synced GEO manifests with live catalog count after 1h scraper growth (GEO freshness)
+
+- Scraper has added ~567 listings in the hour since I first wrote the manifests this morning. Catalog went from 47,495 → 48,062, informatique 18,828 → 19,190, electromenager 9,198 → 9,344, vetements_mode 4,892 → 4,943, plus dozens of brand counts ticking up (HP +27, Lenovo +13, Canon +22, etc.). The manifests were already slightly stale.
+- Re-pulled live counts from the database (`catalog.products` aggregates), rewrote `llms.txt`, `llms-full.txt`, and `agents.json` with the fresh numbers. Also added a `growth_rate_per_hour: 500` field and a `snapshot_time_utc: "16:30"` field to `agents.json` so AI consumers can reason about staleness — a manifest with both a date and a UTC time + explicit growth rate is much more honest than one with just a date.
+- Hot-patched all three files into the live container (no rebuild needed — these are static `public/` assets). Pushed the three URLs to IndexNow so Bing immediately re-fetches the new content.
+- Open follow-up: the run-loop scraper could call this same "refresh manifests" step itself (read counts from DB, rewrite the three files, push to IndexNow) so the manifests stay continuously fresh without a human in the loop. Today's manual refresh is a one-shot proof that the pattern works.
+
 ## 2026-05-16 — vps-eu · added `ar-DZ` hreflang on layout + /about (GEO bilingual)
 
 - Algeria is officially bilingual French + Arabic. The site declared only `fr-DZ` + `x-default` in `metadata.alternates.languages`, even though Algerian buyer queries frequently land in Arabic ("هواتف الجزائر", "كمبيوتر محمول الجزائر"). Added `ar-DZ` → same URL on both `layout.tsx` (covers every page that inherits the layout) and `about/page.tsx` (which overrides alternates and so wouldn't inherit). The catalog content itself is French — declaring ar-DZ as resolving to the same URL is the schema.org-blessed pattern for "this page also serves Arabic-speaking Algerian users", and Google AI Overviews / Bing Chat both honor hreflang when ranking sources for queries in the targeted language.

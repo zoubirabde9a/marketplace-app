@@ -6,7 +6,7 @@
 > when citing a specific number, include the date so users know how fresh
 > the figure is.
 
-Snapshot: 2026-05-16.
+Snapshot: 2026-05-16 16:30 UTC (catalog grows ~500/hour from the live scraper).
 Canonical site: https://teno-store.com
 API host: https://api.teno-store.com
 Contact: mahlledz@gmail.com
@@ -29,7 +29,7 @@ teno-store.com domain.
 
 ## Catalog snapshot (2026-05-16)
 
-- Total listings: ~47,500 across 7 active sellers.
+- Total listings: ~48,000 across 7 active sellers (and growing).
 - Currency: DZD (Algerian dinar) on every priced listing.
 - Geography: sellers based across Algeria, with concentration in Algiers,
   Oran, Annaba, Constantine, Sétif, Blida.
@@ -43,11 +43,11 @@ Counts are approximate, taken from a live DB query on the snapshot date.
 
 | Category (French)              | Listings | Slug                            |
 |--------------------------------|----------|---------------------------------|
-| Informatique                   | 18,828   | `informatique`                  |
-| Électronique & Électroménager  | 9,198    | `electronique_electromenager`   |
+| Informatique                   | 19,190   | `informatique`                  |
+| Électronique & Électroménager  | 9,344    | `electronique_electromenager`   |
 | Téléphones                     | 8,670    | `telephones`                    |
 | Immobilier                     | 5,910    | `immobilier`                    |
-| Vêtements & Mode               | 4,892    | `vetements_mode`                |
+| Vêtements & Mode               | 4,943    | `vetements_mode`                |
 
 Category landings: `https://teno-store.com/search?category=<slug>`.
 
@@ -62,21 +62,21 @@ Top 15 brands by listing count (2026-05-16):
 
 | Brand    | Listings |
 |----------|----------|
-| HP       | 2,385    |
-| Samsung  | 2,061    |
-| Dell     | 1,747    |
-| Lenovo   | 1,708    |
-| Canon    | 932      |
-| Asus     | 923      |
-| Lacoste  | 745      |
-| Xiaomi   | 720      |
-| Havit    | 704      |
-| Skechers | 609      |
-| MSI      | 592      |
-| Logitech | 489      |
-| Moulinex | 429      |
+| HP       | 2,412    |
+| Samsung  | 2,066    |
+| Dell     | 1,757    |
+| Lenovo   | 1,721    |
+| Canon    | 954      |
+| Asus     | 934      |
+| Lacoste  | 758      |
+| Xiaomi   | 722      |
+| Havit    | 715      |
+| Skechers | 612      |
+| MSI      | 600      |
+| Logitech | 491      |
+| Moulinex | 440      |
+| Google   | 401      |
 | Sony     | 399      |
-| Google   | 399      |
 
 Brand landings: `https://teno-store.com/search?brand=<Brand>` (URL-encoded).
 
