@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · removed 19 dead `subcategory_slugs` from agents.json + noindex empty /c/<slug> pages
+
+- Empirical audit: 13 of the 19 `subcategory_slugs` advertised in agents.json (smartphones, ordinateurs, electromenager, peripheriques, ecrans, sante_beaute, maison, decoration, salon, mode, femme, homme, accessoires, traditionnel, motos) have **zero listings** when queried directly against the API (`/v1/products?category=<slug>`). The remaining 6 had 1-3 listings each.
+- Investigation: the bulk-imported 95% of the catalog uses compound slugs (`informatique`, `electronique_electromenager`, `telephones`, etc.). The web frontend has a `CATEGORY_ALIASES` resolver (`packages/web/src/lib/categories.ts:93`) that quietly remaps bare slugs to their parent compound — so `/c/smartphones` queries `telephones` parent and renders fine. **But the API itself doesn't apply this resolver.** AI agents consuming `agents.json` `category_landing` URL pattern (`/search?category={slug}`) and hitting the API directly get empty result sets.
+- Fix #1 (data): replaced the 19-entry `subcategory_slugs` array with an honest `subcategory_slugs_note` explaining the situation. AI consumers reading the manifest no longer get steered to dead URLs.
+- Fix #2 (defense-in-depth): added `robots: { index: false, follow: true }` to `app/c/[slug]/page.tsx` metadata when the resolved `total === 0`. Even when curated FR_CATEGORY prose exists (preventing the existing `notFound()` from firing), an indexable category page with zero products is a textbook soft-404 from Google's perspective. Indexable branch keeps the `max-image-preview:large` etc. hints intact. Sanity-checked /c/informatique still ships as indexable.
+- Pushed agents.json to IndexNow.
+
 ## 2026-05-16 — vps-eu · MCP version corrected from stale "1.29" to empirical "2025-06-18"; OAuth-endpoint defect flagged
 
 - Empirical protocol-claim verification on api.teno-store.com:

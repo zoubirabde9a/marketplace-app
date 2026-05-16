@@ -100,27 +100,6 @@
         "label": "Vêtements & Mode"
       }
     ],
-    "subcategory_slugs": [
-      "smartphones",
-      "ordinateurs",
-      "portables",
-      "peripheriques",
-      "ecrans",
-      "electromenager",
-      "maison",
-      "decoration",
-      "salon",
-      "mode",
-      "femme",
-      "homme",
-      "accessoires",
-      "traditionnel",
-      "sante_beaute",
-      "vehicules",
-      "voitures",
-      "motos",
-      "automobiles_vehicules"
-    ],
     "top_brands": [
       {
         "name": "HP",
@@ -185,7 +164,8 @@
     ],
     "sellers_with_meaningful_inventory": 1,
     "listings_attributed_to_a_seller": 2387,
-    "listings_unattributed_imports": 46741
+    "listings_unattributed_imports": 46741,
+    "subcategory_slugs_note": "No bare-slug subcategories currently meet the >=5-listings threshold. The compound slugs in top_categories above carry the full catalog mass. Audit 2026-05-16: bare slugs smartphones / ordinateurs / electromenager etc. had 0 listings each — they were dead navigation. Updated to honest posture."
   },
   "discovery": {
     "sitemap": "https://teno-store.com/sitemap.xml",

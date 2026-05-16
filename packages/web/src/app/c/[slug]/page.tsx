@@ -84,6 +84,26 @@ export async function generateMetadata({
       alternateLocale: ["ar_DZ", "en_US"],
     },
     twitter: { card: "summary_large_image", title, description },
+    // Empty category pages: even when FR_CATEGORY has curated prose (so the
+    // notFound() below doesn't fire), an indexable /c/<slug> with zero
+    // listings is a textbook soft-404 from Google's perspective and a
+    // dead-navigation hit for any AI agent that follows
+    // agents.json.subcategory_slugs. iter-47 audit found 13 of 19 advertised
+    // bare-slug subcategories have 0 listings (the bulk-imported catalog
+    // uses compound slugs like `electronique_electromenager` rather than
+    // bare `electromenager`). Noindex the empty case while keeping `follow`
+    // so internal links still pass equity to live category pages. Skip the
+    // noindex when total is null (API failure) — that's transient.
+    robots:
+      total === 0
+        ? { index: false, follow: true }
+        : {
+            index: true,
+            follow: true,
+            "max-image-preview": "large",
+            "max-snippet": -1,
+            "max-video-preview": -1,
+          },
   };
 }
 
