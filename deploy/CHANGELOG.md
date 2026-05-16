@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · re-snapshotted 6 substantially-changed URLs to Wayback (GEO archive refresh)
+
+- Earlier today I pushed 20 high-value URLs to the Wayback Machine, but 6 of those have since been substantially updated: the home page (FAQPage added), /about (Ouedkniss/Jumia comparison, 7th FAQ entry, dateModified), llms.txt + llms-full.txt + agents.json (hourly refresher now driving exact counts) and ai-policy.json (referenced from agents.json). AI tools that fall back to Wayback for verification would see outdated content otherwise.
+- Re-submitted those 6 URLs with 8s spacing — all 6 returned HTTP 302 (capture-initiated). Wayback now holds 2026-05-16 captures that include every GEO improvement from today's session.
+- Open follow-up: a weekly systemd timer that re-pushes the discovery files + top category/brand landings to Wayback would automate this. The Save Page Now endpoint is rate-limited (~10/min) so the timer should walk one URL every ~10s and complete in a few minutes total.
+
 ## 2026-05-16 — vps-eu · closed the GEO autopilot loop: llms-full.txt tables now auto-refresh too
 
 - Last remaining drift: `llms-full.txt` has exact markdown tables (5 category rows + 15 brand rows + snapshot/total prose lines) that the hourly script wasn't touching. Added `refresh_llms_full_txt()` to patch all 22 rows + 2 prose lines using narrow-anchor regexes — table rows use the French label OR brand name at column start as the anchor, plus the markdown column separator pattern, so the script can't accidentally edit cells in unrelated tables.
