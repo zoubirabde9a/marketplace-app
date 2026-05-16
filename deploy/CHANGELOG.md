@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · multi-value filter syntaxes all silently fail — documented + workaround
+
+- Empirical: tested 5 common multi-value-filter syntaxes against /v1/products. All failed:
+  - `?brand=HP&brand=Samsung` (repeated) → empty/error
+  - `?brand=HP,Samsung` (raw comma) → 0 hits (treated as literal brand "HP,Samsung")
+  - `?brand=HP%2CSamsung` (encoded comma) → 0 hits
+  - `?brand[]=HP&brand[]=Samsung` (PHP-style array) → falls back to baseline 49,778 (filter silently ignored)
+  - `?category=informatique,telephones` → 0 hits
+- The API requires exactly one value per filter param. AI agents asking "show me HP or Samsung laptops" would silently get wrong results in every syntax above.
+- Added `protocols.rest.known_limitations.no_multi_value_filters` to agents.json with empirical evidence + workaround: fetch each single-value filter separately and merge client-side, deduplicating by `productId`. Pushed to IndexNow.
+- This is another silent-failure mode (like ?inStock= from iter-57 and ?priceFrom= from iter-50) that AI agents would only discover by trial-and-error. Now documented up front.
+
 ## 2026-05-16 — vps-eu · TTFB baseline + conditional-GET audit — sitemap/robots lack ETag (operator follow-up)
 
 - **TTFB baseline** across 13 surfaces (3 samples median, measured from vps-eu so excludes trans-Atlantic latency). All HTML pages 50-100ms, API 32ms, feed.xml 38ms, llms-full.txt 32ms, agents.json 34ms, manifest.webmanifest 35ms. The only outlier is sitemap.xml at 332ms — expected for a multi-MB file, still well within crawler budget. Origin performance is excellent.

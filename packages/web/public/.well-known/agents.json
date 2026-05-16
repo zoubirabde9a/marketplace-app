@@ -360,6 +360,11 @@
         "instock_filter_silent": {
           "note": "?inStock= accepts any value but always applies the same filter (filters ~50 items off the baseline regardless of value). true/false do not differentiate. AI agents cannot use ?inStock= to fetch ONLY in-stock or ONLY out-of-stock listings.",
           "evidence": "audit 2026-05-16: baseline=49,660; ?inStock=true=49,606; ?inStock=false=49,606; ?inStock=1=49,606; ?inStock=0=49,606."
+        },
+        "no_multi_value_filters": {
+          "note": "Filter params accept exactly one value each. None of the common multi-value syntaxes are supported: repeated param (?brand=HP&brand=Samsung), comma-separated (?brand=HP,Samsung or URL-encoded comma), or PHP array (?brand[]=HP&brand[]=Samsung) all return wrong results or fall back to the unfiltered baseline. For multi-brand or multi-category queries, make N separate requests and merge client-side, or omit the filter and filter the response data array yourself.",
+          "evidence": "audit 2026-05-16: ?brand=HP&brand=Samsung -> empty; ?brand=HP,Samsung -> 0 (treated as literal brand 'HP,Samsung'); ?brand[]=HP&brand[]=Samsung -> 49,778 (baseline, ignored); ?category=informatique,telephones -> 0.",
+          "workaround": "Sequential single-value queries combined client-side: fetch(?brand=HP) + fetch(?brand=Samsung), dedupe by productId."
         }
       },
       "response_shape": {
