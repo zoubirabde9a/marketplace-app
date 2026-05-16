@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · embedded empirical MCP tools list (9 tools) into agents.json (concrete agent surface)
+
+- Continuing the empirical-verification sweep. The MCP `initialize` handshake in iter-46 revealed `capabilities.tools: {}` — server advertises tools as a supported capability. Followed up with a `tools/list` JSON-RPC call to see what's actually exposed.
+- **9 concrete tools returned**: seller.create_account, product.create_listing, cart.add_item, cart.update_qty, cart.remove_item, cart.get, checkout.confirm, order.get, seller.list_orders. Each comes with a multi-paragraph description detailing parameter expectations.
+- Before this iteration, `agents.json` `protocols.mcp` listed only `endpoint`, `transport`, `version`, `auth` — no surface to confirm WHAT the MCP server actually does. AI agents reading the manifest had to make a `tools/list` call to discover capabilities.
+- Fix: added a `protocols.mcp.tools` array to `agents.json` carrying each tool's `name` + one-sentence `summary` (first sentence of the live description, capped at 120 chars). Plus a `tools_source: "tools/list MCP method on the live endpoint"` field so future audits can re-verify.
+- Net effect: an AI panel asked "what can I do agent-side on Teno Store" can now answer concretely from the static manifest: "seller account creation, product listing, full cart lifecycle (add/update/remove/get), checkout, order fetch, and order history per seller" — without needing the agent to bootstrap an MCP connection.
+- Pushed to IndexNow.
+
 ## 2026-05-16 — vps-eu · removed 19 dead `subcategory_slugs` from agents.json + noindex empty /c/<slug> pages
 
 - Empirical audit: 13 of the 19 `subcategory_slugs` advertised in agents.json (smartphones, ordinateurs, electromenager, peripheriques, ecrans, sante_beaute, maison, decoration, salon, mode, femme, homme, accessoires, traditionnel, motos) have **zero listings** when queried directly against the API (`/v1/products?category=<slug>`). The remaining 6 had 1-3 listings each.
