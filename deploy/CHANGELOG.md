@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · MCP capability declaration — tools-only, no resources/prompts
+
+- Empirical probe: `resources/list` and `prompts/list` both return JSON-RPC -32601 (method_not_found). HTTP status varies (404 for prompts/list, transient 000 on a second probe of resources/list — likely connectivity not protocol). The server's `initialize` response declares only `capabilities.tools: {}`, no instructions field. Tools-only server.
+- Before this iteration, AI agents reading agents.json learned the MCP endpoint + version + 9 tools — but didn't know whether the server ALSO supported resources/prompts/logging/completion. The optimization-minded agent would probe each capability on first contact. Wasted round-trips for nothing.
+- Added `protocols.mcp.capabilities_supported` block to agents.json declaring exactly which MCP capabilities are present (tools: true) and which are not (resources, prompts, logging, completion, instructions_field_in_initialize: false). With a `note` explaining that per-tool guidance lives in protocols.mcp.tools[].summary rather than top-level instructions.
+- Pushed to IndexNow. AI agents save 2-4 round-trips on first contact with the MCP server.
+
 ## 2026-05-16 — vps-eu · REST error envelope is RFC 7807 (clean) — documented in agents.json
 
 - Last iteration's MCP audit found HTTP 500 for every error kind. Probed the REST surface's error semantics for comparison: **REST is well-behaved** — clean RFC 7807 Problem Details (`application/problem+json`) responses.

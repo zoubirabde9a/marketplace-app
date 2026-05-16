@@ -235,7 +235,16 @@
       ],
       "tools_source": "tools/list MCP method on the live endpoint (audit 2026-05-16)",
       "scope_format": "<role>:<resource>:<action> -- role is buyer or seller; resource is cart/order/checkout/product/(empty); action is read or write. Mint an OAuth token with the union of scopes for all tools you plan to invoke.",
-      "error_envelope": "Tool errors return JSON-RPC error code -32000 inside an HTTP 500 response. The error.message string carries a machine-parseable prefix: Forbidden: missing_scope:<scope> for auth errors, mcp_tool_not_found:<name> for unknown tools. WARNING: the underlying HTTP 500 does not distinguish auth from server errors -- clients should parse error.message rather than retry on 500. Audit 2026-05-16."
+      "error_envelope": "Tool errors return JSON-RPC error code -32000 inside an HTTP 500 response. The error.message string carries a machine-parseable prefix: Forbidden: missing_scope:<scope> for auth errors, mcp_tool_not_found:<name> for unknown tools. WARNING: the underlying HTTP 500 does not distinguish auth from server errors -- clients should parse error.message rather than retry on 500. Audit 2026-05-16.",
+      "capabilities_supported": {
+        "tools": true,
+        "resources": false,
+        "prompts": false,
+        "logging": false,
+        "completion": false,
+        "instructions_field_in_initialize": false,
+        "note": "Tools-only MCP server (audit 2026-05-16). Probing resources/list or prompts/list returns method_not_found (-32601). Per-tool guidance is in protocols.mcp.tools[].summary and the live tool descriptions from tools/list. The initialize response carries no 'instructions' string."
+      }
     },
     "a2a": {
       "endpoint": "https://api.teno-store.com/a2a",
