@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · TWO real bugs found in PWA-manifest audit: mojibake + missing-discovery-in-sitemap
+
+- Auditing manifest.webmanifest and discovery-file coverage. Found two distinct bugs:
+- **Bug 1 — mojibake in manifest.webmanifest description**. Byte-level check found em-dash bytes `c3 a2 e2 82 ac e2 80 9d` instead of correct UTF-8 `e2 80 94`, and accented letters mis-decoded the same way. The source file on disk is valid UTF-8, but Next.js's metadata-route serializer read those bytes as Latin-1 / cp1252 then re-encoded as UTF-8 — classic double-encode. Fix: rewrote the description's non-ASCII codepoints as `\uXXXX` escapes (10 codepoints converted via a one-shot helper at `scripts/ascii-escape-manifest-description.py`). Escapes carry only ASCII bytes through the build; V8 decodes them directly to the correct codepoints regardless of source-file byte interpretation. Verified live in-container fetch shows `algérien`, `téléphones`, `électroménager`, em-dash all rendering correctly. The previously-cached mojibake response will expire from the edge within the 1h `s-maxage`.
+- **Bug 2 — discovery files missing from sitemap.xml**. `/llms.txt`, `/llms-full.txt`, `/.well-known/agents.json`, and `/.well-known/ai-policy.json` were only reachable via the IndexNow pushes done in `refresh-catalog-stats.py` — AI crawlers walking the sitemap rather than convention-probing well-known paths had no path to them. Added all four to `sitemap.ts` with daily/monthly changefreq and high priority (0.7-0.9). Verified all 4 appear in the live sitemap.xml now.
+- Pushed `sitemap.xml` and `manifest.webmanifest` to IndexNow so Bing re-fetches both with the corrected payloads. Net effect on AI surfaces: every PWA-installable / agent-installable / sitemap-crawling AI tool now sees consistent, correctly-encoded, discoverable metadata.
+
 ## 2026-05-16 — vps-eu · two more truthfulness propagations into llms-full.txt prose + good_for[2] de-numbered
 
 - llms-full.txt prose still had two stale tokens that the auto-refresher didn't touch:

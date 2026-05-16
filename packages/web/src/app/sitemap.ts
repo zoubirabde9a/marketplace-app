@@ -271,6 +271,39 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly",
       priority: 0.5,
     },
+    // GEO discovery surfaces. AI crawlers that walk the sitemap rather
+    // than convention-probing well-known paths find these here. Without
+    // these entries, /llms.txt, /llms-full.txt, /.well-known/agents.json,
+    // and /.well-known/ai-policy.json were only reachable via the manual
+    // IndexNow pushes done in scripts/refresh-catalog-stats.py. Now they're
+    // first-class citizens in the sitemap too. changeFrequency=daily because
+    // the hourly auto-refresher actually modifies their content; priority
+    // is high because for an AI consumer they're the most concentrated
+    // metadata source on the site.
+    {
+      url: `${SITE_URL}/llms.txt`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/llms-full.txt`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/.well-known/agents.json`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/.well-known/ai-policy.json`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
     ...BLOG_POSTS.map((p) => ({
       url: `${SITE_URL}/blog/${p.slug}`,
       lastModified: new Date(p.dateModified),
