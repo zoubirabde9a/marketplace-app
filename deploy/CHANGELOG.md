@@ -6,6 +6,20 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST #2 — electroménager buying guide (fills `electromenager Alger` query gap)
+
+- Second new blog post this loop: "Guide d'achat : électroménager en Algérie (2026)", ~8 min read, 8 H2 sections. Fills the `electromenager Alger` query gap from agents.json example_queries (the only remaining one from iter-44 with no editorial coverage). Blog count: 4 → 5 → 6.
+- Covers high-ticket household purchases with Algerian-specific context:
+  - **Réfrigérateur**: compressor inverter vs conventional (power-cut resilience), capacity sizing by household size, 250L+ threshold for inverter ROI
+  - **Lave-linge**: front vs top loading, hard-water descaling (concrete Algerian water concern), capacity vs cycle count math
+  - **Climatiseur**: BTU calculation per m² with sun-exposure multiplier; the **R-22 gas trap** (illegal-to-import since 2018 — flagged as a real risk for occasion buyers); inverter critical for post-coupure soft-start
+  - **Four / micro-ondes**: pyrolyse vs catalyse vs émail, tajine-fit sizing test, multifunction modes
+  - **Brand-fiability ranking** specific to Algerian after-sales: Samsung/LG (top), Beko/Whirlpool (mid), Condor (local-assembly), Bosch/Siemens (durable but pricey parts), Moulinex/Tefal (good only for petit électroménager)
+  - **Warranty + delivery + installation** checklist before ordering (10-year compressor coverage, R-32/R-410A confirmation, livraison-au-pied vs livraison-en-appartement)
+- Internal links → /c/electronique_electromenager + cross-links to the iter-75 machine-à-café post and the iter-10-era smartphone guide. Creates a buying-guide cluster that AI panels can traverse for related queries.
+- Schema: same BlogPosting JSON-LD shape as the other posts (publisher + author @id refs, datePublished/dateModified, articleSection, wordCount, speakable). Clean compose deploy. Pushed to IndexNow.
+- Net GEO effect: now every empirically-verified `example_queries` entry in agents.json has at least one piece of editorial content the AI panel can quote — not just a product-listing page. Specifically valuable since the catalog's per-product seller_id coverage is only ~5% (per iter-33), so editorial content carries more of the trust signal.
+
 ## 2026-05-16 — vps-eu · NEW BLOG POST — coffee-machine buying guide (fills `machine à café` example_queries gap)
 
 - Wrote a new ~6-min French blog post: "Guide d'achat : choisir une machine à café en Algérie (2026)". Targets the `machine à café` query from agents.json example_queries (iter-44 verified it returns 3 hits, but the site had no editorial content for it). 5 blog posts total now.
