@@ -77,6 +77,11 @@ POSTS = [
         "title": "Vendre en ligne en Algérie : guide complet pour démarrer",
         "answers": ["vendre en ligne Algerie comment", "registre commerce e-commerce Algerie", "auto-entrepreneur ANEM Algerie", "statut juridique vente en ligne", "TVA IBS IRG vendeur DZD", "demarrer boutique en ligne Algerie"],
     },
+    {
+        "url": "https://teno-store.com/blog/guide-achat-refrigerateur-algerie-2026",
+        "title": "Guide d'achat : choisir un réfrigérateur en Algérie",
+        "answers": ["refrigerateur Algerie", "frigo inverter Algerie", "no-frost frigo", "side-by-side americain DZD", "capacite frigo famille", "Samsung LG Beko Condor frigo"],
+    },
 ]
 
 p = pathlib.Path(

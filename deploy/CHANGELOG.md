@@ -6,6 +6,21 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST #10 — réfrigérateur deep-dive (inverter ROI, no-frost, Sonelgaz 10y TCO)
+
+- Tenth new blog post this loop: "Guide d'achat : choisir un réfrigérateur en Algérie (2026)", ~9 min read, 8 H2 sections, ~3,500 words. Blog count: 13 → 14. Completes the electromenager deep-dive triplet (climatiseur iter-80 + téléviseur iter-81 + **réfrigérateur** now).
+- Covers eight dimensions specific to Algerian context:
+  - **Capacité** by household size (1p→6+) with ramadan +50L/invité-supplémentaire rule
+  - **Compresseur inverter rentability**: full math for 5p/400L scenario — 530 kWh/an conventionnel vs 370 kWh/an inverter → 25k DZD saved over 10y vs 10-20k DZD upfront premium → 4-8y ROI plus extended garantie compresseur 10y vs 2-5y. Critical for Algerian microcoupure tolerance
+  - **No-frost trade-off**: corvée-de-dégivrage avoided vs slight humidity drop, with humidity-drawer compromise
+  - **Classe énergétique 2021** (A-G grille) with concrete Sonelgaz kWh/an per class
+  - **Configuration**: top vs bottom-mount vs side-by-side vs américain, ergonomic + space tradeoffs
+  - **Brand-fiability**: Samsung/LG (top + 10y warranty), Whirlpool (Europe/Turkey mid), Beko (turc, dense SAV), Bosch/Siemens (premium 15y durability), Condor (entry locally-fast warranty), Hisense/Haier (good HVE with reservation on SAV)
+  - **Prix DZD** for 6 size/feature tiers (mini 25-45k → américain 350-600k)
+  - **Occasion checks**: 20-min cooling test, joint paper test, compresseur sound diagnosis, date-de-fabrication 8-10y threshold, Samsung/LG 10y warranty traceability via numéro de série
+- Updated agents.json editorial_content to 14 posts.
+- High-volume French queries: "refrigerateur Algerie", "frigo inverter Algerie", "no-frost frigo", "side-by-side americain DZD", "capacite frigo famille".
+
 ## 2026-05-16 — vps-eu · /about now cross-links to all 13 blog posts (editorial cluster surfaced on highest-trust page)
 
 - AI panels asking "what is Teno Store" / "is Teno Store legit" frequently land on /about. With 13 blog posts in the cluster but no links from /about to the cluster, panels missed an entire editorial layer of evidence about the site's depth and trustworthiness.
