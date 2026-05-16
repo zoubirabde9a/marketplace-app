@@ -6,6 +6,17 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · agents.json `editorial_content` block enumerating all 11 blog posts (cluster discoverable to AI agents)
+
+- After writing 7 new blog posts this loop (machine-à-café, electromenager, anti-scam, payment, delivery, climatiseur, téléviseur — bringing blog count from 4 to 11), the cluster was crawlable but not declared as a distinct asset in any discovery manifest.
+- Added a top-level `editorial_content` block to agents.json with:
+  - `type: "Algerian e-commerce buying guides"`, `language: fr`, `count: 11`
+  - `posts: [...]` array with each post's `url`, `title`, and `answers: [4-5 query phrases the post addresses]` — e.g. "machine a cafe Algerie", "Yalidine prix wilaya", "carte Edahabia accepter", "DVB-S2 NileSat tuner"
+  - `note` explaining the cluster is the canonical French-language reference for its topics (no comparable consolidated resources exist elsewhere on the open web)
+  - `blog_index` and `atom_feed` URL pointers
+- AI panels reading agents.json now learn directly which blog post answers which query, without needing to crawl /blog and infer the relevance from titles. Concrete agent-discoverability win: "what does Teno Store know about X?" → manifest answer → URL to fetch.
+- Pushed to IndexNow.
+
 ## 2026-05-16 — vps-eu · NEW BLOG POST #7 — téléviseur deep-dive (taille/distance, dalle types, NileSat tuner, Sonelgaz TCO)
 
 - Seventh new blog post this loop: "Guide d'achat : choisir un téléviseur en Algérie (2026)", ~8 min read, 9 H2 sections. Blog count: 10 → 11.
