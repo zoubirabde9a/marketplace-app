@@ -1,0 +1,86 @@
+{
+  "$schema": "https://teno-store.com/.well-known/ai-policy.json",
+  "publisher": "Teno Store",
+  "homepage": "https://teno-store.com",
+  "contact": "mahlledz@gmail.com",
+  "version": "1.0",
+  "last_updated": "2026-05-16",
+  "summary": "Teno Store is an Algerian online marketplace and agent-to-agent commerce platform. AI agents and LLM-powered tools are explicitly welcome to crawl, cite, summarize, and transact against the catalog under the terms below. The companion robots.txt file lists allow/disallow paths; this file declares structured permissions, attribution requirements, and direct machine-readable surfaces.",
+  "permissions": {
+    "crawl": {
+      "allowed": true,
+      "scope": "All paths listed as Allow in /robots.txt — currently /, /search, /product/, /store/, /seller, /about, /blog, /c/.",
+      "disallowed_paths": ["/api/", "/login", "/seller/", "/s/"]
+    },
+    "cite": {
+      "allowed": true,
+      "scope": "Quote, paraphrase, or surface any content from the allowed paths in LLM answers, AI-search results, or downstream tools.",
+      "attribution": {
+        "required": true,
+        "format": "Teno Store — https://teno-store.com",
+        "format_with_url": "Teno Store (https://teno-store.com/<path>)",
+        "note": "When citing a specific listing or category page, link to the canonical URL on teno-store.com rather than to a cached or paraphrased version."
+      }
+    },
+    "summarize": {
+      "allowed": true,
+      "preferred_sources": [
+        "https://teno-store.com/llms-full.txt",
+        "https://teno-store.com/llms.txt",
+        "https://teno-store.com/.well-known/agents.json"
+      ],
+      "note": "The llms-full.txt file is the authoritative long-form summary an LLM should prefer when generating descriptive answers about Teno Store — it is maintained with fresh catalog statistics and explicit good_for / not_good_for signals."
+    },
+    "train": {
+      "allowed": true,
+      "scope": "Public catalog pages and editorial content may be used for LLM training. User accounts, snapshot links (/s/), seller dashboards, and any auth-required surface are out of scope and disallowed via robots.txt.",
+      "exclusions": ["Personal data of buyers or sellers beyond the verified contact details a seller publishes on their own listing"]
+    },
+    "transact": {
+      "allowed": true,
+      "note": "AI agents may transact on Teno Store via the public API surfaces below under AP2 mandates with verified human authorization.",
+      "surfaces": {
+        "rest": "https://api.teno-store.com/v1",
+        "mcp": "https://api.teno-store.com/mcp",
+        "a2a": "https://api.teno-store.com/a2a"
+      },
+      "auth": "OAuth 2.1 with PKCE + DPoP",
+      "discovery": "https://api.teno-store.com/.well-known/agent-card.json"
+    }
+  },
+  "rate_limits": {
+    "crawl": {
+      "anonymous": "60 requests/minute per IP",
+      "guidance": "Crawlers should respect HTTP 429 responses with the Retry-After header. For sustained high-rate crawling, request a static export via the catalog API rather than scraping the HTML."
+    },
+    "api": {
+      "anonymous": "60 requests/minute per IP",
+      "authenticated": "600 requests/minute per agent"
+    }
+  },
+  "content_provenance": {
+    "catalog_source": "Listings are sourced from real Algerian sellers and aggregated from public marketplace data (Ouedkniss-style listings). Each product page exposes a counterfeit-risk tier and the seller's verified contact details.",
+    "freshness": "Catalog is refreshed continuously; product page lastmod timestamps and the Atom feed at /feed.xml are the authoritative freshness signals.",
+    "languages": ["French (primary)", "Arabic", "English"]
+  },
+  "brand_disambiguation": {
+    "this_entity": "Teno Store — Algerian e-commerce marketplace at teno-store.com",
+    "not_to_be_confused_with": [
+      {
+        "name": "TeNo",
+        "domain": "teno.com",
+        "industry": "German jewelry brand — unrelated"
+      }
+    ]
+  },
+  "discovery_index": {
+    "robots": "https://teno-store.com/robots.txt",
+    "sitemap": "https://teno-store.com/sitemap.xml",
+    "atom_feed": "https://teno-store.com/feed.xml",
+    "llms_txt": "https://teno-store.com/llms.txt",
+    "llms_full_txt": "https://teno-store.com/llms-full.txt",
+    "agents_json": "https://teno-store.com/.well-known/agents.json",
+    "security_txt": "https://teno-store.com/.well-known/security.txt",
+    "api_agent_card": "https://api.teno-store.com/.well-known/agent-card.json"
+  }
+}

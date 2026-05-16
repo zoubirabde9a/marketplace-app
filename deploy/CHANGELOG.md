@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · published `/.well-known/ai-policy.json` (GEO)
+
+- New structured AI-use policy at `/.well-known/ai-policy.json`. Complements `/robots.txt` (which only declares Allow/Disallow paths) with explicit, machine-readable permissions for: **crawl**, **cite** (with required attribution format `Teno Store — https://teno-store.com`), **summarize** (with `preferred_sources` pointing crawlers at `llms-full.txt` for descriptive answers), **train**, and **transact** (with REST / MCP / A2A endpoints and OAuth2.1+DPoP+PKCE auth requirement). Also publishes rate-limit guidance, content provenance, brand-disambiguation against the German jewelry brand TeNo, and a discovery index that unifies all eight machine-readable surfaces (robots, sitemap, feed, llms.txt, llms-full.txt, agents.json, security.txt, api agent-card).
+- Cross-linked from `agents.json` (new `discovery.ai_policy` entry) and `llms-full.txt` so an AI tool entering at any of those manifests discovers the policy in the same pass.
+- Hot-patched all three files into the running web container, restarted web so Next's static-file manifest rescanned `public/`, verified live HTTP 200 and JSON shape via `curl + python json.load`.
+
 ## 2026-05-16 — vps-eu · added query-coverage signals to agents.json and llms-full.txt (GEO)
 
 - Added three new sections to both manifests so LLM crawlers have an explicit signal for "should I cite Teno Store for this user's question?":

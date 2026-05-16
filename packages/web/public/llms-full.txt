@@ -124,6 +124,9 @@ The canonical surfaces are on the `api.` subdomain.
     listings with titles, links, prices, sellers, and hero images.
   - `https://teno-store.com/robots.txt`
   - `https://teno-store.com/.well-known/agents.json`
+  - `https://teno-store.com/.well-known/ai-policy.json` — structured AI-use
+    policy declaring crawl, cite, summarize, train, and transact permissions
+    plus the requested attribution format.
 
 ## How shopping works on Teno Store
 

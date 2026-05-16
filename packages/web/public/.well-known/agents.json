@@ -52,6 +52,7 @@
     "atom_feed": "https://teno-store.com/feed.xml",
     "llms_txt": "https://teno-store.com/llms.txt",
     "llms_full_txt": "https://teno-store.com/llms-full.txt",
+    "ai_policy": "https://teno-store.com/.well-known/ai-policy.json",
     "robots_txt": "https://teno-store.com/robots.txt",
     "category_landing": "https://teno-store.com/search?category={slug}",
     "brand_landing": "https://teno-store.com/search?brand={brand}",
