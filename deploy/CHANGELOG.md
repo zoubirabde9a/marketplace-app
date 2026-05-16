@@ -6,6 +6,22 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · HSTS preload audit — base domain ready, www.* redirect missing header (operator action)
+
+- Verifying HSTS preload eligibility (Chromium/Firefox baked-in HTTPS-only enforcement, submitted at https://hstspreload.org/). Required directive `max-age ≥ 31536000; includeSubDomains; preload`:
+  - `teno-store.com` ✅ all three
+  - `api.teno-store.com` ✅ all three
+  - **`www.teno-store.com` ❌ missing entirely** — the bare `www → apex` 301 redirect block in `/opt/marketplace/Caddyfile` has no `header` directive, so the redirect response itself carries no HSTS. hstspreload.org requires the redirect to carry HSTS, so this blocks submission.
+- **Operator action required** (Caddyfile change — per CLAUDE.md not actioning autonomously). One-line addition to the `www.teno-store.com {}` block at `Caddyfile` line 72:
+  ```
+  www.teno-store.com {
+      header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+      redir https://teno-store.com{uri} permanent
+  }
+  ```
+  Caddy applies `header` directives before the `redir` handler, so the 301 response will carry the HSTS header. Live-reloadable with `caddy reload` — zero downtime, no container restart.
+- After applying, submit the apex to hstspreload.org via the form (operator must log in / sign the submission). Once preloaded, all major browsers (Chrome, Firefox, Safari, Edge) enforce HTTPS-only access to teno-store.com baked into the binary — even a first-time visitor on a public Wi-Fi can't be SSL-stripped. Useful both for security and as a Google-honored ranking factor for HTTPS commitment.
+
 ## 2026-05-16 — vps-eu · clean breadcrumb + sitemap-integrity audit + Wayback re-archive of fixed files
 
 - Two more dimensions audited, both clean:
