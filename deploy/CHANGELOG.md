@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · /store/<uuid> Store JSON-LD now cross-links to canonical Organization
+
+- Following last iteration's home-Organization enrichment, audited whether other pages CORRECTLY cross-link to the canonical node. /about cleanly uses `about: { @id: "...#organization" }` (good — no duplicate node, just a reference). But /store/<uuid> Store JSON-LD had NO `parentOrganization` link. Storefronts looked like standalone Store entities with no obvious tenancy on Teno Store.
+- Added `parentOrganization: { @id: "https://teno-store.com/#organization" }` and `isPartOf: { @id: "https://teno-store.com/#website" }` to the Store JSON-LD. Both are pure @id references (no duplication) — the canonical fields live on the home page; this just connects the entity graph.
+- Net effect for GEO: when an AI panel or KG bot encounters a Teno Store storefront (e.g. Smart Phone DZ), it can now follow the parentOrganization @id back to the home Organization and learn this is "a seller on Teno Store, an Algerian agent-to-agent marketplace" — instead of "just A Store, no clear marketplace context". Materially improves answer quality for queries like "what's Smart Phone DZ" or "where do I find Algerian phone sellers".
+- Affects every storefront URL (7 sellers, but ~48k incoming links from product pages pointing at `/store/<uuid>` via the seller schema). Pushed the sample storefront to IndexNow; the rest will refresh on their next crawl.
+
 ## 2026-05-16 — vps-eu · enriched home Organization JSON-LD with image/identifier/sameAs/subjectOf (KG entity disambiguation)
 
 - Audited the home page's Organization JSON-LD against schema.org's commonly-KG-cared-about properties. Already present (13): @id, @type, additionalType, address, areaServed, contactPoint, currenciesAccepted, description, email, knowsLanguage, logo, name, slogan, url. Missing: `sameAs`, `image`, `identifier`, `subjectOf`. Of those, `sameAs` is the highest-value for Google KG and AI-panel entity disambiguation.

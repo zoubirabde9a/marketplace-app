@@ -153,6 +153,16 @@ export default async function StorePage({ params }: { params: Promise<Params> })
     "@id": `${SITE_URL}/store/${seller.sellerId}`,
     name: seller.displayName,
     url: `${SITE_URL}/store/${seller.sellerId}`,
+    // Cross-link to the canonical Teno Store Organization on the home
+    // page. Without this, KG bots and AI panels saw the storefront as
+    // a standalone Store entity with no obvious tenancy — "Smart Phone DZ
+    // is just A Store" rather than "Smart Phone DZ is a seller on Teno
+    // Store". With parentOrganization, panels resolving the storefront
+    // can answer "what marketplace is this on?" by following the @id
+    // ref back to the home page's Organization node.
+    parentOrganization: { "@id": `${SITE_URL}/#organization` },
+    // isPartOf same idea at the WebSite layer.
+    isPartOf: { "@id": `${SITE_URL}/#website` },
     ...(seller.description ? { description: seller.description } : {}),
     ...(seller.website ? { sameAs: [seller.website] } : {}),
     ...(seller.supportEmail ? { email: seller.supportEmail } : {}),
