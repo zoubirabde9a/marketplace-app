@@ -6,6 +6,19 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · empirically tested every advertised filter param — `priceFrom`/`priceTo` are silently ignored
+
+- Continuing the empirical-claim sweep. llms-full.txt advertised six filter params on /search (and the underlying /v1/products API): `?q=`, `?category=`, `?brand=`, `?sellerId=`, `?sort=`, `?priceFrom=` / `?priceTo=`. Ran each against /v1/products to verify:
+  - `?q=` ✅ works (French queries) — verified iter-44
+  - `?category=telephones` ✅ filters to ~8,700 listings as expected
+  - `?brand=HP` ✅ filters to ~2,474 (matches `top_brands[0].listings`)
+  - `?sellerId=<uuid>` ✅ accepted, returns matching subset (count differs from DB total because only `active`/`approved` status products are exposed publicly — not a filter bug)
+  - `?sort=newest` ✅ returns full baseline, just sorted
+  - `?priceFrom=` ❌ **silently ignored** — confirmed by setting `priceFrom=999999999` (above any realistic price) and still getting back the full 49,472-listing total
+  - `?priceTo=` ❌ same — silently ignored
+- The price filters are documented but the API doesn't implement them. AI agents that try to scope listings by price get the full unfiltered catalog and silently consume token budget on results outside their target range.
+- Fix: rewrote the `/search` line in llms-full.txt to (a) document each empirically-confirmed param explicitly, (b) call out that the price filters are NOT enforced on the API and recommend client-side filtering on the `priceMinor` field of returned items, (c) add a snapshot date so the claim is anchored in evidence. Pushed to IndexNow.
+
 ## 2026-05-16 — vps-eu · cross-consistency + API-shape audit — all clean
 
 - Two more empirical-claim audits this iteration:

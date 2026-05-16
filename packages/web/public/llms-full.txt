@@ -83,9 +83,16 @@ Brand landings: `https://teno-store.com/search?brand=<Brand>` (URL-encoded).
 ## URL conventions
 
 - `/` — home page with a hero, agent overview, and recent-listings strip.
-- `/search` — primary catalog browser; supports `?q=`, `?category=`,
-  `?brand=`, `?sellerId=` (308-redirects to `/store/<uuid>`), `?sort=`,
-  `?priceFrom=` / `?priceTo=`.
+- `/search` — primary catalog browser. Empirically-verified filter params
+  (audit 2026-05-16, against `/v1/products`): `?q=` (French text matches
+  best; catalog titles are French), `?category=<compound-slug>` (use values
+  from `top_categories[].slug` in `agents.json`; bare subcategory slugs
+  silently return empty), `?brand=` (case-sensitive — e.g. `?brand=HP`),
+  `?sellerId=` (308-redirects to `/store/<uuid>`), `?sort=newest`.
+  Price filters (`?priceFrom=` / `?priceTo=`) are currently NOT enforced
+  on the API — values are accepted but the filter is silently ignored.
+  Don't rely on them; do client-side filtering on `priceMinor` from the
+  product list response instead.
 - `/c/<slug>` — content-rich category landing (browseable, indexable).
 - `/product/<uuid>` — product detail page with full schema.org Product +
   Offer JSON-LD, hero image, brand, seller, counterfeit-risk tier, and
