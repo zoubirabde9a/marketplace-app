@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · iter-63 seller-name "mojibake" was a Windows-side display artifact (FALSE ALARM cleared)
+
+- iter-63's CHANGELOG flagged a seller display_name mojibake operator follow-up: `Smart Phone DZ â€" Alger Centre` showing double-encoded em-dash bytes in the API response. Re-investigated from inside vps-eu this iteration.
+- DB query (`seller.seller_profiles.store_name` for `org_id = <Smart Phone DZ id>`) returns hex `... 20 e2 80 94 20 ...` — **the CORRECT UTF-8 em-dash** (U+2014, 3 bytes `0xe2 0x80 0x94`). API response decodes to the same correct codepoint.
+- The mojibake I saw in iter-63's Python output was a **Windows-msys2 cp1252 display artifact**: curl piped raw UTF-8 bytes to bash, which piped to python, and python's Windows-default stdin decoder read those bytes as cp1252 (where the em-dash UTF-8 sequence reads as `â € "`). Pure terminal-display issue, not a data issue.
+- Removed the operator follow-up. The 7 remaining items still pending (Cloudflare proxy, HSTS, OAuth endpoints, /v1/products limit cap, totalEstimate filter bug, MCP HTTP semantics, ?inStock= ambiguity, sitemap+robots ETag).
+- Lesson: when investigating encoding bugs from a Windows-msys2 shell, always reproduce from a Linux side before flagging — the cross-platform pipe is more often the culprit than the upstream data.
+
 ## 2026-05-16 — vps-eu · publisher cross-link on /c/<slug> + /search?brand= CollectionPages; Brand @id upgrade
 
 - Continuing the entity-graph audit. /blog/<slug> already had top-tier schema (publisher + author + isPartOf + mainEntityOfPage all @id-ref'd to canonical Organization). But /c/<slug> and /search (brand/category/seller landings) had `isPartOf: WebSite` but NO `publisher` field.
