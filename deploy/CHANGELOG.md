@@ -6,6 +6,21 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST #6 — climatiseur deep-dive (R-22 trap, inverter ROI, Sonelgaz electricity TCO)
+
+- Sixth new blog post this loop: "Guide d'achat : choisir un climatiseur en Algérie (2026)", ~9 min read, 8 H2 sections. Blog count: 9 → 10. Deep-dive on a topic that was a section in the iter-76 electromenager guide but deserves its own post given Algerian summer demand and the cost stakes.
+- Covers six dimensions specific to Algerian context:
+  - **BTU dimensioning** with sun-exposure / dernier-étage / cuisine / baies-vitrées multipliers + 3 worked examples (chambre, séjour, dernier-étage)
+  - **Inverter vs non-inverter ROI math**: 30-50% electricity savings, soft-start critical for microcoupure-prone grid, recouped in 2-3 years at typical Algerian use
+  - **R-22 / R-410A / R-32 gas comparison**: R-22 illegal-to-import since 2018 (concrete check on the unité-extérieure label flagged as the single most important occasion-buyer test), R-32 the 2026 choice with ~10% better efficiency than R-410A
+  - **Format ranking**: split mural (default), multi-split (multi-room), cassette (large spaces / pro), window (avoid)
+  - **Brand-fiability** tuned for Algerian SAV reality: LG/Samsung (top, 10y compressor warranty), Condor (entrée correct + locally-fast warranty), Mitsubishi/Daikin (excellent but limited distribution), Beko/Whirlpool/Hisense (solid mid), no-name (avoid — pas de pièces)
+  - **Installation quality** checklist: brasage sous azote, tirage au vide ≥30 min, pente d'évacuation, fixation antivibration, disjoncteur dédié; 5k-25k DZD install cost ranges
+  - **10-year TCO math** on Sonelgaz: ~400k DZD total with electricity at ~60% of total cost → justifies surinvest at purchase for inverter and proper sizing
+  - **Occasion-buying checklist** with the 30-min-running test
+- High-volume French query target: "choisir climatiseur Algérie", "climatiseur inverter Algérie", "R-22 R-32 climatiseur", "BTU climatiseur m²", "installation climatiseur DZD prix". The R-22-import-ban warning is gold for ChatGPT/Gemini answering "is this used climatiseur a good buy?".
+- Schema-correct BlogPosting JSON-LD; clean compose deploy; IndexNow pushed.
+
 ## 2026-05-16 — vps-eu · NEW BLOG POST #5 — Algerian delivery-services guide (Yalidine / ZR Express / DHL / Aramex / Poste)
 
 - Fifth new blog post this loop: "Livraison en Algérie : services de colis et tarifs (guide 2026)", ~7 min read, 8 H2 sections. Blog count: 8 → 9. Companion to the iter-78 payment-methods guide — same shape but covering the delivery half of the e-commerce transaction.

@@ -7,6 +7,7 @@ import { post as electromenager } from "./electromenager-algerie-guide";
 import { post as sansArnaque } from "./acheter-en-ligne-algerie-sans-arnaque";
 import { post as payerEnLigne } from "./payer-en-ligne-algerie-2026";
 import { post as livraisonGuide } from "./livraison-algerie-services-colis-2026";
+import { post as climatiseur } from "./climatiseur-algerie-guide-2026";
 import type { BlogPost } from "../types";
 
 export const BLOG_POSTS: ReadonlyArray<BlogPost> = [
@@ -19,6 +20,7 @@ export const BLOG_POSTS: ReadonlyArray<BlogPost> = [
   sansArnaque,
   payerEnLigne,
   livraisonGuide,
+  climatiseur,
 ]
   .slice()
   .sort((a, b) => b.datePublished.localeCompare(a.datePublished));
