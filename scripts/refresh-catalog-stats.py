@@ -49,9 +49,12 @@ LLMS_HOST = PUBLIC_HOST / "llms.txt"
 LLMS_CONTAINER = f"{PUBLIC_CONTAINER}/llms.txt"
 LLMS_FULL_HOST = PUBLIC_HOST / "llms-full.txt"
 LLMS_FULL_CONTAINER = f"{PUBLIC_CONTAINER}/llms-full.txt"
+AI_PLUGIN_HOST = PUBLIC_HOST / ".well-known/ai-plugin.json"
+AI_PLUGIN_CONTAINER = f"{PUBLIC_CONTAINER}/.well-known/ai-plugin.json"
 INDEXNOW_AGENTS = "https://teno-store.com/.well-known/agents.json"
 INDEXNOW_LLMS = "https://teno-store.com/llms.txt"
 INDEXNOW_LLMS_FULL = "https://teno-store.com/llms-full.txt"
+INDEXNOW_AI_PLUGIN = "https://teno-store.com/.well-known/ai-plugin.json"
 
 DRY_RUN = os.environ.get("REFRESH_DRY_RUN") == "1"
 
@@ -218,9 +221,18 @@ def update_manifest(stats: dict) -> bool:
         )
     catalog["snapshot_date"] = now.strftime("%Y-%m-%d")
     catalog["snapshot_time_utc"] = now.strftime("%H:%M")
+    # Compose the size blurb from ground-truth fields rather than the
+    # misleading "7 active sellers" framing. Structure: total + breakdown
+    # (attributed vs imported) + snapshot timestamp. Lines up with the
+    # `sellers_with_meaningful_inventory` and `listings_*` structured
+    # fields below — no AI panel can cite a number that contradicts
+    # what the manifest itself shows.
+    attributed = stats.get("listings_attributed_to_a_seller", 0)
+    imported = stats.get("listings_unattributed_imports", 0)
     catalog["size"] = (
-        f"{new_total:,}+ live listings across {stats['active_sellers']} active "
-        f"sellers, refreshed continuously (snapshot "
+        f"{new_total:,} live listings — ~{attributed:,} from onboarded sellers "
+        f"plus ~{imported:,} imported from the broader Algerian marketplace, "
+        f"refreshed continuously (snapshot "
         f"{catalog['snapshot_date']} {catalog['snapshot_time_utc']} UTC)"
     )
     catalog["top_categories"] = stats["top_categories"]
@@ -278,6 +290,34 @@ CATEGORY_TABLE_LABELS = {
     "immobilier": "Immobilier",
     "vetements_mode": "Vêtements & Mode",
 }
+
+
+def refresh_ai_plugin_json(stats: dict) -> bool:
+    """Patch the listing-count and seller-count tokens in the two prose
+    fields of ai-plugin.json (description_for_human, description_for_model).
+    Narrow-anchor regex — drift-safe if the prose around the tokens is
+    edited manually."""
+    import re
+    data = json.loads(AI_PLUGIN_HOST.read_text(encoding="utf-8"))
+    original = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    total = stats["total_listings"]
+    # Round to thousand for "X,000+" phrasing.
+    rounded_thousand = (total // 1000) * 1000
+    # The description fields have the pattern "N,000+ live ... listings"
+    # — anchor on " live " before and " listings" after to scope tightly.
+    pattern = re.compile(r"\b\d{1,3}(?:,\d{3})+\+ (live )", flags=re.M)
+    replacement = f"{rounded_thousand:,}+ \\1"
+    for key in ("description_for_human", "description_for_model"):
+        if key in data and isinstance(data[key], str):
+            data[key] = pattern.sub(replacement, data[key])
+    new_text = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
+    if new_text == original:
+        return False
+    if DRY_RUN:
+        print("DRY_RUN ai-plugin.json diff: (would patch)")
+        return True
+    AI_PLUGIN_HOST.write_text(new_text, encoding="utf-8")
+    return True
 
 
 def refresh_llms_full_txt(stats: dict) -> bool:
@@ -391,7 +431,8 @@ def main() -> int:
     json_changed = update_manifest(stats)
     llms_changed = refresh_llms_txt(stats)
     llms_full_changed = refresh_llms_full_txt(stats)
-    if not (json_changed or llms_changed or llms_full_changed):
+    ai_plugin_changed = refresh_ai_plugin_json(stats)
+    if not (json_changed or llms_changed or llms_full_changed or ai_plugin_changed):
         print("nothing changed — no push needed")
         return 0
     if DRY_RUN:
@@ -406,10 +447,14 @@ def main() -> int:
     if llms_full_changed:
         hot_copy_to_web_container(LLMS_FULL_HOST, LLMS_FULL_CONTAINER)
         changed_urls.append(INDEXNOW_LLMS_FULL)
+    if ai_plugin_changed:
+        hot_copy_to_web_container(AI_PLUGIN_HOST, AI_PLUGIN_CONTAINER)
+        changed_urls.append(INDEXNOW_AI_PLUGIN)
     push_to_indexnow(changed_urls)
     print(
         f"refreshed: json={json_changed} llms={llms_changed} "
-        f"llms_full={llms_full_changed} · pushed {len(changed_urls)} URL(s) to IndexNow"
+        f"llms_full={llms_full_changed} ai_plugin={ai_plugin_changed} "
+        f"· pushed {len(changed_urls)} URL(s) to IndexNow"
     )
     return 0
 

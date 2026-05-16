@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · fixed prose blurbs that contradicted the structured truthfulness fields
+
+- Audit drilling for the truthfulness pattern surfaced two more contradictions:
+  - `agents.json` `size` field auto-refreshed the total ("48,911+") but the rest of the prose still said "across 7 active sellers" — directly contradicting the structured `sellers_with_meaningful_inventory: 1` I added two iterations ago. AI consumers reading the manifest got conflicting numbers from two adjacent fields.
+  - `ai-plugin.json` `description_for_human` + `description_for_model` had hardcoded "47,000+ live consumer-goods listings". Reality: 48,949. Static value, drifting further every hour.
+- Fix 1: rewrote `update_manifest()`'s `size` blurb to be sourced from the breakdown fields rather than active_sellers — now reads `"48,949 live listings — ~2,387 from onboarded sellers plus ~46,562 imported from the broader Algerian marketplace, refreshed continuously (snapshot ...)"`. Matches the structured fields verbatim; no AI panel can spot a contradiction.
+- Fix 2: added `refresh_ai_plugin_json()` to the auto-refresher. Patches the listing-count tokens in both description fields using a narrow-anchor regex (`\b\d{1,3}(?:,\d{3})+\+ live `). Rounds to nearest thousand for prose ("48,000+"). Drift-safe — leaves untouched if anchor doesn't match.
+- Both files now hot-patched + pushed to IndexNow (4 URLs/4 accepted) and will auto-refresh hourly via the existing systemd timer.
+
 ## 2026-05-16 — vps-eu · grounded `growth_rate_per_hour` in empirical metrics (was 500 hard-coded, actual is 352)
 
 - Third quantitative-claim audit in a row. `agents.json` had `growth_rate_per_hour: 500` hard-coded. Cross-checked against `data/logs/metrics.jsonl` over the last 24h: 1,439 scrape-loop runs, 8,817 seeded across 25 distinct hours = **353 seeded/hr empirical**, not 500. The hard-coded figure was ~42% too high — probably picked from a peak run rather than steady-state.
