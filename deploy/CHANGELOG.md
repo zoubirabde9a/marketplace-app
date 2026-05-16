@@ -6,6 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · sitemap lastmod accuracy confirmed (per-millisecond match with API updatedAt)
+
+- Sampled 6 older + 3 newest product URLs from sitemap.xml and compared `<lastmod>` against the API list response's `updatedAt` field. **Perfect match per-millisecond across both populations**:
+  - May-10-batch-import products: sitemap lastmod = `2026-05-10T10:20:35.xxx` = API updatedAt (identical milliseconds). Crawlers correctly told "this hasn't changed in a week".
+  - Newest products (sort=newest): sitemap lastmod = `2026-05-16T16:42:29.xxx` = API updatedAt (millisecond accuracy). Crawlers know to re-fetch.
+- Sitemap freshness signal is end-to-end intact. AI crawlers polling for fresh products correctly:
+  - Skip stable older entries (saves bandwidth)
+  - Hit fresh new entries (catches catalog growth)
+- False-alarm note: initial probe used `/v1/products/{id}` single-product GET which doesn't return updatedAt; mistakenly read this as drift. The list endpoint `/v1/products?limit=N` DOES return updatedAt per item; that's the surface the sitemap-builder uses. Investigation surfaced as a confirmation, not a fix.
+
 ## 2026-05-16 — vps-eu · 3 more filter empirical findings — ?shipsTo= works, ?counterfeitRisk= silent, 4 silently-ignored
 
 - Empirically probed 7 more filter param candidates against /v1/products. Three findings:
