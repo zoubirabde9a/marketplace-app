@@ -91,6 +91,9 @@ Brand landings: `https://teno-store.com/search?brand=<Brand>` (URL-encoded).
   `?sellerId=` (308-redirects to `/store/<uuid>`), `?currency=` (filters
   to listings priced in that ISO 4217 currency; catalog is currently
   100% DZD so ?currency=DZD returns all and ?currency=EUR returns 0),
+  `?shipsTo=<ISO 3166-1 alpha-2>` (ships-to-country filter; e.g.
+  ?shipsTo=DZ returns all, ?shipsTo=US returns 0. Wilaya-level codes
+  not supported — country-level only),
   `?sort=` (3 empirically verified values: `newest`, `price_asc`,
   `price_desc` — note the underscore, NOT hyphen; `price-asc` returns
   empty. `oldest`, `popular`, `relevance`, `cheapest`, `recent`, `random`

@@ -4,11 +4,11 @@
   "homepage": "https://teno-store.com",
   "contact": "mahlledz@gmail.com",
   "catalog": {
-    "size": "49,482 live listings — ~2,387 from onboarded sellers plus ~47,095 imported from the broader Algerian marketplace, refreshed continuously (snapshot 2026-05-16 19:04 UTC)",
+    "size": "49,945 live listings — ~2,387 from onboarded sellers plus ~47,558 imported from the broader Algerian marketplace, refreshed continuously (snapshot 2026-05-16 20:02 UTC)",
     "snapshot_date": "2026-05-16",
-    "snapshot_time_utc": "19:04",
-    "total_listings": 49482,
-    "growth_rate_per_hour": 347,
+    "snapshot_time_utc": "20:02",
+    "total_listings": 49945,
+    "growth_rate_per_hour": 351,
     "active_sellers": 7,
     "geography": {
       "country": "Algeria",
@@ -76,17 +76,17 @@
     "top_categories": [
       {
         "slug": "informatique",
-        "listings": 20001,
+        "listings": 20251,
         "label": "Informatique"
       },
       {
         "slug": "electronique_electromenager",
-        "listings": 9767,
+        "listings": 9957,
         "label": "Électronique & Électroménager"
       },
       {
         "slug": "telephones",
-        "listings": 8773,
+        "listings": 8792,
         "label": "Téléphones"
       },
       {
@@ -96,75 +96,75 @@
       },
       {
         "slug": "vetements_mode",
-        "listings": 5026,
+        "listings": 5030,
         "label": "Vêtements & Mode"
       }
     ],
     "top_brands": [
       {
         "name": "HP",
-        "listings": 2474
+        "listings": 2492
       },
       {
         "name": "Samsung",
-        "listings": 2100
+        "listings": 2106
       },
       {
         "name": "Dell",
-        "listings": 1800
+        "listings": 1813
       },
       {
         "name": "Lenovo",
-        "listings": 1741
+        "listings": 1746
       },
       {
         "name": "Canon",
-        "listings": 1001
+        "listings": 1028
       },
       {
         "name": "Asus",
-        "listings": 948
+        "listings": 952
+      },
+      {
+        "name": "Havit",
+        "listings": 798
       },
       {
         "name": "Lacoste",
         "listings": 795
       },
       {
-        "name": "Havit",
-        "listings": 773
-      },
-      {
         "name": "Xiaomi",
-        "listings": 740
+        "listings": 742
       },
       {
         "name": "MSI",
-        "listings": 614
+        "listings": 619
       },
       {
         "name": "Skechers",
-        "listings": 614
+        "listings": 615
       },
       {
         "name": "Logitech",
-        "listings": 505
+        "listings": 515
       },
       {
         "name": "Moulinex",
-        "listings": 480
-      },
-      {
-        "name": "Google",
-        "listings": 409
+        "listings": 487
       },
       {
         "name": "Sony",
-        "listings": 407
+        "listings": 418
+      },
+      {
+        "name": "Google",
+        "listings": 412
       }
     ],
     "sellers_with_meaningful_inventory": 1,
     "listings_attributed_to_a_seller": 2387,
-    "listings_unattributed_imports": 47095,
+    "listings_unattributed_imports": 47558,
     "subcategory_slugs_note": "No bare-slug subcategories currently meet the >=5-listings threshold. The compound slugs in top_categories above carry the full catalog mass. Audit 2026-05-16: bare slugs smartphones / ordinateurs / electromenager etc. had 0 listings each — they were dead navigation. Updated to honest posture."
   },
   "discovery": {
@@ -365,6 +365,14 @@
           "note": "Filter params accept exactly one value each. None of the common multi-value syntaxes are supported: repeated param (?brand=HP&brand=Samsung), comma-separated (?brand=HP,Samsung or URL-encoded comma), or PHP array (?brand[]=HP&brand[]=Samsung) all return wrong results or fall back to the unfiltered baseline. For multi-brand or multi-category queries, make N separate requests and merge client-side, or omit the filter and filter the response data array yourself.",
           "evidence": "audit 2026-05-16: ?brand=HP&brand=Samsung -> empty; ?brand=HP,Samsung -> 0 (treated as literal brand 'HP,Samsung'); ?brand[]=HP&brand[]=Samsung -> 49,778 (baseline, ignored); ?category=informatique,telephones -> 0.",
           "workaround": "Sequential single-value queries combined client-side: fetch(?brand=HP) + fetch(?brand=Samsung), dedupe by productId."
+        },
+        "counterfeitRisk_silent": {
+          "note": "?counterfeitRisk= accepts values low/high/etc. but doesn't differentiate them. low and high both return the baseline catalog total. AI agents wanting to filter to only-low-risk listings cannot use this param — read counterfeitRisk from the response data items and filter client-side.",
+          "evidence": "audit 2026-05-16: baseline=50033; ?counterfeitRisk=low=50033; ?counterfeitRisk=high=50033."
+        },
+        "silently_ignored_filters": {
+          "note": "These commonly-tried filter params are silently accepted but have no filtering effect (return baseline): ?inLanguage=, ?ship_to= (use the correct ?shipsTo= form), ?shipping=, ?region=. The supported filter list is in /llms-full.txt and in the empirical-verification summary above. Don't trust filter params not on that list.",
+          "evidence": "audit 2026-05-16: ?inLanguage=fr and ?inLanguage=ar both return baseline; ?ship_to=DZ same; ?shipping=DZ same; ?region=Alger same."
         }
       },
       "response_shape": {

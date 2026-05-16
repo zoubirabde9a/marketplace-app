@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · 3 more filter empirical findings — ?shipsTo= works, ?counterfeitRisk= silent, 4 silently-ignored
+
+- Empirically probed 7 more filter param candidates against /v1/products. Three findings:
+  - **`?shipsTo=<country>` works**: ?shipsTo=DZ returns all (50,033), ?shipsTo=US returns 0. Real, working country-level filter. **Was undocumented** — added to llms-full.txt's verified list.
+  - **`?counterfeitRisk=` is silently ambiguous** (same pattern as ?inStock= from iter-57): both low and high return baseline 50,033. Filter accepted but doesn't differentiate values. AI agents wanting only low-risk listings must filter client-side on the counterfeitRisk field of returned data. Added to agents.json known_limitations.
+  - **4 silently-ignored params**: ?inLanguage=, ?ship_to= (wrong case — use ?shipsTo=), ?shipping=, ?region= all return baseline regardless of value. Added a collective `silently_ignored_filters` entry in known_limitations so AI agents don't waste round-trips on these obvious-sounding alternatives.
+- The empirical filter matrix in agents.json + llms-full.txt is now thorough: 7 working filters (?q, ?category, ?brand, ?sellerId, ?currency, ?shipsTo, ?sort) + 4 documented broken (?priceFrom, ?priceTo, ?inStock, ?counterfeitRisk) + 4 silently-ignored alternatives + multi-value-filter workaround. AI agents reading the manifest can hit every realistic shopping query on first try.
+
 ## 2026-05-16 — vps-eu · documented `?currency=` filter — empirically working but missing from advertised list
 
 - Empirical probe: `?currency=DZD` returns 50,033 (= catalog total, since 100% of listings are DZD); `?currency=EUR` returns 0 (correctly filters; no EUR products). The filter IS implemented and working — but wasn't advertised in llms-full.txt's empirically-verified filter list.
