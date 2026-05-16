@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · MCP version corrected from stale "1.29" to empirical "2025-06-18"; OAuth-endpoint defect flagged
+
+- Empirical protocol-claim verification on api.teno-store.com:
+  - **MCP**: POST `/mcp` with a JSON-RPC `initialize` payload — server replied `protocolVersion: "2025-06-18"`, `serverInfo: marketplace 0.1.0`, `capabilities.tools` advertised. Working surface. But agents.json claimed `version: "1.29"` — that was the version label of some SDK at some point, not the spec date. Corrected to `2025-06-18` and added a `version_source` field documenting that the value comes from the initialize handshake (so future audits can re-verify).
+  - **A2A**: `/a2a` returns 401 unauth — correct posture for an authenticated endpoint. ✅
+  - **OAuth bootstrap** (BROKEN): the agent-card.json on api.teno-store.com declares `token_endpoint: https://api.teno-store.com/oauth/token`. That URL returns **404**. `/oauth/authorize` returns 501 (Not Implemented). The `/.well-known/oauth-authorization-server` (RFC 8414) and `/.well-known/openid-configuration` both 404. Under `/v1/oauth/*` everything 401s but that means "auth required to even check existence", not a working public bootstrap.
+- **Operator-action item flagged** (can't autonomously fix — the agent-card.json is served by the API service which is separate from the web service): either implement `/oauth/token` + `/oauth/authorize` at the documented paths, or update agent-card.json's `auth.oauth2.*_endpoint` URLs to wherever the OAuth flow actually lives (if it does — the /v1/oauth/* 401s are ambiguous). Until resolved, any AI agent trying to start an OAuth flow per the agent-card discovers it can't bootstrap. Today this affects only the (currently small) population of agents attempting writes; the public-read surface (`GET /v1/products`, `GET /v1/products/{id}`) is unaffected.
+
 ## 2026-05-16 — vps-eu · empirically falsified rate_limit claim (60/min "per IP" — actually unenforced)
 
 - Continuing the empirical-verification sweep. agents.json `policies.rate_limits` and ai-policy.json `rate_limits.crawl` both claimed `"60 requests/minute per IP"`. Burst-tested from vps-eu: **70 anonymous requests to /v1/products?limit=1 in rapid succession returned 70× HTTP 200, 0× HTTP 429.** No throttle in place. The claim was aspirational, not enforced.

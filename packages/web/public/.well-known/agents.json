@@ -201,10 +201,11 @@
   },
   "protocols": {
     "mcp": {
-      "version": "1.29",
+      "version": "2025-06-18",
       "transport": "streamable-http",
       "endpoint": "https://api.teno-store.com/mcp",
-      "auth": "oauth2.1+pkce+dpop"
+      "auth": "oauth2.1+pkce+dpop",
+      "version_source": "protocolVersion field from MCP initialize response (audit 2026-05-16)"
     },
     "a2a": {
       "endpoint": "https://api.teno-store.com/a2a",
