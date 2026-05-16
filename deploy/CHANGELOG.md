@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · documented `?currency=` filter — empirically working but missing from advertised list
+
+- Empirical probe: `?currency=DZD` returns 50,033 (= catalog total, since 100% of listings are DZD); `?currency=EUR` returns 0 (correctly filters; no EUR products). The filter IS implemented and working — but wasn't advertised in llms-full.txt's empirically-verified filter list.
+- Added `?currency=` to the /search filter docs with a note that it accepts any ISO 4217 currency code and currently the catalog is 100% DZD. Pushed llms-full.txt to IndexNow.
+- This is the opposite of iter-50/57/60 (which documented filters that DON'T work). Documenting filters that DO work is also valuable — saves AI agents trial-and-error discovery and surfaces capabilities they wouldn't otherwise know to use (e.g. "is Teno Store ready for multi-currency catalogs?" — yes, the filter exists, the catalog is currently single-currency).
+
 ## 2026-05-16 — vps-eu · Wayback re-snapshot of 12 entity-graph-complete URLs (preserves iter-61-64 state)
 
 - The last comprehensive Wayback batch was in iter-29 (May 16 mid-day). All the entity-graph cross-link work happened AFTER that — iter-61 (home Organization sameAs/identifier/subjectOf/image), iter-62 (/store parentOrganization+isPartOf), iter-63 (/product isPartOf+mainEntityOfPage+Offer.seller@id), iter-64 (/c+/search?brand= publisher+Brand@id). Current Wayback captures don't reflect any of those.
