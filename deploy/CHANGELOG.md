@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · `?inStock=` silent ambiguity flagged + combined-filter + snapshot-envelope documented
+
+- Three empirical probes this iteration:
+  - **Combined filters** (`?brand=X&category=Y`) — work cleanly with AND semantics. `?brand=HP&category=informatique=2,431`, `?brand=HP&category=telephones=43`. Both match the iter-52 facets cross-distribution exactly. **Documented as `protocols.rest.combined_filters`** with example useful combos for AI agents.
+  - **Snapshot URLs** (`/s/<token>`) — fetch one fresh from any list response, follow it: returns full HTML page, `200 OK`, `Cache-Control: public, max-age=3600, s-maxage=3600, immutable`, ships `<meta name="robots" content="noindex, nofollow">` matching the /s/ Disallow in robots.txt, no JSON-LD (appropriate for frozen replay surfaces). **Documented as `protocols.rest.response_shape.snapshot_envelope_properties`** with URL pattern, TTL, cache, and robots semantics.
+  - **`?inStock=` filter silently broken**: accepts any value, always applies the same filter. Baseline 49,660 → ?inStock=true=49,606 → ?inStock=false=49,606 → ?inStock=1=49,606. The filter does narrow (~54 items off baseline) but true/false don't differentiate. AI agents can't use it to scope "in-stock-only" vs "out-of-stock-only" queries. **Added to `protocols.rest.known_limitations.instock_filter_silent`** with the empirical evidence.
+- Net result: agents.json now documents both the working filter-combination semantics AND the dead-end ?inStock= filter, so AI agents don't waste effort on either trial-and-error or false-precision filtering. Pushed to IndexNow.
+
 ## 2026-05-16 — vps-eu · empirically enumerated `?sort=` values — only 3 work (newest, price_asc, price_desc)
 
 - llms-full.txt documented `?sort=newest` but not the two sort values that ALSO work (`price_asc`, `price_desc`) and the **9 plausible values that DON'T work** (`oldest`, `popular`, `relevance`, `price-asc` with hyphen, `cheapest`, `most-expensive`, `recent`, `random`, others). Most return empty pages without error.

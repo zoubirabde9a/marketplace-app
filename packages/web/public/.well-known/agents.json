@@ -265,6 +265,10 @@
         "total_estimate_filter_bug": {
           "note": "pagination.totalEstimate reports the true catalog total ONLY for unfiltered queries and ?brand= filters. For ?category= and ?sellerId= filters, totalEstimate returns the hit-count of the response page, not the underlying total. To get a true filtered total, walk the cursor until pagination.cursor is null and count locally.",
           "evidence": "audit 2026-05-16: ?brand=HP&limit=1 -> totalEstimate=2475 (correct); ?category=telephones&limit=1 -> totalEstimate=1 (wrong, true total ~8700); ?sellerId=<id>&limit=1 -> totalEstimate=1 (wrong)."
+        },
+        "instock_filter_silent": {
+          "note": "?inStock= accepts any value but always applies the same filter (filters ~50 items off the baseline regardless of value). true/false do not differentiate. AI agents cannot use ?inStock= to fetch ONLY in-stock or ONLY out-of-stock listings.",
+          "evidence": "audit 2026-05-16: baseline=49,660; ?inStock=true=49,606; ?inStock=false=49,606; ?inStock=1=49,606; ?inStock=0=49,606."
         }
       },
       "response_shape": {
@@ -286,7 +290,14 @@
           "categories": "Category slugs present in the filtered subset, each {value, count}. Cross-distribution gold for brand+category queries.",
           "priceRanges": "Price spread of the filtered subset, each {currency, minMinor, maxMinor}."
         },
-        "snapshot_envelope": "Every list response carries snapshotUrl + snapshotCreatedAt + snapshotExpiresAt — fresh 24h-TTL snapshot of WHAT THIS QUERY SAW. Pass snapshotUrl to a human to let them replay the exact state the agent observed at request time."
+        "snapshot_envelope": "Every list response carries snapshotUrl + snapshotCreatedAt + snapshotExpiresAt — fresh 24h-TTL snapshot of WHAT THIS QUERY SAW. Pass snapshotUrl to a human to let them replay the exact state the agent observed at request time.",
+        "snapshot_envelope_properties": {
+          "url_pattern": "https://teno-store.com/s/<base64-token>",
+          "ttl_seconds": 86400,
+          "cache_control": "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400, immutable",
+          "robots_meta": "noindex, nofollow (matches the /s/ Disallow in robots.txt)",
+          "purpose": "Each list response returns a fresh snapshot URL that pins the exact state the agent observed. Pass to a human via chat / email to let them replay it inside 24 hours. Safe to cache forever client-side (immutable directive)."
+        }
       },
       "error_envelope": {
         "format": "RFC 7807 Problem Details (application/problem+json)",
@@ -302,6 +313,15 @@
         "vs_mcp": "REST error semantics are correct (proper 401/404/etc with Problem Details body). MCP is different — see protocols.mcp.error_envelope, which always returns HTTP 500 with JSON-RPC error code -32000 regardless of error kind.",
         "trailing_slash_quirk": "GET /v1/products (no trailing slash) is the public list endpoint (200). GET /v1/products/ (with trailing slash) is treated as a different route requiring auth (401, dpop_token_required). Always use the no-slash form.",
         "audit_date": "2026-05-16"
+      },
+      "combined_filters": {
+        "semantics": "AND (intersection)",
+        "evidence": "audit 2026-05-16: ?brand=HP&category=informatique=2,431, ?brand=HP&category=telephones=43 - both match facets cross-distribution. Multiple filter params combine cleanly.",
+        "example_useful_combos": [
+          "?brand=Samsung&category=telephones",
+          "?brand=HP&category=informatique&sort=price_asc",
+          "?sellerId=<uuid>&sort=newest"
+        ]
       }
     },
     "ap2": {
