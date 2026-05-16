@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · IndexNow full-sitemap push: 47,793 / 47,793 URLs accepted (GEO)
+
+- The IndexNow submitter at `scripts/indexnow-submit.mjs` has been in the repo since May 10 but was never scheduled — only the scraper's incremental newly-seeded-URL push (wired into `run-loop.sh` step 3.5) has been firing. That means today's new GEO discovery files (`/llms-full.txt`, `/.well-known/ai-policy.json`) and the refreshed `/llms.txt` + `/.well-known/agents.json` had never been pushed, and the full 47k-URL product catalog was last fully submitted... never.
+- Pushed all 11 new GEO discovery URLs (home, llms.txt, llms-full.txt, agents.json, ai-policy.json, /about, top-5 category landings) — IndexNow accepted 11/11.
+- Pushed the full live sitemap — 47,793 URLs across 96 chunks of 500, all returned HTTP 200. Bing typically processes IndexNow submissions within minutes-to-hours; the URLs then become reachable to ChatGPT search, DuckDuckGo, and Yandex backends (Bing feeds all three for AI-search results).
+- Open follow-up (operator confirmation): wire a systemd timer to call `indexnow-submit.mjs` (no args, full-sitemap mode) monthly so the catalog stays fully synced with Bing even when individual products age out of the incremental-push window. The script is idempotent and chunked, ran end-to-end in under 90 s for 47k URLs.
+
 ## 2026-05-16 — vps-eu · published `/.well-known/ai-policy.json` (GEO)
 
 - New structured AI-use policy at `/.well-known/ai-policy.json`. Complements `/robots.txt` (which only declares Allow/Disallow paths) with explicit, machine-readable permissions for: **crawl**, **cite** (with required attribution format `Teno Store — https://teno-store.com`), **summarize** (with `preferred_sources` pointing crawlers at `llms-full.txt` for descriptive answers), **train**, and **transact** (with REST / MCP / A2A endpoints and OAuth2.1+DPoP+PKCE auth requirement). Also publishes rate-limit guidance, content provenance, brand-disambiguation against the German jewelry brand TeNo, and a discovery index that unifies all eight machine-readable surfaces (robots, sitemap, feed, llms.txt, llms-full.txt, agents.json, security.txt, api agent-card).
