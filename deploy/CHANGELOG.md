@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · grounded `growth_rate_per_hour` in empirical metrics (was 500 hard-coded, actual is 352)
+
+- Third quantitative-claim audit in a row. `agents.json` had `growth_rate_per_hour: 500` hard-coded. Cross-checked against `data/logs/metrics.jsonl` over the last 24h: 1,439 scrape-loop runs, 8,817 seeded across 25 distinct hours = **353 seeded/hr empirical**, not 500. The hard-coded figure was ~42% too high — probably picked from a peak run rather than steady-state.
+- Verified neighboring claims while in the area:
+  - `currency: DZD` — empirically true. All 48,911 product variants are DZD; no cross-currency listings.
+  - `languages: ["fr", "ar", "en"]` — technically present in catalog but ~99% French, ~1% Arabic in titles. The order (French primary) is correct; the array doesn't claim equal weight, so this is borderline-OK as-is.
+- Fix: added `_compute_growth_per_hour()` helper to `refresh-catalog-stats.py` that reads `metrics.jsonl` for the rolling 24h-average seeded/hr. Hourly refresher now keeps `growth_rate_per_hour` empirically grounded — figure will track as the scraper cadence or pruning policy drifts. Soft-fails (leaves existing value untouched) if metrics aren't available.
+- First live run wrote `352`; verified at `/.well-known/agents.json`.
+
 ## 2026-05-16 — vps-eu · honest-geography-breakdown added to agents.json (extends the seller-truthfulness fix)
 
 - Same pattern as last iteration's seller-breakdown work. The static `geography.cities` array listed "Algiers, Oran, Annaba, Constantine, Sétif, Blida" as if they were six equally-represented hubs. DB query revealed the truth:

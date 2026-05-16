@@ -64,6 +64,37 @@ CATEGORY_LABELS = {
 }
 
 
+def _compute_growth_per_hour() -> int | None:
+    """Read scrape-loop metrics.jsonl over the last 24h and compute the
+    average seeded-per-hour rate. Returns None if metrics aren't present
+    or are too sparse to compute (treat as a soft signal, not load-bearing)."""
+    from datetime import datetime, timedelta, timezone
+    metrics_path = Path("/opt/marketplace/data/logs/metrics.jsonl")
+    if not metrics_path.exists():
+        return None
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    total_seeded = 0
+    hours: set[str] = set()
+    try:
+        with metrics_path.open() as f:
+            for line in f:
+                try:
+                    d = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                ts = d.get("timestamp") or d.get("ts") or d.get("finished_at") or ""
+                if ts < cutoff:
+                    continue
+                total_seeded += int(d.get("seeded", 0) or 0)
+                if ts:
+                    hours.add(ts[:13])  # YYYY-MM-DDTHH bucket
+    except OSError:
+        return None
+    if not hours:
+        return None
+    return int(total_seeded / len(hours))
+
+
 def psql(sql: str) -> str:
     """Run a SQL statement via the live Postgres container, return raw output."""
     cmd = [
@@ -106,6 +137,12 @@ def fetch_stats() -> dict:
     wilaya_tagged = int(psql(
         "SELECT count(*) FROM catalog.products WHERE attributes->>'wilaya' IS NOT NULL"
     ))
+    # Empirical growth rate from the scrape-loop metrics. Earlier the
+    # manifest had `growth_rate_per_hour: 500` hard-coded, which audit
+    # found was ~42% too high vs the actual 24h-rolling seed rate (~350).
+    # Compute it from metrics.jsonl on every refresh so the figure stays
+    # accurate as the scrape cadence or the catalog pruning policy changes.
+    growth_per_hour = _compute_growth_per_hour()
     cats_raw = psql(
         "SELECT category_ids->>0 || '|' || count(*) "
         "FROM catalog.products GROUP BY category_ids->>0 "
@@ -140,6 +177,7 @@ def fetch_stats() -> dict:
         "top_brands": top_brands,
         "top_wilayas": top_wilayas,
         "wilaya_tagged_listings": wilaya_tagged,
+        "growth_per_hour": growth_per_hour,
     }
 
 
@@ -158,6 +196,13 @@ def update_manifest(stats: dict) -> bool:
     catalog["sellers_with_meaningful_inventory"] = stats["sellers_with_meaningful_inventory"]
     catalog["listings_attributed_to_a_seller"] = stats["listings_attributed_to_a_seller"]
     catalog["listings_unattributed_imports"] = stats["listings_unattributed_imports"]
+    # Empirical growth rate (24h rolling avg from scrape-loop metrics).
+    # Replaces the static `growth_rate_per_hour: 500` that audit caught as
+    # being ~42% too high. Only write when we computed a real number;
+    # if metrics aren't available, leave the existing value untouched so
+    # the file doesn't churn.
+    if stats.get("growth_per_hour") is not None:
+        catalog["growth_rate_per_hour"] = stats["growth_per_hour"]
     # Replace the static geography.cities array with a ranked, count-
     # bearing wilaya list reflecting the actual seller-tagged geographic
     # distribution. Mirrors the top_brands shape so AI consumers can do
