@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · submitted 20 high-value URLs to the Internet Archive Wayback Machine (GEO)
+
+- Until today the Wayback Machine had no 2026-era captures of teno-store.com. AI tools (notably Perplexity, and ChatGPT when the live page is unreachable) sometimes cite Wayback URLs directly as fallback sources — and a captured page is also a citable, verifiable historical record for any later "what did this site claim on date X" question.
+- Submitted 20 URLs to `web.archive.org/save/<url>`: the home page, /about, /blog, /seller, all four `/.well-known/*` discovery files (agents.json, ai-policy.json, ai-plugin.json, security.txt), /llms.txt + /llms-full.txt, the top-5 category landings (informatique, electromenager, telephones, immobilier, mode), and the top-5 brand landings (HP, Samsung, Dell, Lenovo, Xiaomi). One pass, 2s between submissions to respect Wayback's ~30/min rate limit.
+- Verified the captures resolve: `https://web.archive.org/web/2026/https://teno-store.com/llms.txt` returns HTTP 200 with the current content. Submissions ran in the background with the loop continuing — one URL got a transient Cloudflare 520 on Wayback's side (`/blog`); the rest returned 302 (capture-initiated).
+
 ## 2026-05-16 — vps-eu · added visible Ouedkniss/Jumia comparison to /about + 7th FAQ entry + dateModified (GEO)
 
 - The comparison content "How does Teno Store differ from Ouedkniss / Jumia Algeria?" lived only in `/llms-full.txt` (plain text). HTML-scraping AI tools — Google AI Overviews, Bing Chat, Perplexity, ChatGPT search when it walks rendered HTML — couldn't see it. Lifted the comparison into visible HTML on `/about` as a "Comparaison avec les autres marketplaces algériens" section: three bullets contrasting Teno Store with Ouedkniss (classifieds, no API) and Jumia Algeria (vertically-integrated retailer with own stock), plus a "common catalog" bullet with current per-category listing counts (informatique ~18,800, electroménager ~9,200, téléphones ~8,700, immobilier ~5,900, mode ~4,900).
