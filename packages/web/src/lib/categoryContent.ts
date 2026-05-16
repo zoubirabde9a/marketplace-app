@@ -29,18 +29,18 @@ export interface CategoryContent {
 const CONTENT: Record<string, CategoryContent> = {
   telephones: {
     intro: [
-      "Trouvez votre prochain téléphone parmi des milliers d'annonces de vendeurs algériens — smartphones neufs et d'occasion, iPhones, Samsung Galaxy, Xiaomi, Huawei, Tecno et Itel. Tous les prix sont affichés en dinars algériens (DZD), et chaque annonce indique clairement la wilaya du vendeur, le mode de livraison, et un indicateur de risque de contrefaçon.",
+      "Trouvez votre prochain téléphone parmi des milliers d'annonces de vendeurs algériens — smartphones neufs et d'occasion de toutes les grandes marques. Tous les prix sont affichés en dinars algériens (DZD), et chaque annonce indique clairement la wilaya du vendeur, le mode de livraison, et un indicateur de risque de contrefaçon.",
       "Le catalogue est actualisé en continu : les annonces que vous parcourez ici reflètent ce qui est réellement disponible à l'instant présent à Alger, Oran, Constantine, Annaba, Sétif, Blida et dans le reste du pays. Utilisez les filtres ci-dessous pour cibler par marque, fourchette de prix, ou vendeur, ou affinez par capacité de stockage et couleur.",
       "Si vous achetez un téléphone d'occasion, consultez notre guide d'achat dédié pour les vérifications IMEI, les signes de contrefaçon, et les prix de référence par modèle.",
     ],
     faq: [
       {
         q: "Comment vérifier qu'un téléphone d'occasion n'est pas une contrefaçon ?",
-        a: "Composez *#06# sur l'appareil pour afficher son IMEI, puis vérifiez-le sur imei.info ou checkcoverage.apple.com (pour iPhone). Une copie a presque toujours un IMEI commençant par 0000, un poids plus faible que l'original, et un App Store ou Play Store qui ne fonctionne pas correctement. Chaque annonce sur Teno Store porte un indicateur de risque de contrefaçon visible.",
+        a: "Composez *#06# sur l'appareil pour afficher son IMEI, puis vérifiez-le sur imei.info ou checkcoverage.apple.com (pour les appareils Apple). Une copie a presque toujours un IMEI commençant par 0000, un poids plus faible que l'original, et un App Store ou Play Store qui ne fonctionne pas correctement. Chaque annonce sur Teno Store porte un indicateur de risque de contrefaçon visible.",
       },
       {
         q: "Quels sont les prix indicatifs des smartphones d'occasion en Algérie ?",
-        a: "À titre de référence (mai 2026, marché algérois) : iPhone 13/13 Pro en bon état 75 000 – 110 000 DZD, Samsung Galaxy S22/S23 55 000 – 95 000 DZD, Xiaomi/Redmi Note 12-13 25 000 – 45 000 DZD, modèles d'entrée de gamme Itel/Tecno/Infinix 12 000 – 25 000 DZD. Les prix varient selon le stockage, la couleur, et l'état esthétique.",
+        a: "À titre de référence (mai 2026, marché algérois) : haut de gamme Apple récent en bon état 75 000 – 110 000 DZD, haut de gamme Android récent 55 000 – 95 000 DZD, milieu de gamme Android récent 25 000 – 45 000 DZD, entrée de gamme Android récente 12 000 – 25 000 DZD. Les prix varient selon le stockage, la couleur, et l'état esthétique.",
       },
       {
         q: "Les vendeurs livrent-ils partout en Algérie ?",
@@ -61,7 +61,7 @@ const CONTENT: Record<string, CategoryContent> = {
     faq: [
       {
         q: "Quel ordinateur portable pour les études en Algérie ?",
-        a: "Pour les études générales, un budget de 60 000 – 90 000 DZD ouvre l'accès à des modèles récents avec processeur Intel Core i5 ou AMD Ryzen 5, 8 Go de RAM, et 256 Go de SSD — suffisants pour bureautique, navigation et cours en ligne. Pour les filières techniques (ingénierie, design, programmation), visez 120 000 DZD et plus pour 16 Go de RAM et une carte graphique dédiée.",
+        a: "Pour les études générales, un budget de 60 000 – 90 000 DZD ouvre l'accès à des modèles récents avec processeur milieu de gamme Intel ou AMD, 8 Go de RAM, et 256 Go de SSD — suffisants pour bureautique, navigation et cours en ligne. Pour les filières techniques (ingénierie, design, programmation), visez 120 000 DZD et plus pour 16 Go de RAM et une carte graphique dédiée.",
       },
       {
         q: "Vaut-il mieux acheter neuf ou d'occasion ?",
@@ -150,14 +150,14 @@ const CONTENT: Record<string, CategoryContent> = {
   // -- Téléphonie : sous-catégorie --
   smartphones: {
     intro: [
-      "Smartphones neufs et d'occasion proposés par des vendeurs algériens : iPhone, Samsung Galaxy, Xiaomi, Redmi, Huawei, Honor, Oppo, Realme, Tecno, Infinix, Itel. Le catalogue couvre toutes les gammes, du téléphone d'entrée de gamme autour de 15 000 DZD au flagship récent au-delà de 200 000 DZD. Chaque annonce affiche la wilaya du vendeur, le mode de livraison et un indicateur de risque de contrefaçon.",
-      "À titre indicatif (marché algérois, mai 2026) : un iPhone 12 en bon état se négocie autour de 60 000 – 80 000 DZD, un iPhone 13 entre 75 000 et 110 000 DZD, un Samsung Galaxy S22 entre 55 000 et 80 000 DZD, et un Redmi Note 13 neuf autour de 35 000 – 45 000 DZD. Les prix varient selon le stockage (128 Go vs 256 Go), la couleur, l'état de la batterie et la présence ou non de la facture d'origine.",
-      "Avant l'achat d'un appareil d'occasion, demandez l'IMEI au vendeur (code *#06#) et vérifiez-le sur imei.info ou checkcoverage.apple.com pour un iPhone. Pensez aussi à contrôler l'état de la batterie (pour iPhone : Réglages › Batterie › État de la batterie), la présence de pixels morts sur l'écran, et le bon fonctionnement de la charge, du Wi-Fi et de la 4G.",
+      "Smartphones neufs et d'occasion proposés par des vendeurs algériens, de toutes les grandes marques internationales et asiatiques. Le catalogue couvre toutes les gammes, du téléphone d'entrée de gamme autour de 15 000 DZD au flagship récent au-delà de 200 000 DZD. Chaque annonce affiche la wilaya du vendeur, le mode de livraison et un indicateur de risque de contrefaçon.",
+      "À titre indicatif (marché algérois, mai 2026) : un smartphone haut de gamme Apple de 4-5 ans en bon état se négocie autour de 60 000 – 80 000 DZD, un haut de gamme Apple récent (2-3 ans) entre 75 000 et 110 000 DZD, un haut de gamme Android récent entre 55 000 et 80 000 DZD, et un milieu de gamme Android neuf autour de 35 000 – 45 000 DZD. Les prix varient selon le stockage (128 Go vs 256 Go), la couleur, l'état de la batterie et la présence ou non de la facture d'origine.",
+      "Avant l'achat d'un appareil d'occasion, demandez l'IMEI au vendeur (code *#06#) et vérifiez-le sur imei.info ou checkcoverage.apple.com pour un appareil Apple. Pensez aussi à contrôler l'état de la batterie (sur Apple : Réglages › Batterie › État de la batterie), la présence de pixels morts sur l'écran, et le bon fonctionnement de la charge, du Wi-Fi et de la 4G.",
     ],
     faq: [
       {
         q: "Comment savoir si un smartphone est neuf, reconditionné ou d'occasion ?",
-        a: "Demandez la facture d'achat d'origine et vérifiez la date d'activation : sur iPhone, allez dans Réglages › Général › Informations et croisez le numéro de série avec checkcoverage.apple.com. Un appareil « neuf scellé » doit avoir son emballage sous blister d'origine intact et n'avoir jamais été activé.",
+        a: "Demandez la facture d'achat d'origine et vérifiez la date d'activation : sur les appareils Apple, allez dans Réglages › Général › Informations et croisez le numéro de série avec checkcoverage.apple.com. Un appareil « neuf scellé » doit avoir son emballage sous blister d'origine intact et n'avoir jamais été activé.",
       },
       {
         q: "Les smartphones vendus sont-ils débloqués tous opérateurs ?",
@@ -179,7 +179,7 @@ const CONTENT: Record<string, CategoryContent> = {
   ordinateurs: {
     intro: [
       "Ordinateurs fixes, tours assemblées, PC gamer et stations de travail proposés par des vendeurs et assembleurs algériens. Vous trouverez aussi bien des configurations sur mesure (assembleurs d'Alger, Oran, Constantine, Blida) que des PC de marque Dell, HP, Lenovo, ASUS ou des mini-PC. Prix en dinars algériens (DZD), wilaya et délais affichés sur chaque annonce.",
-      "Pour un PC bureautique correct (Intel Core i3/i5 de 12e ou 13e génération, 8 Go de RAM, SSD 256 Go), comptez 70 000 – 110 000 DZD. Une configuration gamer milieu de gamme (Ryzen 5, 16 Go, GTX 1660 / RTX 3050, SSD 512 Go) se situe entre 150 000 et 230 000 DZD. Au-delà de 300 000 DZD, on entre dans les configurations RTX 4070 et plus, recommandées pour le streaming, la 3D et le montage vidéo.",
+      "Pour un PC bureautique correct (processeur Intel ou AMD milieu de gamme récent, 8 Go de RAM, SSD 256 Go), comptez 70 000 – 110 000 DZD. Une configuration gamer milieu de gamme (processeur milieu de gamme, 16 Go, GPU dédié de génération récente, SSD 512 Go) se situe entre 150 000 et 230 000 DZD. Au-delà de 300 000 DZD, on entre dans les configurations GPU haut de gamme, recommandées pour le streaming, la 3D et le montage vidéo.",
     ],
     faq: [
       {
@@ -188,7 +188,7 @@ const CONTENT: Record<string, CategoryContent> = {
       },
       {
         q: "Quelle alimentation choisir pour un PC gamer ?",
-        a: "Pour une configuration milieu de gamme jusqu'à une RTX 3060/4060, une alimentation 550 – 650 W certifiée 80+ Bronze suffit. Pour une RTX 4070 ou plus, visez 750 W minimum, idéalement 80+ Gold. Évitez les marques inconnues : une alimentation défectueuse peut endommager tous les autres composants.",
+        a: "Pour une configuration milieu de gamme avec GPU dédié de classe milieu de gamme, une alimentation 550 – 650 W certifiée 80+ Bronze suffit. Pour un GPU haut de gamme, visez 750 W minimum, idéalement 80+ Gold. Évitez les marques inconnues : une alimentation défectueuse peut endommager tous les autres composants.",
       },
       {
         q: "Les vendeurs livrent-ils et installent-ils le PC ?",
@@ -199,17 +199,17 @@ const CONTENT: Record<string, CategoryContent> = {
   },
   portables: {
     intro: [
-      "Ordinateurs portables neufs et d'occasion sur Teno Store : ultrabooks pour le travail mobile, portables bureautiques, machines pour étudiants, PC portables gamer et MacBook. Marques disponibles : Dell, HP, Lenovo, ASUS, Acer, MSI, Apple, Huawei. Prix en dinars algériens (DZD).",
-      "Fourchettes indicatives (mai 2026) : entrée de gamme bureautique 50 000 – 80 000 DZD, milieu de gamme 14 pouces avec SSD et Core i5/Ryzen 5 entre 90 000 et 140 000 DZD, ultrabooks fins type XPS / MacBook Air entre 180 000 et 280 000 DZD, portables gamer RTX 4060 à partir de 250 000 DZD. Les annonces affichent le processeur, la RAM, le stockage et la carte graphique quand le vendeur les renseigne.",
+      "Ordinateurs portables neufs et d'occasion sur Teno Store : ultrabooks pour le travail mobile, portables bureautiques, machines pour étudiants, PC portables gamer et laptops Apple. Marques disponibles : Dell, HP, Lenovo, ASUS, Acer, MSI, Apple, Huawei. Prix en dinars algériens (DZD).",
+      "Fourchettes indicatives (mai 2026) : entrée de gamme bureautique 50 000 – 80 000 DZD, milieu de gamme 14 pouces avec SSD et processeur milieu de gamme récent entre 90 000 et 140 000 DZD, ultrabooks fins et laptops Apple récents entre 180 000 et 280 000 DZD, portables gamer avec GPU dédié récent à partir de 250 000 DZD. Les annonces affichent le processeur, la RAM, le stockage et la carte graphique quand le vendeur les renseigne.",
       "Pour un usage étudiant (cours en ligne, bureautique, recherche), 8 Go de RAM et un SSD de 256 Go sont le minimum recommandé. Pour la programmation, le design ou la 3D, visez 16 Go de RAM et un SSD de 512 Go au minimum. Vérifiez l'état de la batterie avant l'achat d'un portable d'occasion — c'est le composant qui vieillit le plus vite.",
     ],
     faq: [
       {
         q: "Comment vérifier l'état de la batterie d'un portable d'occasion ?",
-        a: "Sur Windows, ouvrez l'invite de commande en administrateur et tapez « powercfg /batteryreport » : le rapport HTML généré indique la capacité actuelle par rapport à la capacité d'origine. En dessous de 70 %, la batterie devra être remplacée prochainement. Sur MacBook, allez dans Réglages › Batterie › État pour voir la capacité maximale.",
+        a: "Sur Windows, ouvrez l'invite de commande en administrateur et tapez « powercfg /batteryreport » : le rapport HTML généré indique la capacité actuelle par rapport à la capacité d'origine. En dessous de 70 %, la batterie devra être remplacée prochainement. Sur les laptops Apple, allez dans Réglages › Batterie › État pour voir la capacité maximale.",
       },
       {
-        q: "Les MacBook vendus en Algérie sont-ils sous garantie Apple ?",
+        q: "Les laptops Apple vendus en Algérie sont-ils sous garantie ?",
         a: "La garantie Apple est mondiale pour les défauts matériels couverts. Vérifiez le numéro de série sur checkcoverage.apple.com pour connaître la date de fin de garantie. Le service après-vente Apple n'a pas de centre officiel en Algérie ; pour une réparation sous garantie, il faut généralement passer par un revendeur agréé ou expédier l'appareil hors du pays.",
       },
       {
@@ -366,7 +366,7 @@ const CONTENT: Record<string, CategoryContent> = {
       },
       {
         q: "Les coques et chargeurs sont-ils universels ?",
-        a: "Les coques sont spécifiques à chaque modèle de téléphone — précisez la référence exacte au vendeur (par exemple « iPhone 13 Pro Max » et non « iPhone 13 »). Les chargeurs USB-C et Lightning sont compatibles avec la plupart des appareils récents ; vérifiez la puissance (en watts) pour la charge rapide.",
+        a: "Les coques sont spécifiques à chaque modèle de téléphone — précisez la référence exacte au vendeur (marque, modèle, taille d'écran et année). Les chargeurs USB-C et Lightning sont compatibles avec la plupart des appareils récents ; vérifiez la puissance (en watts) pour la charge rapide.",
       },
       {
         q: "Vrai cuir ou synthétique : comment faire la différence ?",
@@ -487,7 +487,7 @@ const CONTENT: Record<string, CategoryContent> = {
   voitures: {
     intro: [
       "Voitures neuves et d'occasion sur Teno Store : citadines, berlines, SUV, breaks, 4x4, voitures de collection. Marques européennes (Renault, Peugeot, Citroën, Dacia, Volkswagen, Skoda, Opel), asiatiques (Toyota, Hyundai, Kia, Nissan, Suzuki, Mitsubishi), allemandes premium (BMW, Mercedes-Benz, Audi) et chinoises (Chery, Geely, MG). Prix en dinars algériens (DZD).",
-      "Le marché algérien de l'occasion est très actif : une Symbol/Logan de moins de 10 ans en bon état se situe entre 900 000 et 1 700 000 DZD, une Clio récente entre 1 500 000 et 2 800 000 DZD, un SUV compact (Duster, Sportage, Tucson) entre 2 500 000 et 4 500 000 DZD selon l'âge. Les véhicules importés neufs sont vendus par les concessionnaires officiels et leur disponibilité dépend des quotas d'importation.",
+      "Le marché algérien de l'occasion est très actif : une berline compacte d'entrée de gamme de moins de 10 ans en bon état se situe entre 900 000 et 1 700 000 DZD, une citadine populaire récente entre 1 500 000 et 2 800 000 DZD, un SUV compact entre 2 500 000 et 4 500 000 DZD selon l'âge. Les véhicules importés neufs sont vendus par les concessionnaires officiels et leur disponibilité dépend des quotas d'importation.",
       "Au-delà du prix, regardez la motorisation (essence/diesel/GPL), le kilométrage, l'historique d'entretien et l'origine (Algérie ou import). Une voiture entretenue régulièrement chez un même concessionnaire avec carnet à jour vaut significativement plus qu'un véhicule sans historique, même à kilométrage égal.",
     ],
     faq: [
