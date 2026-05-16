@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · third clean audit pass (URL normalization + Article tags) + API host archived to Wayback
+
+- Three more audit dimensions, all clean:
+  - **URL normalization**: HTTP→HTTPS returns 308; `www.teno-store.com`→apex returns 301; `/about/`→`/about` returns 308. All three canonical-form redirects are in place.
+  - **Open Graph article tags on blog posts**: `/blog/<slug>` ships `article:published_time`, `article:modified_time`, `article:author`, `article:section`. Bing Chat and LinkedIn use these for "article published [date] by [author] in [section]" framing on shared blog cards.
+  - **No more missing dimensions found** in the structured-data / metadata / caching / linking surface I've been auditing across the past 8 iterations.
+- Concrete new improvement this iteration: I had archived ~30 `teno-store.com` URLs to Wayback across previous iterations but had NEVER pushed `api.teno-store.com` — the API host where the agent-card.json, public products endpoint, and public sellers endpoint actually live. Probed for public 200-returning endpoints, found four: `/.well-known/agent-card.json`, `/v1/products`, `/v1/products?limit=5`, `/v1/sellers`. All four returned HTTP 302 from `web.archive.org/save/` — captures initiated.
+- Net effect: an AI agent verifying claims about Teno Store's MCP/A2A/REST capabilities can now fall back to Wayback for the API surface too, not just the HTML surface. If the API host ever has a brief outage at the moment an AI tool tries to validate a citation, it can read the captured agent-card.json instead and still get the right answer.
+
 ## 2026-05-16 — vps-eu · second clean audit pass (3 more dimensions confirmed) + Wayback batch complete
 
 - Three more audit dimensions checked, all clean:
