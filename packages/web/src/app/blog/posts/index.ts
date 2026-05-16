@@ -10,6 +10,7 @@ import { post as livraisonGuide } from "./livraison-algerie-services-colis-2026"
 import { post as climatiseur } from "./climatiseur-algerie-guide-2026";
 import { post as televiseur } from "./televiseur-algerie-guide-2026";
 import { post as modeMarques } from "./mode-vetements-algerie-guide-2026";
+import { post as vendreDemarrer } from "./vendre-en-ligne-algerie-demarrer-2026";
 import type { BlogPost } from "../types";
 
 export const BLOG_POSTS: ReadonlyArray<BlogPost> = [
@@ -25,6 +26,7 @@ export const BLOG_POSTS: ReadonlyArray<BlogPost> = [
   climatiseur,
   televiseur,
   modeMarques,
+  vendreDemarrer,
 ]
   .slice()
   .sort((a, b) => b.datePublished.localeCompare(a.datePublished));

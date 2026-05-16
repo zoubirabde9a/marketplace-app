@@ -72,6 +72,11 @@ POSTS = [
         "title": "Mode et vêtements de marque en Algérie : reconnaître l'original",
         "answers": ["Lacoste original ou copie Algerie", "Nike Adidas authentique Algerie", "vetements de marque Algerie verification", "polo Lacoste vraie ou fausse", "sneakers contrefacon Algerie"],
     },
+    {
+        "url": "https://teno-store.com/blog/vendre-en-ligne-algerie-guide-complet-demarrer-2026",
+        "title": "Vendre en ligne en Algérie : guide complet pour démarrer",
+        "answers": ["vendre en ligne Algerie comment", "registre commerce e-commerce Algerie", "auto-entrepreneur ANEM Algerie", "statut juridique vente en ligne", "TVA IBS IRG vendeur DZD", "demarrer boutique en ligne Algerie"],
+    },
 ]
 
 p = pathlib.Path(

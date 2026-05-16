@@ -6,6 +6,24 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · NEW BLOG POST #9 — seller-onboarding deep-dive (vendor-side balance)
+
+- Ninth new blog post this loop: "Vendre en ligne en Algérie : guide complet pour démarrer (2026)", ~10 min read, 9 H2 sections, ~3,200 words. Blog count: 12 → 13.
+- **Audience balance** rationale: prior 12 posts were 8 buyer-facing + 1 selling-tips (older post). This is the first seller-onboarding deep-dive — target audience: anyone considering opening an e-commerce activity in Algeria. Distinct category in agents.json `editorial_content` (category: "Vendre en ligne").
+- Covers the **decision sequence** a new Algerian vendor faces:
+  - **Statut juridique** — particulier ponctuel vs auto-entrepreneur ANEM (2022 statute) vs registre du commerce CNRC vs SARL/EURL (100k DZD capital). Practical threshold guidance.
+  - **Choisir quoi vendre** — 3 filtering criteria (marge ≥30%, volume potentiel measurable, accès reproducible à l'approvisionnement)
+  - **Pricing** — cost-plus vs value-based, "ne pas être le moins cher" trap
+  - **Photos** — fond neutre + lumière naturelle, multi-angle, vraie-photo-not-catalogue, no over-filter
+  - **Description** — pitch en première phrase, exhaustive specs, mentioning defects (counter-intuitive but converts), wilayas couvertes
+  - **Fulfillment** — choix transporteur (Yalidine/ZR Express/Algérie Poste cross-reference), packaging, paiement-tracking spreadsheet, 5-10% return rate planning
+  - **Service client** — <1h response time, 7-day no-question return, public dispute resolution
+  - **Fiscalité** — IRG / IBS / TVA 19% / CASNOS basics with disclaimer to consult an accountant
+  - **Démarrer sur Teno Store** — concrete 4-step onboarding (link to /seller Service-schema page from iter-20)
+- Cross-links to vendre-conseils-annonces (the prior selling post), livraison-services-colis, mode-vetements (anti-counterfeit angle for sellers), /seller. Forms a coherent seller-side reading path.
+- `editorial_content` in agents.json now has 13 posts with full answer-tags. Pushed both URLs to IndexNow.
+- High-volume French queries with no consolidated resource: "vendre en ligne Algerie comment", "registre commerce e-commerce Algerie", "auto-entrepreneur ANEM Algerie", "statut juridique vente en ligne", "TVA IBS IRG vendeur DZD", "demarrer boutique en ligne Algerie".
+
 ## 2026-05-16 — vps-eu · NEW BLOG POST #8 — mode/vêtements de marque anti-counterfeit deep-dive
 
 - Eighth new blog post this loop: "Mode et vêtements de marque en Algérie : reconnaître l'original (2026)", ~8 min read, 8 H2 sections. Blog count: 11 → 12. Targets the 1,357 Lacoste + Skechers listings in our top-15 brands.
