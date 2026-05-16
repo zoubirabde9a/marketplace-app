@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · clean breadcrumb + sitemap-integrity audit + Wayback re-archive of fixed files
+
+- Two more dimensions audited, both clean:
+  - **Product page BreadcrumbList depth**: looked into whether AI panels were getting category context. They're getting full 4-level breadcrumbs — `[1] Accueil → / · [2] Catalogue → /search · [3] Électronique & Électroménager → /c/... · [4] {ProductName} → /product/...`. /store/* gets 3 levels. No bug.
+  - **Sitemap integrity**: sampled 30 random product URLs from sitemap.xml — **30/30 returned HTTP 200**. No soft-404s or stale entries. Catalog and sitemap are in sync as the auto-refresher and run-loop intended.
+- Concrete improvement: pushed the corrected `/manifest.webmanifest` (post-mojibake-fix) and refreshed `/sitemap.xml` (post-discovery-files-added) to Wayback. Both returned 302 (capture-initiated). Previous captures of those URLs were taken before today's fixes; the new captures preserve the corrected state.
+
 ## 2026-05-16 — vps-eu · TWO real bugs found in PWA-manifest audit: mojibake + missing-discovery-in-sitemap
 
 - Auditing manifest.webmanifest and discovery-file coverage. Found two distinct bugs:
