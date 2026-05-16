@@ -6,6 +6,24 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · CRITICAL FINDING — Cloudflare proxy is OFF on all three subdomains (operator action required)
+
+- Auditing whether the middleware cache-control fix from iter-25 was actually being used by a CDN, I checked for `cf-*` response headers. **None present on any URL.** Investigated further:
+  - DNS resolution from 3 independent resolvers (1.1.1.1, 8.8.8.8, 9.9.9.9) all return `152.53.147.77` / `2a0a:4cc0:c1:2d20:a816:a4ff:fe07:7870` — that's the netcup VPS origin IP, NOT a Cloudflare edge IP. Confirmed for `teno-store.com`, `www.teno-store.com`, AND `api.teno-store.com`.
+  - Response headers consistently show `Via: 1.1 Caddy` (origin Caddy, no edge proxy in path).
+  - No `CF-Ray`, `CF-Cache-Status`, or `Server: cloudflare` headers anywhere.
+  - Nameservers ARE Cloudflare's (`benedict.ns.cloudflare.com`, `rosemary.ns.cloudflare.com`), so DNS is managed there — but the proxy (orange cloud) is currently OFF on every record.
+- This contradicts `deploy/dns.md` which explicitly says: "All records point at `vps-eu` ... All are **proxied** (orange cloud) so the public sees Cloudflare IPs, not the origin." Documentation-vs-reality drift somewhere.
+- **GEO + ops consequences while it's gray-cloud:**
+  - Every Googlebot / ClaudeBot / PerplexityBot / OAI-SearchBot / Bingbot hit goes straight to origin uncached. The middleware's `s-maxage=300` cache-control is sent but there's no edge cache to share it with. All the iter-25 work to add `/c/*` and `/blog/*` to the cache allowlist is benefiting only Caddy's in-process cache, not a global CDN.
+  - High latency for AI crawlers operating from US/Asia regions — they pay full netcup-EU round-trip on every fetch.
+  - No DDoS protection beyond what Caddy + the netcup firewall provide.
+  - Origin IP exposed in public DNS (server-location anonymization lost).
+- **Operator action required (cannot self-action — Cloudflare dashboard only):**
+  - Cloudflare dashboard → `teno-store.com` zone → DNS → click each gray cloud (A/AAAA records for `teno-store.com`, `www`, `api`) to flip to orange.
+  - SSL/TLS mode should already be Full or Full (strict) — Caddy auto-issued Let's Encrypt + has the long-lived cert, so Full (strict) is fine.
+  - If the original reason for gray-cloud was a debug step that didn't get reverted, this single click restores all of CLAUDE.md's documented Cloudflare cache rules + the iter-25 middleware work to their intended benefit.
+
 ## 2026-05-16 — vps-eu · compression + CORS audit (clean, with one minor follow-up to flag)
 
 - **Response compression**: confirmed both gzip and zstd work end-to-end. Concrete measurements via `curl -H "Accept-Encoding: ..."`:
