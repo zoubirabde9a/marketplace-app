@@ -39,6 +39,13 @@ export default function AboutPage() {
     // for the agent-developer audience. Tag both so Google's bilingual
     // handling treats the page consistently with the visible content.
     inLanguage: ["fr", "en"],
+    // dateModified gives AI crawlers (Perplexity, ChatGPT search, Google AI
+    // Overviews) an explicit freshness signal — pages with recent
+    // dateModified are weighted higher in source ranking for time-sensitive
+    // queries. Compile-time date is fine here: the about page content is
+    // updated whenever the codebase rebuilds and redeploys, so the build
+    // timestamp is a tight upper bound on actual last-modification.
+    dateModified: new Date().toISOString().split("T")[0],
     isPartOf: { "@id": `${SITE_URL}/#website` },
     about: { "@id": `${SITE_URL}/#organization` },
   };
@@ -77,6 +84,16 @@ export default function AboutPage() {
     {
       q: "Teno Store accepte-t-il les agents IA ?",
       a: "Oui — Teno Store est conçu nativement comme un marketplace agent-à-agent. Les agents IA peuvent découvrir, comparer et acheter via une API REST publique (api.teno-store.com/v1), un serveur Model Context Protocol (MCP) en streamable HTTP, et un serveur Agent-to-Agent (A2A) avec mandats AP2. La découverte se fait via /.well-known/agents.json.",
+    },
+    // 7th entry — still under Google's 8-FAQ-entry "spammy" threshold.
+    // Comparison queries ("Teno Store vs Ouedkniss / vs Jumia") are
+    // exactly what users send to ChatGPT/Gemini when evaluating Algerian
+    // marketplaces. Capturing the answer in FAQPage JSON-LD lets AI
+    // search panels quote it verbatim instead of synthesising from
+    // unrelated sources.
+    {
+      q: "Quelle est la différence entre Teno Store et Ouedkniss ou Jumia Algérie ?",
+      a: "Ouedkniss est une plateforme de petites annonces : l'échange se fait entièrement hors plateforme entre l'acheteur et le vendeur, sans API pour agents IA. Jumia Algérie est un détaillant intégré verticalement avec sa propre logistique et son propre stock. Teno Store est explicitement un marketplace pour agents : chaque annonce est exposée simultanément en HTML, REST, MCP et A2A, afin que les agents IA puissent parcourir et acheter sous mandats AP2, tout en permettant aux acheteurs humains de contacter directement les vendeurs. Le catalogue provient de vendeurs algériens, mais la couche de protocoles pour agents est unique à Teno Store.",
     },
   ];
   const faqJsonLd = {
@@ -186,6 +203,49 @@ export default function AboutPage() {
             ))}
           </dl>
         </section>
+        <h2 id="comparaison" className="text-xl font-medium text-ink mt-10 mb-2">
+          Comparaison avec les autres marketplaces algériens
+        </h2>
+        <p className="leading-relaxed">
+          Les utilisateurs algériens combinent souvent plusieurs marketplaces selon
+          le besoin. Voici comment Teno Store se positionne :
+        </p>
+        <ul className="list-none p-0 mt-2 space-y-3">
+          <li className="flex items-start gap-3">
+            <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+            <span>
+              <strong className="text-ink">Ouedkniss</strong> est une plateforme
+              de petites annonces : aucune API pour agents IA, les transactions
+              et la confiance se gèrent hors plateforme entre l&rsquo;acheteur et
+              le vendeur. Teno Store complète Ouedkniss en exposant les mêmes
+              annonces dans des surfaces machine-lisibles (REST, MCP, A2A) afin
+              que les agents IA puissent les parcourir et acheter sous mandats
+              AP2 — tout en gardant l&rsquo;accès direct vendeur côté humain.
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+            <span>
+              <strong className="text-ink">Jumia Algérie</strong> est un
+              détaillant intégré verticalement, avec son propre stock et sa
+              propre logistique. Teno Store est un marketplace de vendeurs
+              tiers : les annonces, les prix et les coordonnées de contact
+              viennent directement des vendeurs algériens, et les agents IA
+              négocient avec eux plutôt qu&rsquo;avec un guichet centralisé.
+            </span>
+          </li>
+          <li className="flex items-start gap-3">
+            <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+            <span>
+              <strong className="text-ink">Catalogue commun</strong> avec les
+              grandes catégories du commerce algérien — informatique
+              (~18 800 annonces, la plus grande catégorie), électroménager
+              (~9 200), téléphones (~8 700), immobilier (~5 900) et mode
+              (~4 900) — issues de vendeurs algériens, prix en dinars (DZD).
+            </span>
+          </li>
+        </ul>
+
         <h2 className="text-xl font-medium text-ink mt-10 mb-2">Commencer</h2>
         <p className="leading-relaxed">
           <Link href="/search" className="text-accent hover:underline">

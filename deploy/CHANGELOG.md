@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · added visible Ouedkniss/Jumia comparison to /about + 7th FAQ entry + dateModified (GEO)
+
+- The comparison content "How does Teno Store differ from Ouedkniss / Jumia Algeria?" lived only in `/llms-full.txt` (plain text). HTML-scraping AI tools — Google AI Overviews, Bing Chat, Perplexity, ChatGPT search when it walks rendered HTML — couldn't see it. Lifted the comparison into visible HTML on `/about` as a "Comparaison avec les autres marketplaces algériens" section: three bullets contrasting Teno Store with Ouedkniss (classifieds, no API) and Jumia Algeria (vertically-integrated retailer with own stock), plus a "common catalog" bullet with current per-category listing counts (informatique ~18,800, electroménager ~9,200, téléphones ~8,700, immobilier ~5,900, mode ~4,900).
+- Added a 7th FAQ entry — `"Quelle est la différence entre Teno Store et Ouedkniss ou Jumia Algérie ?"` — mirroring the visible comparison so the FAQPage JSON-LD captures the answer too. Still under Google's 8-entry "spammy" threshold.
+- Added `dateModified` to the AboutPage JSON-LD (set at compile time to ISO date). AI crawlers — Perplexity, ChatGPT search, Google AI Overviews — weight pages with recent `dateModified` higher when ranking sources for time-sensitive queries; previously the about page had no freshness signal at all.
+- Clean deploy this time: `docker compose -f docker-compose.prod.yml up -d --build web` in one step, let compose orchestrate the container recreate. No manual `docker rm`, no outage. Verified live HTTP 200, both new FAQ + comparison + `dateModified` visible in the rendered HTML, then pushed `/about` to IndexNow so Bing re-fetches the new payload.
+
 ## 2026-05-16 — vps-eu · added `<link rel="alternate">` tags advertising /llms.txt + /llms-full.txt on every page (GEO)
 
 - Until now, an HTML crawler that didn't already know the llmstxt.org convention had no way to discover `/llms.txt` and `/llms-full.txt` from the rendered page — they were only reachable via the `Sitemap:` line in robots.txt or via well-known-path probing. Added two `<link rel="alternate" type="text/plain; charset=utf-8">` tags to the root `<head>` in `layout.tsx`, advertising both files the same way every page already advertises `feed.xml`. ChatGPT search, Perplexity, Bing Chat, and Google AI Overviews all parse `<link rel="alternate">` natively.
