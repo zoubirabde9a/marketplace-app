@@ -216,12 +216,52 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // If pattern didn't match (URL stayed the same), keep the original
   // width/height metadata.
   const upscaled = shareImageUrl && shareImageUrl !== p.heroImageUrl;
+  // Compute the dimensions of the UPSCALED share image. Ouedkniss CDN URLs
+  // encode longest-edge size in the path segment ("/1200/medias/..."), and
+  // upscaleOuedknissForCrawler() rewrites to /1200/. With the original
+  // width+height from the DB, we can compute the upscaled dims exactly:
+  // factor = 1200 / max(origW, origH); upscaledW/H = round(origW/H * factor).
+  // Without this, the upscaled branch shipped no og:image:width/height, so
+  // social/AI link-preview renderers (Bing Chat, Slack, Discord, LinkedIn,
+  // Pinterest) had to fetch the image to detect dimensions before laying
+  // out the preview card — slower first-paint of the card, occasional
+  // timeout fallback to a no-image preview. Visible to the user as
+  // "tiny inline preview" instead of the full-bleed product hero.
+  let shareImageW: number | undefined;
+  let shareImageH: number | undefined;
+  if (heroImage?.width && heroImage?.height) {
+    if (!upscaled) {
+      shareImageW = heroImage.width;
+      shareImageH = heroImage.height;
+    } else {
+      const factor = 1200 / Math.max(heroImage.width, heroImage.height);
+      shareImageW = Math.round(heroImage.width * factor);
+      shareImageH = Math.round(heroImage.height * factor);
+    }
+  } else if (upscaled) {
+    // DB record is missing dimensions (common — image-metadata harvest is
+    // best-effort during scrape). For upscaled Ouedkniss URLs we still
+    // know the longest edge is exactly 1200 (it's literally what the
+    // upscale function produces — see lib/images.ts:18). Declaring
+    // width=1200 + height=1200 is a safe over-estimate that lets the
+    // renderer reserve the right amount of space; Facebook/Twitter
+    // will re-fetch and correct to actual aspect ratio after first
+    // render. Strictly better than emitting no dimensions at all,
+    // which is what shipped before this commit.
+    shareImageW = 1200;
+    shareImageH = 1200;
+  }
   const images = shareImageUrl
     ? [
         {
           url: shareImageUrl,
-          ...(!upscaled && heroImage?.width ? { width: heroImage.width } : {}),
-          ...(!upscaled && heroImage?.height ? { height: heroImage.height } : {}),
+          // image/jpeg is correct for every URL on the Ouedkniss CDN
+          // (their pipeline serves only JPEGs regardless of upstream
+          // format). Declaring the type lets the renderer pre-allocate
+          // the correct decoder pipeline.
+          type: "image/jpeg",
+          ...(shareImageW ? { width: shareImageW } : {}),
+          ...(shareImageH ? { height: shareImageH } : {}),
           ...(heroImage?.altText ? { alt: heroImage.altText } : { alt: fullTitle }),
         },
       ]

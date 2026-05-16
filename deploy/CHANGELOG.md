@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · added og:image:width/height/type to product pages (~48k URLs, link-preview quality)
+
+- Audit dimension this iteration: og:image metadata completeness. Found product pages had `og:image` + `og:image:alt` only — missing `og:image:width`, `og:image:height`, `og:image:type` AND the entire `twitter:image:*` dimension chain. Every other page on the site had them.
+- Cause: the existing code at `app/product/[id]/page.tsx:218` had a comment-documented decision to omit width/height when the hero URL was upscaled (Ouedkniss /400/ → /1200/) because the original DB dimensions describe the /400/ asset and would mismatch. That trade-off was defensive but cost real link-preview quality at scale.
+- Fix: compute the upscaled dimensions exactly using the original ratio and the known /1200/ longest-edge invariant (`factor = 1200 / max(w, h); upscaledW = w * factor; upscaledH = h * factor`). For records where the DB has no dimensions at all (image-metadata harvest is best-effort during scrape), fall back to declaring `1200 × 1200` — provably correct upper bound for the longest edge, and FB/Twitter re-detect actual aspect ratio after first render. Strictly better than emitting nothing.
+- Also added `type: "image/jpeg"` to the image object (always correct for Ouedkniss CDN URLs which serve only JPEGs regardless of upstream format).
+- Verified live on a sample product: emits 5 image meta tags now (og:image, og:image:type=image/jpeg, og:image:width=1200, og:image:height=1200, og:image:alt) plus twitter:image. Pushed to IndexNow. Affects ~48k product pages — the highest-volume shareable surface.
+
 ## 2026-05-16 — vps-eu · added /c/[slug] + /blog + /blog/[slug] to the middleware cache-control allowlist (BIG GEO + perf win)
 
 - Audit caught it: `/c/informatique` and `/blog/[slug]` were returning `cache-control: private, no-cache, no-store, max-age=0, must-revalidate` — the Next.js framework default for dynamic routes. Both are indexable, both are major AI-panel destinations.
