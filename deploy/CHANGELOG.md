@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · refreshed `.well-known/ai-plugin.json` (legacy ChatGPT-plugins manifest used by some bots) (GEO)
+
+- `ai-plugin.json` is the deprecated ChatGPT-plugins descriptor but some legacy AI tools and crawlers still probe `/.well-known/ai-plugin.json` on every domain they visit. The file existed but had stale catalog claims, used relative `/sitemap.xml` instead of an absolute URL, and made no reference to any of the new GEO discovery surfaces (`llms-full.txt`, `ai-policy.json`, `agents.json`).
+- Rewrote `description_for_human` and `description_for_model` with current scale (47k+ listings across 7 sellers), top categories ranked by real volume (informatique ~19k leads), the not-related-to-German-TeNo disambiguation, and explicit pointers to MCP / A2A / REST surfaces. Converted all internal references to absolute `https://teno-store.com/...` URLs. Added top-level `llms_txt`, `llms_full_txt`, `ai_policy`, `agents_json` fields so a bot reading only this single manifest discovers the full surface.
+- Hot-patched into container, pushed the URL to IndexNow so Bing re-fetches the new payload immediately.
+
 ## 2026-05-16 — vps-eu · enabled monthly IndexNow systemd timer (GEO autopilot)
 
 - Installed `marketplace-indexnow-sitemap.service` + `marketplace-indexnow-sitemap.timer` in `/etc/systemd/system/`. Fires monthly with a 2h randomized delay so the catalog stays fully synced with Bing (and via Bing's index: DuckDuckGo and ChatGPT search) without manual intervention. The scrape loop's incremental push handles fresh URLs; this monthly re-push catches the long tail of URLs that age out of the incremental window.

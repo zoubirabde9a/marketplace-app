@@ -1,15 +1,20 @@
 {
   "schema_version": "v1",
-  "name_for_human": "Teno Store — agent observer",
-  "name_for_model": "teno_store_agent_observer",
-  "description_for_human": "Read-only mirror of an AI agent's activity on Teno Store — searches, filters, and product detail pages, browsable by humans and crawlable by AI agents.",
-  "description_for_model": "Read-only Teno Store front-end. Static routes: '/' (home), '/search' (catalog with optional ?q= text query; URL also accepts brand, category, sellerId, priceMin, priceMax, currency, shipsTo, minRating, sort), '/product/{id}' (product detail with schema.org/Product JSON-LD). The underlying agent-to-agent marketplace API exposes its full machine-readable capability descriptor at the API host's '/.well-known/agent-card.json' (MCP, A2A, ACP endpoints, OAuth2/DPoP auth).",
+  "name_for_human": "Teno Store — Algerian marketplace",
+  "name_for_model": "teno_store",
+  "description_for_human": "Algerian online marketplace with 47,000+ live consumer-goods listings from Algerian sellers — computing (largest category), home appliances, phones, fashion, real estate — priced in DZD. Browsable by humans, crawlable by AI agents, transactable via MCP / A2A / AP2.",
+  "description_for_model": "Teno Store is an Algerian e-commerce marketplace (teno-store.com — not the German jewelry brand TeNo at teno.com). Catalog: 47,000+ live listings across 7 active sellers, priced in DZD, with French primary content. Top categories by listing count: informatique (~19k), electronique_electromenager (~9k), telephones (~9k), immobilier (~6k), vetements_mode (~5k). Public HTML routes: '/' (home), '/search' (catalog with ?q=, ?category=, ?brand=, ?sellerId=, ?sort=, ?priceFrom=, ?priceTo=), '/c/{slug}' (category landing), '/product/{id}' (product detail with schema.org Product JSON-LD), '/store/{uuid}' (seller storefront), '/about', '/blog'. Discovery surfaces: /llms.txt and /llms-full.txt (long-form LLM reference with FAQ and Ouedkniss/Jumia comparison), /.well-known/agents.json (machine-readable manifest with top_categories, top_brands, good_for, example_queries), /.well-known/ai-policy.json (structured crawl/cite/train/transact permissions). For agent-mediated transactions use the API host: REST at https://api.teno-store.com/v1, MCP at https://api.teno-store.com/mcp (streamable HTTP), A2A at https://api.teno-store.com/a2a, all with OAuth 2.1 + PKCE + DPoP auth, AP2 mandates supported. Full agent capability descriptor at https://api.teno-store.com/.well-known/agent-card.json.",
   "contact_email": "mahlledz@gmail.com",
-  "legal_info_url": null,
+  "legal_info_url": "https://teno-store.com/about",
   "api": {
     "type": "agent-card",
-    "note": "Authoritative agent capabilities live on the API host at /.well-known/agent-card.json. The web frontend itself is read-only and presents schema.org JSON-LD on its product, search, and home pages."
+    "url": "https://api.teno-store.com/.well-known/agent-card.json",
+    "note": "Authoritative agent capabilities live on the API host. The web frontend at teno-store.com is read-only HTML with schema.org JSON-LD on every product, category, store, and home page."
   },
-  "sitemap": "/sitemap.xml",
-  "robots": "/robots.txt"
+  "sitemap": "https://teno-store.com/sitemap.xml",
+  "robots": "https://teno-store.com/robots.txt",
+  "llms_txt": "https://teno-store.com/llms.txt",
+  "llms_full_txt": "https://teno-store.com/llms-full.txt",
+  "ai_policy": "https://teno-store.com/.well-known/ai-policy.json",
+  "agents_json": "https://teno-store.com/.well-known/agents.json"
 }
