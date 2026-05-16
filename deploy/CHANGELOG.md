@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-16 — vps-eu · compression + CORS audit (clean, with one minor follow-up to flag)
+
+- **Response compression**: confirmed both gzip and zstd work end-to-end. Concrete measurements via `curl -H "Accept-Encoding: ..."`:
+  - sitemap.xml: 17.3 MB uncompressed → 3.0 MB gzipped (5.7×) — every crawler hit on the full sitemap already gets the benefit.
+  - home page: 134 KB → 17 KB zstd (8×) — modern crawlers preferring zstd get a better ratio than gzip.
+  - api.teno-store.com/v1/products: gzip active.
+  - `Vary: Accept-Encoding` correctly set; cache keys won't collide between compressed/uncompressed variants.
+- **Caveat about `-I` HEAD checks**: my initial pass showed empty `Content-Encoding` because servers commonly omit it on HEAD responses (no body to compress). Always use `-D - -o /dev/null` for compression audits. Worth noting since it's a recurring gotcha.
+- **API CORS**: `Access-Control-Allow-Origin: *` on public endpoints — AI agents (browser-based or backend) can call from any origin.
+- **One minor follow-up to flag for operator** (not actioning autonomously since it touches Caddyfile): brotli isn't enabled. `Caddyfile` line `encode zstd gzip` could become `encode zstd br gzip` for a marginal ~5-10% improvement over gzip for text on clients that prefer brotli (Chrome, Firefox, most AI crawlers fall through to gzip if br isn't offered). Low priority — gzip + zstd already cover essentially every modern client. If actioned, requires `caddy reload` (live config swap, no downtime).
+- **False alarm cleanup**: last iteration's audit logged `/v1/brands` as "000 — connection error". This iteration's deep-check confirms it actually returns 401 (auth-required). Was a transient cURL behavior, not a real endpoint defect.
+
 ## 2026-05-16 — vps-eu · third clean audit pass (URL normalization + Article tags) + API host archived to Wayback
 
 - Three more audit dimensions, all clean:
