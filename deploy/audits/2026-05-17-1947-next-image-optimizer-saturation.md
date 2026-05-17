@@ -78,6 +78,8 @@ slow >3s:       1   (/product/<uuid> at 3.32 s)
 
 Same root cause as the 19:47 and 20:19 episodes. The Cloudflare Cache Rule fix is still not in place; pattern will keep recurring on every crawler sweep.
 
+**22:43 — escalation to total request failure.** A `curl https://teno-store.com/` from off-host timed out at the 15 s mark (status 000, no body). An SSH attempt in the same window also timed out. Three retries 30 s later all succeeded in 400–500 ms. So the saturation windows are now brief but severe enough that **at least one user request just got dropped entirely**, not merely served slowly. The `/_next/image` call rate during the surrounding 5 min was 881 — same sustained baseline, with a transient spike inside it.
+
 ## Similar issues to scan for
 
 - The single Node process pinned at 149 % CPU is the only process serving SSR. While it is busy on image optimization, category/product page renders also slow down — the same client (`136.117.185.78`) saw `3.8 s` responses for `/c/*` and `/product/*`. So image optimization contention is also degrading page TTFB for real users. See related audit `2026-05-17-1947-aggressive-crawler-136-117-185-78.md`.
