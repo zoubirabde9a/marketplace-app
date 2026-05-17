@@ -6,7 +6,19 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
-## 2026-05-16 — vps-eu · NEW BLOG POST #11 — lave-linge deep-dive + /about cluster patch (completes electromenager quartet)
+## 2026-05-17 — vps-eu · web + api rebuild — shipped 5 pending blog/content commits + 2 pre-existing typecheck errors fixed
+
+- Five commits accumulated since the last actual deploy (CHANGELOG entries had been written but the tar+rebuild step was skipped — every blog post was returning 404 in prod). Tar-shipped and rebuilt `web`: new `/blog/guide-achat-refrigerateur-algerie-2026` and `/blog/guide-achat-lave-linge-algerie-2026` now 200, /about cross-links to all 13 posts, category-page FAQ/intros scrubbed of specific product mentions, blog buying guides scrubbed of product/model names.
+- Pre-flight typecheck surfaced two pre-existing errors unrelated to today's content commits — fixed both before rebuild:
+  - `packages/db/src/repos/product.ts` was using `count()` from drizzle-orm without importing it (introduced in commit 6fa2183 hardening sweep, never tripped because no one had run `pnpm typecheck` since).
+  - `packages/api/src/routes/health.ts` was mutating the `msg` field of `readyz` probe results that are typed `readonly` via `as const`. Rewrote to build a fresh checks object via `.map()` instead of mutating in place.
+- Two test fixtures had drifted from production behavior — updated:
+  - `packages/db/test/schema-catalog.test.ts` was still asserting `seller_id` was NOT NULL, but the column became nullable on 2026-05-12 to support scraper-seeded reference listings without an owning seller.
+  - `packages/web/src/app/search/page.test.ts` was asserting indexable search slices return robots `{index:true, follow:true}` exactly, but production now also emits `max-image-preview:large`, `max-snippet:-1`, `max-video-preview:-1` to keep large image previews + unlimited snippets in SERP/AI-Overviews previews (was an existing wholesale-replace fix in search/page.tsx that didn't get a test update).
+- Api rebuild also picked up a concurrent-session optimization that was uncommitted in the working tree: `searchProducts(..., {noFacets: true})` opt-out lets the run-loop's `/v1/products?limit=1` totalEstimate probe skip the catalog-wide facet aggregation pass (was the dominant cost of an otherwise trivial query at ~55k products — produced 450 ms cold-path spikes every minute on a probe that should take a few ms). Both halves shipped together (api search.ts adds the flag, scraper/run-loop.sh starts passing it).
+- Verified live: 14/14 blog posts return 200 from teno-store.com/blog/{slug}. `/livez` ok. `/readyz` reports db + redis both healthy.
+
+
 
 - Eleventh new blog post this loop: "Guide d'achat : choisir un lave-linge en Algérie (2026)", ~9 min read, 10 H2 sections, ~3,700 words. Blog count: 14 → 15. Completes the electromenager quartet (climatiseur + téléviseur + réfrigérateur + **lave-linge**).
 - 10 dimensions covered with Algerian-specific framing:
