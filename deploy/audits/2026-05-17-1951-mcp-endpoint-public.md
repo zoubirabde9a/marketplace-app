@@ -28,3 +28,28 @@ The Model Context Protocol server (for AI agent integration) is exposed on the s
 
 - Are there other `/internal/*` or `/admin/*` paths exposed on `api.teno-store.com`? Grep the API route table for any path that should not be public.
 - The MCP tool list in this session (`mcp__teno-store__*`) suggests an in-house tool surface — make sure none of the *write* tools (`product_create_listing`, `seller_create_account`, `cart_*`, `checkout_confirm`) are reachable without auth.
+
+---
+
+## Resolved (verified) — 2026-05-17 20:30
+
+Write-tool auth was traced end-to-end and confirmed enforced. The `/mcp` POST endpoint is intentionally public at the transport layer (so the MCP TS SDK can connect without OAuth/DCR), but every tool invocation runs through a scope check:
+
+1. **Transport** (`packages/api/src/middleware/auth.ts:103`) marks `/mcp` as public — only `tools/list` and `initialize` succeed for an anonymous caller. Tool calls fall through to step 2.
+2. **buildContext** (`packages/api/src/server.ts:308-322`) — when `req.principal` is absent, the MCP context is built with `scopes: new Set()` (empty). agentId = `"anonymous"`.
+3. **Registry invoke** (`packages/mcp-server/src/registry.ts:73-84`) — every `tools/call` checks `ctx.scopes.has(tool.scope)` and throws `ForbiddenError("missing_scope:<scope>")` if absent. An anonymous caller has an empty scope set, so every scoped tool rejects.
+4. **Tool scope tags verified** (`packages/mcp-server/src/tools/`):
+   - `seller.create_account` → `seller:write`
+   - `product.create_listing` → `seller:product:write`
+   - `cart.*` (buyer.ts) → `buyer:cart:write` / `buyer:cart:read`
+   - `checkout.confirm` (buyer.ts:515) → `buyer:checkout:write`
+   - `order.get` → `buyer:order:read`
+   - `seller.list_orders` → `seller:order:read`
+
+Two promotion paths exist for `/mcp` (auth.ts:215-283):
+- `DEV_BYPASS=1` — synthesises a dev principal with the full default scope bundle. **Verified off in production:** `vps-eu:/opt/marketplace/.env` has `DEV_BYPASS=0`.
+- `X-Mp-Mcp-Token` header matching `MCP_ADMIN_TOKEN` — shared-secret admin path, constant-time-compared via `safeEqualString`. Token is a 64-char hex value set in `/opt/marketplace/.env` (mode 600).
+
+The 405 the original probe observed is the spec-mandated response to GET `/mcp` (`packages/mcp-server/src/transport.ts:48-55`) — not an auth bypass. POST without a passport or admin token reaches the registry, which rejects on missing scope. **No write tool is reachable unauthenticated.**
+
+Remaining suggestion from the original audit that is still actionable but separate from the auth gap: add a Cloudflare WAF rate limit on `/mcp` so anonymous probes can't exercise the scope-rejection path indefinitely. That is a CF dashboard change and needs the operator.

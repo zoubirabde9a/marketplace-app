@@ -41,6 +41,12 @@ Default `postgresql.conf` shipped with the image, plus the Compose service does 
 3. After restart: `CREATE EXTENSION pg_stat_statements;` in the `marketplace` database.
 4. Add a follow-up audit job that grabs the top 20 by `total_exec_time` once a day and writes it to `deploy/audits/perf/` — keeps a rolling record of which queries to optimize.
 
+## Resolved 2026-05-17 20:32
+
+Operator restarted Postgres with `shared_preload_libraries = pg_stat_statements,auto_explain` (the audit's primary recommendation plus the `auto_explain` follow-up from the "similar issues" section). The extension is installed and reporting data within seconds. First top-by-total-time sample at 20:34 — only one minute of uptime, so noisy, but `select id from catalog.products where category_ids @> $1::jsonb` is already at 583 ms mean on its single call; a likely candidate for a missing GIN index on `catalog.products.category_ids`. Will revisit after a few hours of accumulation.
+
+The companion tuning recommendation (`shared_buffers`, `effective_cache_size`, `work_mem`) in `2026-05-17-2010-postgres-on-defaults.md` was **not** applied in this restart — those are still at defaults. That is the right order (gather telemetry, then tune from evidence).
+
 ## Similar issues to scan for
 
 - Also worth enabling `auto_explain` with `auto_explain.log_min_duration = 1000` so any query > 1 s gets its plan written to the Postgres log automatically. Same restart, same config block.

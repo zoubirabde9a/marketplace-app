@@ -30,8 +30,13 @@ Severities are the author's read; the operator should re-rank against business p
 | Date | Title | One-line | File |
 |---|---|---|---|
 | 19:47 | Aggressive crawler at 136.117.185.78 | Fake Pixel 6 UA, 70 reqs/5 min, every response clustered at 3.7-3.8 s. | [2026-05-17-1947-aggressive-crawler-136-117-185-78.md](./2026-05-17-1947-aggressive-crawler-136-117-185-78.md) |
-| 19:51 | `/mcp` publicly reachable | 405 on GET suggests the route is registered for POST on `api.teno-store.com`. | [2026-05-17-1951-mcp-endpoint-public.md](./2026-05-17-1951-mcp-endpoint-public.md) |
-| 20:00 | `pg_stat_statements` not loaded | No slow-query telemetry in prod; blocks investigation of every slow-API audit above. | [2026-05-17-2000-pg-stat-statements-not-loaded.md](./2026-05-17-2000-pg-stat-statements-not-loaded.md) |
+
+## Resolved
+
+| Date | Title | Resolution | File |
+|---|---|---|---|
+| 20:00 | `pg_stat_statements` not loaded | Operator restarted Postgres at 20:32 with `pg_stat_statements,auto_explain` preloaded. Now reporting. | [2026-05-17-2000-pg-stat-statements-not-loaded.md](./2026-05-17-2000-pg-stat-statements-not-loaded.md) |
+| 19:51 | `/mcp` publicly reachable | Auth path verified end-to-end (anonymous principal → empty scopes → registry rejects every scoped tool). Rate-limit follow-up still open. | [2026-05-17-1951-mcp-endpoint-public.md](./2026-05-17-1951-mcp-endpoint-public.md) |
 
 ## Quick wins (cheapest changes with the highest leverage)
 
