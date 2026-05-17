@@ -59,6 +59,28 @@ Two compounding issues:
 ### Verification
 5. After the change, repeat the cold fetch from outside the network. TTFB should be < 200 ms.
 
+## Update 2026-05-17 20:38 — query-level fingerprint
+
+With `pg_stat_statements` now collecting (see resolved audit `2026-05-17-2000-pg-stat-statements-not-loaded.md`), the slow path has a fingerprint. Top three by total time, all called twice in the last few minutes (matching the per-build cadence the sitemap regenerator would have):
+
+```
+4684.8 ms mean  select "id","seller_id","canonical_id","canonical_confidence","sku",
+                       "title_raw","title_sanitized","description_ra…  FROM products
+2584.3 ms mean  select "id","seller_id","product_id","url","content_type","byte_size",
+                       "perceptual_hash","alt_text","width","hei…    FROM media
+1094.2 ms mean  select "id","product_id","sku","options","price_minor","currency",
+                       "sale_price_minor","floor_price_minor","weight…  FROM product_variants
+```
+
+Sum: ~8.4 s per build in Postgres alone, before any of the SSR/serialization work that brings the cold-build to 121 s.
+
+Two observations on the queries themselves, independent of the "pre-generate to disk" fix:
+
+1. **Column overfetch.** All three are `SELECT <every column>` patterns. The sitemap builder needs only `id` (for the URL) and probably `updated_at` (for `<lastmod>`), not `description_ra…` and friends. Trimming the projection alone will give a multiple-x speed-up because heap pages stay smaller and toast lookups disappear.
+2. **No visible filter clause.** The snippet truncation hides the WHERE, but a hot variant of the sitemap query likely has none (or just `status = 'active'`). Even with proper indexes on `category_ids` and `status`, a 55 k-row sequential scan with toast detoasting will dominate the cost. Combine the projection trim with a `LIMIT … OFFSET` chunked traversal.
+
+This is consistent with the original audit's recommendation to pre-generate and serve statically. The query-level finding adds: **even the regenerator path itself is wasteful** and should be tightened.
+
 ## Similar issues to scan for
 
 - `/feed.xml` was hit by the crawler earlier today (`2026-05-17-1947-aggressive-crawler-…md`) and took 3.69 s. That is the same pattern at smaller scale — DB-derived large XML, no static caching. Apply the same "generate to disk on a timer + serve via Caddy" fix.
