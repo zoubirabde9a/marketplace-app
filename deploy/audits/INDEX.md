@@ -35,7 +35,7 @@ Severities are the author's read; the operator should re-rank against business p
 |---|---|---|---|
 | 20:00 | `pg_stat_statements` not loaded | Operator restarted Postgres at 20:32 with `pg_stat_statements,auto_explain` preloaded. Now reporting. | [2026-05-17-2000-pg-stat-statements-not-loaded.md](./2026-05-17-2000-pg-stat-statements-not-loaded.md) |
 | 19:51 | `/mcp` publicly reachable | Auth path verified end-to-end (anonymous principal → empty scopes → registry rejects every scoped tool). Rate-limit follow-up still open. | [2026-05-17-1951-mcp-endpoint-public.md](./2026-05-17-1951-mcp-endpoint-public.md) |
-| 19:56 | Docker builder prune is a no-op | At 21:26 disk is down to 12 GB / 229 GB (5 %); ~35 GB reclaimed, likely by an ad-hoc `docker buildx prune -af`. Systemd-unit fix is still open. | [2026-05-17-1956-docker-builder-prune-noop.md](./2026-05-17-1956-docker-builder-prune-noop.md) |
+| 19:56 | Docker builder prune is a no-op | Fully fixed by 2026-05-18 00:06 — systemd unit now runs both `docker builder prune` and `docker buildx prune` in sequence; tonight's scheduled run executed cleanly. | [2026-05-17-1956-docker-builder-prune-noop.md](./2026-05-17-1956-docker-builder-prune-noop.md) |
 | 19:51 | Redis hit rate 7.4 % | Re-investigated 20:30: keyspace is 99 % MCP snapshots (write-once, read-rarely-by-design, 24 h TTL). Headline metric is meaningless; the actionable follow-up is a per-prefix breakdown. | [2026-05-17-1951-redis-low-hit-rate.md](./2026-05-17-1951-redis-low-hit-rate.md) + [2026-05-17-2030-redis-hit-rate-findings.md](./2026-05-17-2030-redis-hit-rate-findings.md) |
 
 ## Quick wins (cheapest changes with the highest leverage)

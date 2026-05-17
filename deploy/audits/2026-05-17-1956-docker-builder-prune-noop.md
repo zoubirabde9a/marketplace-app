@@ -60,6 +60,10 @@ Two plausible causes:
 
 `df -h /` now reports 12 GB used / 229 GB free (5 %), down from 47 GB / 194 GB (20 %) earlier in the session. ~35 GB reclaimed — consistent with the 41 GB of reclaimable build cache this audit identified. Most likely action: operator ran `docker buildx prune -af` once by hand. The systemd unit itself should still be updated to the buildx command so future runs aren't no-ops; flagging that as the remaining follow-up.
 
+## Fully resolved 2026-05-18 00:06
+
+Tonight's scheduled run shows the operator also fixed the systemd unit. The service description is now `Prune Docker build cache (legacy builder + buildx) older than 24h`, and the journal shows **two** docker processes (`docker[799233]` and `docker[799262]`) firing in sequence — the legacy `docker builder prune` followed by `docker buildx prune`. Both reported `Total: 0B`, which is expected because the build cache was cleared at 21:26 and no new builds have happened since. Future runs will catch any new buildx output before it accumulates.
+
 ## Similar issues to scan for
 
 - Image storage is 37.64 GB across 8 images. `marketplace-api` is 1.11 GB and `marketplace-web` 344 MB — the api image is suspiciously large for a Node service. Worth a multi-stage Dockerfile review (dev deps left in the final layer?). Not urgent at 20 % disk usage but reduces deploy time and image-pull cost.
