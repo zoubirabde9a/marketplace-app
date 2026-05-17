@@ -22,7 +22,6 @@ Severities are the author's read; the operator should re-rank against business p
 | 19:42 | Scraper rejects 100 % of listings for several categories | `invalid_skipped=50` every run for `immobilier`, `automobiles_vehicules`, `electronique_electromenager`. | [2026-05-17-1942-scraper-invalid-skipped-50.md](./2026-05-17-1942-scraper-invalid-skipped-50.md) |
 | 19:42 | `/v1/products?limit=1` bimodal latency | 5 ms warm / 450 ms cold from internal probe; facet aggregation runs unconditionally. | [2026-05-17-1942-api-products-limit1-bimodal-latency.md](./2026-05-17-1942-api-products-limit1-bimodal-latency.md) |
 | 19:42 | No swap, commit at 87 % of strict limit | Single ~500 MB spike can return ENOMEM with 2.4 GiB physically free. | [2026-05-17-1942-no-swap-commit-near-limit.md](./2026-05-17-1942-no-swap-commit-near-limit.md) |
-| 19:51 | Redis cache hit rate is 7.4 % | 9 444 hits vs 117 605 misses; TTLs shorter than read cadence. | [2026-05-17-1951-redis-low-hit-rate.md](./2026-05-17-1951-redis-low-hit-rate.md) |
 | 20:10 | API CORS is wildcard | `Access-Control-Allow-Origin: *` with `GET/POST/PUT/PATCH/DELETE` allowed. | [2026-05-17-2010-api-cors-wildcard.md](./2026-05-17-2010-api-cors-wildcard.md) |
 
 ## Low
@@ -37,6 +36,7 @@ Severities are the author's read; the operator should re-rank against business p
 |---|---|---|---|
 | 20:00 | `pg_stat_statements` not loaded | Operator restarted Postgres at 20:32 with `pg_stat_statements,auto_explain` preloaded. Now reporting. | [2026-05-17-2000-pg-stat-statements-not-loaded.md](./2026-05-17-2000-pg-stat-statements-not-loaded.md) |
 | 19:51 | `/mcp` publicly reachable | Auth path verified end-to-end (anonymous principal → empty scopes → registry rejects every scoped tool). Rate-limit follow-up still open. | [2026-05-17-1951-mcp-endpoint-public.md](./2026-05-17-1951-mcp-endpoint-public.md) |
+| 19:51 | Redis hit rate 7.4 % | Re-investigated 20:30: keyspace is 99 % MCP snapshots (write-once, read-rarely-by-design, 24 h TTL). Headline metric is meaningless; the actionable follow-up is a per-prefix breakdown. | [2026-05-17-1951-redis-low-hit-rate.md](./2026-05-17-1951-redis-low-hit-rate.md) + [2026-05-17-2030-redis-hit-rate-findings.md](./2026-05-17-2030-redis-hit-rate-findings.md) |
 
 ## Quick wins (cheapest changes with the highest leverage)
 
