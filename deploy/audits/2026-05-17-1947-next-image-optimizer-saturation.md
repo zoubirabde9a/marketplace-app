@@ -60,6 +60,24 @@ uri=/_next/image?url=https%3A%2F%2Fcdn9.ouedkniss.com%2F200%2Fmedias%2Fannouncem
 
 Priority on the Cloudflare Cache Rule fix is higher than originally stated — we are now timing out on real crawler traffic.
 
+## Update 2026-05-17 22:24 — second recurrence, this time degrading SSH
+
+Load spiked to 2.21 (vs ~0.5 baseline) and external latency went 10× normal — `https://api.teno-store.com/livez` returned 200 in 1.26 s (normally 60 ms), home in 1.44 s. Two consecutive SSH attempts to the box at 22:18 and 22:23 timed out before the diagnostic third attempt got through; CPU contention with sshd is the likely cause.
+
+5-minute Caddy sample during the spike:
+
+```
+total requests: 894
+/_next/image:   888  (99.3 %)
+top IPs:        172.18.0.1 (873)      ← SSR render-time fetches
+                57.141.20.18 / .44 / .68  ← Meta crawler
+                5.255.231.199          ← Yandex crawler
+5xx:            0
+slow >3s:       1   (/product/<uuid> at 3.32 s)
+```
+
+Same root cause as the 19:47 and 20:19 episodes. The Cloudflare Cache Rule fix is still not in place; pattern will keep recurring on every crawler sweep.
+
 ## Similar issues to scan for
 
 - The single Node process pinned at 149 % CPU is the only process serving SSR. While it is busy on image optimization, category/product page renders also slow down — the same client (`136.117.185.78`) saw `3.8 s` responses for `/c/*` and `/product/*`. So image optimization contention is also degrading page TTFB for real users. See related audit `2026-05-17-1947-aggressive-crawler-136-117-185-78.md`.
