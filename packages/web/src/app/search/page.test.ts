@@ -28,11 +28,21 @@ afterEach(() => {
 const M = (sp: Record<string, string | string[] | undefined>) =>
   generateMetadata({ searchParams: Promise.resolve(sp) });
 
+// Indexable /search slices re-declare the layout-level rich-result hints
+// (Next.js wholesale-replaces `robots` on child pages). See search/page.tsx.
+const INDEXABLE_ROBOTS = {
+  index: true,
+  follow: true,
+  "max-image-preview": "large",
+  "max-snippet": -1,
+  "max-video-preview": -1,
+};
+
 describe("search page generateMetadata", () => {
   it("bare /search → indexable, canonical /search, generic title", async () => {
     const m = await M({});
     expect(m.alternates?.canonical).toBe("/search");
-    expect(m.robots).toEqual({ index: true, follow: true });
+    expect(m.robots).toEqual(INDEXABLE_ROBOTS);
     expect(m.title).toBe("Parcourir le marketplace");
   });
 
@@ -51,7 +61,7 @@ describe("search page generateMetadata", () => {
   it("?brand=Acme alone → indexable as a brand page", async () => {
     const m = await M({ brand: "Acme" });
     expect(m.alternates?.canonical).toBe("/search?brand=Acme");
-    expect(m.robots).toEqual({ index: true, follow: true });
+    expect(m.robots).toEqual(INDEXABLE_ROBOTS);
     // Brand title is bare "{brand}" — the layout appends " · Teno Store"
     // so adding "products" would double-up brand context. Description
     // carries the brand-pitch wording in French.
@@ -76,7 +86,7 @@ describe("search page generateMetadata", () => {
     // splitting between the search-param variant and the pretty URL.
     const m = await M({ sellerId: "abc" });
     expect(m.alternates?.canonical).toBe("/store/abc");
-    expect(m.robots).toEqual({ index: true, follow: true });
+    expect(m.robots).toEqual(INDEXABLE_ROBOTS);
   });
 
   it("?sellerId=a&sellerId=b (two values) → noindex, canonical /search", async () => {

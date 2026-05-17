@@ -22,9 +22,9 @@ describe("products table schema", () => {
     expect(columnsByName.status).toBeDefined();
   });
 
-  it("requires id, seller_id, sku, sanitized title", () => {
+  it("requires id, sku, sanitized title (seller_id nullable since 2026-05-12 for scraper-seeded reference listings)", () => {
     expect(columnsByName.id!.notNull).toBe(true);
-    expect(columnsByName.seller_id!.notNull).toBe(true);
+    expect(columnsByName.seller_id!.notNull).toBe(false);
     expect(columnsByName.sku!.notNull).toBe(true);
     expect(columnsByName.title_raw!.notNull).toBe(true);
     expect(columnsByName.title_sanitized!.notNull).toBe(true);

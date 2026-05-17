@@ -68,20 +68,21 @@ export async function registerHealth(app: FastifyInstance, opts: HealthOptions =
         }
       }),
     );
-    const checks = Object.fromEntries(results);
     const allOk = results.every(([, r]) => r.ok);
-    if (!allOk) {
-      // Sanitise probe-returned msg the same way as caught-exception msgs.
-      // A probe that returns `ok: false` directly (e.g. a custom probe that
-      // surfaces "redis.ping returned ECONNREFUSED 10.0.0.5:6379") would
-      // otherwise bypass the catch sanitisation above.
-      for (const k of Object.keys(checks)) {
-        const c = checks[k];
-        if (c && !c.ok && typeof c.msg === "string") {
-          req.log.warn({ probe: k, msg: c.msg }, "readiness_probe_not_ok");
-          c.msg = "probe_failed";
+    // Sanitise probe-returned msg the same way as caught-exception msgs.
+    // A probe that returns `ok: false` directly (e.g. a custom probe that
+    // surfaces "redis.ping returned ECONNREFUSED 10.0.0.5:6379") would
+    // otherwise bypass the catch sanitisation above.
+    const checks = Object.fromEntries(
+      results.map(([name, r]) => {
+        if (!r.ok && typeof r.msg === "string") {
+          req.log.warn({ probe: name, msg: r.msg }, "readiness_probe_not_ok");
+          return [name, { ...r, msg: "probe_failed" }] as const;
         }
-      }
+        return [name, r] as const;
+      }),
+    );
+    if (!allOk) {
       void reply.code(503);
       return { status: "not_ready", checks };
     }
