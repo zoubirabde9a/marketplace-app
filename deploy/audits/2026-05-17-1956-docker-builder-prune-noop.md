@@ -56,6 +56,10 @@ Two plausible causes:
 3. As a one-shot cleanup, the operator should run `docker buildx prune -af` manually once to clear the accumulated 41 GB before re-enabling the timer with the corrected command.
 4. Update the service description and the corresponding entry in `deploy/systemd/` if that's where the unit is checked in (the inline service `Description` already drifted: it currently says "Prune Docker build cache older than 24h" on some lines and "older than 72h" on others — there's a stale Description string somewhere).
 
+## Resolved 2026-05-17 21:26
+
+`df -h /` now reports 12 GB used / 229 GB free (5 %), down from 47 GB / 194 GB (20 %) earlier in the session. ~35 GB reclaimed — consistent with the 41 GB of reclaimable build cache this audit identified. Most likely action: operator ran `docker buildx prune -af` once by hand. The systemd unit itself should still be updated to the buildx command so future runs aren't no-ops; flagging that as the remaining follow-up.
+
 ## Similar issues to scan for
 
 - Image storage is 37.64 GB across 8 images. `marketplace-api` is 1.11 GB and `marketplace-web` 344 MB — the api image is suspiciously large for a Node service. Worth a multi-stage Dockerfile review (dev deps left in the final layer?). Not urgent at 20 % disk usage but reduces deploy time and image-pull cost.
