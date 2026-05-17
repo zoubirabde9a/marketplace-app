@@ -49,6 +49,17 @@ Two compounding causes:
 ### Bigger
 - Stop proxying remote images. Either (a) rewrite `catalog.media.url` to point at a Cloudflare Worker / R2 / locally-cached object, or (b) emit `<img>` directly to `cdn*.ouedkniss.com` without going through `/_next/image` — accept that you lose responsive sizes but you give up the CPU bottleneck.
 
+## Update 2026-05-17 20:19 — first confirmed 504
+
+A Facebook crawler (`meta-externalagent/1.1`) just received a **504 Gateway Timeout** after 7.01 s on `/_next/image?url=…cdn9.ouedkniss.com/…&w=48&q=75`. This is the predicted user-visible failure mode: the image optimizer queue grows long enough that Caddy gives up before Next.js responds. Caddy log line:
+
+```
+status=504 duration=7.01s ua=meta-externalagent/1.1
+uri=/_next/image?url=https%3A%2F%2Fcdn9.ouedkniss.com%2F200%2Fmedias%2Fannouncements%2Fimages%2F59rrXv%2F…&w=48&q=75
+```
+
+Priority on the Cloudflare Cache Rule fix is higher than originally stated — we are now timing out on real crawler traffic.
+
 ## Similar issues to scan for
 
 - The single Node process pinned at 149 % CPU is the only process serving SSR. While it is busy on image optimization, category/product page renders also slow down — the same client (`136.117.185.78`) saw `3.8 s` responses for `/c/*` and `/product/*`. So image optimization contention is also degrading page TTFB for real users. See related audit `2026-05-17-1947-aggressive-crawler-136-117-185-78.md`.
