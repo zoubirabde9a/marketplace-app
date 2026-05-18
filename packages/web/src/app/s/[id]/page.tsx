@@ -180,7 +180,7 @@ function SearchSnapshot({ output, input }: { output: unknown; input: unknown }) 
 
   return (
     <section>
-      {queryText && <p className="text-sm text-ink-soft mb-3">Query: <span className="font-mono">{queryText}</span></p>}
+      {queryText && <p className="text-sm text-ink-soft mb-3">Query: <span className="font-mono break-all">{queryText}</span></p>}
       <p className="text-sm text-ink-mute mb-4">
         {o.hits?.length ?? 0} of ~{o.totalEstimate ?? 0} results
       </p>
@@ -303,9 +303,9 @@ function SellerCreateSnapshot({ output }: { output: unknown }) {
           </>
         ) : null}
         {!hasPhones && s.whatsapp ? (<><dt className="text-ink-mute">WhatsApp</dt><dd className="font-mono">{s.whatsapp}</dd></>) : null}
-        {s.website ? (<><dt className="text-ink-mute">Website</dt><dd><a className="text-accent hover:underline active:underline" href={s.website}>{s.website}</a></dd></>) : null}
-        {s.supportEmail ? (<><dt className="text-ink-mute">Support</dt><dd><a className="text-accent hover:underline active:underline" href={`mailto:${s.supportEmail}`}>{s.supportEmail}</a></dd></>) : null}
-        {s.ownerAgentId ? (<><dt className="text-ink-mute">Owner agent</dt><dd className="font-mono text-xs">{s.ownerAgentId}</dd></>) : null}
+        {s.website ? (<><dt className="text-ink-mute">Website</dt><dd className="break-all"><a className="text-accent hover:underline active:underline" href={s.website}>{s.website}</a></dd></>) : null}
+        {s.supportEmail ? (<><dt className="text-ink-mute">Support</dt><dd className="break-all"><a className="text-accent hover:underline active:underline" href={`mailto:${s.supportEmail}`}>{s.supportEmail}</a></dd></>) : null}
+        {s.ownerAgentId ? (<><dt className="text-ink-mute">Owner agent</dt><dd className="font-mono text-xs break-all">{s.ownerAgentId}</dd></>) : null}
         {s.createdAt ? (<><dt className="text-ink-mute">Created</dt><dd>{s.createdAt}</dd></>) : null}
       </dl>
       {s.sellerId && (

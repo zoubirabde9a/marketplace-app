@@ -119,8 +119,21 @@ export default async function CartPage() {
                       </PendingButton>
                     </form>
                   </div>
+                  {/* Mobile: line total inline at the bottom of the content
+                      column so the 3-column desktop layout (thumb / content /
+                      right-aligned total) doesn't squeeze the qty stepper
+                      below its 128px minimum width at <= 360px viewports. */}
+                  <div className="sm:hidden mt-3 pt-3 border-t border-line-soft flex items-baseline justify-between">
+                    <span className="text-xs text-ink-mute">Sous-total ligne</span>
+                    <span className="text-sm font-medium">
+                      {formatPrice(
+                        (BigInt(l.unitPriceMinor) * BigInt(l.qty)).toString(),
+                        cart!.currency,
+                      )}
+                    </span>
+                  </div>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="hidden sm:block text-right shrink-0">
                   <div className="text-sm font-medium">
                     {formatPrice(
                       (BigInt(l.unitPriceMinor) * BigInt(l.qty)).toString(),

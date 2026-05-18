@@ -22,7 +22,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
       <p className="text-ink-soft max-w-md mx-auto">
         Un problème est survenu de notre côté. Réessayez dans un instant, ou revenez au catalogue.
       </p>
-      {error.digest && <p className="text-xs text-ink-mute mt-2 font-mono">réf {error.digest}</p>}
+      {error.digest && <p className="text-xs text-ink-mute mt-2 font-mono break-all">réf {error.digest}</p>}
       <button
         onClick={reset}
         className="inline-flex mt-6 h-11 sm:h-10 px-4 items-center rounded-md bg-accent/15 text-accent border border-accent/30 hover:bg-accent/25 active:bg-accent/30 transition"

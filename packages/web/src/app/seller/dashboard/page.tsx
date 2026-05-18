@@ -360,7 +360,7 @@ function ContactSummary({ seller }: { seller: SellerRecord }) {
   return (
     <ul className="mt-2 text-xs text-ink-soft space-y-0.5">
       {set.map(([k, v]) => (
-        <li key={k}>
+        <li key={k} className="break-all">
           <span className="text-ink-mute">{k} :</span> {v}
         </li>
       ))}

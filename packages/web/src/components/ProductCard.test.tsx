@@ -93,6 +93,17 @@ describe("ProductCard", () => {
     expect(container.textContent).toMatch(/199\.99/);
   });
 
+  it("renders 'Prix sur demande' for the explicit priceMinor=0 sentinel", () => {
+    // seed-from-scraped.ts stamps priceMinor=0n + attributes.priceOnRequest
+    // when Ouedkniss listings have no parseable price (e.g. "Prix sur
+    // demande" / "à débattre"). The card's MIN_REAL_PRICE_MINOR floor
+    // previously checked `cap > 0`, so 0 fell through to formatPrice and
+    // rendered "DZD 0,00" on grid cards. Regression test for the >= 0 fix.
+    const { container } = render(<ProductCard hit={baseHit({ priceMinor: "0", currency: "DZD" })} />);
+    expect(container.textContent).toContain("Prix sur demande");
+    expect(container.textContent).not.toMatch(/DZD\s*0/i);
+  });
+
   it("renders a price range when only priceFrom/priceTo are present", () => {
     const { container } = render(
       <ProductCard

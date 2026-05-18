@@ -34,7 +34,7 @@ export function EmptyState({
       <h2 className="text-lg font-semibold text-ink mb-1">{title}</h2>
       <p className="text-sm text-ink-soft max-w-md mx-auto">{hint}</p>
       {q && (
-        <p className="text-xs text-ink-mute mt-4 font-mono">
+        <p className="text-xs text-ink-mute mt-4 font-mono break-all">
           requête : <span className="text-ink-soft">{q}</span>
         </p>
       )}
