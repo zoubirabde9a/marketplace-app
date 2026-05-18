@@ -63,7 +63,7 @@ export default async function CartPage() {
                       {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
                     </Link>
                   ) : (
-                    <span className="text-sm font-medium text-ink-soft">{l.sku ?? l.variantId}</span>
+                    <span className="text-sm font-medium text-ink-soft break-words">{l.sku ?? l.variantId}</span>
                   )}
                   {l.sku && (
                     <div className="text-xs text-ink-mute font-mono mt-0.5 truncate">{l.sku}</div>

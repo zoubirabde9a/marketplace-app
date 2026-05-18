@@ -66,11 +66,11 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             <li key={l.variantId} className="py-3 flex justify-between gap-4">
               <div className="min-w-0">
                 {l.productId ? (
-                  <Link href={`/product/${encodeURIComponent(l.productId)}`} className="text-sm text-ink hover:text-accent untrusted">
+                  <Link href={`/product/${encodeURIComponent(l.productId)}`} className="text-sm text-ink hover:text-accent untrusted break-words">
                     {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
                   </Link>
                 ) : (
-                  <span className="text-sm text-ink-soft">{l.sku ?? l.variantId}</span>
+                  <span className="text-sm text-ink-soft break-words">{l.sku ?? l.variantId}</span>
                 )}
                 <div className="text-xs text-ink-mute mt-0.5">
                   × {l.qty} · {formatPrice(l.unitPriceMinor, order.currency)} l’unité
