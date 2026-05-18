@@ -14,7 +14,9 @@ RUN corepack enable
 # source edit — which keeps the Docker build cache from ballooning by a
 # fresh ~700 MB on every rebuild (the prior shape copied `packages/`
 # before install, so any code edit cache-busted node_modules).
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
+# .npmrc carries `dangerously-allow-all-builds=true` for pnpm 10's strict
+# ERR_PNPM_IGNORED_BUILDS behavior on esbuild/sharp transitive build scripts.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json .npmrc ./
 COPY packages/a2a-server/package.json   packages/a2a-server/
 COPY packages/agent-sim/package.json    packages/agent-sim/
 COPY packages/api/package.json          packages/api/

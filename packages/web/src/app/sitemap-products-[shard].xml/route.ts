@@ -6,7 +6,11 @@ import {
   renderUrlset,
 } from "@/lib/sitemap";
 
-export const revalidate = 300;
+// force-dynamic so Next.js doesn't try to prerender at build time (which
+// errors with "Cannot destructure property 'shard'" because the [shard]
+// param is undefined during static analysis). Edge caching is handled
+// explicitly via SITEMAP_CACHE_HEADERS in the response.
+export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,

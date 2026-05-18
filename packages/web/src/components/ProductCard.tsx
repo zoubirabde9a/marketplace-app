@@ -39,8 +39,14 @@ export function ProductCard({
   // unreliable and swap for "Prix sur demande".
   const MAX_REAL_PRICE_MINOR = 100_000_000_000;
   const priceLabel = (() => {
+    // Use `cap >= 0` (not `> 0`) so the explicit "Prix sur demande" sentinel —
+    // priceMinor=0n, stamped by seed-from-scraped.ts when Ouedkniss listings
+    // have no parseable price — renders correctly instead of falling through
+    // to formatPrice which would emit "DZD 0,00". `hit.priceMinor === "0"`
+    // is a truthy string, so the trailing ternary still picks formatPrice
+    // without this floor.
     const cap = Number(hit.priceToMinor ?? hit.priceMinor ?? "0");
-    if (Number.isFinite(cap) && cap > 0 && cap < MIN_REAL_PRICE_MINOR) return "Prix sur demande";
+    if (Number.isFinite(cap) && cap >= 0 && cap < MIN_REAL_PRICE_MINOR) return "Prix sur demande";
     if (Number.isFinite(cap) && cap > MAX_REAL_PRICE_MINOR) return "Prix sur demande";
     return hit.priceMinor
       ? formatPrice(hit.priceMinor, hit.currency)

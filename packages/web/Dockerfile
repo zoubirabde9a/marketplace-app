@@ -19,7 +19,11 @@ RUN corepack enable
 # source edit. See the api Dockerfile at the repo root for the same
 # pattern and the rationale (Docker build cache was ballooning by ~700 MB
 # per rebuild before this split).
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
+# .npmrc carries `dangerously-allow-all-builds=true` which silences pnpm 10's
+# ERR_PNPM_IGNORED_BUILDS fatal-error on esbuild/sharp transitive build scripts.
+# Without copying it, the Docker build runs pnpm install with default settings
+# and the install fails at `pnpm install --no-frozen-lockfile` below.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json .npmrc ./
 COPY packages/a2a-server/package.json   packages/a2a-server/
 COPY packages/agent-sim/package.json    packages/agent-sim/
 COPY packages/api/package.json          packages/api/
