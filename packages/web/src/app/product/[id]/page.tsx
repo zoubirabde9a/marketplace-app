@@ -898,8 +898,8 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             })()}
           </div>
 
-          <div className="flex items-baseline gap-4">
-            <div className="text-3xl font-semibold tracking-tight">{priceLabel}</div>
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <div className="text-2xl sm:text-3xl font-semibold tracking-tight">{priceLabel}</div>
             <div className={`text-xs uppercase tracking-widest font-medium ${inStockVariants.length ? "text-ok" : "text-ink-mute"}`}>
               {inStockVariants.length
                 ? `${inStockVariants.length} variante${inStockVariants.length === 1 ? "" : "s"} en stock`

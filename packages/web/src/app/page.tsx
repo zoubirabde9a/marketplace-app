@@ -349,7 +349,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           <Link
             href="/search"
             lang="fr"
-            className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-bg-soft border border-line text-ink-soft hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition"
+            className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-bg-soft border border-line text-ink-soft hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink active:bg-bg-elev transition"
           >
             Parcourir le catalogue
           </Link>

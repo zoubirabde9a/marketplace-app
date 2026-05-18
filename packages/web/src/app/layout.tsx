@@ -239,9 +239,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             Awaited inline (no Suspense) — see git history of layout.tsx
             for the byte-position-ordering rationale. */}
         <CategoryFooter />
-        <main id="main" className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 pb-24">{children}</main>
-        <footer className="border-t border-line-soft mt-16">
-          <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-8 text-sm text-ink-mute flex flex-col sm:flex-row items-center justify-between gap-3">
+        <main id="main" className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 pb-16 sm:pb-24">{children}</main>
+        <footer className="border-t border-line-soft mt-10 sm:mt-16">
+          <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-6 sm:py-8 text-sm text-ink-mute flex flex-col sm:flex-row items-center justify-between gap-3">
             <nav aria-label="Pied de page" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
               <Link href="/search" className="py-2 sm:py-0 hover:text-ink active:text-ink transition">Parcourir</Link>
               <Link href="/seller/products/new" className="py-2 sm:py-0 hover:text-ink active:text-ink transition">Vendre</Link>
