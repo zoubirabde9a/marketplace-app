@@ -120,7 +120,7 @@ export default async function CheckoutPage({
           <ul className="mt-4 space-y-3 text-sm">
             {cart.lines.map((l) => (
               <li key={l.variantId} className="flex justify-between gap-4">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="truncate untrusted">{l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}</div>
                   <div className="text-xs text-ink-mute">× {l.qty}</div>
                 </div>

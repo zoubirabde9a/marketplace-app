@@ -106,7 +106,7 @@ function YourStores({ sellers }: { sellers: SellerRecord[] }) {
           <ul className="divide-y divide-line-soft">
             {sellers.map((s) => (
               <li key={s.sellerId} className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-                <div className="min-w-0">
+                <div className="min-w-0 sm:flex-1">
                   <div className="text-ink truncate font-medium">{s.displayName}</div>
                   <div className="text-xs text-ink-mute">
                     {s.productCount} product{s.productCount === 1 ? "" : "s"}

@@ -64,7 +64,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         <ul className="mt-3 divide-y divide-line-soft">
           {order.lines.map((l) => (
             <li key={l.variantId} className="py-3 flex justify-between gap-4">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 {l.productId ? (
                   <Link href={`/product/${encodeURIComponent(l.productId)}`} className="text-sm text-ink hover:text-accent active:text-accent untrusted break-words">
                     {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}

@@ -133,7 +133,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
   return (
     <div className="rounded-2xl border border-line-soft bg-bg-soft/60">
       <header className="p-4 sm:p-6 border-b border-line-soft flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0 sm:flex-1">
           <h2 className="text-xl font-medium break-words">{seller.displayName}</h2>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
             <span>
@@ -249,7 +249,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                             className="w-8 h-8 rounded border border-line-soft bg-bg-elev shrink-0"
                           />
                         )}
-                        <span className="truncate">
+                        <span className="truncate min-w-0 flex-1">
                           × {l.qty}{" "}
                           <span className="untrusted">{l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}</span>
                         </span>
@@ -289,7 +289,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
           <ul className="divide-y divide-line-soft">
             {products.map((p) => (
               <li key={p.productId} className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 sm:flex-1">
                   {p.heroImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -304,7 +304,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                       className="w-10 h-10 rounded border border-line-soft bg-bg-elev shrink-0"
                     />
                   )}
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="text-ink truncate">{cleanProductTitle(p.title)}</div>
                     {p.brand && (
                       <div className="text-xs text-ink-mute">{p.brand}</div>
