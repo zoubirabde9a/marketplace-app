@@ -91,7 +91,7 @@ export function InfiniteResults({ initialHits, initialCursor, baseQuery }: Infin
             <button
               type="button"
               onClick={() => void loadMore()}
-              className="text-xs text-bad underline-offset-4 hover:underline"
+              className="inline-flex items-center px-4 h-10 rounded-md border border-bad/40 bg-bad/10 text-sm sm:text-xs text-bad hover:bg-bad/20 active:bg-bad/25 transition"
             >
               Impossible de charger la suite — réessayer
             </button>

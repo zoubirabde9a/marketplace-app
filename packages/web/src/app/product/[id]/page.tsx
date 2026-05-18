@@ -950,7 +950,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           })()}
 
           {p.description && (
-            <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-5">
+            <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-5">
               <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-2">Description</h2>
               <p dir="auto" className="text-sm leading-relaxed text-ink-soft whitespace-pre-line untrusted">
                 {stripMaskedContactLines(p.description.value)}
@@ -1011,11 +1011,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             return (
               <section>
                 <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">Specifications</h2>
-                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 rounded-2xl border border-line-soft bg-bg-soft/60 p-5">
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-5">
                   {visibleAttrs.map(([k, v]) => (
                     <div key={k} className="flex items-baseline justify-between gap-3 py-1 border-b border-line-soft last:border-0">
-                      <dt className="text-xs text-ink-mute capitalize">{k.replace(/_/g, " ")}</dt>
-                      <dd className="text-sm text-ink-soft text-right untrusted">{v.value}</dd>
+                      <dt className="text-xs text-ink-mute capitalize break-words min-w-0">{k.replace(/_/g, " ")}</dt>
+                      <dd className="text-sm text-ink-soft text-right break-words min-w-0 untrusted">{v.value}</dd>
                     </div>
                   ))}
                 </dl>

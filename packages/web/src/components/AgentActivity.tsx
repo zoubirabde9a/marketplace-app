@@ -51,7 +51,7 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
 
       {/* Agents */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-10">
-        <div className="lg:col-span-1 rounded-2xl border border-line-soft bg-bg-soft/60 p-5">
+        <div className="lg:col-span-1 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-5">
           <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
             Your agents
           </h2>
@@ -80,7 +80,7 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
         </div>
 
         {/* Activity feed */}
-        <div className="lg:col-span-2 rounded-2xl border border-line-soft bg-bg-soft/60 p-5">
+        <div className="lg:col-span-2 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-5">
           <header className="flex items-baseline justify-between mb-3">
             <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">
               Recent activity
@@ -198,7 +198,7 @@ function ConnectAgentEmptyState() {
             </span>
           </li>
           <li className="ml-9 flex items-center gap-2">
-            <code className="flex-1 font-mono text-xs bg-bg/60 border border-line-soft rounded-md px-3 py-2 text-ink truncate">
+            <code className="flex-1 inline-flex items-center font-mono text-xs bg-bg/60 border border-line-soft rounded-md px-3 h-10 sm:h-8 text-ink truncate">
               {MCP_URL}
             </code>
             <CopyButton value={MCP_URL} label="Copy" copiedLabel="Copied" />
@@ -227,7 +227,7 @@ function ConnectAgentEmptyState() {
           ChatGPT desktop, Cursor, Zed, custom assistants. Add this as a new MCP server:
         </p>
         <div className="flex items-center gap-2">
-          <code className="flex-1 font-mono text-xs bg-bg/60 border border-line-soft rounded-md px-3 py-2 text-ink truncate">
+          <code className="flex-1 inline-flex items-center font-mono text-xs bg-bg/60 border border-line-soft rounded-md px-3 h-10 sm:h-8 text-ink truncate">
             {MCP_URL}
           </code>
           <CopyButton value={MCP_URL} label="Copy" copiedLabel="Copied" />
@@ -236,7 +236,7 @@ function ConnectAgentEmptyState() {
 
       {/* Hidden until needed */}
       <details className="group">
-        <summary className="cursor-pointer text-xs text-ink-mute hover:text-ink-soft list-none flex items-center gap-1.5">
+        <summary className="cursor-pointer text-xs text-ink-mute hover:text-ink-soft list-none flex items-center gap-1.5 py-2 sm:py-0">
           <span className="transition group-open:rotate-90">▸</span>
           For developers · build your own agent
         </summary>
