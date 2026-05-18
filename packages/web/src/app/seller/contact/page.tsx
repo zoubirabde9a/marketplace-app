@@ -37,7 +37,7 @@ export default async function ContactPage({
         <h1 className="text-2xl font-semibold">Modifier les coordonnées</h1>
         <p className="mt-4 text-sm text-ink-soft">
           Aucune boutique trouvée.{" "}
-          <Link href="/seller/dashboard" className="text-accent hover:underline">
+          <Link href="/seller/dashboard" className="text-accent hover:underline active:underline">
             Retour au tableau de bord
           </Link>
           .
@@ -48,7 +48,7 @@ export default async function ContactPage({
 
   return (
     <section className="pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
-      <Link href="/seller/dashboard" className="inline-flex items-center h-8 text-sm text-ink-soft hover:text-ink">
+      <Link href="/seller/dashboard" className="inline-flex items-center h-8 text-sm text-ink-soft hover:text-ink active:text-ink">
         ← Retour au tableau de bord
       </Link>
       <h1 className="mt-3 text-2xl font-semibold tracking-tight">Modifier les coordonnées</h1>

@@ -99,7 +99,7 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
           This snapshot exists but isn’t accessible from this link. The token
           may have been revoked or wasn’t included in the URL.
         </p>
-        <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
+        <Link href="/" className="text-accent hover:underline active:underline">Back to marketplace</Link>
       </article>
     );
   }
@@ -303,14 +303,14 @@ function SellerCreateSnapshot({ output }: { output: unknown }) {
           </>
         ) : null}
         {!hasPhones && s.whatsapp ? (<><dt className="text-ink-mute">WhatsApp</dt><dd className="font-mono">{s.whatsapp}</dd></>) : null}
-        {s.website ? (<><dt className="text-ink-mute">Website</dt><dd><a className="text-accent hover:underline" href={s.website}>{s.website}</a></dd></>) : null}
-        {s.supportEmail ? (<><dt className="text-ink-mute">Support</dt><dd><a className="text-accent hover:underline" href={`mailto:${s.supportEmail}`}>{s.supportEmail}</a></dd></>) : null}
+        {s.website ? (<><dt className="text-ink-mute">Website</dt><dd><a className="text-accent hover:underline active:underline" href={s.website}>{s.website}</a></dd></>) : null}
+        {s.supportEmail ? (<><dt className="text-ink-mute">Support</dt><dd><a className="text-accent hover:underline active:underline" href={`mailto:${s.supportEmail}`}>{s.supportEmail}</a></dd></>) : null}
         {s.ownerAgentId ? (<><dt className="text-ink-mute">Owner agent</dt><dd className="font-mono text-xs">{s.ownerAgentId}</dd></>) : null}
         {s.createdAt ? (<><dt className="text-ink-mute">Created</dt><dd>{s.createdAt}</dd></>) : null}
       </dl>
       {s.sellerId && (
         <p className="mt-6">
-          <Link className="text-accent hover:underline font-medium" href={`/store/${s.sellerId}`}>
+          <Link className="text-accent hover:underline active:underline font-medium" href={`/store/${s.sellerId}`}>
             View live storefront →
           </Link>
         </p>
@@ -379,11 +379,11 @@ function ProductCreateSnapshot({ output }: { output: unknown }) {
       ) : null}
       {p.createdAt ? <p className="text-xs text-ink-mute mt-3">Created {p.createdAt}</p> : null}
       <p className="mt-6 flex gap-4">
-        <Link className="text-accent hover:underline font-medium" href={`/product/${p.productId}`}>
+        <Link className="text-accent hover:underline active:underline font-medium" href={`/product/${p.productId}`}>
           View live product page →
         </Link>
         {p.sellerId && (
-          <Link className="text-accent hover:underline" href={`/store/${p.sellerId}`}>
+          <Link className="text-accent hover:underline active:underline" href={`/store/${p.sellerId}`}>
             Go to store
           </Link>
         )}

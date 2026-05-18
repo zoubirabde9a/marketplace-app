@@ -27,13 +27,13 @@ export function Header() {
           </Suspense>
         </div>
         <nav className="ml-auto flex items-center gap-1 text-sm text-ink-soft shrink-0">
-          <Link href="/search" className="hidden sm:inline-flex px-3 h-9 inline-flex items-center rounded-md hover:text-ink hover:bg-bg-elev transition">Parcourir</Link>
-          <Link href="/blog" className="hidden md:inline-flex px-3 h-9 inline-flex items-center rounded-md hover:text-ink hover:bg-bg-elev transition">Blog</Link>
-          <Link href="/about" className="hidden md:inline-flex px-3 h-9 inline-flex items-center rounded-md hover:text-ink hover:bg-bg-elev transition">À propos</Link>
+          <Link href="/search" className="hidden sm:inline-flex px-3 h-9 inline-flex items-center rounded-md hover:text-ink hover:bg-bg-elev active:bg-bg-elev transition">Parcourir</Link>
+          <Link href="/blog" className="hidden md:inline-flex px-3 h-9 inline-flex items-center rounded-md hover:text-ink hover:bg-bg-elev active:bg-bg-elev transition">Blog</Link>
+          <Link href="/about" className="hidden md:inline-flex px-3 h-9 inline-flex items-center rounded-md hover:text-ink hover:bg-bg-elev active:bg-bg-elev transition">À propos</Link>
           <Link
             href="/seller/products/new"
             aria-label="Publier une annonce"
-            className="inline-flex items-center gap-1 px-3 h-9 rounded-md bg-accent text-bg font-medium shadow-glow hover:brightness-110 transition"
+            className="inline-flex items-center gap-1 px-3 h-9 rounded-md bg-accent text-bg font-medium shadow-glow hover:brightness-110 active:brightness-90 transition"
           >
             <span aria-hidden className="text-base leading-none">+</span>
             <span className="hidden sm:inline">Vendre</span>

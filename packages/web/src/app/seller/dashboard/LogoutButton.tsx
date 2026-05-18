@@ -17,7 +17,7 @@ export function LogoutButton() {
           router.refresh();
         });
       }}
-      className="text-sm px-3.5 h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition disabled:opacity-60 shrink-0"
+      className="text-sm px-3.5 h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition disabled:opacity-60 shrink-0"
     >
       {pending ? "Déconnexion…" : "Se déconnecter"}
     </button>

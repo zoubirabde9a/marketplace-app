@@ -30,7 +30,7 @@ export default async function EditProductPage({
         <h1 className="text-2xl font-semibold">Modifier le produit</h1>
         <p className="mt-4 text-sm text-ink-soft">
           Produit introuvable.{" "}
-          <Link href="/seller/dashboard" className="text-accent hover:underline">
+          <Link href="/seller/dashboard" className="text-accent hover:underline active:underline">
             Retour au tableau de bord
           </Link>
           .
@@ -53,7 +53,7 @@ export default async function EditProductPage({
         <p className="mt-4 text-sm text-bad">
           Vous n’êtes pas propriétaire de ce produit.
         </p>
-        <Link href="/seller/dashboard" className="mt-3 inline-block text-accent hover:underline">
+        <Link href="/seller/dashboard" className="mt-3 inline-block text-accent hover:underline active:underline">
           Retour au tableau de bord
         </Link>
       </section>
@@ -78,7 +78,7 @@ export default async function EditProductPage({
 
   return (
     <section className="pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
-      <Link href="/seller/dashboard" className="inline-flex items-center h-8 text-sm text-ink-soft hover:text-ink">
+      <Link href="/seller/dashboard" className="inline-flex items-center h-8 text-sm text-ink-soft hover:text-ink active:text-ink">
         ← Retour au tableau de bord
       </Link>
       <h1 className="mt-3 text-2xl font-semibold tracking-tight">Modifier le produit</h1>

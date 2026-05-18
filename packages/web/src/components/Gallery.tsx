@@ -90,7 +90,7 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
               aria-current={i === idx ? "true" : undefined}
               className={clsx(
                 "aspect-square rounded-lg overflow-hidden border transition",
-                i === idx ? "border-accent shadow-glow" : "border-line-soft hover:border-line",
+                i === idx ? "border-accent shadow-glow" : "border-line-soft hover:border-line active:border-line",
               )}
             >
               {/* Thumbnail strip — small images so the optimizer emits a
@@ -112,7 +112,7 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
           aria-modal="true"
         >
           <button
-            className="absolute top-4 right-4 w-11 h-11 rounded-full bg-bg-elev/80 border border-line text-ink hover:bg-bg-elev"
+            className="absolute top-4 right-4 w-11 h-11 rounded-full bg-bg-elev/80 border border-line text-ink hover:bg-bg-elev active:bg-bg-elev"
             onClick={(e) => { e.stopPropagation(); setOpen(false); }}
             aria-label="Fermer"
           >

@@ -36,7 +36,7 @@ export function ShareButton({ title, url: urlProp }: { title: string; url?: stri
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-bg-elev border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+      className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-bg-elev border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition"
       aria-label="Partager cette annonce"
     >
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>

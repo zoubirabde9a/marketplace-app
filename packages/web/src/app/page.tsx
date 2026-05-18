@@ -342,14 +342,14 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
           <Link
             href="/login"
-            className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-accent text-bg font-medium hover:bg-accent-hover transition shadow-glow"
+            className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition shadow-glow"
           >
             Sign in to see your agent →
           </Link>
           <Link
             href="/search"
             lang="fr"
-            className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-bg-soft border border-line text-ink-soft hover:border-accent/40 hover:text-ink transition"
+            className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-bg-soft border border-line text-ink-soft hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition"
           >
             Parcourir le catalogue
           </Link>
@@ -401,7 +401,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
             <li key={slug}>
               <Link
                 href={`/c/${encodeURIComponent(slug)}`}
-                className="inline-flex items-center px-3.5 h-10 sm:h-9 rounded-full bg-bg-soft border border-line-soft text-sm text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                className="inline-flex items-center px-3.5 h-10 sm:h-9 rounded-full bg-bg-soft border border-line-soft text-sm text-ink-soft hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition"
               >
                 {label}
               </Link>
@@ -446,7 +446,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         <section className="mt-12" aria-labelledby="recent-heading">
           <div className="flex items-baseline justify-between mb-4">
             <h2 id="recent-heading" className="text-xl font-semibold tracking-tight">Annonces récentes</h2>
-            <Link href="/search" className="inline-flex items-center h-9 sm:h-8 text-sm text-ink-soft hover:text-ink transition">Voir tout →</Link>
+            <Link href="/search" className="inline-flex items-center h-9 sm:h-8 text-sm text-ink-soft hover:text-ink active:text-ink transition">Voir tout →</Link>
           </div>
           <ProductGrid hits={recent} />
         </section>

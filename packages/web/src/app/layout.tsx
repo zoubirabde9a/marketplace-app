@@ -236,10 +236,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="border-t border-line-soft mt-16">
           <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-8 text-sm text-ink-mute flex flex-col sm:flex-row items-center justify-between gap-3">
             <nav aria-label="Pied de page" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1">
-              <Link href="/search" className="py-2 sm:py-0 hover:text-ink transition">Parcourir</Link>
-              <Link href="/seller/products/new" className="py-2 sm:py-0 hover:text-ink transition">Vendre</Link>
-              <Link href="/blog" className="py-2 sm:py-0 hover:text-ink transition">Blog</Link>
-              <Link href="/about" className="py-2 sm:py-0 hover:text-ink transition">À propos</Link>
+              <Link href="/search" className="py-2 sm:py-0 hover:text-ink active:text-ink transition">Parcourir</Link>
+              <Link href="/seller/products/new" className="py-2 sm:py-0 hover:text-ink active:text-ink transition">Vendre</Link>
+              <Link href="/blog" className="py-2 sm:py-0 hover:text-ink active:text-ink transition">Blog</Link>
+              <Link href="/about" className="py-2 sm:py-0 hover:text-ink active:text-ink transition">À propos</Link>
             </nav>
             <span>© {new Date().getFullYear()} Teno Store</span>
           </div>

@@ -93,7 +93,7 @@ export default async function LoginPage({
               <p className="mt-3 text-sm text-warn">
                 La connexion nécessite JavaScript. La navigation publique
                 du catalogue fonctionne sans — essayez{" "}
-                <a href="/search" className="text-accent hover:underline">
+                <a href="/search" className="text-accent hover:underline active:underline">
                   /search
                 </a>
                 .

@@ -13,7 +13,7 @@ export async function HeaderUserMenu() {
       <Link
         href="/login"
         aria-label="Se connecter"
-        className="px-3 h-9 inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-ink-soft hover:text-ink hover:bg-bg-elev transition"
+        className="px-3 h-9 inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-ink-soft hover:text-ink hover:bg-bg-elev active:bg-bg-elev transition"
       >
         {/* User icon — labeled with aria-label on mobile (text hidden) and
             paired with the visible label from sm: up. Keeps the SearchBar
@@ -31,14 +31,14 @@ export async function HeaderUserMenu() {
     <div className="flex items-center gap-2">
       <Link
         href="/seller/dashboard"
-        className="hidden sm:inline-flex px-3 h-9 items-center rounded-md text-sm text-ink-soft hover:text-ink hover:bg-bg-elev transition"
+        className="hidden sm:inline-flex px-3 h-9 items-center rounded-md text-sm text-ink-soft hover:text-ink hover:bg-bg-elev active:bg-bg-elev transition"
         title="Gérer votre boutique"
       >
         Ma boutique
       </Link>
       <Link
         href="/dashboard"
-        className="text-xs text-ink-soft hidden sm:inline truncate max-w-[20ch] hover:text-ink transition"
+        className="text-xs text-ink-soft hidden sm:inline truncate max-w-[20ch] hover:text-ink active:text-ink transition"
         title={me.user.email}
       >
         {display}

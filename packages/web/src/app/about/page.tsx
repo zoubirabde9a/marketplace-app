@@ -197,7 +197,7 @@ export default function AboutPage() {
           acheteurs humains et les agents IA. Tableau de bord vendeur en libre
           service, prix par variante en DZD, signaux anti-contrefaçon visibles
           sur chaque annonce.{" "}
-          <Link href="/seller" className="text-accent hover:underline">
+          <Link href="/seller" className="text-accent hover:underline active:underline">
             S&rsquo;inscrire pour vendre →
           </Link>
         </p>
@@ -208,7 +208,7 @@ export default function AboutPage() {
         <h2 className="text-xl font-medium text-ink mt-10 mb-2">Guides d&rsquo;achat et de vente</h2>
         <p className="leading-relaxed">
           Le{" "}
-          <Link href="/blog" className="text-accent hover:underline">
+          <Link href="/blog" className="text-accent hover:underline active:underline">
             blog Teno Store
           </Link>{" "}
           rassemble des guides pratiques sur le commerce algérien en ligne :
@@ -216,27 +216,27 @@ export default function AboutPage() {
         <ul className="mt-3 space-y-2 text-ink-soft leading-relaxed list-none p-0">
           <li>
             <strong>Guides d&rsquo;achat par catégorie</strong> —{" "}
-            <Link href="/blog/guide-achat-smartphone-occasion-algerie-2026" className="text-accent hover:underline">smartphone d&rsquo;occasion</Link>,{" "}
-            <Link href="/blog/ordinateur-portable-etudes-algerie-guide-2026" className="text-accent hover:underline">ordinateur portable</Link>,{" "}
-            <Link href="/blog/guide-achat-televiseur-algerie-2026" className="text-accent hover:underline">téléviseur</Link>,{" "}
-            <Link href="/blog/guide-achat-climatiseur-algerie-2026" className="text-accent hover:underline">climatiseur</Link>,{" "}
-            <Link href="/blog/guide-achat-refrigerateur-algerie-2026" className="text-accent hover:underline">réfrigérateur</Link>,{" "}
-            <Link href="/blog/guide-achat-lave-linge-algerie-2026" className="text-accent hover:underline">lave-linge</Link>,{" "}
-            <Link href="/blog/guide-achat-electromenager-algerie-2026" className="text-accent hover:underline">électroménager général</Link>,{" "}
-            <Link href="/blog/machine-a-cafe-algerie-guide-achat-2026" className="text-accent hover:underline">machine à café</Link>,{" "}
-            <Link href="/blog/guide-mode-vetements-marques-algerie-2026" className="text-accent hover:underline">mode et vêtements de marque</Link>,{" "}
-            <Link href="/blog/acheter-voiture-occasion-algerie-10-verifications" className="text-accent hover:underline">véhicule d&rsquo;occasion</Link>.
+            <Link href="/blog/guide-achat-smartphone-occasion-algerie-2026" className="text-accent hover:underline active:underline">smartphone d&rsquo;occasion</Link>,{" "}
+            <Link href="/blog/ordinateur-portable-etudes-algerie-guide-2026" className="text-accent hover:underline active:underline">ordinateur portable</Link>,{" "}
+            <Link href="/blog/guide-achat-televiseur-algerie-2026" className="text-accent hover:underline active:underline">téléviseur</Link>,{" "}
+            <Link href="/blog/guide-achat-climatiseur-algerie-2026" className="text-accent hover:underline active:underline">climatiseur</Link>,{" "}
+            <Link href="/blog/guide-achat-refrigerateur-algerie-2026" className="text-accent hover:underline active:underline">réfrigérateur</Link>,{" "}
+            <Link href="/blog/guide-achat-lave-linge-algerie-2026" className="text-accent hover:underline active:underline">lave-linge</Link>,{" "}
+            <Link href="/blog/guide-achat-electromenager-algerie-2026" className="text-accent hover:underline active:underline">électroménager général</Link>,{" "}
+            <Link href="/blog/machine-a-cafe-algerie-guide-achat-2026" className="text-accent hover:underline active:underline">machine à café</Link>,{" "}
+            <Link href="/blog/guide-mode-vetements-marques-algerie-2026" className="text-accent hover:underline active:underline">mode et vêtements de marque</Link>,{" "}
+            <Link href="/blog/acheter-voiture-occasion-algerie-10-verifications" className="text-accent hover:underline active:underline">véhicule d&rsquo;occasion</Link>.
           </li>
           <li>
             <strong>Acheter en confiance</strong> —{" "}
-            <Link href="/blog/acheter-en-ligne-algerie-sans-se-faire-avoir-2026" className="text-accent hover:underline">éviter les arnaques</Link>,{" "}
-            <Link href="/blog/payer-en-ligne-algerie-methodes-paiement-2026" className="text-accent hover:underline">méthodes de paiement (Edahabia, CIB, CCP)</Link>,{" "}
-            <Link href="/blog/livraison-algerie-services-colis-tarifs-2026" className="text-accent hover:underline">services de livraison (Yalidine, ZR Express, DHL)</Link>.
+            <Link href="/blog/acheter-en-ligne-algerie-sans-se-faire-avoir-2026" className="text-accent hover:underline active:underline">éviter les arnaques</Link>,{" "}
+            <Link href="/blog/payer-en-ligne-algerie-methodes-paiement-2026" className="text-accent hover:underline active:underline">méthodes de paiement (Edahabia, CIB, CCP)</Link>,{" "}
+            <Link href="/blog/livraison-algerie-services-colis-tarifs-2026" className="text-accent hover:underline active:underline">services de livraison (Yalidine, ZR Express, DHL)</Link>.
           </li>
           <li>
             <strong>Vendre en ligne</strong> —{" "}
-            <Link href="/blog/vendre-en-ligne-algerie-guide-complet-demarrer-2026" className="text-accent hover:underline">guide complet pour démarrer</Link>,{" "}
-            <Link href="/blog/vendre-sur-teno-store-7-conseils-annonces" className="text-accent hover:underline">7 conseils pour des annonces qui marchent</Link>.
+            <Link href="/blog/vendre-en-ligne-algerie-guide-complet-demarrer-2026" className="text-accent hover:underline active:underline">guide complet pour démarrer</Link>,{" "}
+            <Link href="/blog/vendre-sur-teno-store-7-conseils-annonces" className="text-accent hover:underline active:underline">7 conseils pour des annonces qui marchent</Link>.
           </li>
         </ul>
         <section aria-labelledby="faq-heading" className="mt-12">
@@ -307,11 +307,11 @@ export default function AboutPage() {
 
         <h2 className="text-xl font-medium text-ink mt-10 mb-2">Commencer</h2>
         <p className="leading-relaxed">
-          <Link href="/search" className="text-accent hover:underline">
+          <Link href="/search" className="text-accent hover:underline active:underline">
             Parcourir le catalogue →
           </Link>
           {" · "}
-          <Link href="/seller" className="text-accent hover:underline">
+          <Link href="/seller" className="text-accent hover:underline active:underline">
             Vendre sur Teno Store →
           </Link>
         </p>
@@ -351,7 +351,7 @@ export default function AboutPage() {
         per-variant in your own currency, stock and contact details are
         editable from the seller dashboard, and every listing carries a
         counterfeit-risk indicator alongside trusted sellers.{" "}
-        <Link href="/seller" className="text-accent hover:underline">
+        <Link href="/seller" className="text-accent hover:underline active:underline">
           Sign up to sell →
         </Link>
       </p>
@@ -404,11 +404,11 @@ export default function AboutPage() {
 
       <h2 className="text-xl font-medium text-ink mt-10 mb-2">Get started</h2>
       <p className="leading-relaxed">
-        <Link href="/search" className="text-accent hover:underline">
+        <Link href="/search" className="text-accent hover:underline active:underline">
           Browse the catalog →
         </Link>
         {" · "}
-        <Link href="/seller" className="text-accent hover:underline">
+        <Link href="/seller" className="text-accent hover:underline active:underline">
           Sell on Teno Store →
         </Link>
       </p>

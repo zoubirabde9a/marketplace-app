@@ -211,9 +211,9 @@ export default async function CategoryLandingPage({
         dangerouslySetInnerHTML={{ __html: jsonLdString(faqJsonLd) }}
       />
       <nav aria-label="Fil d'Ariane" className="text-sm text-ink-mute flex items-center gap-x-1 gap-y-0 flex-wrap mb-4">
-        <Link href="/" className="py-1 hover:text-ink">Accueil</Link>
+        <Link href="/" className="py-1 hover:text-ink active:text-ink">Accueil</Link>
         <span aria-hidden>/</span>
-        <Link href="/search" className="py-1 hover:text-ink">Catégories</Link>
+        <Link href="/search" className="py-1 hover:text-ink active:text-ink">Catégories</Link>
         <span aria-hidden>/</span>
         <span className="py-1 text-ink-soft">{human}</span>
       </nav>
@@ -234,7 +234,7 @@ export default async function CategoryLandingPage({
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href={`/search?${resolveCategorySlugs(slug).map(s => `category=${encodeURIComponent(s)}`).join("&")}`}
-            className="inline-flex items-center justify-center px-5 h-11 sm:h-10 rounded-md bg-accent text-bg font-medium shadow-glow hover:brightness-110 transition"
+            className="inline-flex items-center justify-center px-5 h-11 sm:h-10 rounded-md bg-accent text-bg font-medium shadow-glow hover:brightness-110 active:brightness-90 transition"
           >
             Voir toutes les {annonce} →
           </Link>
@@ -249,7 +249,7 @@ export default async function CategoryLandingPage({
             </h2>
             <Link
               href={`/search?${resolveCategorySlugs(slug).map(s => `category=${encodeURIComponent(s)}`).join("&")}&sort=newest`}
-              className="inline-flex items-center h-9 sm:h-8 text-sm text-accent hover:underline"
+              className="inline-flex items-center h-9 sm:h-8 text-sm text-accent hover:underline active:underline"
             >
               Voir plus →
             </Link>
@@ -296,7 +296,7 @@ export default async function CategoryLandingPage({
               <Link
                 key={r}
                 href={`/c/${r}`}
-                className="inline-flex items-center px-3.5 h-10 sm:h-8 rounded-md bg-bg-elev border border-line-soft text-sm text-ink-soft hover:text-ink hover:border-accent transition"
+                className="inline-flex items-center px-3.5 h-10 sm:h-8 rounded-md bg-bg-elev border border-line-soft text-sm text-ink-soft hover:text-ink hover:border-accent active:text-ink active:border-accent transition"
               >
                 {humanizeCategorySlug(r)}
               </Link>

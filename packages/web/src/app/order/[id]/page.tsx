@@ -66,7 +66,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             <li key={l.variantId} className="py-3 flex justify-between gap-4">
               <div className="min-w-0">
                 {l.productId ? (
-                  <Link href={`/product/${encodeURIComponent(l.productId)}`} className="text-sm text-ink hover:text-accent untrusted break-words">
+                  <Link href={`/product/${encodeURIComponent(l.productId)}`} className="text-sm text-ink hover:text-accent active:text-accent untrusted break-words">
                     {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
                   </Link>
                 ) : (
@@ -111,7 +111,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       <div className="mt-6 sm:mt-8 flex gap-3">
         <Link
           href="/search"
-          className="inline-flex items-center justify-center w-full sm:w-auto px-5 h-11 sm:h-10 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 transition"
+          className="inline-flex items-center justify-center w-full sm:w-auto px-5 h-11 sm:h-10 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 active:brightness-90 transition"
         >
           Continuer mes achats
         </Link>

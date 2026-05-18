@@ -85,7 +85,7 @@ function YourStores({ sellers }: { sellers: SellerRecord[] }) {
           </h2>
           <Link
             href="/seller/dashboard"
-            className="inline-flex items-center h-8 text-xs text-ink-soft hover:text-accent transition"
+            className="inline-flex items-center h-8 text-xs text-ink-soft hover:text-accent active:text-accent transition"
           >
             Manage all →
           </Link>
@@ -97,7 +97,7 @@ function YourStores({ sellers }: { sellers: SellerRecord[] }) {
             </p>
             <Link
               href="/seller/dashboard"
-              className="text-sm px-4 h-10 sm:h-9 inline-flex items-center justify-center rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition sm:shrink-0"
+              className="text-sm px-4 h-10 sm:h-9 inline-flex items-center justify-center rounded-md bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition sm:shrink-0"
             >
               Open a store
             </Link>
@@ -115,19 +115,19 @@ function YourStores({ sellers }: { sellers: SellerRecord[] }) {
                 <div className="flex flex-wrap items-center gap-2 text-xs sm:shrink-0">
                   <Link
                     href={`/seller/products/new?sellerId=${encodeURIComponent(s.sellerId)}`}
-                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
                   >
                     Add product
                   </Link>
                   <Link
                     href="/seller/dashboard"
-                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
                   >
                     Manage
                   </Link>
                   <Link
                     href={`/store/${encodeURIComponent(s.sellerId)}`}
-                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
                   >
                     View public
                   </Link>

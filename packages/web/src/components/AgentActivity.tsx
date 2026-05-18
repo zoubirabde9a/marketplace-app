@@ -135,7 +135,7 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
       </div>
 
       <div className="text-sm text-ink-mute">
-        <Link href="/search" className="hover:text-accent">
+        <Link href="/search" className="hover:text-accent active:text-accent">
           Browse the catalog →
         </Link>
       </div>
@@ -177,7 +177,7 @@ function ConnectAgentEmptyState() {
             href="https://claude.ai/download"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3.5 h-10 sm:h-8 rounded-full bg-bg-soft border border-line-soft text-sm sm:text-xs hover:border-accent/40 transition shrink-0"
+            className="inline-flex items-center gap-1.5 px-3.5 h-10 sm:h-8 rounded-full bg-bg-soft border border-line-soft text-sm sm:text-xs hover:border-accent/40 active:border-accent/40 transition shrink-0"
           >
             Download Claude →
           </a>
@@ -236,14 +236,14 @@ function ConnectAgentEmptyState() {
 
       {/* Hidden until needed */}
       <details className="group">
-        <summary className="cursor-pointer text-xs text-ink-mute hover:text-ink-soft list-none flex items-center gap-1.5 py-2 sm:py-0">
+        <summary className="cursor-pointer text-xs text-ink-mute hover:text-ink-soft active:text-ink-soft list-none flex items-center gap-1.5 py-2 sm:py-0">
           <span className="transition group-open:rotate-90">▸</span>
           For developers · build your own agent
         </summary>
         <div className="mt-3 pl-4 space-y-3 text-xs text-ink-mute">
           <p>
             The full protocol surface (REST / MCP / A2A / AP2) is documented at{" "}
-            <a href="/.well-known/agents.json" className="text-accent hover:underline">
+            <a href="/.well-known/agents.json" className="text-accent hover:underline active:underline">
               /.well-known/agents.json
             </a>. To mint an Agent Passport directly:
           </p>

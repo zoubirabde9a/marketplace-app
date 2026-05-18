@@ -109,7 +109,7 @@ export default function BlogIndexPage() {
               <p className="text-ink-soft leading-relaxed mb-3">{p.excerpt}</p>
               <Link
                 href={`/blog/${p.slug}`}
-                className="inline-flex items-center h-9 sm:h-auto text-accent hover:underline active:underline text-sm font-medium"
+                className="inline-flex items-center h-9 sm:h-auto text-accent hover:underline active:underline active:underline text-sm font-medium"
               >
                 Lire l&rsquo;article →
               </Link>

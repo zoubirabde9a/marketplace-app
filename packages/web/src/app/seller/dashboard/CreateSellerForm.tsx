@@ -69,7 +69,7 @@ export function CreateSellerForm() {
       <button
         type="submit"
         disabled={pending}
-        className="self-stretch sm:self-start inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
+        className="self-stretch sm:self-start inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition disabled:opacity-60"
       >
         {pending ? "Création…" : "Créer ma boutique"}
       </button>

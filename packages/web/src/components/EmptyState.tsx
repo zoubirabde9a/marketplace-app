@@ -42,18 +42,18 @@ export function EmptyState({
         {showFuzzyCta && (
           <Link
             href={`/search?q=${encodeURIComponent(q!)}&fuzzy=true`}
-            className="inline-flex px-4 h-11 sm:h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition"
+            className="inline-flex px-4 h-11 sm:h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 active:bg-accent/30 transition"
           >
             Essayer la recherche approximative
           </Link>
         )}
         {showReset && (
-          <Link href="/search" className="inline-flex px-4 h-11 sm:h-9 items-center rounded-md bg-bg-elev border border-line text-ink-soft text-sm hover:border-accent/40 hover:text-ink transition">
+          <Link href="/search" className="inline-flex px-4 h-11 sm:h-9 items-center rounded-md bg-bg-elev border border-line text-ink-soft text-sm hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition">
             {resetLabel}
           </Link>
         )}
         {showSellCta && (
-          <Link href="/seller" className="inline-flex px-4 h-11 sm:h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition">
+          <Link href="/seller" className="inline-flex px-4 h-11 sm:h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 active:bg-accent/30 transition">
             Vendre sur Teno Store →
           </Link>
         )}

@@ -758,7 +758,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 // for attention.
                 <Link
                   href={`/search?brand=${encodeURIComponent(p.brand)}`}
-                  className="text-xs uppercase tracking-widest text-ink-mute font-medium hover:text-ink transition"
+                  className="text-xs uppercase tracking-widest text-ink-mute font-medium hover:text-ink active:text-ink transition"
                 >
                   {p.brand}
                 </Link>
@@ -771,7 +771,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 Vendu par{" "}
                 <Link
                   href={`/store/${encodeURIComponent(p.sellerId)}`}
-                  className="text-ink hover:text-accent underline-offset-4 hover:underline"
+                  className="text-ink hover:text-accent active:text-accent underline-offset-4 hover:underline active:underline"
                 >
                   {p.sellerDisplayName?.trim() ? p.sellerDisplayName : "ce vendeur"}
                 </Link>
@@ -846,7 +846,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                         key={`tel-${chip.phone}-${idx}`}
                         href={`tel:${chip.phone}`}
                         aria-label={`Appeler ${p.sellerDisplayName ?? "le vendeur"} au ${chip.phone}`}
-                        className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-bg-elev border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                        className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-bg-elev border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                         <span className="font-mono tabular-nums tracking-tight" dir="ltr">{localizeDz(chip.phone)}</span>
@@ -861,7 +861,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={`Contacter ${p.sellerDisplayName ?? "le vendeur"} sur WhatsApp au ${chip.phone} (s'ouvre dans un nouvel onglet)`}
-                        className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-sm sm:text-xs text-emerald-400 hover:bg-emerald-500/20 transition"
+                        className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-sm sm:text-xs text-emerald-400 hover:bg-emerald-500/20 active:bg-emerald-500/25 transition"
                       >
                         <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.2-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.7-.9-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5 4.5 1.7.7 2.4.8 3.3.7.5-.1 1.7-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.3 4.9L2 22l5.3-1.4c1.4.7 2.9 1.1 4.7 1.1 5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg>
                         <span className="font-mono tabular-nums tracking-tight" dir="ltr">{localizeDz(chip.phone)}</span>
@@ -874,7 +874,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                       key={`viber-${chip.phone}-${idx}`}
                       href={`viber://chat?number=${encodeURIComponent(chip.phone)}`}
                       aria-label={`Contacter ${p.sellerDisplayName ?? "le vendeur"} sur Viber au ${chip.phone}`}
-                      className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-violet-500/10 border border-violet-500/30 text-sm sm:text-xs text-violet-300 hover:bg-violet-500/20 transition"
+                      className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-violet-500/10 border border-violet-500/30 text-sm sm:text-xs text-violet-300 hover:bg-violet-500/20 active:bg-violet-500/25 transition"
                     >
                       <span className="font-mono tabular-nums tracking-tight" dir="ltr">Viber {localizeDz(chip.phone)}</span>
                     </a>
@@ -886,7 +886,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     target="_blank"
                     rel="nofollow ugc noopener noreferrer"
                     aria-label={`Site web de ${p.sellerDisplayName ?? "le vendeur"} (s'ouvre dans un nouvel onglet)`}
-                    className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-bg-elev border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                    className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-bg-elev border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                     Site web
@@ -933,7 +933,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   inStock={inStock}
                   label="Acheter maintenant"
                   redirectTo="/checkout"
-                  className="[&>button]:bg-transparent [&>button]:border [&>button]:border-accent/60 [&>button]:text-accent [&>button]:hover:bg-accent/10 [&>button]:hover:brightness-100"
+                  className="[&>button]:bg-transparent [&>button]:border [&>button]:border-accent/60 [&>button]:text-accent [&>button]:hover:bg-accent/10 [&>button]:hover:brightness-100 [&>button]:active:bg-accent/20 [&>button]:active:brightness-100"
                 />
               </div>
             );
@@ -1033,7 +1033,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
           {p.sellerId && (
             <div className="text-xs text-ink-mute pt-4 border-t border-line-soft">
-              <Link href={`/store/${encodeURIComponent(p.sellerId)}`} className="hover:text-accent">
+              <Link href={`/store/${encodeURIComponent(p.sellerId)}`} className="hover:text-accent active:text-accent">
                 Plus d&rsquo;annonces de {p.sellerDisplayName ?? "ce vendeur"} →
               </Link>
             </div>
@@ -1102,7 +1102,7 @@ async function RelatedProducts({
         {sellerId && (
           <Link
             href={`/store/${encodeURIComponent(sellerId)}`}
-            className="inline-flex items-center h-9 sm:h-8 text-sm text-ink-soft hover:text-ink transition"
+            className="inline-flex items-center h-9 sm:h-8 text-sm text-ink-soft hover:text-ink active:text-ink transition"
           >
             Voir tout →
           </Link>
@@ -1124,15 +1124,15 @@ function Breadcrumbs({
 }) {
   return (
     <nav aria-label="Fil d'Ariane" className="text-xs text-ink-mute flex items-center gap-x-2 gap-y-0 flex-wrap">
-      <Link href="/" className="py-1 hover:text-ink-soft">Accueil</Link>
+      <Link href="/" className="py-1 hover:text-ink-soft active:text-ink-soft">Accueil</Link>
       <span aria-hidden>/</span>
-      <Link href="/search" className="py-1 hover:text-ink-soft">Catalogue</Link>
+      <Link href="/search" className="py-1 hover:text-ink-soft active:text-ink-soft">Catalogue</Link>
       {categorySlug && categoryLabel && (
         <>
           <span aria-hidden>/</span>
           <Link
             href={`/c/${encodeURIComponent(categorySlug)}`}
-            className="py-1 hover:text-ink-soft"
+            className="py-1 hover:text-ink-soft active:text-ink-soft"
           >
             {categoryLabel}
           </Link>

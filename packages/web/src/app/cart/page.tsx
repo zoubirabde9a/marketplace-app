@@ -28,7 +28,7 @@ export default async function CartPage() {
           <p className="text-ink-soft">Votre panier est vide.</p>
           <Link
             href="/search"
-            className="mt-4 inline-flex items-center justify-center px-5 h-11 sm:h-10 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 transition"
+            className="mt-4 inline-flex items-center justify-center px-5 h-11 sm:h-10 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 active:brightness-90 transition"
           >
             Parcourir les produits
           </Link>
@@ -58,7 +58,7 @@ export default async function CartPage() {
                   {l.productId ? (
                     <Link
                       href={`/product/${encodeURIComponent(l.productId)}`}
-                      className="text-sm font-medium text-ink hover:text-accent line-clamp-2 untrusted"
+                      className="text-sm font-medium text-ink hover:text-accent active:text-accent line-clamp-2 untrusted"
                     >
                       {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
                     </Link>
@@ -79,7 +79,7 @@ export default async function CartPage() {
                         <input type="hidden" name="delta" value={-1} />
                         <PendingButton
                           ariaLabel="Diminuer la quantité"
-                          className="w-10 h-10 sm:w-8 sm:h-8 text-base sm:text-sm text-ink-soft hover:bg-bg-elev disabled:opacity-30 transition"
+                          className="w-10 h-10 sm:w-8 sm:h-8 text-base sm:text-sm text-ink-soft hover:bg-bg-elev active:bg-bg-elev disabled:opacity-30 transition"
                           disabled={l.qty <= 1}
                         >
                           −
@@ -105,7 +105,7 @@ export default async function CartPage() {
                         <input type="hidden" name="delta" value={1} />
                         <PendingButton
                           ariaLabel="Augmenter la quantité"
-                          className="w-10 h-10 sm:w-8 sm:h-8 text-base sm:text-sm text-ink-soft hover:bg-bg-elev disabled:opacity-30 transition"
+                          className="w-10 h-10 sm:w-8 sm:h-8 text-base sm:text-sm text-ink-soft hover:bg-bg-elev active:bg-bg-elev disabled:opacity-30 transition"
                           disabled={l.qty >= 99}
                         >
                           +
@@ -114,7 +114,7 @@ export default async function CartPage() {
                     </div>
                     <form action={removeLineAction}>
                       <input type="hidden" name="variantId" value={l.variantId} />
-                      <PendingButton className="h-10 sm:h-8 px-3.5 rounded border border-line text-sm sm:text-xs text-ink-mute hover:text-bad hover:border-bad/40 transition disabled:opacity-60">
+                      <PendingButton className="h-10 sm:h-8 px-3.5 rounded border border-line text-sm sm:text-xs text-ink-mute hover:text-bad hover:border-bad/40 active:text-bad active:border-bad/40 transition disabled:opacity-60">
                         Retirer
                       </PendingButton>
                     </form>
@@ -152,13 +152,13 @@ export default async function CartPage() {
             <Link
               href="/checkout"
               prefetch
-              className="mt-6 w-full h-11 inline-flex items-center justify-center rounded-md bg-accent text-bg text-sm font-semibold hover:brightness-110 transition"
+              className="mt-6 w-full h-11 inline-flex items-center justify-center rounded-md bg-accent text-bg text-sm font-semibold hover:brightness-110 active:brightness-90 transition"
             >
               Commander
             </Link>
             <Link
               href="/search"
-              className="mt-3 flex items-center justify-center h-9 text-sm sm:text-xs text-ink-mute hover:text-ink-soft transition"
+              className="mt-3 flex items-center justify-center h-9 text-sm sm:text-xs text-ink-mute hover:text-ink-soft active:text-ink-soft transition"
             >
               ← Continuer mes achats
             </Link>

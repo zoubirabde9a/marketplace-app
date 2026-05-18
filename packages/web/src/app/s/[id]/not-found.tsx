@@ -20,7 +20,7 @@ export default function SnapshotNotFound() {
         Snapshot tokens are 22 characters long, made of letters, digits,
         underscores, and dashes.
       </p>
-      <Link href="/" className="text-accent hover:underline">Back to marketplace</Link>
+      <Link href="/" className="text-accent hover:underline active:underline">Back to marketplace</Link>
     </article>
   );
 }

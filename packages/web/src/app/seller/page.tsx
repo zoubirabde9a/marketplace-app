@@ -138,7 +138,7 @@ export default async function SellerLandingPage() {
               <p className="mt-3 text-sm text-warn">
                 La connexion nécessite JavaScript. Activez JavaScript ou
                 contactez-nous à
-                <a href="mailto:mahlledz@gmail.com" className="text-accent hover:underline ml-1">
+                <a href="mailto:mahlledz@gmail.com" className="text-accent hover:underline active:underline ml-1">
                   mahlledz@gmail.com
                 </a>{" "}
                 pour vous inscrire manuellement.

@@ -156,19 +156,19 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
         <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
           <Link
             href={`/store/${encodeURIComponent(seller.sellerId)}`}
-            className="text-sm px-3.5 h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+            className="text-sm px-3.5 h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
           >
             Voir la boutique
           </Link>
           <Link
             href={`/seller/contact?sellerId=${encodeURIComponent(seller.sellerId)}`}
-            className="text-sm px-3.5 h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+            className="text-sm px-3.5 h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
           >
             Modifier les coordonnées
           </Link>
           <Link
             href={`/seller/products/new?sellerId=${encodeURIComponent(seller.sellerId)}`}
-            className="text-sm px-3.5 h-9 inline-flex items-center rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition"
+            className="text-sm px-3.5 h-9 inline-flex items-center rounded-md bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition"
           >
             Nouveau produit
           </Link>
@@ -212,7 +212,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                       <div className="mt-1 flex flex-wrap items-center gap-2">
                         <a
                           href={`tel:${o.customer.phone}`}
-                          className="inline-flex items-center gap-1 px-3 h-9 sm:h-7 rounded-full bg-bg-elev border border-line-soft font-mono text-xs hover:text-accent hover:border-accent/40 transition"
+                          className="inline-flex items-center gap-1 px-3 h-9 sm:h-7 rounded-full bg-bg-elev border border-line-soft font-mono text-xs hover:text-accent hover:border-accent/40 active:text-accent active:border-accent/40 transition"
                           aria-label={`Appeler ${o.customer.name} au ${o.customer.phone}`}
                         >
                           {o.customer.phone}
@@ -224,7 +224,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                           href={`https://wa.me/${o.customer.phone.replace(/\D/g, "")}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 px-3 h-9 sm:h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 transition"
+                          className="inline-flex items-center gap-1 px-3 h-9 sm:h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 active:bg-emerald-500/25 transition"
                         >
                           WhatsApp
                         </a>
@@ -280,7 +280,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
             </p>
             <Link
               href={`/seller/products/new?sellerId=${encodeURIComponent(seller.sellerId)}`}
-              className="text-sm px-3.5 h-10 sm:h-9 inline-flex items-center justify-center rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition sm:shrink-0"
+              className="text-sm px-3.5 h-10 sm:h-9 inline-flex items-center justify-center rounded-md bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition sm:shrink-0"
             >
               Ajouter
             </Link>
@@ -333,7 +333,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                   </span>
                   <Link
                     href={`/seller/products/${encodeURIComponent(p.productId)}/edit`}
-                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line hover:border-accent/40 hover:text-ink transition"
+                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition"
                   >
                     Détails
                   </Link>

@@ -132,9 +132,9 @@ export default async function BlogPostPage({
         dangerouslySetInnerHTML={{ __html: jsonLdString(articleJsonLd) }}
       />
       <nav aria-label="Fil d'Ariane" className="text-sm text-ink-mute flex items-center gap-x-1 gap-y-0 flex-wrap mb-6">
-        <Link href="/" className="py-1 hover:text-ink">Accueil</Link>
+        <Link href="/" className="py-1 hover:text-ink active:text-ink">Accueil</Link>
         <span aria-hidden>/</span>
-        <Link href="/blog" className="py-1 hover:text-ink">Blog</Link>
+        <Link href="/blog" className="py-1 hover:text-ink active:text-ink">Blog</Link>
       </nav>
       <header className="mb-8">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-mute mb-3">
@@ -177,7 +177,7 @@ export default async function BlogPostPage({
           {prev ? (
             <Link
               href={`/blog/${prev.slug}`}
-              className="block p-4 rounded-lg border border-line-soft hover:border-accent transition"
+              className="block p-4 rounded-lg border border-line-soft hover:border-accent active:border-accent active:bg-bg-elev transition"
             >
               <div className="text-xs text-ink-mute mb-1">← Article précédent</div>
               <div className="text-ink font-medium">{prev.title}</div>
@@ -188,7 +188,7 @@ export default async function BlogPostPage({
           {next ? (
             <Link
               href={`/blog/${next.slug}`}
-              className="block p-4 rounded-lg border border-line-soft hover:border-accent transition sm:text-right"
+              className="block p-4 rounded-lg border border-line-soft hover:border-accent active:border-accent active:bg-bg-elev transition sm:text-right"
             >
               <div className="text-xs text-ink-mute mb-1">Article suivant →</div>
               <div className="text-ink font-medium">{next.title}</div>
@@ -198,7 +198,7 @@ export default async function BlogPostPage({
           )}
         </div>
         <div className="text-sm text-ink-soft">
-          <Link href="/search" className="text-accent hover:underline">
+          <Link href="/search" className="text-accent hover:underline active:underline">
             Parcourir le catalogue Teno Store →
           </Link>
         </div>

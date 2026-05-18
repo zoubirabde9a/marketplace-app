@@ -44,7 +44,7 @@ export default async function CheckoutPage({
 
   return (
     <section className="pt-6 sm:pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
-      <Link href="/cart" className="inline-flex items-center h-8 text-sm sm:text-xs text-ink-mute hover:text-ink-soft">
+      <Link href="/cart" className="inline-flex items-center h-8 text-sm sm:text-xs text-ink-mute hover:text-ink-soft active:text-ink-soft">
         ← Retour au panier
       </Link>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">Commande</h1>

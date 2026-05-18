@@ -346,7 +346,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
                 <ul>
                   {phones.map((p) => (
                     <li key={p.phone}>
-                      <a className="inline-block py-1 sm:py-0 font-mono text-accent hover:underline" href={`tel:${p.phone}`}>{p.phone}</a>
+                      <a className="inline-block py-1 sm:py-0 font-mono text-accent hover:underline active:underline" href={`tel:${p.phone}`}>{p.phone}</a>
                       {p.isPrimary ? <span className="text-xs text-ink-mute"> · principal</span> : null}
                       {p.isWhatsapp ? <span className="text-xs text-ink-mute"> · WhatsApp</span> : null}
                       {p.isViber ? <span className="text-xs text-ink-mute"> · Viber</span> : null}
@@ -358,19 +358,19 @@ export default async function StorePage({ params }: { params: Promise<Params> })
           ) : seller.phone ? (
             <>
               <dt className="text-ink-mute">Téléphone</dt>
-              <dd><a className="inline-block py-1 sm:py-0 font-mono text-accent hover:underline" href={`tel:${seller.phone}`}>{seller.phone}</a></dd>
+              <dd><a className="inline-block py-1 sm:py-0 font-mono text-accent hover:underline active:underline" href={`tel:${seller.phone}`}>{seller.phone}</a></dd>
             </>
           ) : null}
           {seller.website ? (
             <>
               <dt className="text-ink-mute">Site web</dt>
-              <dd><a className="inline-block py-1 sm:py-0 text-accent hover:underline break-all" href={seller.website} rel="nofollow noopener">{seller.website}</a></dd>
+              <dd><a className="inline-block py-1 sm:py-0 text-accent hover:underline active:underline break-all" href={seller.website} rel="nofollow noopener">{seller.website}</a></dd>
             </>
           ) : null}
           {seller.supportEmail ? (
             <>
               <dt className="text-ink-mute">Contact</dt>
-              <dd><a className="inline-block py-1 sm:py-0 text-accent hover:underline break-all" href={`mailto:${seller.supportEmail}`}>{seller.supportEmail}</a></dd>
+              <dd><a className="inline-block py-1 sm:py-0 text-accent hover:underline active:underline break-all" href={`mailto:${seller.supportEmail}`}>{seller.supportEmail}</a></dd>
             </>
           ) : null}
         </dl>

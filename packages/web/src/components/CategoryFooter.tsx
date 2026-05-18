@@ -87,7 +87,7 @@ export async function CategoryFooter() {
 
   return (
     <details className="group border-b border-line-soft bg-bg-soft/30">
-      <summary className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-3 flex items-center gap-2 text-xs uppercase tracking-widest text-ink-mute font-semibold cursor-pointer list-none hover:text-ink transition [&::-webkit-details-marker]:hidden">
+      <summary className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-3 flex items-center gap-2 text-xs uppercase tracking-widest text-ink-mute font-semibold cursor-pointer list-none hover:text-ink active:text-ink transition [&::-webkit-details-marker]:hidden">
         <span aria-hidden className="inline-block transition-transform group-open:rotate-90">▸</span>
         Parcourir le catalogue
       </summary>
@@ -112,7 +112,7 @@ export async function CategoryFooter() {
                   <li key={c.value}>
                     <Link
                       href={`/c/${encodeURIComponent(c.value)}`}
-                      className="inline-flex items-center px-3.5 h-9 sm:h-8 rounded-full bg-bg-soft border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                      className="inline-flex items-center px-3.5 h-9 sm:h-8 rounded-full bg-bg-soft border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition"
                     >
                       {human}
                       <span className="ml-1.5 text-ink-mute">{c.count}</span>
@@ -133,7 +133,7 @@ export async function CategoryFooter() {
                 <li key={b.value}>
                   <Link
                     href={`/search?brand=${encodeURIComponent(b.value)}`}
-                    className="inline-flex items-center px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                    className="inline-flex items-center px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition"
                   >
                     {b.value}
                     <span className="ml-1.5 text-ink-mute">{b.count}</span>

@@ -266,7 +266,7 @@ export function NewProductForm({
       <button
         type="submit"
         disabled={pending || images.some((x) => x.uploading)}
-        className="self-stretch sm:self-start inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
+        className="self-stretch sm:self-start inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition disabled:opacity-60"
       >
         {pending ? "Création…" : "Créer le produit"}
       </button>
@@ -318,14 +318,14 @@ function ImageUploader({
               type="button"
               onClick={() => onRemove(img.localId)}
               aria-label="Retirer l'image"
-              className="absolute top-1 right-1 w-8 h-8 sm:w-6 sm:h-6 rounded-full bg-bg/80 border border-line text-ink hover:text-bad hover:border-bad/40 transition flex items-center justify-center text-base leading-none"
+              className="absolute top-1 right-1 w-8 h-8 sm:w-6 sm:h-6 rounded-full bg-bg/80 border border-line text-ink hover:text-bad hover:border-bad/40 active:text-bad active:border-bad/40 transition flex items-center justify-center text-base leading-none"
             >
               ×
             </button>
           </div>
         ))}
         {canAddMore && (
-          <label className="aspect-square rounded-lg border border-dashed border-line hover:border-accent/40 hover:text-accent cursor-pointer flex items-center justify-center text-xs text-ink-soft transition">
+          <label className="aspect-square rounded-lg border border-dashed border-line hover:border-accent/40 hover:text-accent active:border-accent/40 active:text-accent cursor-pointer flex items-center justify-center text-xs text-ink-soft transition">
             + Ajouter
             <input
               type="file"

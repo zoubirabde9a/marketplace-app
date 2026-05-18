@@ -101,7 +101,7 @@ export function ActiveFilters({
           href={c.href}
           aria-label={`Retirer le filtre : ${c.label}`}
           title={`Retirer le filtre : ${c.label}`}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-1 rounded-full text-sm sm:text-xs bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 transition"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-1 rounded-full text-sm sm:text-xs bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 active:bg-accent/25 transition"
         >
           <span className="truncate max-w-[20ch]">{c.label}</span>
           <span aria-hidden className="text-ink-mute">×</span>
@@ -110,7 +110,7 @@ export function ActiveFilters({
       {chips.length > 1 && (
         <Link
           href="/search"
-          className="inline-flex items-center px-2.5 h-9 sm:h-7 text-sm sm:text-xs text-ink-mute hover:text-accent"
+          className="inline-flex items-center px-2.5 h-9 sm:h-7 text-sm sm:text-xs text-ink-mute hover:text-accent active:text-accent"
         >
           tout effacer
         </Link>

@@ -16,7 +16,7 @@ export async function HeaderCart() {
           ? `Panier (${count} article${count === 1 ? "" : "s"})`
           : "Panier (vide)"
       }
-      className="relative inline-flex items-center px-3 h-9 rounded-md hover:text-ink hover:bg-bg-elev transition"
+      className="relative inline-flex items-center px-3 h-9 rounded-md hover:text-ink hover:bg-bg-elev active:bg-bg-elev transition"
     >
       <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden>
         <path d="M3 3h2l2.4 12.5A2 2 0 0 0 9.4 17h8.2a2 2 0 0 0 2-1.5L21 7H6" strokeLinecap="round" strokeLinejoin="round" />

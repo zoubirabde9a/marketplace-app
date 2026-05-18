@@ -207,7 +207,7 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
                 onClick={() => void removeImage(img.id)}
                 disabled={img.removing}
                 aria-label="Retirer l'image"
-                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-bg/80 border border-line text-ink hover:text-bad hover:border-bad/40 transition flex items-center justify-center text-base leading-none disabled:opacity-50"
+                className="absolute top-1 right-1 w-6 h-6 rounded-full bg-bg/80 border border-line text-ink hover:text-bad hover:border-bad/40 active:text-bad active:border-bad/40 transition flex items-center justify-center text-base leading-none disabled:opacity-50"
               >
                 ×
               </button>
@@ -227,7 +227,7 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
             </div>
           ))}
           {images.length + uploading.length < MAX_IMAGES && (
-            <label className="aspect-square rounded-lg border border-dashed border-line hover:border-accent/40 hover:text-accent cursor-pointer flex items-center justify-center text-xs text-ink-soft transition">
+            <label className="aspect-square rounded-lg border border-dashed border-line hover:border-accent/40 hover:text-accent active:border-accent/40 active:text-accent cursor-pointer flex items-center justify-center text-xs text-ink-soft transition">
               + Ajouter
               <input
                 type="file"
@@ -285,7 +285,7 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
         <button
           type="submit"
           disabled={savingFields}
-          className="inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
+          className="inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition disabled:opacity-60"
         >
           {savingFields ? "Enregistrement…" : "Enregistrer"}
         </button>
