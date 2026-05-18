@@ -126,7 +126,7 @@ export default async function SellerLandingPage() {
         dangerouslySetInnerHTML={{ __html: jsonLdString(sellerServiceJsonLd) }}
       />
       <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-5 sm:p-8 backdrop-blur">
-        <h1 className="text-3xl font-semibold tracking-tight">Vendre sur Teno Store</h1>
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">Vendre sur Teno Store</h1>
         <p className="mt-3 text-ink-soft leading-relaxed">
           Connectez-vous avec Google pour gérer votre profil vendeur, publier
           vos annonces et mettre à jour vos coordonnées.

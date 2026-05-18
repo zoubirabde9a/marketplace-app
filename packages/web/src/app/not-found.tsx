@@ -23,7 +23,7 @@ export default function NotFound() {
   return (
     <div className="py-12 sm:py-24 px-4 max-w-2xl mx-auto text-center">
       <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">404</p>
-      <h1 className="text-3xl font-semibold tracking-tight mb-3">Cette page est vide.</h1>
+      <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-3 break-words">Cette page est vide.</h1>
       <p className="text-ink-soft mb-8">
         L&rsquo;annonce ou la page que vous cherchiez n&rsquo;est plus en ligne, ou n&rsquo;a jamais existé. Essayez l&rsquo;une des destinations ci-dessous.
       </p>

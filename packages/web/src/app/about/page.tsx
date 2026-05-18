@@ -252,7 +252,7 @@ export default function AboutPage() {
             ))}
           </dl>
         </section>
-        <h2 id="comparaison" className="text-xl font-medium text-ink mt-10 mb-2">
+        <h2 id="comparaison" className="text-lg sm:text-xl font-medium text-ink mt-10 mb-2 break-words">
           Comparaison avec les autres marketplaces algériens
         </h2>
         <p className="leading-relaxed">

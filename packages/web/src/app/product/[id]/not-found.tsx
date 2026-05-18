@@ -28,7 +28,7 @@ export default function ProductNotFound() {
   return (
     <div className="py-12 sm:py-24 px-4 max-w-2xl mx-auto text-center">
       <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">404</p>
-      <h1 className="text-3xl font-semibold tracking-tight mb-3">Annonce introuvable.</h1>
+      <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-3 break-words">Annonce introuvable.</h1>
       <p className="text-ink-soft mb-8">
         Elle a peut-être été retirée par le vendeur, ou n&rsquo;a jamais existé. Continuez votre recherche depuis l&rsquo;une des destinations ci-dessous.
       </p>

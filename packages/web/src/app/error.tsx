@@ -18,7 +18,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
   return (
     <div className="py-16 sm:py-32 px-4 text-center" lang="fr">
       <p className="text-xs uppercase tracking-widest text-bad font-semibold mb-3">Erreur</p>
-      <h1 className="text-3xl font-semibold tracking-tight mb-2">Cette page n’a pas pu se charger.</h1>
+      <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-2 break-words">Cette page n’a pas pu se charger.</h1>
       <p className="text-ink-soft max-w-md mx-auto">
         Un problème est survenu de notre côté. Réessayez dans un instant, ou revenez au catalogue.
       </p>

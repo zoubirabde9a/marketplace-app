@@ -1096,7 +1096,7 @@ async function RelatedProducts({
   return (
     <section className="mt-16 border-t border-line-soft pt-10" aria-labelledby="related-heading">
       <div className="flex items-baseline justify-between mb-4">
-        <h2 id="related-heading" className="text-xl font-semibold tracking-tight">
+        <h2 id="related-heading" className="text-xl font-semibold tracking-tight break-words min-w-0">
           {sellerDisplayName ? `Plus d'annonces de ${sellerDisplayName}` : "Plus d'annonces"}
         </h2>
         {sellerId && (

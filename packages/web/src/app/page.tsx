@@ -332,11 +332,11 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
             section heading. */}
         <p
           role="doc-subtitle"
-          className="text-4xl sm:text-6xl font-semibold tracking-tight bg-gradient-to-b from-ink to-ink-soft bg-clip-text text-transparent"
+          className="text-3xl sm:text-6xl font-semibold tracking-tight bg-gradient-to-b from-ink to-ink-soft bg-clip-text text-transparent"
         >
           Watch your agent shop, in real time.
         </p>
-        <p className="mt-5 text-lg text-ink-soft leading-relaxed">
+        <p className="mt-4 sm:mt-5 text-base sm:text-lg text-ink-soft leading-relaxed">
           See every search, every product, every price your agent looked at — exactly as it saw them.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
@@ -371,7 +371,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
             — see the comment up there for the topic-signal rationale.
             Visual size bumped (text-2xl → text-3xl tracking-tight) so it
             reads as a real heading rather than a small section label. */}
-        <h1 id="catalog-heading" lang="fr" className="text-3xl font-semibold tracking-tight mb-3">
+        <h1 id="catalog-heading" lang="fr" className="text-2xl sm:text-3xl font-semibold tracking-tight mb-3 break-words">
           Marketplace algérien · annonces actualisées en temps réel
         </h1>
         <p lang="fr" className="text-ink-soft leading-relaxed mb-3">

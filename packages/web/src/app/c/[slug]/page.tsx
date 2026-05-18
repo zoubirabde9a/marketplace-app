@@ -306,7 +306,7 @@ export default async function CategoryLandingPage({
       )}
 
       <section aria-labelledby="faq-heading" className="max-w-3xl">
-        <h2 id="faq-heading" className="text-2xl font-semibold tracking-tight text-ink mb-4">
+        <h2 id="faq-heading" className="text-xl sm:text-2xl font-semibold tracking-tight text-ink mb-4 break-words">
           Questions fréquentes — {human.toLowerCase()}
         </h2>
         <dl className="space-y-5">

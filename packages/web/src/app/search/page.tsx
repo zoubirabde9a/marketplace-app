@@ -713,7 +713,7 @@ function ResultsHeader({
 }) {
   return (
     <div className="mb-6">
-      <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+      <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight break-words">
         {q ? (
           <>Résultats pour <span className="text-accent">«&nbsp;{q}&nbsp;»</span></>
         ) : sellerName ? (
