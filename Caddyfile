@@ -9,30 +9,79 @@
 #   www.teno-store.com    → 301 redirect to apex
 #   api.teno-store.com    → REST/MCP/A2A endpoints (Fastify)
 #
-# Cloudflare is in front of all three with proxy ON (orange cloud), SSL/TLS
-# mode "Full". After Caddy issues its first Let's Encrypt cert, flip the mode
-# to "Full (strict)" in the Cloudflare dashboard (see dns.md).
+# Cloudflare is DNS-only (gray cloud) — proxied mode adds unacceptable latency
+# from Algerian residential connections, so traffic hits Caddy directly. That
+# means caching, rate limiting, and abuse mitigation all happen here at the
+# origin — there is no edge layer in front.
 
 {
 	email mahlledz@gmail.com
 
-	# Cloudflare's edge IPs — Caddy will trust X-Forwarded-For from these so
-	# real-client logging works. Lists are stable; refresh annually from
-	# https://www.cloudflare.com/ips/
-	servers {
-		trusted_proxies static \
-			173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 \
-			141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 \
-			197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 \
-			104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 \
-			2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 \
-			2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+	# HTTP response cache (Souin via caddyserver/cache-handler). Honors
+	# Cache-Control: s-maxage / stale-while-revalidate from upstream
+	# responses. Next.js sets these on /c/*, /product/*, /feed.xml, and
+	# /_next/image, so most SSR work is collapsed to one upstream hit per
+	# (URL, vary-key) until the TTL expires. In-memory storage — lost on
+	# Caddy restart, but rebuilds within seconds under normal traffic and
+	# avoids managing another on-disk volume.
+	cache {
+		ttl 5m
+		stale 1h
+		default_cache_control "public"
 	}
+
+	# Rate limit module ordering — runs before reverse_proxy and cache so
+	# 429s are emitted without engaging upstream or filling cache slots.
+	order rate_limit before basic_auth
 }
 
 # ─── Apex: human-readable observer (Next.js) ─────────────────────────────────
 teno-store.com {
 	encode zstd gzip
+
+	# Cache eligible responses (apex-wide). Decision is driven by the
+	# upstream Cache-Control header — endpoints that mark themselves
+	# `private` / `no-store` (e.g. checkout, /api/auth/*) bypass.
+	cache
+
+	# Throttle SSR-heavy paths per client IP. /_next/image, /_next/static,
+	# /sitemap*.xml, /robots.txt, /favicon.ico are intentionally NOT limited:
+	# they're either cache hits or static disk reads. The 60/min/IP target
+	# is comfortable for a fast human (clicking ~1 page/sec) but cuts off
+	# the 2026-05-17 scraper that hit 70 req/5min purely on /c/* /product/*.
+	rate_limit {
+		zone ssr_pages {
+			match {
+				path /c/* /product/* /search* /feed.xml /b/*
+			}
+			key {client_ip}
+			events 60
+			window 1m
+		}
+	}
+
+	# Pre-generated sitemap files (built by marketplace-sitemap-rebuild.timer,
+	# every 30 min) live in /srv/sitemaps mounted from
+	# /opt/marketplace/data/sitemaps. Serving them statically here keeps the
+	# 17 MB/50k-URL payload off the Next.js render path — previously a cold
+	# /sitemap.xml hit pinned the origin for ~120 s. The @sitemap_file matcher
+	# only fires when the requested file actually exists on disk; otherwise
+	# the request falls through to the Next.js reverse_proxy below, which
+	# still knows how to render a sitemap from the API (fresh-deploy fallback,
+	# local dev).
+	@sitemap_file {
+		path /sitemap.xml /sitemap-*.xml
+		file {
+			root /srv/sitemaps
+		}
+	}
+	handle @sitemap_file {
+		root * /srv/sitemaps
+		header Cache-Control "public, s-maxage=3600, stale-while-revalidate=86400"
+		header Content-Type "application/xml; charset=utf-8"
+		file_server
+	}
+
 	reverse_proxy web:3200 {
 		# Bridge the ~3-5s gap when `docker compose up -d --build web`
 		# recreates the upstream during a deploy. Without this, anyone who
@@ -76,6 +125,19 @@ www.teno-store.com {
 # ─── API subdomain: REST + (future) MCP / A2A endpoints (Fastify) ───────────
 api.teno-store.com {
 	encode zstd gzip
+
+	# Generic abuse cap on the API. Real clients (web SSR, MCP agents,
+	# authenticated browsers) burst much higher than 300/min in normal use,
+	# so this is a safety net against probing — not a fairness limit. Tune
+	# down if a specific endpoint (e.g. /mcp) needs tighter control.
+	rate_limit {
+		zone api_per_ip {
+			key {client_ip}
+			events 300
+			window 1m
+		}
+	}
+
 	reverse_proxy api:3100 {
 		# Same recreate-gap mitigation as the apex (see comment there).
 		# No request buffering: this backend serves media uploads and we

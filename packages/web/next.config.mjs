@@ -13,18 +13,16 @@ const nextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   images: {
     remotePatterns: [{ protocol: "https", hostname: "**" }, { protocol: "http", hostname: "**" }],
-    // AVIF first (smaller payload at the same perceptual quality — typically
-    // 20-30% under WebP), WebP as the fallback for browsers without AVIF
-    // (older Safari, niche envs). Default is just WebP, which already beats
-    // the JPEG the Ouedkniss CDN ships; layering AVIF on top is free at the
-    // optimizer + bigger LCP/CWV win at the edge.
-    formats: ["image/avif", "image/webp"],
-    // Cache transcoded variants on origin for 30 days. The catalog images
-    // don't change once a product is listed; long minimumCacheTTL means a
-    // cold image-optimizer request only pays the transcode cost once per
-    // (source URL, size, format) tuple per month, dramatically reducing
-    // CPU on origin for the long tail of crawler hits.
-    minimumCacheTTL: 60 * 60 * 24 * 30,
+    // WebP only — AVIF encode time with sharp is ~5x WebP and the optimizer
+    // is already CPU-bound during crawler bursts (2026-05-17 audit: one Node
+    // core pinned at 149% under /_next/image load). The CWV gain from AVIF
+    // isn't worth keeping the queue long enough for Caddy to 504.
+    formats: ["image/webp"],
+    // 1 year. Ouedkniss CDN URLs are content-addressed (path embeds the
+    // listing's image id) and never change once a product is listed, so
+    // there's no correctness cost to a long TTL — and a cold optimizer
+    // request only pays the sharp transcode once per (url, size) tuple.
+    minimumCacheTTL: 60 * 60 * 24 * 365,
   },
   // Legacy favicon and apple-touch-icon URLs that browsers / RSS readers /
   // social-share scrapers (FB, Slack, X, iOS Safari) probe regardless of
@@ -126,6 +124,27 @@ const nextConfig = {
         source: "/feed.xml",
         headers: [
           { key: "Access-Control-Allow-Origin", value: "*" },
+        ],
+      },
+      {
+        // Category landings (/c/[slug]) — Next ships dynamic-route HTML with
+        // `max-age=0, must-revalidate`, so Cloudflare never shared-caches and
+        // every crawler hit pays the full ~3.8 s SSR (2026-05-17 audit:
+        // 136.117.185.78 price-monitoring bot). Catalog rotates often enough
+        // that 5 min edge TTL is safe; SWR lets stale serve while origin
+        // refreshes.
+        source: "/c/:slug*",
+        headers: [
+          { key: "Cache-Control", value: "public, s-maxage=300, stale-while-revalidate=3600" },
+        ],
+      },
+      {
+        // Product pages — same SSR-cost problem as /c/*. Per-product pages
+        // change rarely (price/stock edits are infrequent for scraped
+        // listings), so a longer 10 min edge TTL is appropriate.
+        source: "/product/:id*",
+        headers: [
+          { key: "Cache-Control", value: "public, s-maxage=600, stale-while-revalidate=3600" },
         ],
       },
       {

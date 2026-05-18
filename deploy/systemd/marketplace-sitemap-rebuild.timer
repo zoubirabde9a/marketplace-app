@@ -1,0 +1,17 @@
+[Unit]
+Description=Rebuild static sitemap files every 30 minutes
+Documentation=file:/etc/systemd/system/marketplace-sitemap-rebuild.service
+
+[Timer]
+# Every 30 minutes. Scrape loop adds ~500 listings/hour and prunes oldest
+# to keep the catalog at the 280k cap, so a 30-min cadence keeps the
+# sitemap within ~250 listings of the live DB. The work itself is a few
+# seconds (one indexed SELECT per child sitemap). Randomized delay
+# de-syncs from the hourly stats refresh and the minutely scrape loop.
+OnCalendar=*:0/30
+RandomizedDelaySec=2min
+Persistent=true
+Unit=marketplace-sitemap-rebuild.service
+
+[Install]
+WantedBy=timers.target

@@ -178,7 +178,7 @@ export async function GET(req: NextRequest) {
         etag,
         "last-modified": lastModified,
         "cache-control":
-          "public, max-age=300, s-maxage=300, stale-while-revalidate=600",
+          "public, max-age=300, s-maxage=1800, stale-while-revalidate=3600",
       },
     });
   }
@@ -242,7 +242,7 @@ ${entries}
       // Encourage CDN caching too — feed content changes at most every few
       // minutes (catalog seed loop pace), and feed readers/agents poll on
       // their own cadence (15min-1h typical).
-      "cache-control": "public, max-age=300, s-maxage=300, stale-while-revalidate=600",
+      "cache-control": "public, max-age=300, s-maxage=1800, stale-while-revalidate=3600",
       "last-modified": lastModified,
       etag,
     },

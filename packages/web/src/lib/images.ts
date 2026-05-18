@@ -8,7 +8,7 @@
 // for crawler-facing surfaces (sitemap, OG, JSON-LD); leave it untouched for
 // visible <img> tags where weight matters.
 //
-// Used by: app/sitemap.ts, app/product/[id]/page.tsx, app/page.tsx,
+// Used by: lib/sitemap.ts, app/product/[id]/page.tsx, app/page.tsx,
 //          app/search/page.tsx. Keep this the single source of truth so
 //          the size choice stays consistent across SEO surfaces.
 

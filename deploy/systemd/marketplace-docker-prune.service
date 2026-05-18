@@ -1,0 +1,20 @@
+[Unit]
+Description=Prune Docker build cache (legacy builder + buildx) older than 24h
+Documentation=file:/opt/marketplace/deploy/audits/2026-05-17-1956-docker-builder-prune-noop.md
+After=docker.service
+Requires=docker.service
+
+[Service]
+# Two prune calls because Docker has two separate cache stores:
+#   - `docker builder prune` cleans the legacy builder's cache.
+#   - `docker buildx prune` cleans the buildx (BuildKit) cache, which is
+#     where modern `docker build` invocations actually accumulate data.
+# Running only the legacy one (the original config) reported "Total: 0B"
+# every day while buildx cache grew to >40 GB — see the audit linked above.
+# Both calls are cheap no-ops when there's nothing to reclaim, so running
+# both unconditionally is fine.
+Type=oneshot
+ExecStart=/usr/bin/docker builder prune -af --filter until=24h
+ExecStart=/usr/bin/docker buildx prune -af --filter until=24h
+User=root
+Group=root

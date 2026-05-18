@@ -1,0 +1,34 @@
+[Unit]
+Description=Rebuild static sitemap files from the live DB
+Documentation=file:/opt/marketplace/scripts/build-sitemaps.mjs
+After=docker.service
+Requires=docker.service
+
+[Service]
+# Generates /opt/marketplace/data/sitemaps/{sitemap.xml, sitemap-static.xml,
+# sitemap-categories.xml, sitemap-products-N.xml}. Caddy serves these as
+# static files (see Caddyfile: handle /sitemap*.xml { root * /srv/sitemaps }).
+#
+# Runs inside an ad-hoc node:22-alpine container on the marketplace_default
+# network so it can reach the postgres service by hostname. Postgres password
+# is sourced from /opt/marketplace/.env (the same place compose reads it).
+#
+# Idempotent: writes are atomic (tmp file + rename) and child shards beyond
+# the current product count are swept after each run. Background timer
+# cadence keeps the catalog cap (~280k) fresh well inside Googlebot's crawl
+# window without burning origin CPU per request.
+Type=oneshot
+WorkingDirectory=/opt/marketplace
+EnvironmentFile=/opt/marketplace/.env
+ExecStartPre=/bin/mkdir -p /opt/marketplace/data/sitemaps
+ExecStart=/bin/sh -c '\
+  docker run --rm --network marketplace_default \
+    -v /opt/marketplace/scripts:/scripts:ro \
+    -v /opt/marketplace/data/sitemaps:/data/sitemaps \
+    -e "DATABASE_URL=postgres://marketplace:$${POSTGRES_PASSWORD}@postgres:5432/marketplace" \
+    -e "SITE_URL=$${NEXT_PUBLIC_SITE_URL:-https://teno-store.com}" \
+    -e "SITEMAP_OUT_DIR=/data/sitemaps" \
+    marketplace-api:local \
+    node /scripts/build-sitemaps.mjs'
+User=root
+Group=root

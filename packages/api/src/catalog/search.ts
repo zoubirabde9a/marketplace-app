@@ -109,10 +109,18 @@ function projectHit(p: StoredProduct, ctx: FilterContext, sellers: Map<string, S
   };
 }
 
+const EMPTY_FACETS: Facets = {
+  brands: [],
+  currencies: [],
+  sellers: [],
+  categories: [],
+  priceRanges: [],
+};
+
 export function searchProducts(
   all: StoredProduct[],
   sellers: Map<string, StoredSeller>,
-  query: catalog.SearchQuery & { fuzzy?: boolean },
+  query: catalog.SearchQuery & { fuzzy?: boolean; noFacets?: boolean },
   textScores?: ReadonlyMap<string, number>,
 ): SearchResult {
   const ctx: FilterContext = {
@@ -159,7 +167,12 @@ export function searchProducts(
     ? { k: keyOf(lastOnPage, sort, ctx).v.toString(), id: lastOnPage.productId }
     : undefined;
 
-  const facets = computeFacets(all, ctx, sellers);
+  // Caller opted out (home recent-listings strip, run-loop's totalEstimate
+  // probe, agent integrations that only render hits). Skip the catalog-wide
+  // facet pass entirely — at ~55k+ products it's the dominant cost of an
+  // otherwise trivial query (e.g. `/v1/products?limit=1` was ~450 ms cold
+  // because of this).
+  const facets = query.noFacets === true ? EMPTY_FACETS : computeFacets(all, ctx, sellers);
 
   return {
     hits: page.map((p) => projectHit(p, ctx, sellers)),

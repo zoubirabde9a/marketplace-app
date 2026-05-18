@@ -1,0 +1,15 @@
+[Unit]
+Description=Run marketplace Postgres backup daily at 03:00 UTC
+Documentation=file:/etc/systemd/system/marketplace-pg-backup.service
+
+[Timer]
+# 03:00 UTC is the quietest point in the scrape-loop cycle (the loop fires
+# every minute, but the dump is fast — ~seconds at current catalog size — so
+# overlap is fine). Persistent=true means a missed run (e.g. host reboot)
+# fires on next boot.
+OnCalendar=*-*-* 03:00:00 UTC
+Persistent=true
+Unit=marketplace-pg-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -266,7 +266,12 @@ docker image inspect "$NODE_IMAGE" >/dev/null 2>&1 || {
 api_total_estimate() {
   local attempt=1 backoff=2 max=5 out
   while (( attempt <= max )); do
-    out="$(docker exec "$API_CONTAINER" wget -qO- --timeout=10 "http://127.0.0.1:3100/v1/products?limit=1" 2>/dev/null \
+    # noFacets=true short-circuits the catalog-wide facet aggregation in the
+    # api (search.ts). Without it, each call did a ~55k-row scan + facet pass
+    # per api worker cold path, producing 450 ms latency spikes every minute
+    # on a probe that should be a few ms. The `pagination.totalEstimate`
+    # field is independent of facets, so the metric stays correct.
+    out="$(docker exec "$API_CONTAINER" wget -qO- --timeout=10 "http://127.0.0.1:3100/v1/products?limit=1&noFacets=true" 2>/dev/null \
       | python3 -c '
 import sys, json
 try:
@@ -479,12 +484,26 @@ if ! with_retries "$SEED_RETRIES" "seed" run_seed; then
   exit 5
 fi
 
-# Parse the seeder's tail line: "seeded N products, skipped M/K (D as already-seeded duplicates)"
-SEEDED=0; SKIPPED=0; DUPS=0
+# Parse the seeder's tail line:
+#   "seeded N products, skipped M/K (D as already-seeded duplicates, P dropped for missing phone, I dropped for missing image)"
+# `SKIPPED` is the total in the seeder's display (dups+noPhone+noImage+true-failures).
+# `NO_PHONE` / `NO_IMAGE` are split out separately so the metrics line distinguishes
+# "category structurally has no shop accounts" (every row drops on noPhone) from
+# "true validation failure" (catch-block on insert) — the audit
+# 2026-05-17-1942-scraper-invalid-skipped-50 flagged that bundling them hid this.
+SEEDED=0; SKIPPED=0; DUPS=0; NO_PHONE=0; NO_IMAGE=0
 SUMMARY="$(grep -E '^seeded [0-9]+ products' "$LOG_FILE" | tail -1 || true)"
 if [[ -n "$SUMMARY" ]]; then
   SEEDED="$(  echo "$SUMMARY" | sed -nE 's/^seeded ([0-9]+).*/\1/p')"
   SKIPPED="$( echo "$SUMMARY" | sed -nE 's/.*skipped ([0-9]+)\/.*/\1/p')"
+  # Anchor on ", " before the digit group — without it, the greedy `.*` lets
+  # sed match the trailing digit of the preceding number (so "30 dropped..."
+  # parsed as "0"). Verified against a real summary line emitted by
+  # packages/db/dist/seed-from-scraped.js.
+  NO_PHONE="$(echo "$SUMMARY" | sed -nE 's/.*, ([0-9]+) dropped for missing phone.*/\1/p')"
+  NO_IMAGE="$(echo "$SUMMARY" | sed -nE 's/.*, ([0-9]+) dropped for missing image.*/\1/p')"
+  : "${NO_PHONE:=0}"
+  : "${NO_IMAGE:=0}"
   DUPS="$(    echo "$SUMMARY" | sed -nE 's/.*\(([0-9]+) as already-seeded.*/\1/p')"
 fi
 
@@ -575,16 +594,16 @@ else
 fi
 
 # ─── step 4: report ──────────────────────────────────────────────────────
-log info "result before=$BEFORE after=$AFTER delta=$DELTA seeded=$SEEDED dup_skipped=$DUPS invalid_skipped=$SKIPPED pruned=$PRUNED cap=${MAX_PRODUCTS:-none} scrape_listings=$SCRAPE_LISTINGS pages=$START_PAGE..$LAST_PAGE has_more=$HAS_MORE"
+log info "result before=$BEFORE after=$AFTER delta=$DELTA seeded=$SEEDED dup_skipped=$DUPS invalid_skipped=$SKIPPED no_phone=$NO_PHONE no_image=$NO_IMAGE pruned=$PRUNED cap=${MAX_PRODUCTS:-none} scrape_listings=$SCRAPE_LISTINGS pages=$START_PAGE..$LAST_PAGE has_more=$HAS_MORE"
 
 # Structured metric line — append-only JSONL for ad-hoc analysis.
 # `before`/`after`/`delta` become JSON null when the api was unreachable
 # (instead of silently logging 0, which used to produce bogus deltas).
-printf '{"ts":"%s","run_id":"%s","seller_id":"%s","category":"%s","start_page":%s,"last_page":%s,"has_more":%s,"next_start_page":%s,"before":%s,"after":%s,"delta":%s,"seeded":%s,"dup_skipped":%s,"invalid_skipped":%s,"pruned":%s,"max_products":%s,"scrape_listings":%s,"skip_urls_count":%s}\n' \
+printf '{"ts":"%s","run_id":"%s","seller_id":"%s","category":"%s","start_page":%s,"last_page":%s,"has_more":%s,"next_start_page":%s,"before":%s,"after":%s,"delta":%s,"seeded":%s,"dup_skipped":%s,"invalid_skipped":%s,"no_phone":%s,"no_image":%s,"pruned":%s,"max_products":%s,"scrape_listings":%s,"skip_urls_count":%s}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$RUN_ID" "$SELLER_ID" "$CATEGORY" \
   "$START_PAGE" "$LAST_PAGE" "$HAS_MORE" "$NEXT_START_PAGE" \
   "${BEFORE:-null}" "${AFTER:-null}" "${DELTA:-null}" \
-  "$SEEDED" "$DUPS" "$SKIPPED" "$PRUNED" "${MAX_PRODUCTS:-null}" "$SCRAPE_LISTINGS" "$SKIP_COUNT" \
+  "$SEEDED" "$DUPS" "$SKIPPED" "$NO_PHONE" "$NO_IMAGE" "$PRUNED" "${MAX_PRODUCTS:-null}" "$SCRAPE_LISTINGS" "$SKIP_COUNT" \
   >> "$METRICS_FILE"
 
 # Brief, parseable single-line summary on stdout for cron-style invocations.

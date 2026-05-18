@@ -18,7 +18,17 @@
 
 services:
   caddy:
-    image: caddy:2-alpine
+    # Custom Caddy image with two xcaddy modules:
+    #   - caddyserver/cache-handler (Souin)   — HTTP response cache, honors
+    #     upstream Cache-Control: s-maxage / stale-while-revalidate.
+    #   - mholt/caddy-ratelimit               — per-IP request rate limit.
+    # Why a custom build: Cloudflare is DNS-only (gray cloud) for the
+    # Algerian latency reasons documented in deploy/dns.md, so there's no
+    # edge cache or WAF in front — caching and rate limiting have to live
+    # at the origin. See deploy/caddy/Dockerfile.
+    build:
+      context: ./deploy/caddy
+    image: marketplace-caddy:local
     container_name: marketplace-caddy
     restart: unless-stopped
     ports:
@@ -29,6 +39,7 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+      - /opt/marketplace/data/sitemaps:/srv/sitemaps:ro
     depends_on:
       - web
       - api
@@ -66,6 +77,13 @@ services:
       MARKETPLACE_API_URL: http://api:3100
     expose:
       - "3200"
+    # Persistent on-disk cache for the Next.js image optimizer. Without this,
+    # every `docker compose up -d web` (redeploy) empties the cache and the
+    # next bot burst (2026-05-17: 908 /_next/image hits in 5 min) lands hot
+    # on sharp again. Image bytes don't accumulate forever — Next prunes
+    # entries past minimumCacheTTL (now 1 year) and on LRU pressure.
+    volumes:
+      - web_image_cache:/app/.next/cache/images
     depends_on:
       - api
     logging:
@@ -189,6 +207,30 @@ services:
     image: pgvector/pgvector:pg17
     container_name: marketplace-postgres
     restart: unless-stopped
+    # Postgres config overrides — applied at startup. Recreating the container
+    # (compose up -d postgres) is required to pick up changes here; a plain
+    # `docker compose restart postgres` will NOT re-apply this command list.
+    #
+    # pg_stat_statements: records execution stats for every normalized query
+    # — needed to investigate slow-API audits (e.g. the /v1/products?limit=1
+    # bimodal-latency report). Requires shared_preload_libraries + a one-time
+    # `CREATE EXTENSION pg_stat_statements;` in the marketplace database.
+    #
+    # auto_explain: dumps the EXPLAIN plan to the Postgres log for any query
+    # that takes >1s. Pairs with pg_stat_statements — the former tells you
+    # WHICH query is slow, the latter tells you WHY for slow occurrences.
+    #
+    # See deploy/audits/2026-05-17-2000-pg-stat-statements-not-loaded.md.
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements,auto_explain
+      - -c
+      - pg_stat_statements.max=10000
+      - -c
+      - pg_stat_statements.track=all
+      - -c
+      - auto_explain.log_min_duration=1000
     environment:
       POSTGRES_USER: marketplace
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
@@ -213,3 +255,4 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  web_image_cache:

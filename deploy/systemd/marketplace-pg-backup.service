@@ -1,0 +1,27 @@
+[Unit]
+Description=Daily pg_dump of the marketplace database (custom format) with 14-day rotation
+Documentation=file:/opt/marketplace/deploy/audits/2026-05-17-1956-no-database-backups.md
+After=docker.service
+Requires=docker.service
+
+[Service]
+# Dumps the live marketplace database from the marketplace-postgres container
+# into /opt/marketplace/backups/ as a Postgres custom-format archive (-Fc,
+# already compressed). Then trims dumps older than 14 days.
+#
+# Why local-only for now: off-box copy (object storage / restic) requires an
+# operator decision on destination + credentials. The local dump still
+# protects against logical mistakes (bad migrations, accidental DROP) — but
+# NOT against the VPS disk dying. See
+# deploy/audits/2026-05-17-1956-no-database-backups.md and the followup
+# TODO in deploy/ for the off-box plan.
+#
+# pg_dump streams via `docker exec`, so the dump file is written by the host
+# user (root) directly to the bind-mounted backups dir — no need to copy
+# out of the container.
+Type=oneshot
+ExecStartPre=/bin/mkdir -p /opt/marketplace/backups
+ExecStart=/bin/sh -c '/usr/bin/docker exec marketplace-postgres pg_dump -Fc -U marketplace marketplace > /opt/marketplace/backups/marketplace-$(date -u +%%FT%%H%%M).dump'
+ExecStartPost=/usr/bin/find /opt/marketplace/backups -maxdepth 1 -type f -name 'marketplace-*.dump' -mtime +14 -delete
+User=root
+Group=root
