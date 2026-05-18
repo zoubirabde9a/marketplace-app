@@ -82,19 +82,30 @@ export function InfiniteResults({ initialHits, initialCursor, baseQuery }: Infin
         ))}
       </ul>
       {cursor && (
-        <div ref={sentinelRef} className="mt-8 flex items-center justify-center" aria-hidden={!loading} lang="fr">
+        <div
+          ref={sentinelRef}
+          className="mt-8 flex items-center justify-center"
+          // Only hide from assistive tech when truly idle (no loading, no
+          // error). Previously `aria-hidden={!loading}` also hid the retry
+          // button during an error state — a screen-reader / voice-control
+          // user couldn't reach the retry CTA after a network failure.
+          aria-hidden={!loading && !error}
+          lang="fr"
+        >
           {loading ? (
             <div className="text-xs text-ink-mute" role="status" aria-live="polite">
               Chargement…
             </div>
           ) : error ? (
-            <button
-              type="button"
-              onClick={() => void loadMore()}
-              className="inline-flex items-center px-4 h-10 rounded-md border border-bad/40 bg-bad/10 text-sm sm:text-xs text-bad hover:bg-bad/20 active:bg-bad/25 transition"
-            >
-              Impossible de charger la suite — réessayer
-            </button>
+            <div role="alert">
+              <button
+                type="button"
+                onClick={() => void loadMore()}
+                className="inline-flex items-center px-4 h-10 rounded-md border border-bad/40 bg-bad/10 text-sm sm:text-xs text-bad hover:bg-bad/20 active:bg-bad/25 transition"
+              >
+                Impossible de charger la suite — réessayer
+              </button>
+            </div>
           ) : (
             // Reserve some height so the sentinel is observable even before
             // any items render below the fold.

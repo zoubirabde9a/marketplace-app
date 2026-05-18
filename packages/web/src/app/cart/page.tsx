@@ -71,7 +71,7 @@ export default async function CartPage() {
                   <div className="mt-2 text-sm">
                     {formatPrice(l.unitPriceMinor, cart!.currency)}
                   </div>
-                  <div className="mt-3 flex items-center gap-2">
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <div className="inline-flex items-center rounded border border-line overflow-hidden">
                       <form action={adjustQtyAction}>
                         <input type="hidden" name="variantId" value={l.variantId} />
@@ -95,7 +95,7 @@ export default async function CartPage() {
                           max={99}
                           inputMode="numeric"
                           enterKeyHint="done"
-                          className="w-14 h-10 sm:w-12 sm:h-8 bg-bg-elev text-base sm:text-sm text-center border-x border-line focus:outline-none focus:bg-bg-elev/60"
+                          className="w-12 h-10 sm:h-8 bg-bg-elev text-base sm:text-sm text-center border-x border-line focus:outline-none focus:bg-bg-elev/60"
                           aria-label="Quantité"
                         />
                       </form>

@@ -162,6 +162,13 @@ export const viewport: Viewport = {
   themeColor: "#0a0a0a",
   width: "device-width",
   initialScale: 1,
+  // `interactive-widget=resizes-content` (Android Chrome 108+; iOS Safari
+  // ignores it harmlessly): when the on-screen keyboard appears, the
+  // visual viewport shrinks so the page can scroll the focused input above
+  // the keyboard. Without this, Chrome's default `overlays-content` can
+  // leave the focused checkout input hidden under the keyboard until the
+  // user manually scrolls. iOS Safari already does this by default.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -39,7 +39,7 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
     // a mixed-language signal that hurts both a11y and SEO.
     <section className="pt-12 pb-8 max-w-5xl mx-auto" lang="en">
       <header className="mb-8">
-        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight break-words">
           Hi, {displayName}.
         </h1>
         <p className="mt-2 text-ink-soft">

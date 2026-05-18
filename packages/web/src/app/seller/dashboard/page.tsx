@@ -189,7 +189,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
             {orders.map((o) => (
               <li key={o.orderId} className="py-3 flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="font-mono text-sm text-ink">#{o.publicNumber}</span>
                     <span className="text-xs text-ink-mute">
                       {new Date(o.createdAt).toLocaleString("fr-DZ")}

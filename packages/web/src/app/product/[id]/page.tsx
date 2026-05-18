@@ -744,7 +744,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
         <div className="space-y-6">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
               {p.brand && (
                 // Brand chip is now a link to the brand-slice landing
                 // (/search?brand=<brand>). Two wins: (a) every branded
