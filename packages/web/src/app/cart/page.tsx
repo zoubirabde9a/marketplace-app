@@ -153,9 +153,9 @@ export default async function CartPage() {
                 <dt className="text-ink-soft">Sous-total</dt>
                 <dd>{formatPrice(cart!.totals.subtotalMinor, cart!.currency)}</dd>
               </div>
-              <div className="flex justify-between">
+              <div className="flex flex-wrap justify-between gap-x-3 gap-y-0">
                 <dt className="text-ink-soft">Livraison</dt>
-                <dd className="text-ink-mute">Gratuite (paiement à la livraison)</dd>
+                <dd className="text-ink-mute text-right">Gratuite (paiement à la livraison)</dd>
               </div>
             </dl>
             <div className="mt-4 pt-4 border-t border-line-soft flex justify-between text-base font-medium">

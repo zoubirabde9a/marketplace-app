@@ -87,9 +87,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             <dt className="text-ink-soft">Sous-total</dt>
             <dd>{formatPrice(order.totals.subtotalMinor, order.currency)}</dd>
           </div>
-          <div className="flex justify-between">
+          <div className="flex flex-wrap justify-between gap-x-3 gap-y-0">
             <dt className="text-ink-soft">Livraison</dt>
-            <dd className="text-ink-mute">
+            <dd className="text-ink-mute text-right">
               {BigInt(order.totals.shippingMinor) > 0n
                 ? formatPrice(order.totals.shippingMinor, order.currency)
                 : "Gratuite (paiement à la livraison)"}

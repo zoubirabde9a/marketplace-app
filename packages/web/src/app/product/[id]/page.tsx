@@ -767,7 +767,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             </div>
             <h1 dir="auto" className="text-2xl sm:text-3xl font-semibold tracking-tight leading-tight untrusted break-words">{displayTitle}</h1>
             {p.sellerId ? (
-              <div className="mt-3 text-sm text-ink-soft">
+              <div className="mt-3 text-sm text-ink-soft break-words">
                 Vendu par{" "}
                 <Link
                   href={`/store/${encodeURIComponent(p.sellerId)}`}
