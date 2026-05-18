@@ -72,7 +72,7 @@ export function InfiniteResults({ initialHits, initialCursor, baseQuery }: Infin
   return (
     <>
       <ul
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 list-none p-0 m-0"
+        className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 list-none p-0 m-0"
         aria-label={`${hits.length} annonce${hits.length === 1 ? "" : "s"}`}
       >
         {hits.map((h, i) => (

@@ -122,7 +122,7 @@ export default async function BlogPostPage({
     ],
   };
   return (
-    <article className="max-w-3xl mx-auto pt-12 pb-24 blog-prose text-ink-soft">
+    <article className="max-w-3xl mx-auto pt-6 sm:pt-12 pb-24 blog-prose text-ink-soft">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
@@ -131,10 +131,10 @@ export default async function BlogPostPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(articleJsonLd) }}
       />
-      <nav aria-label="Fil d'Ariane" className="text-sm text-ink-mute mb-6">
-        <Link href="/" className="hover:text-ink">Accueil</Link>
-        <span aria-hidden> / </span>
-        <Link href="/blog" className="hover:text-ink">Blog</Link>
+      <nav aria-label="Fil d'Ariane" className="text-sm text-ink-mute flex items-center gap-x-1 gap-y-0 flex-wrap mb-6">
+        <Link href="/" className="py-1 hover:text-ink">Accueil</Link>
+        <span aria-hidden>/</span>
+        <Link href="/blog" className="py-1 hover:text-ink">Blog</Link>
       </nav>
       <header className="mb-8">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-mute mb-3">
@@ -158,14 +158,14 @@ export default async function BlogPostPage({
           <span aria-hidden>·</span>
           <span>{post.readingMinutes} min de lecture</span>
         </div>
-        <h1 id="article-headline" className="text-4xl font-semibold tracking-tight text-ink leading-tight">
+        <h1 id="article-headline" className="text-2xl sm:text-4xl font-semibold tracking-tight text-ink leading-tight break-words">
           {post.title}
         </h1>
         {/* Lead paragraph — speakable target. Renders the excerpt so the
             voice-readable surface matches what a human-skim reader would
             also see first. Without this, the Speakable cssSelector below
             points at nothing. */}
-        <p id="article-lead" className="mt-4 text-lg text-ink-soft leading-relaxed">
+        <p id="article-lead" className="mt-4 text-base sm:text-lg text-ink-soft leading-relaxed">
           {post.excerpt}
         </p>
       </header>

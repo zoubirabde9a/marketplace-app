@@ -85,19 +85,19 @@ function YourStores({ sellers }: { sellers: SellerRecord[] }) {
           </h2>
           <Link
             href="/seller/dashboard"
-            className="text-xs text-ink-soft hover:text-accent transition"
+            className="inline-flex items-center h-8 text-xs text-ink-soft hover:text-accent transition"
           >
             Manage all →
           </Link>
         </header>
         {sellers.length === 0 ? (
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-sm text-ink-soft">
               You don&apos;t have a store yet.
             </p>
             <Link
               href="/seller/dashboard"
-              className="text-sm px-3 py-1.5 rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition shrink-0"
+              className="text-sm px-4 h-10 sm:h-9 inline-flex items-center justify-center rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition sm:shrink-0"
             >
               Open a store
             </Link>
@@ -105,29 +105,29 @@ function YourStores({ sellers }: { sellers: SellerRecord[] }) {
         ) : (
           <ul className="divide-y divide-line-soft">
             {sellers.map((s) => (
-              <li key={s.sellerId} className="py-3 flex items-center justify-between gap-4">
+              <li key={s.sellerId} className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
                 <div className="min-w-0">
                   <div className="text-ink truncate font-medium">{s.displayName}</div>
                   <div className="text-xs text-ink-mute">
                     {s.productCount} product{s.productCount === 1 ? "" : "s"}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs shrink-0">
+                <div className="flex flex-wrap items-center gap-2 text-xs sm:shrink-0">
                   <Link
                     href={`/seller/products/new?sellerId=${encodeURIComponent(s.sellerId)}`}
-                    className="px-2 py-1 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
                   >
                     Add product
                   </Link>
                   <Link
                     href="/seller/dashboard"
-                    className="px-2 py-1 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
                   >
                     Manage
                   </Link>
                   <Link
                     href={`/store/${encodeURIComponent(s.sellerId)}`}
-                    className="px-2 py-1 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
                   >
                     View public
                   </Link>

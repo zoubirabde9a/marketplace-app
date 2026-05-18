@@ -703,7 +703,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   const anyBodyInStock = variants.some((v) => v.inStock);
 
   return (
-    <div className="pt-8" lang={contentLang}>
+    <div className="pt-4 sm:pt-8" lang={contentLang}>
       <meta property="og:type" content="product" />
       <meta property="product:availability" content={anyBodyInStock ? "instock" : "oos"} />
       {ogBodyMinor && ogBodyCurrency && (
@@ -739,7 +739,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         categoryLabel={breadcrumbCategoryLabel}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-10 mt-4 sm:mt-6">
         <Gallery images={p.images} alt={displayTitle} brand={p.brand} />
 
         <div className="space-y-6">
@@ -765,7 +765,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               )}
               <CounterfeitBadge risk={p.counterfeitRisk} />
             </div>
-            <h1 dir="auto" className="text-3xl font-semibold tracking-tight leading-tight untrusted">{displayTitle}</h1>
+            <h1 dir="auto" className="text-2xl sm:text-3xl font-semibold tracking-tight leading-tight untrusted break-words">{displayTitle}</h1>
             {p.sellerId ? (
               <div className="mt-3 text-sm text-ink-soft">
                 Vendu par{" "}
@@ -846,7 +846,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                         key={`tel-${chip.phone}-${idx}`}
                         href={`tel:${chip.phone}`}
                         aria-label={`Appeler ${p.sellerDisplayName ?? "le vendeur"} au ${chip.phone}`}
-                        className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-bg-elev border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                        className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-bg-elev border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                         <span className="font-mono tabular-nums tracking-tight" dir="ltr">{localizeDz(chip.phone)}</span>
@@ -861,7 +861,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={`Contacter ${p.sellerDisplayName ?? "le vendeur"} sur WhatsApp au ${chip.phone} (s'ouvre dans un nouvel onglet)`}
-                        className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 transition"
+                        className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-sm sm:text-xs text-emerald-400 hover:bg-emerald-500/20 transition"
                       >
                         <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden><path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9-.3-.1-.5-.2-.7.1-.2.3-.8 1-.9 1.1-.2.2-.3.2-.6.1-.3-.1-1.2-.5-2.4-1.5-.9-.8-1.5-1.8-1.6-2.1-.2-.3 0-.4.1-.6.1-.1.3-.3.4-.5.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.7-1.7-.9-2.3-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5 4.5 1.7.7 2.4.8 3.3.7.5-.1 1.7-.7 2-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2C6.5 2 2 6.5 2 12c0 1.8.5 3.5 1.3 4.9L2 22l5.3-1.4c1.4.7 2.9 1.1 4.7 1.1 5.5 0 10-4.5 10-10S17.5 2 12 2z"/></svg>
                         <span className="font-mono tabular-nums tracking-tight" dir="ltr">{localizeDz(chip.phone)}</span>
@@ -874,7 +874,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                       key={`viber-${chip.phone}-${idx}`}
                       href={`viber://chat?number=${encodeURIComponent(chip.phone)}`}
                       aria-label={`Contacter ${p.sellerDisplayName ?? "le vendeur"} sur Viber au ${chip.phone}`}
-                      className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-violet-500/10 border border-violet-500/30 text-xs text-violet-300 hover:bg-violet-500/20 transition"
+                      className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-violet-500/10 border border-violet-500/30 text-sm sm:text-xs text-violet-300 hover:bg-violet-500/20 transition"
                     >
                       <span className="font-mono tabular-nums tracking-tight" dir="ltr">Viber {localizeDz(chip.phone)}</span>
                     </a>
@@ -886,7 +886,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     target="_blank"
                     rel="nofollow ugc noopener noreferrer"
                     aria-label={`Site web de ${p.sellerDisplayName ?? "le vendeur"} (s'ouvre dans un nouvel onglet)`}
-                    className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-bg-elev border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                    className="inline-flex items-center gap-1.5 px-3.5 h-11 sm:h-8 rounded-full bg-bg-elev border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
                     Site web
@@ -961,8 +961,8 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           {variants.length > 1 && (
             <section>
               <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">Variants</h2>
-              <div className="rounded-2xl border border-line-soft overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="rounded-2xl border border-line-soft overflow-x-auto">
+                <table className="w-full text-sm min-w-[28rem]">
                   <caption className="sr-only">Product variants — SKU, price, and stock status</caption>
                   <thead className="bg-bg-elev text-ink-soft text-xs uppercase tracking-wider">
                     <tr>
@@ -1102,7 +1102,7 @@ async function RelatedProducts({
         {sellerId && (
           <Link
             href={`/store/${encodeURIComponent(sellerId)}`}
-            className="text-sm text-ink-soft hover:text-ink transition"
+            className="inline-flex items-center h-9 sm:h-8 text-sm text-ink-soft hover:text-ink transition"
           >
             Voir tout →
           </Link>
@@ -1123,23 +1123,23 @@ function Breadcrumbs({
   categoryLabel: string | null;
 }) {
   return (
-    <nav aria-label="Fil d'Ariane" className="text-xs text-ink-mute flex items-center gap-2 flex-wrap">
-      <Link href="/" className="hover:text-ink-soft">Accueil</Link>
+    <nav aria-label="Fil d'Ariane" className="text-xs text-ink-mute flex items-center gap-x-2 gap-y-0 flex-wrap">
+      <Link href="/" className="py-1 hover:text-ink-soft">Accueil</Link>
       <span aria-hidden>/</span>
-      <Link href="/search" className="hover:text-ink-soft">Catalogue</Link>
+      <Link href="/search" className="py-1 hover:text-ink-soft">Catalogue</Link>
       {categorySlug && categoryLabel && (
         <>
           <span aria-hidden>/</span>
           <Link
             href={`/c/${encodeURIComponent(categorySlug)}`}
-            className="hover:text-ink-soft"
+            className="py-1 hover:text-ink-soft"
           >
             {categoryLabel}
           </Link>
         </>
       )}
       <span aria-hidden>/</span>
-      <span aria-current="page" className="text-ink-soft truncate max-w-[40ch]">{title}</span>
+      <span aria-current="page" className="py-1 text-ink-soft truncate max-w-[40ch]">{title}</span>
     </nav>
   );
 }

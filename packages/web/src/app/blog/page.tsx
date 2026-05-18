@@ -72,7 +72,7 @@ export default function BlogIndexPage() {
     ],
   };
   return (
-    <div className="max-w-4xl mx-auto pt-12 pb-24">
+    <div className="max-w-4xl mx-auto pt-6 sm:pt-12 pb-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
@@ -81,9 +81,9 @@ export default function BlogIndexPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(collectionJsonLd) }}
       />
-      <header className="mb-10">
-        <h1 className="text-4xl font-semibold tracking-tight text-ink mb-3">Blog Teno Store</h1>
-        <p className="text-lg text-ink-soft leading-relaxed max-w-2xl">
+      <header className="mb-8 sm:mb-10">
+        <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-ink mb-3">Blog Teno Store</h1>
+        <p className="text-base sm:text-lg text-ink-soft leading-relaxed max-w-2xl">
           Guides d&rsquo;achat pour acheteurs algériens, conseils pratiques
           pour vendeurs, et analyses du marché. Tout en français, prix en
           dinars algériens (DZD).
@@ -101,15 +101,15 @@ export default function BlogIndexPage() {
                 <span>·</span>
                 <span>{p.readingMinutes} min de lecture</span>
               </div>
-              <h2 className="text-2xl font-semibold tracking-tight text-ink mb-2">
-                <Link href={`/blog/${p.slug}`} className="hover:text-accent transition">
+              <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-ink mb-2 break-words">
+                <Link href={`/blog/${p.slug}`} className="hover:text-accent active:text-accent transition">
                   {p.title}
                 </Link>
               </h2>
               <p className="text-ink-soft leading-relaxed mb-3">{p.excerpt}</p>
               <Link
                 href={`/blog/${p.slug}`}
-                className="text-accent hover:underline text-sm font-medium"
+                className="inline-flex items-center h-9 sm:h-auto text-accent hover:underline active:underline text-sm font-medium"
               >
                 Lire l&rsquo;article →
               </Link>

@@ -93,7 +93,7 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
 
   if ("unauthorized" in snap) {
     return (
-      <article className="max-w-3xl mx-auto p-6" lang="en">
+      <article className="max-w-3xl mx-auto p-4 sm:p-6" lang="en">
         <h1 className="text-2xl font-semibold mb-2">Snapshot access denied</h1>
         <p className="text-ink-soft">
           This snapshot exists but isn’t accessible from this link. The token
@@ -127,7 +127,7 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
       : "What the agent saw";
 
   return (
-    <article className="max-w-5xl mx-auto p-6" lang="en">
+    <article className="max-w-5xl mx-auto p-4 sm:p-6" lang="en">
       <header className="mb-6 border-b border-line-soft pb-4">
         <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold">
           Agent {kindLabel[snap.kind]} snapshot
@@ -224,7 +224,7 @@ function ProductSnapshot({ output }: { output: unknown }) {
       </p>
       {p.description ? <p className="mt-3 whitespace-pre-wrap text-ink-soft">{plain(p.description)}</p> : null}
       {p.variants?.length ? (
-        <table className="mt-4 text-sm w-full">
+        <div className="mt-4 -mx-4 sm:mx-0 overflow-x-auto"><table className="text-sm w-full min-w-[22rem]">
           <caption className="sr-only">Product variants — SKU, price, and stock status</caption>
           <thead className="text-left text-ink-mute text-xs uppercase tracking-wider">
             <tr>
@@ -248,7 +248,7 @@ function ProductSnapshot({ output }: { output: unknown }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       ) : null}
     </section>
   );
@@ -351,7 +351,7 @@ function ProductCreateSnapshot({ output }: { output: unknown }) {
         </ul>
       ) : null}
       {p.variants?.length ? (
-        <table className="mt-4 text-sm w-full">
+        <div className="mt-4 -mx-4 sm:mx-0 overflow-x-auto"><table className="text-sm w-full min-w-[22rem]">
           <caption className="sr-only">Product variants — SKU, price, and stock status</caption>
           <thead className="text-left text-ink-mute text-xs uppercase tracking-wider">
             <tr>
@@ -375,7 +375,7 @@ function ProductCreateSnapshot({ output }: { output: unknown }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table></div>
       ) : null}
       {p.createdAt ? <p className="text-xs text-ink-mute mt-3">Created {p.createdAt}</p> : null}
       <p className="mt-6 flex gap-4">

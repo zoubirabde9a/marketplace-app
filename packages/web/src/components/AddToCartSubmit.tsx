@@ -29,7 +29,7 @@ export function AddToCartSubmit({
       type="submit"
       disabled={!inStock || pending}
       aria-busy={pending}
-      className="inline-flex items-center justify-center h-10 px-5 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition"
+      className="inline-flex items-center justify-center h-11 sm:h-10 px-5 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 active:brightness-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
     >
       {!inStock ? "Rupture de stock" : pending ? pendingLabel : label}
     </button>

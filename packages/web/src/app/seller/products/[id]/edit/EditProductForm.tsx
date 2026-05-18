@@ -253,7 +253,7 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
           maxLength={5000}
           rows={4}
           defaultValue={initial.description}
-          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
+          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
         />
       </label>
       <label className="text-sm">
@@ -261,7 +261,7 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
         <select
           name="category"
           defaultValue={initial.categoryIds[0] ?? ""}
-          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
+          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
         >
           <option value="">— Aucune —</option>
           {SELLER_CATEGORIES.map((c) => (
@@ -285,7 +285,7 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
         <button
           type="submit"
           disabled={savingFields}
-          className="inline-flex h-10 px-4 items-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
+          className="inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
         >
           {savingFields ? "Enregistrement…" : "Enregistrer"}
         </button>
@@ -329,7 +329,7 @@ function Field({
         defaultValue={defaultValue}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none disabled:opacity-60"
+        className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none disabled:opacity-60"
       />
     </label>
   );

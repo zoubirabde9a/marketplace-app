@@ -10,9 +10,26 @@ html, body {
               #0b0d12;
   color: #e7eaf0;
   min-height: 100%;
+  /* Suppress iOS Safari's default translucent-gray tap highlight on links and
+     buttons — it clashes with the dark theme and looks unintentional. The
+     site's hover / focus-visible styles already provide tap feedback. */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Use the dynamic viewport unit so the body fills the visible area on iOS
+   Safari even when the URL bar collapses on scroll. Layered after the
+   Tailwind `min-h-screen` class on <body>: browsers that don't recognise
+   `dvh` (iOS <15.4, Android Chrome <108) ignore this line and keep the
+   `100vh` fallback from min-h-screen. */
+@supports (height: 100dvh) {
+  body { min-height: 100dvh; }
 }
 
 body { font-feature-settings: "ss01", "cv11"; }
+
+/* Sticky header (64px) covers anchored headings when users land via #fragment.
+   Reserve space so the heading scrolls clear instead of sitting under the header. */
+:where(h1, h2, h3, h4, h5, h6, [id]) { scroll-margin-top: 80px; }
 
 ::selection { background: rgba(108,140,255,0.35); color: #fff; }
 
@@ -28,6 +45,21 @@ body { font-feature-settings: "ss01", "cv11"; }
   background-size: 200% 100%;
   animation: shimmer 1.6s linear infinite;
   border-radius: 0.5rem;
+}
+
+/* Honor the OS-level "Reduce motion" accessibility setting (iOS Accessibility
+   → Motion → Reduce Motion; Android System → Accessibility → Remove animations;
+   GNOME Accessibility → Reduce animation). Without this, every product card on
+   a 2-col mobile grid fades in on initial paint AND on every infinite-scroll
+   page, and the skeleton row shimmers continuously while content loads —
+   triggering nausea for motion-sensitive users. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Subtle grid for hero */
@@ -47,8 +79,12 @@ body { font-feature-settings: "ss01", "cv11"; }
 }
 
 /* Blog post typography — light prose styles scoped to article body. */
-.blog-prose h2 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; color: #e7eaf0; margin-top: 2.5rem; margin-bottom: 0.75rem; letter-spacing: -0.01em; }
-.blog-prose h3 { font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; color: #e7eaf0; margin-top: 1.75rem; margin-bottom: 0.5rem; }
+.blog-prose h2 { font-size: 1.375rem; line-height: 1.85rem; font-weight: 600; color: #e7eaf0; margin-top: 2rem; margin-bottom: 0.6rem; letter-spacing: -0.01em; }
+.blog-prose h3 { font-size: 1.0625rem; line-height: 1.6rem; font-weight: 600; color: #e7eaf0; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+@media (min-width: 640px) {
+  .blog-prose h2 { font-size: 1.5rem; line-height: 2rem; margin-top: 2.5rem; margin-bottom: 0.75rem; }
+  .blog-prose h3 { font-size: 1.125rem; line-height: 1.75rem; margin-top: 1.75rem; }
+}
 .blog-prose p { margin-bottom: 1rem; }
 .blog-prose p.lead { font-size: 1.125rem; line-height: 1.75rem; color: #c8cdd9; }
 .blog-prose ul, .blog-prose ol { margin: 0.5rem 0 1.25rem 0; padding-left: 1.5rem; }

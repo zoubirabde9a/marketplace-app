@@ -48,9 +48,9 @@ export default async function DashboardPage() {
   const sellers = sellersResp.data;
 
   return (
-    <section className="pt-10 pb-24 max-w-5xl mx-auto" lang="fr">
+    <section className="pt-6 sm:pt-10 pb-24 max-w-5xl mx-auto" lang="fr">
       <div className="flex items-start justify-between gap-4">
-        <h1 className="text-3xl font-semibold tracking-tight">Tableau de bord vendeur</h1>
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight break-words">Tableau de bord vendeur</h1>
         <LogoutButton />
       </div>
 
@@ -132,9 +132,9 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
 
   return (
     <div className="rounded-2xl border border-line-soft bg-bg-soft/60">
-      <header className="p-6 border-b border-line-soft flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-medium">{seller.displayName}</h2>
+      <header className="p-4 sm:p-6 border-b border-line-soft flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-xl font-medium break-words">{seller.displayName}</h2>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-soft">
             <span>
               <span className="text-ink font-medium">{products.length}</span> produit{products.length === 1 ? "" : "s"}
@@ -153,28 +153,28 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
           </div>
           <ContactSummary seller={seller} />
         </div>
-        <div className="flex flex-col gap-2 items-end">
+        <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
           <Link
             href={`/store/${encodeURIComponent(seller.sellerId)}`}
-            className="text-sm px-3 py-1.5 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+            className="text-sm px-3.5 h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
           >
             Voir la boutique
           </Link>
           <Link
             href={`/seller/contact?sellerId=${encodeURIComponent(seller.sellerId)}`}
-            className="text-sm px-3 py-1.5 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
+            className="text-sm px-3.5 h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 transition"
           >
             Modifier les coordonnées
           </Link>
           <Link
             href={`/seller/products/new?sellerId=${encodeURIComponent(seller.sellerId)}`}
-            className="text-sm px-3 py-1.5 rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition"
+            className="text-sm px-3.5 h-9 inline-flex items-center rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition"
           >
             Nouveau produit
           </Link>
         </div>
       </header>
-      <div className="p-6 border-b border-line-soft">
+      <div className="p-4 sm:p-6 border-b border-line-soft">
         <h3 className="text-sm font-medium text-ink-soft mb-3">
           Commandes ({orders.length})
         </h3>
@@ -208,23 +208,28 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                   </div>
                   {o.customer && (
                     <div className="mt-1 text-sm text-ink-soft">
-                      <span className="text-ink">{o.customer.name}</span>
-                      <span className="text-ink-mute"> · </span>
-                      <a href={`tel:${o.customer.phone}`} className="font-mono hover:text-accent">
-                        {o.customer.phone}
-                      </a>
-                      {/* WhatsApp click-to-chat — most Algerian buyers prefer
-                          WhatsApp over a phone call. Strip non-digits; wa.me
-                          requires international format without the leading +. */}
-                      <a
-                        href={`https://wa.me/${o.customer.phone.replace(/\D/g, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-2 text-xs text-ink-mute hover:text-accent"
-                      >
-                        WhatsApp
-                      </a>
-                      <span className="text-ink-mute"> · {o.customer.region}</span>
+                      <div className="text-ink">{o.customer.name}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <a
+                          href={`tel:${o.customer.phone}`}
+                          className="inline-flex items-center gap-1 px-3 h-9 sm:h-7 rounded-full bg-bg-elev border border-line-soft font-mono text-xs hover:text-accent hover:border-accent/40 transition"
+                          aria-label={`Appeler ${o.customer.name} au ${o.customer.phone}`}
+                        >
+                          {o.customer.phone}
+                        </a>
+                        {/* WhatsApp click-to-chat — most Algerian buyers prefer
+                            WhatsApp over a phone call. Strip non-digits; wa.me
+                            requires international format without the leading +. */}
+                        <a
+                          href={`https://wa.me/${o.customer.phone.replace(/\D/g, "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 h-9 sm:h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 transition"
+                        >
+                          WhatsApp
+                        </a>
+                        <span className="text-xs text-ink-mute">{o.customer.region}</span>
+                      </div>
                     </div>
                   )}
                   <ul className="mt-2 text-xs text-ink-mute space-y-1">
@@ -262,20 +267,20 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
           </ul>
         )}
       </div>
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         <h3 className="text-sm font-medium text-ink-soft mb-3">
           Produits ({seller.productCount})
         </h3>
         {productsError ? (
           <p className="text-sm text-bad">Impossible de charger les produits.</p>
         ) : products.length === 0 ? (
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <p className="text-sm text-ink-mute">
               Aucun produit pour le moment. Ajoutez votre premier produit pour le rendre visible aux acheteurs.
             </p>
             <Link
               href={`/seller/products/new?sellerId=${encodeURIComponent(seller.sellerId)}`}
-              className="text-sm px-3 py-1.5 rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition shrink-0"
+              className="text-sm px-3.5 h-10 sm:h-9 inline-flex items-center justify-center rounded-md bg-accent text-bg font-medium hover:bg-accent-hover transition sm:shrink-0"
             >
               Ajouter
             </Link>
@@ -283,7 +288,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
         ) : (
           <ul className="divide-y divide-line-soft">
             {products.map((p) => (
-              <li key={p.productId} className="py-3 flex items-center justify-between gap-4">
+              <li key={p.productId} className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
                 <div className="flex items-center gap-3 min-w-0">
                   {p.heroImageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -306,7 +311,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-ink-soft">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-ink-soft pl-[52px] sm:pl-0">
                   {p.currency && (p.priceMinor || p.priceFromMinor) && (
                     <span className="text-ink">
                       {p.priceMinor
@@ -328,7 +333,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                   </span>
                   <Link
                     href={`/seller/products/${encodeURIComponent(p.productId)}/edit`}
-                    className="px-2 py-1 rounded-md border border-line hover:border-accent/40 hover:text-ink transition"
+                    className="px-3 h-9 sm:h-7 inline-flex items-center rounded-md border border-line hover:border-accent/40 hover:text-ink transition"
                   >
                     Détails
                   </Link>

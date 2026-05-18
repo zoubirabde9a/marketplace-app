@@ -27,8 +27,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       : "Le vendeur vous appellera pour confirmer avant l’expédition.";
 
   return (
-    <section className="pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
-      <div className="rounded-2xl border border-ok/40 bg-ok/5 p-6">
+    <section className="pt-6 sm:pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
+      <div className="rounded-2xl border border-ok/40 bg-ok/5 p-4 sm:p-6">
         <div className="text-xs uppercase tracking-widest text-ok font-semibold">Commande passée</div>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">
           #{order.publicNumber}
@@ -40,7 +40,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       </div>
 
       {order.customer && (
-        <section className="mt-8 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
+        <section className="mt-6 sm:mt-8 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-6">
           <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Contact de livraison</h2>
           <dl className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
             <div>
@@ -59,7 +59,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         </section>
       )}
 
-      <section className="mt-8 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
+      <section className="mt-6 sm:mt-8 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-6">
         <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Articles</h2>
         <ul className="mt-3 divide-y divide-line-soft">
           {order.lines.map((l) => (
@@ -108,10 +108,10 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         </div>
       </section>
 
-      <div className="mt-8 flex gap-3">
+      <div className="mt-6 sm:mt-8 flex gap-3">
         <Link
           href="/search"
-          className="inline-flex items-center px-4 py-2 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 transition"
+          className="inline-flex items-center justify-center w-full sm:w-auto px-5 h-11 sm:h-10 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 transition"
         >
           Continuer mes achats
         </Link>

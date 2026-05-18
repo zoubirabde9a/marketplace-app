@@ -16,7 +16,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
     }
   }, [error]);
   return (
-    <div className="py-32 text-center" lang="fr">
+    <div className="py-16 sm:py-32 px-4 text-center" lang="fr">
       <p className="text-xs uppercase tracking-widest text-bad font-semibold mb-3">Erreur</p>
       <h1 className="text-3xl font-semibold tracking-tight mb-2">Cette page n’a pas pu se charger.</h1>
       <p className="text-ink-soft max-w-md mx-auto">
@@ -25,7 +25,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
       {error.digest && <p className="text-xs text-ink-mute mt-2 font-mono">réf {error.digest}</p>}
       <button
         onClick={reset}
-        className="inline-flex mt-6 h-10 px-4 items-center rounded-md bg-accent/15 text-accent border border-accent/30 hover:bg-accent/25 transition"
+        className="inline-flex mt-6 h-11 sm:h-10 px-4 items-center rounded-md bg-accent/15 text-accent border border-accent/30 hover:bg-accent/25 transition"
       >
         Réessayer
       </button>

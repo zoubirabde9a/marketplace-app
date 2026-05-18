@@ -4,7 +4,7 @@ import { ProductCard } from "./ProductCard";
 export function ProductGrid({ hits }: { hits: SearchHit[] }) {
   return (
     <ul
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 list-none p-0 m-0"
+      className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4 list-none p-0 m-0"
       aria-label={`${hits.length} annonce${hits.length === 1 ? "" : "s"}`}
     >
       {hits.map((h, i) => (
@@ -25,13 +25,13 @@ export function ProductGrid({ hits }: { hits: SearchHit[] }) {
 export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
   return (
     <div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+      className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4"
       aria-hidden="true"
     >
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="rounded-2xl border border-line-soft bg-bg-soft overflow-hidden">
           <div className="skeleton aspect-[4/3] rounded-none" />
-          <div className="p-4 space-y-3">
+          <div className="p-3 sm:p-4 space-y-3">
             <div className="skeleton h-3 w-1/3" />
             <div className="skeleton h-4 w-5/6" />
             <div className="skeleton h-4 w-2/3" />

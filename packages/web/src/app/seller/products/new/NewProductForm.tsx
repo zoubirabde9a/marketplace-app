@@ -209,7 +209,7 @@ export function NewProductForm({
           <select
             name="sellerId"
             defaultValue={defaultSellerId}
-            className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
+            className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
           >
             {sellers.map((s) => (
               <option key={s.sellerId} value={s.sellerId}>
@@ -236,7 +236,7 @@ export function NewProductForm({
           name="description"
           maxLength={5000}
           rows={4}
-          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
+          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
         />
       </label>
       <label className="text-sm">
@@ -244,7 +244,7 @@ export function NewProductForm({
         <select
           name="category"
           defaultValue=""
-          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
+          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
         >
           <option value="">— Aucune —</option>
           {SELLER_CATEGORIES.map((c) => (
@@ -266,7 +266,7 @@ export function NewProductForm({
       <button
         type="submit"
         disabled={pending || images.some((x) => x.uploading)}
-        className="self-start inline-flex h-10 px-4 items-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
+        className="self-stretch sm:self-start inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
       >
         {pending ? "Création…" : "Créer le produit"}
       </button>
@@ -318,7 +318,7 @@ function ImageUploader({
               type="button"
               onClick={() => onRemove(img.localId)}
               aria-label="Retirer l'image"
-              className="absolute top-1 right-1 w-6 h-6 rounded-full bg-bg/80 border border-line text-ink hover:text-bad hover:border-bad/40 transition flex items-center justify-center text-base leading-none"
+              className="absolute top-1 right-1 w-8 h-8 sm:w-6 sm:h-6 rounded-full bg-bg/80 border border-line text-ink hover:text-bad hover:border-bad/40 transition flex items-center justify-center text-base leading-none"
             >
               ×
             </button>
@@ -385,7 +385,7 @@ function Field({
         maxLength={maxLength}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
+        className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
       />
     </label>
   );

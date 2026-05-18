@@ -26,7 +26,7 @@ const RECOVERY_CATEGORIES = [
 
 export default function ProductNotFound() {
   return (
-    <div className="py-24 px-4 max-w-2xl mx-auto text-center">
+    <div className="py-12 sm:py-24 px-4 max-w-2xl mx-auto text-center">
       <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">404</p>
       <h1 className="text-3xl font-semibold tracking-tight mb-3">Annonce introuvable.</h1>
       <p className="text-ink-soft mb-8">
@@ -36,13 +36,13 @@ export default function ProductNotFound() {
       <div className="flex flex-wrap justify-center gap-3 mb-10">
         <Link
           href="/search"
-          className="inline-flex h-10 px-4 items-center rounded-md bg-accent/15 text-accent border border-accent/30 hover:bg-accent/25 transition"
+          className="inline-flex h-11 sm:h-10 px-4 items-center rounded-md bg-accent/15 text-accent border border-accent/30 hover:bg-accent/25 transition"
         >
           Parcourir le catalogue
         </Link>
         <Link
           href="/"
-          className="inline-flex h-10 px-4 items-center rounded-md bg-bg-elev text-ink border border-line-soft hover:border-accent transition"
+          className="inline-flex h-11 sm:h-10 px-4 items-center rounded-md bg-bg-elev text-ink border border-line-soft hover:border-accent transition"
         >
           Accueil
         </Link>
@@ -57,7 +57,7 @@ export default function ProductNotFound() {
             <Link
               key={slug}
               href={`/c/${slug}`}
-              className="inline-flex h-8 px-3 items-center rounded-full bg-bg-soft border border-line-soft text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
+              className="inline-flex h-9 sm:h-8 px-3.5 sm:px-3 items-center rounded-full bg-bg-soft border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink transition"
             >
               {humanizeCategorySlug(slug)}
             </Link>

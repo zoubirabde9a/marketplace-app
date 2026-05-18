@@ -93,12 +93,22 @@ export function GoogleSignInButton({
         ux_mode: "popup",
         auto_select: false,
       });
+      // Google's renderButton takes a fixed pixel width (range 200–400). Hard-
+      // coding 320 overflowed the seller-card on phones at ≤360px viewports
+      // (the card has p-5 = 40px of inner padding plus the layout's px-3
+      // gutter, so available width is ~296px on a typical iPhone SE).
+      // Read the actual container width and clamp into Google's accepted
+      // range so the button never bleeds past its parent.
+      const containerWidth = buttonRef.current.parentElement?.clientWidth
+        ?? buttonRef.current.clientWidth
+        ?? 320;
+      const buttonWidth = Math.max(200, Math.min(400, Math.floor(containerWidth)));
       window.google.accounts.id.renderButton(buttonRef.current, {
         theme: "filled_black",
         size: "large",
         text: "signin_with",
         shape: "pill",
-        width: 320,
+        width: buttonWidth,
       });
     };
 

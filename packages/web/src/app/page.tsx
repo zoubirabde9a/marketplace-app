@@ -317,7 +317,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           Lighthouse's "Document has a content-language for non-default
           regions" audit passes. The bilingual catalog block below carries
           its own per-paragraph lang attributes. */}
-      <div lang="en" className="relative pt-24 pb-16 text-center max-w-3xl mx-auto">
+      <div lang="en" className="relative pt-12 pb-10 sm:pt-24 sm:pb-16 text-center max-w-3xl mx-auto px-2">
         <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-accent bg-accent/10 border border-accent/30 mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> live
         </span>
@@ -339,17 +339,17 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         <p className="mt-5 text-lg text-ink-soft leading-relaxed">
           See every search, every product, every price your agent looked at — exactly as it saw them.
         </p>
-        <div className="mt-8 flex items-center justify-center gap-3">
+        <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
           <Link
             href="/login"
-            className="inline-flex h-11 px-5 items-center rounded-xl bg-accent text-bg font-medium hover:bg-accent-hover transition shadow-glow"
+            className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-accent text-bg font-medium hover:bg-accent-hover transition shadow-glow"
           >
             Sign in to see your agent →
           </Link>
           <Link
             href="/search"
             lang="fr"
-            className="inline-flex h-11 px-5 items-center rounded-xl bg-bg-soft border border-line text-ink-soft hover:border-accent/40 hover:text-ink transition"
+            className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-bg-soft border border-line text-ink-soft hover:border-accent/40 hover:text-ink transition"
           >
             Parcourir le catalogue
           </Link>
@@ -363,7 +363,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           block (catalog H2 + French paragraph + category chips) → agent
           cards (H2s) → recent strip. The catalog signal now reaches
           crawlers before the agent narrative. */}
-      <section className="mt-12 max-w-4xl mx-auto" aria-labelledby="catalog-heading">
+      <section className="mt-6 sm:mt-12 max-w-4xl mx-auto" aria-labelledby="catalog-heading">
         {/* Promoted from <h2> to <h1>: now the page's only H1 element and the
             primary topic signal for crawlers. Matches the <html lang="fr">
             declaration and the French meta description. The English hero
@@ -401,7 +401,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
             <li key={slug}>
               <Link
                 href={`/c/${encodeURIComponent(slug)}`}
-                className="inline-flex items-center px-3 h-9 rounded-full bg-bg-soft border border-line-soft text-sm text-ink-soft hover:border-accent/40 hover:text-ink transition"
+                className="inline-flex items-center px-3.5 h-10 sm:h-9 rounded-full bg-bg-soft border border-line-soft text-sm text-ink-soft hover:border-accent/40 hover:text-ink transition"
               >
                 {label}
               </Link>
@@ -409,7 +409,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           ))}
         </ul>
       </section>
-      <section lang="en" className="mt-16 max-w-4xl mx-auto" aria-labelledby="agent-heading">
+      <section lang="en" className="mt-10 sm:mt-16 max-w-4xl mx-auto" aria-labelledby="agent-heading">
         <h2 id="agent-heading" className="sr-only">How the agent observer works</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
           <Card title="Deep-linked searches" body="When your agent narrows a search, you get a URL that mirrors the same filters and results." />
@@ -425,7 +425,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
       <section
         lang="fr"
         aria-labelledby="home-faq-heading"
-        className="mt-16 max-w-3xl mx-auto"
+        className="mt-10 sm:mt-16 max-w-3xl mx-auto"
       >
         <h2
           id="home-faq-heading"
@@ -446,7 +446,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         <section className="mt-12" aria-labelledby="recent-heading">
           <div className="flex items-baseline justify-between mb-4">
             <h2 id="recent-heading" className="text-xl font-semibold tracking-tight">Annonces récentes</h2>
-            <Link href="/search" className="text-sm text-ink-soft hover:text-ink transition">Voir tout →</Link>
+            <Link href="/search" className="inline-flex items-center h-9 sm:h-8 text-sm text-ink-soft hover:text-ink transition">Voir tout →</Link>
           </div>
           <ProductGrid hits={recent} />
         </section>

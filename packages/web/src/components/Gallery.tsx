@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import clsx from "clsx";
 
@@ -10,6 +10,20 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
   const [idx, setIdx] = useState(0);
   const [open, setOpen] = useState(false);
   const active = images[idx];
+  const touchStartX = useRef<number | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current == null || images.length < 2) return;
+    const dx = (e.changedTouches[0]?.clientX ?? 0) - touchStartX.current;
+    touchStartX.current = null;
+    // 40px threshold avoids treating tiny taps/drags as swipes.
+    if (Math.abs(dx) < 40) return;
+    if (dx < 0) setIdx((i) => (i + 1) % images.length);
+    else setIdx((i) => (i - 1 + images.length) % images.length);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -62,8 +76,8 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
           priority
           className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
         />
-        <span className="absolute bottom-3 right-3 px-2 py-1 rounded-md text-[11px] font-mono bg-bg/80 text-ink-soft border border-line-soft opacity-0 group-hover:opacity-100 transition">
-          Cliquer pour agrandir
+        <span className="absolute bottom-3 right-3 px-2 py-1 rounded-md text-[11px] font-mono bg-bg/80 text-ink-soft border border-line-soft opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition">
+          Agrandir
         </span>
       </button>
       {images.length > 1 && (
@@ -90,13 +104,15 @@ export function Gallery({ images, alt, brand }: { images: Img[]; alt: string; br
 
       {open && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-up"
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-up touch-pan-y"
           onClick={() => setOpen(false)}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
           role="dialog"
           aria-modal="true"
         >
           <button
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-bg-elev/80 border border-line text-ink hover:bg-bg-elev"
+            className="absolute top-4 right-4 w-11 h-11 rounded-full bg-bg-elev/80 border border-line text-ink hover:bg-bg-elev"
             onClick={(e) => { e.stopPropagation(); setOpen(false); }}
             aria-label="Fermer"
           >

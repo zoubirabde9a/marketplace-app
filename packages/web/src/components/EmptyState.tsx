@@ -27,7 +27,7 @@ export function EmptyState({
   // (e.g. "téléphone" returns 0 even though "phone" returns 2 with fuzzy).
   const showFuzzyCta = Boolean(q) && !fuzzyAlreadyOn;
   return (
-    <div className="rounded-2xl border border-dashed border-line bg-bg-soft/50 px-8 py-16 text-center">
+    <div className="rounded-2xl border border-dashed border-line bg-bg-soft/50 px-4 sm:px-8 py-10 sm:py-16 text-center">
       <div className="mx-auto w-12 h-12 rounded-xl bg-bg-elev border border-line-soft flex items-center justify-center text-ink-soft mb-4">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
       </div>
@@ -42,18 +42,18 @@ export function EmptyState({
         {showFuzzyCta && (
           <Link
             href={`/search?q=${encodeURIComponent(q!)}&fuzzy=true`}
-            className="inline-flex px-4 h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition"
+            className="inline-flex px-4 h-11 sm:h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition"
           >
             Essayer la recherche approximative
           </Link>
         )}
         {showReset && (
-          <Link href="/search" className="inline-flex px-4 h-9 items-center rounded-md bg-bg-elev border border-line text-ink-soft text-sm hover:border-accent/40 hover:text-ink transition">
+          <Link href="/search" className="inline-flex px-4 h-11 sm:h-9 items-center rounded-md bg-bg-elev border border-line text-ink-soft text-sm hover:border-accent/40 hover:text-ink transition">
             {resetLabel}
           </Link>
         )}
         {showSellCta && (
-          <Link href="/seller" className="inline-flex px-4 h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition">
+          <Link href="/seller" className="inline-flex px-4 h-11 sm:h-9 items-center rounded-md bg-accent/15 text-accent border border-accent/30 text-sm hover:bg-accent/25 transition">
             Vendre sur Teno Store →
           </Link>
         )}

@@ -177,7 +177,7 @@ function ConnectAgentEmptyState() {
             href="https://claude.ai/download"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-bg-soft border border-line-soft text-xs hover:border-accent/40 transition shrink-0"
+            className="inline-flex items-center gap-1.5 px-3.5 h-10 sm:h-8 rounded-full bg-bg-soft border border-line-soft text-sm sm:text-xs hover:border-accent/40 transition shrink-0"
           >
             Download Claude →
           </a>

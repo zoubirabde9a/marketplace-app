@@ -20,7 +20,7 @@ export function PlaceOrderSubmit() {
       type="submit"
       disabled={pending}
       aria-busy={pending}
-      className="mt-4 w-full h-11 rounded-md bg-accent text-bg text-sm font-semibold hover:brightness-110 transition disabled:opacity-60 disabled:cursor-not-allowed"
+      className="mt-4 w-full h-11 rounded-md bg-accent text-bg text-sm font-semibold hover:brightness-110 active:brightness-90 transition disabled:opacity-60 disabled:cursor-not-allowed"
     >
       {pending ? "Commande en cours…" : "Passer la commande"}
     </button>

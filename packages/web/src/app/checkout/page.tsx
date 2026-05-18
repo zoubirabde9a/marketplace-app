@@ -43,8 +43,8 @@ export default async function CheckoutPage({
       : "Paiement à la livraison. Le vendeur vous appellera pour confirmer avant l’expédition.";
 
   return (
-    <section className="pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
-      <Link href="/cart" className="text-xs text-ink-mute hover:text-ink-soft">
+    <section className="pt-6 sm:pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
+      <Link href="/cart" className="inline-flex items-center h-8 text-sm sm:text-xs text-ink-mute hover:text-ink-soft">
         ← Retour au panier
       </Link>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">Commande</h1>
@@ -70,7 +70,7 @@ export default async function CheckoutPage({
               maxLength={120}
               autoComplete="name"
               defaultValue={savedBuyer?.name ?? ""}
-              className="w-full h-11 px-3 rounded-md border border-line bg-bg-elev text-sm"
+              className="w-full h-11 px-3 rounded-md border border-line bg-bg-elev text-base sm:text-sm"
             />
           </div>
           <div>
@@ -87,7 +87,7 @@ export default async function CheckoutPage({
               autoComplete="tel"
               placeholder="0555 12 34 56"
               defaultValue={savedBuyer?.phone ?? ""}
-              className="w-full h-11 px-3 rounded-md border border-line bg-bg-elev text-sm font-mono"
+              className="w-full h-11 px-3 rounded-md border border-line bg-bg-elev text-base sm:text-sm font-mono"
             />
           </div>
           <div>
@@ -99,7 +99,7 @@ export default async function CheckoutPage({
               name="region"
               required
               defaultValue={savedBuyer?.region && ALGERIAN_WILAYAS.includes(savedBuyer.region) ? savedBuyer.region : ""}
-              className="w-full h-11 px-3 rounded-md border border-line bg-bg-elev text-sm"
+              className="w-full h-11 px-3 rounded-md border border-line bg-bg-elev text-base sm:text-sm"
             >
               <option value="" disabled>
                 Sélectionnez une wilaya…
@@ -115,7 +115,7 @@ export default async function CheckoutPage({
           <PlaceOrderSubmit />
         </form>
 
-        <aside className="rounded-2xl border border-line-soft bg-bg-soft/60 p-6 h-fit">
+        <aside className="rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-6 h-fit">
           <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Récapitulatif de commande</h2>
           <ul className="mt-4 space-y-3 text-sm">
             {cart.lines.map((l) => (

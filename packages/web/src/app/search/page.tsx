@@ -333,7 +333,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   // snippet selection toward footer text. Awaiting Results inline preserves
   // source order for negligible TTFB cost.
   return (
-    <div className="pt-8">
+    <div className="pt-4 sm:pt-8">
       <Results input={input} sp={sp} />
     </div>
   );
@@ -821,12 +821,12 @@ function BareCatalogIntro({ total, contentLang }: { total: number; contentLang?:
 
 function SearchBreadcrumbs({ label }: { label: string }) {
   return (
-    <nav aria-label="Fil d'Ariane" className="text-xs text-ink-mute flex items-center gap-2 mb-3">
-      <Link href="/" className="hover:text-ink-soft">Accueil</Link>
+    <nav aria-label="Fil d'Ariane" className="text-xs text-ink-mute flex items-center gap-x-2 gap-y-0 flex-wrap mb-3">
+      <Link href="/" className="py-1 hover:text-ink-soft">Accueil</Link>
       <span aria-hidden>/</span>
-      <Link href="/search" className="hover:text-ink-soft">Catalogue</Link>
+      <Link href="/search" className="py-1 hover:text-ink-soft">Catalogue</Link>
       <span aria-hidden>/</span>
-      <span aria-current="page" className="text-ink-soft truncate max-w-[40ch]">{label}</span>
+      <span aria-current="page" className="py-1 text-ink-soft truncate max-w-[40ch]">{label}</span>
     </nav>
   );
 }

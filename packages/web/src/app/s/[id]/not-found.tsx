@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export default function SnapshotNotFound() {
   return (
-    <article className="max-w-3xl mx-auto p-6" lang="en">
+    <article className="max-w-3xl mx-auto p-4 sm:p-6" lang="en">
       <h1 className="text-2xl font-semibold mb-2">Snapshot unavailable</h1>
       <p className="text-ink-soft mb-4">
         This snapshot is no longer stored. Snapshots are kept for 24 hours after

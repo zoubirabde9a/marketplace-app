@@ -112,7 +112,7 @@ export default async function SellerLandingPage() {
   };
 
   return (
-    <section className="max-w-xl mx-auto pt-16 pb-24">
+    <section className="max-w-xl mx-auto pt-8 sm:pt-16 pb-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
@@ -125,7 +125,7 @@ export default async function SellerLandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(sellerServiceJsonLd) }}
       />
-      <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-8 backdrop-blur">
+      <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-5 sm:p-8 backdrop-blur">
         <h1 className="text-3xl font-semibold tracking-tight">Vendre sur Teno Store</h1>
         <p className="mt-3 text-ink-soft leading-relaxed">
           Connectez-vous avec Google pour gérer votre profil vendeur, publier

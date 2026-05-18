@@ -47,7 +47,7 @@ export function CreateSellerForm() {
           name="displayName"
           required
           maxLength={120}
-          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
+          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
           placeholder="ex. Téléphonie El Djazair"
         />
       </label>
@@ -60,7 +60,7 @@ export function CreateSellerForm() {
           maxLength={32}
           inputMode="tel"
           autoComplete="tel"
-          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
+          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
           placeholder="+213 5 55 12 34 56"
         />
       </label>
@@ -69,7 +69,7 @@ export function CreateSellerForm() {
       <button
         type="submit"
         disabled={pending}
-        className="self-start inline-flex h-10 px-4 items-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
+        className="self-stretch sm:self-start inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
       >
         {pending ? "Création…" : "Créer ma boutique"}
       </button>

@@ -36,7 +36,7 @@ export function CopyButton({
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-accent text-bg text-xs font-medium hover:bg-accent/90 transition shrink-0"
+      className="inline-flex items-center gap-1.5 px-3.5 h-10 sm:h-8 rounded-full bg-accent text-bg text-sm sm:text-xs font-medium hover:bg-accent/90 transition shrink-0"
     >
       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
         <rect x="9" y="9" width="13" height="13" rx="2" />

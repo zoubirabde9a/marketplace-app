@@ -314,7 +314,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   };
 
   return (
-    <article className="max-w-6xl mx-auto p-6">
+    <article className="max-w-6xl mx-auto px-0 py-4 sm:p-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(storeJsonLd) }}
@@ -332,7 +332,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
 
       <header className="border-b border-line-soft pb-6 mb-6">
         <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Boutique</p>
-        <h1 className="text-3xl font-semibold mt-1">{seller.displayName}</h1>
+        <h1 className="text-2xl sm:text-3xl font-semibold mt-1 break-words">{seller.displayName}</h1>
         {location ? <p className="text-sm text-ink-soft mt-1">{location}</p> : null}
         {seller.description ? (
           <p className="mt-4 text-ink-soft whitespace-pre-wrap max-w-2xl">{seller.description}</p>
@@ -346,7 +346,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
                 <ul>
                   {phones.map((p) => (
                     <li key={p.phone}>
-                      <a className="font-mono text-accent hover:underline" href={`tel:${p.phone}`}>{p.phone}</a>
+                      <a className="inline-block py-1 sm:py-0 font-mono text-accent hover:underline" href={`tel:${p.phone}`}>{p.phone}</a>
                       {p.isPrimary ? <span className="text-xs text-ink-mute"> · principal</span> : null}
                       {p.isWhatsapp ? <span className="text-xs text-ink-mute"> · WhatsApp</span> : null}
                       {p.isViber ? <span className="text-xs text-ink-mute"> · Viber</span> : null}
@@ -358,19 +358,19 @@ export default async function StorePage({ params }: { params: Promise<Params> })
           ) : seller.phone ? (
             <>
               <dt className="text-ink-mute">Téléphone</dt>
-              <dd><a className="font-mono text-accent hover:underline" href={`tel:${seller.phone}`}>{seller.phone}</a></dd>
+              <dd><a className="inline-block py-1 sm:py-0 font-mono text-accent hover:underline" href={`tel:${seller.phone}`}>{seller.phone}</a></dd>
             </>
           ) : null}
           {seller.website ? (
             <>
               <dt className="text-ink-mute">Site web</dt>
-              <dd><a className="text-accent hover:underline" href={seller.website} rel="nofollow noopener">{seller.website}</a></dd>
+              <dd><a className="inline-block py-1 sm:py-0 text-accent hover:underline break-all" href={seller.website} rel="nofollow noopener">{seller.website}</a></dd>
             </>
           ) : null}
           {seller.supportEmail ? (
             <>
               <dt className="text-ink-mute">Contact</dt>
-              <dd><a className="text-accent hover:underline" href={`mailto:${seller.supportEmail}`}>{seller.supportEmail}</a></dd>
+              <dd><a className="inline-block py-1 sm:py-0 text-accent hover:underline break-all" href={`mailto:${seller.supportEmail}`}>{seller.supportEmail}</a></dd>
             </>
           ) : null}
         </dl>

@@ -143,7 +143,7 @@ export default function AboutPage() {
     ],
   };
   return (
-    <article className="max-w-3xl mx-auto pt-12 pb-24 prose-invert text-ink-soft">
+    <article className="max-w-3xl mx-auto pt-6 sm:pt-12 pb-24 prose-invert text-ink-soft">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
@@ -163,10 +163,10 @@ export default function AboutPage() {
           uses (iter-7), keeping the dominant SEO signals (title, H1, lede)
           in French while preserving the longer technical English copy. */}
       <section lang="fr">
-        <h1 className="text-4xl font-semibold tracking-tight text-ink mb-3">
+        <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight text-ink mb-3 break-words">
           À propos de Teno Store
         </h1>
-        <p className="text-lg leading-relaxed">
+        <p className="text-base sm:text-lg leading-relaxed">
           Teno Store est un <strong>marketplace algérien</strong> avec des
           milliers d&rsquo;annonces en direct — téléphones, informatique,
           électroménager, mode, véhicules et plus — issues de vrais vendeurs
@@ -317,7 +317,7 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section lang="en" className="mt-16 pt-12 border-t border-line-soft">
+      <section lang="en" className="mt-10 sm:mt-16 pt-8 sm:pt-12 border-t border-line-soft">
         <h2 className="text-2xl font-semibold tracking-tight text-ink mb-3">
           For agents &amp; developers
         </h2>

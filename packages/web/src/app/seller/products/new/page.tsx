@@ -30,7 +30,7 @@ export default async function NewProductPage({
 
   if (sellers.length === 0) {
     return (
-      <section className="pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
+      <section className="pt-6 sm:pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
         <h1 className="text-2xl font-semibold">Nouveau produit</h1>
         <p className="mt-4 text-sm text-ink-soft">
           Vous devez d’abord créer une boutique.{" "}
@@ -49,14 +49,14 @@ export default async function NewProductPage({
 
   return (
     <section className="pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
-      <Link href="/seller/dashboard" className="text-sm text-ink-soft hover:text-ink">
+      <Link href="/seller/dashboard" className="inline-flex items-center h-8 text-sm text-ink-soft hover:text-ink">
         ← Retour au tableau de bord
       </Link>
       <h1 className="mt-3 text-2xl font-semibold tracking-tight">Nouveau produit</h1>
       <p className="mt-2 text-sm text-ink-soft">
         Remplissez le titre et le prix — c’est tout ce qu’il faut pour publier.
       </p>
-      <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-6">
+      <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-6">
         <NewProductForm
           sellers={sellers.map((s) => ({ sellerId: s.sellerId, displayName: s.displayName }))}
           defaultSellerId={defaultSellerId}

@@ -12,9 +12,17 @@ export async function HeaderUserMenu() {
     return (
       <Link
         href="/login"
-        className="px-3 py-1.5 rounded-md text-sm font-medium text-ink-soft hover:text-ink hover:bg-bg-elev transition"
+        aria-label="Se connecter"
+        className="px-3 h-9 inline-flex items-center gap-1.5 rounded-md text-sm font-medium text-ink-soft hover:text-ink hover:bg-bg-elev transition"
       >
-        Se connecter
+        {/* User icon — labeled with aria-label on mobile (text hidden) and
+            paired with the visible label from sm: up. Keeps the SearchBar
+            usably wide on phones where "Se connecter" was claiming ~85 px. */}
+        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24" aria-hidden>
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+        <span className="hidden sm:inline">Se connecter</span>
       </Link>
     );
   }
@@ -23,7 +31,7 @@ export async function HeaderUserMenu() {
     <div className="flex items-center gap-2">
       <Link
         href="/seller/dashboard"
-        className="hidden sm:inline-flex px-3 py-1.5 rounded-md text-sm text-ink-soft hover:text-ink hover:bg-bg-elev transition"
+        className="hidden sm:inline-flex px-3 h-9 items-center rounded-md text-sm text-ink-soft hover:text-ink hover:bg-bg-elev transition"
         title="Gérer votre boutique"
       >
         Ma boutique

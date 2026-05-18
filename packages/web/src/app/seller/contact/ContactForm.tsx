@@ -62,7 +62,7 @@ export function ContactForm({ sellerId, initial }: Props) {
       <button
         type="submit"
         disabled={pending}
-        className="self-start inline-flex h-10 px-4 items-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
+        className="self-stretch sm:self-start inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover transition disabled:opacity-60"
       >
         {pending ? "Enregistrement…" : "Enregistrer"}
       </button>
@@ -91,7 +91,7 @@ function Field({
         name={name}
         defaultValue={defaultValue}
         placeholder={placeholder}
-        className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-ink focus:border-accent/60 outline-none"
+        className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
       />
     </label>
   );

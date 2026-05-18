@@ -197,7 +197,7 @@ export default async function CategoryLandingPage({
   };
 
   return (
-    <div className="pt-8 pb-24">
+    <div className="pt-4 sm:pt-8 pb-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
@@ -210,15 +210,15 @@ export default async function CategoryLandingPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(faqJsonLd) }}
       />
-      <nav aria-label="Fil d'Ariane" className="text-sm text-ink-mute mb-4">
-        <Link href="/" className="hover:text-ink">Accueil</Link>
-        <span aria-hidden> / </span>
-        <Link href="/search" className="hover:text-ink">Catégories</Link>
-        <span aria-hidden> / </span>
-        <span className="text-ink-soft">{human}</span>
+      <nav aria-label="Fil d'Ariane" className="text-sm text-ink-mute flex items-center gap-x-1 gap-y-0 flex-wrap mb-4">
+        <Link href="/" className="py-1 hover:text-ink">Accueil</Link>
+        <span aria-hidden>/</span>
+        <Link href="/search" className="py-1 hover:text-ink">Catégories</Link>
+        <span aria-hidden>/</span>
+        <span className="py-1 text-ink-soft">{human}</span>
       </nav>
       <header className="mb-8 max-w-3xl">
-        <h1 className="text-4xl font-semibold tracking-tight text-ink mb-3">
+        <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight text-ink mb-3 break-words">
           {human} en Algérie
         </h1>
         {fmtCount && (
@@ -234,7 +234,7 @@ export default async function CategoryLandingPage({
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href={`/search?${resolveCategorySlugs(slug).map(s => `category=${encodeURIComponent(s)}`).join("&")}`}
-            className="inline-flex items-center px-4 py-2 rounded-md bg-accent text-bg font-medium shadow-glow hover:brightness-110 transition"
+            className="inline-flex items-center justify-center px-5 h-11 sm:h-10 rounded-md bg-accent text-bg font-medium shadow-glow hover:brightness-110 transition"
           >
             Voir toutes les {annonce} →
           </Link>
@@ -249,7 +249,7 @@ export default async function CategoryLandingPage({
             </h2>
             <Link
               href={`/search?${resolveCategorySlugs(slug).map(s => `category=${encodeURIComponent(s)}`).join("&")}&sort=newest`}
-              className="text-sm text-accent hover:underline"
+              className="inline-flex items-center h-9 sm:h-8 text-sm text-accent hover:underline"
             >
               Voir plus →
             </Link>
@@ -273,7 +273,7 @@ export default async function CategoryLandingPage({
                 <li key={p.slug}>
                   <Link
                     href={`/blog/${p.slug}`}
-                    className="group block p-4 rounded-lg border border-line-soft hover:border-accent transition"
+                    className="group block p-4 rounded-lg border border-line-soft hover:border-accent active:border-accent active:bg-bg-elev transition"
                   >
                     <div className="text-xs text-ink-mute mb-1">{p.category} · {p.readingMinutes} min de lecture</div>
                     <div className="text-ink font-medium group-hover:text-accent">{p.title}</div>
@@ -296,7 +296,7 @@ export default async function CategoryLandingPage({
               <Link
                 key={r}
                 href={`/c/${r}`}
-                className="inline-flex items-center px-3 py-1.5 rounded-md bg-bg-elev border border-line-soft text-sm text-ink-soft hover:text-ink hover:border-accent transition"
+                className="inline-flex items-center px-3.5 h-10 sm:h-8 rounded-md bg-bg-elev border border-line-soft text-sm text-ink-soft hover:text-ink hover:border-accent transition"
               >
                 {humanizeCategorySlug(r)}
               </Link>

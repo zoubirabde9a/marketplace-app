@@ -51,7 +51,7 @@ export function ProductCard({
   return (
     <Link
       href={`/product/${encodeURIComponent(hit.productId)}`}
-      className="group relative flex flex-col rounded-2xl border border-line-soft bg-bg-soft hover:bg-bg-elev hover:border-line transition-all overflow-hidden shadow-soft animate-fade-up"
+      className="group relative flex flex-col rounded-2xl border border-line-soft bg-bg-soft hover:bg-bg-elev hover:border-line active:bg-bg-elev active:border-line transition-all overflow-hidden shadow-soft animate-fade-up"
     >
       <div className="aspect-[4/3] relative bg-gradient-to-br from-bg-elev to-bg overflow-hidden">
         {hit.heroImageUrl ? (
@@ -97,7 +97,7 @@ export function ProductCard({
             </span>
           </div>
         )}
-        <div className="absolute top-2 right-2 flex gap-1.5">
+        <div className="absolute top-2 right-2 flex flex-col items-end gap-1 sm:flex-row sm:items-start sm:gap-1.5">
           <CounterfeitBadge risk={hit.counterfeitRisk} />
           {hit.sellerId === null && (
             // Scraped Ouedkniss listings are catalog reference data, not
@@ -120,7 +120,7 @@ export function ProductCard({
           )}
         </div>
       </div>
-      <div className="p-4 flex flex-col gap-2 flex-1">
+      <div className="p-3 sm:p-4 flex flex-col gap-2 flex-1">
         {/* h3, not h2: product cards are nested below a page-level H1 (every
             page that renders them — home / slice landings / product detail's
             "More from seller" — has its own H1 already). Bumping these from
