@@ -89,11 +89,11 @@ export default function BlogIndexPage() {
           dinars algériens (DZD).
         </p>
       </header>
-      <ul className="space-y-8">
+      <ul className="space-y-6 sm:space-y-8">
         {BLOG_POSTS.map((p) => (
-          <li key={p.slug} className="border-b border-line-soft pb-8 last:border-b-0">
+          <li key={p.slug} className="border-b border-line-soft pb-6 sm:pb-8 last:border-b-0">
             <article>
-              <div className="flex items-center gap-3 text-xs text-ink-mute mb-2">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-mute mb-2">
                 <span className="px-2 py-0.5 rounded-md bg-bg-elev border border-line-soft">
                   {p.category}
                 </span>

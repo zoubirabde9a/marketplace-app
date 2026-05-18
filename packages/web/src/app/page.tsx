@@ -318,7 +318,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           regions" audit passes. The bilingual catalog block below carries
           its own per-paragraph lang attributes. */}
       <div lang="en" className="relative pt-12 pb-10 sm:pt-24 sm:pb-16 text-center max-w-3xl mx-auto px-2">
-        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-accent bg-accent/10 border border-accent/30 mb-6">
+        <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-accent bg-accent/10 border border-accent/30 mb-4 sm:mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" /> live
         </span>
         {/* Visual hero retains its existing size + gradient treatment so the
@@ -339,7 +339,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         <p className="mt-4 sm:mt-5 text-base sm:text-lg text-ink-soft leading-relaxed">
           See every search, every product, every price your agent looked at — exactly as it saw them.
         </p>
-        <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
+        <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
           <Link
             href="/login"
             className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition shadow-glow"
@@ -457,7 +457,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
 
 function Card({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-5 backdrop-blur hover:border-line transition">
+    <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-5 backdrop-blur hover:border-line transition">
       <h2 className="font-medium text-ink mb-1">{title}</h2>
       <p className="text-sm text-ink-soft leading-relaxed">{body}</p>
     </div>
