@@ -966,18 +966,18 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   <caption className="sr-only">Product variants — SKU, price, and stock status</caption>
                   <thead className="bg-bg-elev text-ink-soft text-xs uppercase tracking-wider">
                     <tr>
-                      <th scope="col" className="text-left px-4 py-2 font-medium">SKU</th>
-                      <th scope="col" className="text-right px-4 py-2 font-medium">Price</th>
-                      <th scope="col" className="text-right px-4 py-2 font-medium">Stock</th>
-                      <th scope="col" className="text-right px-4 py-2 font-medium"><span className="sr-only">Action</span></th>
+                      <th scope="col" className="text-left px-3 sm:px-4 py-2 font-medium">SKU</th>
+                      <th scope="col" className="text-right px-3 sm:px-4 py-2 font-medium">Price</th>
+                      <th scope="col" className="text-right px-3 sm:px-4 py-2 font-medium">Stock</th>
+                      <th scope="col" className="text-right px-3 sm:px-4 py-2 font-medium"><span className="sr-only">Action</span></th>
                     </tr>
                   </thead>
                   <tbody>
                     {variants.map((v, i) => (
                       <tr key={v.id} className={i > 0 ? "border-t border-line-soft" : ""}>
-                        <td className="px-4 py-3 font-mono text-xs text-ink-soft">{v.sku}</td>
-                        <td className="px-4 py-3 text-right font-medium">{formatPrice(v.priceMinor, v.currency)}</td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 font-mono text-xs text-ink-soft">{v.sku}</td>
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-medium">{formatPrice(v.priceMinor, v.currency)}</td>
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-right">
                           {v.inStock ? (
                             <span className="text-ok text-xs">
                               <span aria-hidden>●</span> in stock
@@ -988,7 +988,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-right">
                           {p.sellerId ? (
                             <AddToCart variantId={v.id} inStock={v.inStock} label="Ajouter" />
                           ) : (
