@@ -145,7 +145,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
             {topCcy && (
               <span>
                 Total :{" "}
-                <span className="text-ink font-medium">
+                <span className="text-ink font-medium tabular-nums">
                   {formatPrice(topCcy[1].toString(), topCcy[0])}
                 </span>
               </span>

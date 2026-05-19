@@ -142,7 +142,7 @@ export function ProductCard({
           return posted ? (
             <time
               dateTime={hit.postedAt ?? undefined}
-              className="text-[11px] text-ink-mute"
+              className="text-[11px] text-ink-mute tabular-nums"
             >
               Publié {posted}
             </time>

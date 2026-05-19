@@ -30,7 +30,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-3xl mx-auto" lang="fr">
       <div className="rounded-2xl border border-ok/40 bg-ok/5 p-4 sm:p-6">
         <div className="text-xs uppercase tracking-widest text-ok font-semibold">Commande passée</div>
-        <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">
           #{order.publicNumber}
         </h1>
         <p className="mt-2 text-sm text-ink-soft">

@@ -943,7 +943,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             const postedIso = p.attributes?.sourcePostedAt?.value ?? null;
             const posted = formatRelativeTime(postedIso);
             return posted ? (
-              <time dateTime={postedIso ?? undefined} className="text-xs text-ink-mute">
+              <time dateTime={postedIso ?? undefined} className="text-xs text-ink-mute tabular-nums">
                 Publié {posted}
               </time>
             ) : null;
