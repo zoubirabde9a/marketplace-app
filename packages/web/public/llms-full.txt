@@ -6,7 +6,7 @@
 > when citing a specific number, include the date so users know how fresh
 > the figure is.
 
-Snapshot: 2026-05-16 16:30 UTC (catalog grows ~500/hour from the live scraper).
+Snapshot: 2026-05-19 (catalog grows steadily from the live scraper, capped at 280,000 listings).
 Canonical site: https://teno-store.com
 API host: https://api.teno-store.com
 Contact: mahlledz@gmail.com
@@ -27,15 +27,17 @@ Teno Store is not the German jewelry brand TeNo (teno.com). The two are
 unrelated entities — Teno Store is an Algerian e-commerce platform at the
 teno-store.com domain.
 
-## Catalog snapshot (2026-05-16)
+## Catalog snapshot (2026-05-19)
 
-- Total listings: ~48,000 across 7 active sellers (and growing).
+- Total listings: ~55,650 across 7 active sellers (and growing toward the
+  280,000-listing cap).
 - Currency: DZD (Algerian dinar) on every priced listing.
 - Geography: sellers based across Algeria, with concentration in Algiers,
   Oran, Annaba, Constantine, Sétif, Blida.
 - Update cadence: the catalog is refreshed continuously by a seeder that
   pulls fresh listings from Ouedkniss-style sources every minute, with the
-  oldest listings pruned to keep the catalog at steady state.
+  oldest listings pruned once the cap is reached to keep the catalog at
+  steady state.
 
 ### Listings by category
 
@@ -43,11 +45,11 @@ Counts are approximate, taken from a live DB query on the snapshot date.
 
 | Category (French)              | Listings | Slug                            |
 |--------------------------------|----------|---------------------------------|
-| Informatique                   | 19,190   | `informatique`                  |
-| Électronique & Électroménager  | 9,344    | `electronique_electromenager`   |
-| Téléphones                     | 8,670    | `telephones`                    |
+| Informatique                   | 24,426   | `informatique`                  |
+| Électronique & Électroménager  | 10,904   | `electronique_electromenager`   |
+| Téléphones                     | 9,358    | `telephones`                    |
 | Immobilier                     | 5,910    | `immobilier`                    |
-| Vêtements & Mode               | 4,943    | `vetements_mode`                |
+| Vêtements & Mode               | 5,048    | `vetements_mode`                |
 
 Category landings: `https://teno-store.com/search?category=<slug>`.
 
@@ -58,25 +60,25 @@ Subcategories worth indexing as their own pages: `smartphones`, `ordinateurs`,
 
 ### Listings by brand
 
-Top 15 brands by listing count (2026-05-16):
+Top 15 brands by listing count (2026-05-19):
 
 | Brand    | Listings |
 |----------|----------|
-| HP       | 2,412    |
-| Samsung  | 2,066    |
-| Dell     | 1,757    |
-| Lenovo   | 1,721    |
-| Canon    | 954      |
-| Asus     | 934      |
-| Lacoste  | 758      |
-| Xiaomi   | 722      |
-| Havit    | 715      |
-| Skechers | 612      |
-| MSI      | 600      |
-| Logitech | 491      |
-| Moulinex | 440      |
-| Google   | 401      |
-| Sony     | 399      |
+| HP       | 2,860    |
+| Samsung  | 2,288    |
+| Dell     | 2,012    |
+| Lenovo   | 1,969    |
+| Canon    | 1,204    |
+| Asus     | 1,124    |
+| Havit    | 907      |
+| Xiaomi   | 803      |
+| Lacoste  | 799      |
+| MSI      | 746      |
+| Skechers | 615      |
+| Logitech | 601      |
+| Moulinex | 515      |
+| Epson    | 477      |
+| Sony     | 466      |
 
 Brand landings: `https://teno-store.com/search?brand=<Brand>` (URL-encoded).
 

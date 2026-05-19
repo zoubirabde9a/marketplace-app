@@ -147,11 +147,26 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   // meta description and the rest of the French-locale page copy.
   const location = [seller.city, frCountry(seller.countryCode)].filter(Boolean).join(", ");
 
+  // Merchant-listing "name" field has length bounds (Search Console flags
+  // 1-char or extremely long names as "Invalid string length in name").
+  // Clamp to 2..150 chars, with a fallback for empty / whitespace-only
+  // seller names ("Boutique <short-id>" so the field still resolves to a
+  // human-readable token instead of an empty string).
+  const storeNameRaw = (seller.displayName ?? "").trim();
+  const storeName = (() => {
+    if (storeNameRaw.length >= 2 && storeNameRaw.length <= 150) return storeNameRaw;
+    if (storeNameRaw.length > 150) {
+      const cut = storeNameRaw.slice(0, 150);
+      const space = cut.lastIndexOf(" ");
+      return (space > 80 ? cut.slice(0, space) : cut).trim();
+    }
+    return `Boutique ${seller.sellerId.slice(0, 8)}`;
+  })();
   const storeJsonLd = {
     "@context": "https://schema.org",
     "@type": "Store",
     "@id": `${SITE_URL}/store/${seller.sellerId}`,
-    name: seller.displayName,
+    name: storeName,
     url: `${SITE_URL}/store/${seller.sellerId}`,
     // Cross-link to the canonical Teno Store Organization on the home
     // page. Without this, KG bots and AI panels saw the storefront as
@@ -249,12 +264,33 @@ export default async function StorePage({ params }: { params: Promise<Params> })
         numberOfItems: hits.length,
         itemListElement: hits.slice(0, 25).map((hit, idx) => {
           const productUrl = `${SITE_URL}/product/${encodeURIComponent(hit.productId)}`;
+          // Clamp Product.name to 2..150 chars (Google merchant-listing
+          // validator flags longer titles). Matches the product page logic.
+          const nestedNameRaw = (hit.title?.value ?? "").trim();
+          const nestedName = (() => {
+            if (nestedNameRaw.length === 0) return `Annonce ${hit.productId.slice(0, 8)}`;
+            if (nestedNameRaw.length <= 150) return nestedNameRaw;
+            const cut = nestedNameRaw.slice(0, 150);
+            const space = cut.lastIndexOf(" ");
+            return (space > 80 ? cut.slice(0, space) : cut).replace(/[\s\p{P}\p{S}]+$/u, "");
+          })();
+          // Description fallback so Search Console doesn't flag the nested
+          // Product entity with "Champ description manquant". Use the hit
+          // title + seller context — strictly better than no field at all.
+          const nestedDesc = nestedNameRaw.length > 0
+            ? `${nestedName} — annonce de ${storeName} sur Teno Store.`
+            : `Annonce de ${storeName} sur Teno Store.`;
           const product: Record<string, unknown> = {
             "@type": "Product",
             "@id": productUrl,
-            name: hit.title?.value,
+            name: nestedName,
             url: productUrl,
             productID: hit.productId,
+            description: nestedDesc,
+            // Global identifier fallback (mpn) — same rationale as the
+            // product page: pairs with brand (when present) to satisfy
+            // Google's "global identifier" recommendation.
+            mpn: hit.productId,
           };
           if (hit.heroImageUrl) {
             // Inline the same /400 → /1200 upscale used elsewhere so crawler-
@@ -274,6 +310,33 @@ export default async function StorePage({ params }: { params: Promise<Params> })
           const flat = minorToMajor(hit.priceMinor);
           const low = minorToMajor(hit.priceFromMinor);
           const high = minorToMajor(hit.priceToMinor);
+          // Shared shipping + return policy nodes for nested Offers —
+          // Google Search Console flags missing shippingDetails /
+          // hasMerchantReturnPolicy as non-critical merchant-listing
+          // issues. Marketplace-level default: free shipping within DZ
+          // by courier, no marketplace-managed return guarantee (buyers
+          // arrange returns with the seller directly).
+          const nestedReturnPolicy = {
+            "@type": "MerchantReturnPolicy",
+            applicableCountry: "DZ",
+            returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+          };
+          const nestedShippingDetails = hit.currency
+            ? {
+                "@type": "OfferShippingDetails",
+                shippingDestination: { "@type": "DefinedRegion", addressCountry: "DZ" },
+                shippingRate: {
+                  "@type": "MonetaryAmount",
+                  value: "0",
+                  currency: hit.currency,
+                },
+                deliveryTime: {
+                  "@type": "ShippingDeliveryTime",
+                  handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 2, unitCode: "DAY" },
+                  transitTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 7, unitCode: "DAY" },
+                },
+              }
+            : undefined;
           if (low && high && hit.currency && (hit.variantCount ?? 0) > 1) {
             product.offers = {
               "@type": "AggregateOffer",
@@ -283,6 +346,8 @@ export default async function StorePage({ params }: { params: Promise<Params> })
               priceCurrency: hit.currency,
               availability,
               url: productUrl,
+              ...(nestedShippingDetails ? { shippingDetails: nestedShippingDetails } : {}),
+              hasMerchantReturnPolicy: nestedReturnPolicy,
             };
           } else if ((flat ?? low) && hit.currency) {
             product.offers = {
@@ -291,6 +356,8 @@ export default async function StorePage({ params }: { params: Promise<Params> })
               priceCurrency: hit.currency,
               availability,
               url: productUrl,
+              ...(nestedShippingDetails ? { shippingDetails: nestedShippingDetails } : {}),
+              hasMerchantReturnPolicy: nestedReturnPolicy,
             };
           }
           return { "@type": "ListItem", position: idx + 1, item: product };

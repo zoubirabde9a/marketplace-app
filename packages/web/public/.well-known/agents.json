@@ -1,14 +1,17 @@
 {
   "name": "Teno Store",
-  "description": "Algerian online marketplace and agent-to-agent commerce platform with 47,000+ live consumer-goods listings — computing (largest category), home appliances & electronics, phones, real estate, fashion, vehicles — sourced from Algerian sellers and priced in DZD. Agents discover products, negotiate, and transact via MCP / A2A / AP2 / ACP. Humans participate via delegated authorization. Not related to the German jewelry brand TeNo at teno.com.",
+  "description": "Algerian online marketplace and agent-to-agent commerce platform with 55,000+ live consumer-goods listings — computing (largest category), home appliances & electronics, phones, real estate, fashion, vehicles — sourced from Algerian sellers and priced in DZD. Agents discover products, negotiate, and transact via MCP / A2A / AP2 / ACP. Humans participate via delegated authorization. Not related to the German jewelry brand TeNo at teno.com.",
   "homepage": "https://teno-store.com",
   "contact": "mahlledz@gmail.com",
   "catalog": {
-    "size": "50,576 live listings — ~2,387 from onboarded sellers plus ~48,189 imported from the broader Algerian marketplace, refreshed continuously (snapshot 2026-05-16 22:00 UTC)",
-    "snapshot_date": "2026-05-16",
-    "snapshot_time_utc": "22:00",
-    "total_listings": 50576,
-    "growth_rate_per_hour": 343,
+    "size": "55,651 live listings — 2,387 from onboarded sellers plus 53,264 imported from the broader Algerian marketplace, refreshed continuously (snapshot 2026-05-19; catalog grows toward a 280,000-listing cap)",
+    "snapshot_date": "2026-05-19",
+    "snapshot_time_utc": "00:00",
+    "total_listings": 55651,
+    "onboarded_listings": 2387,
+    "imported_listings": 53264,
+    "catalog_cap": 280000,
+    "growth_rate_per_hour": 106,
     "active_sellers": 7,
     "geography": {
       "country": "Algeria",
@@ -76,17 +79,17 @@
     "top_categories": [
       {
         "slug": "informatique",
-        "listings": 20737,
+        "listings": 24426,
         "label": "Informatique"
       },
       {
         "slug": "electronique_electromenager",
-        "listings": 10044,
+        "listings": 10904,
         "label": "Électronique & Électroménager"
       },
       {
         "slug": "telephones",
-        "listings": 8850,
+        "listings": 9358,
         "label": "Téléphones"
       },
       {
@@ -96,75 +99,30 @@
       },
       {
         "slug": "vetements_mode",
-        "listings": 5030,
+        "listings": 5048,
         "label": "Vêtements & Mode"
       }
     ],
     "top_brands": [
-      {
-        "name": "HP",
-        "listings": 2527
-      },
-      {
-        "name": "Samsung",
-        "listings": 2124
-      },
-      {
-        "name": "Dell",
-        "listings": 1830
-      },
-      {
-        "name": "Lenovo",
-        "listings": 1773
-      },
-      {
-        "name": "Canon",
-        "listings": 1056
-      },
-      {
-        "name": "Asus",
-        "listings": 965
-      },
-      {
-        "name": "Havit",
-        "listings": 810
-      },
-      {
-        "name": "Lacoste",
-        "listings": 795
-      },
-      {
-        "name": "Xiaomi",
-        "listings": 745
-      },
-      {
-        "name": "MSI",
-        "listings": 629
-      },
-      {
-        "name": "Skechers",
-        "listings": 615
-      },
-      {
-        "name": "Logitech",
-        "listings": 535
-      },
-      {
-        "name": "Moulinex",
-        "listings": 489
-      },
-      {
-        "name": "Sony",
-        "listings": 420
-      },
-      {
-        "name": "Google",
-        "listings": 415
-      }
+      { "name": "HP",       "listings": 2860 },
+      { "name": "Samsung",  "listings": 2288 },
+      { "name": "Dell",     "listings": 2012 },
+      { "name": "Lenovo",   "listings": 1969 },
+      { "name": "Canon",    "listings": 1204 },
+      { "name": "Asus",     "listings": 1124 },
+      { "name": "Havit",    "listings": 907 },
+      { "name": "Xiaomi",   "listings": 803 },
+      { "name": "Lacoste",  "listings": 799 },
+      { "name": "MSI",      "listings": 746 },
+      { "name": "Skechers", "listings": 615 },
+      { "name": "Logitech", "listings": 601 },
+      { "name": "Moulinex", "listings": 515 },
+      { "name": "Epson",    "listings": 477 },
+      { "name": "Sony",     "listings": 466 }
     ],
     "sellers_with_meaningful_inventory": 1,
     "listings_attributed_to_a_seller": 2387,
-    "listings_unattributed_imports": 48189,
+    "listings_unattributed_imports": 53264,
     "subcategory_slugs_note": "No bare-slug subcategories currently meet the >=5-listings threshold. The compound slugs in top_categories above carry the full catalog mass. Audit 2026-05-16: bare slugs smartphones / ordinateurs / electromenager etc. had 0 listings each — they were dead navigation. Updated to honest posture."
   },
   "discovery": {

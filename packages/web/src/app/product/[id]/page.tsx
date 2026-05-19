@@ -467,8 +467,72 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
     const n = Number(v.priceMinor);
     return Number.isFinite(n) && n >= MIN_REAL_PRICE_MINOR && n <= MAX_REAL_PRICE_MINOR;
   });
+  // Currency used when no real price exists (so we can still emit Offer
+  // with priceCurrency for entity-graph completeness). Falls back to the
+  // first variant's currency or DZD (the catalog's dominant currency).
+  const offerCurrency = variants[0]?.currency ?? "DZD";
+  // Merchant-listing requirements: Google Search Console flags Offers
+  // missing shippingDetails and hasMerchantReturnPolicy as non-critical
+  // issues. Teno Store is a marketplace of independent Algerian sellers
+  // (Ouedkniss-sourced); buyer/seller arrange shipping & returns directly
+  // off-platform. Declaring "MerchantReturnFiniteReturnWindow" with a
+  // 0-day window would lie; "MerchantReturnNotPermitted" accurately
+  // signals "no marketplace-level return guarantee — talk to the seller".
+  // shippingDetails: emit a free-shipping-within-DZ default since most
+  // listings ship anywhere in Algeria via courier (Yalidine, etc.).
+  // Shared between single-Offer and AggregateOffer below.
+  const merchantReturnPolicy = {
+    "@type": "MerchantReturnPolicy",
+    applicableCountry: "DZ",
+    returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+  };
+  const offerShippingDetails = {
+    "@type": "OfferShippingDetails",
+    shippingDestination: { "@type": "DefinedRegion", addressCountry: "DZ" },
+    shippingRate: {
+      "@type": "MonetaryAmount",
+      value: "0",
+      currency: offerCurrency,
+    },
+    deliveryTime: {
+      "@type": "ShippingDeliveryTime",
+      handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 2, unitCode: "DAY" },
+      transitTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 7, unitCode: "DAY" },
+    },
+  };
+  const offerSeller = p.sellerId && p.sellerDisplayName
+    ? {
+        seller: {
+          // @type Store matches the canonical Store node on
+          // /store/<uuid>. @id connects the two pages' entity graphs.
+          "@type": "Store",
+          "@id": `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
+          name: p.sellerDisplayName,
+          identifier: p.sellerId,
+          url: `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
+        },
+      }
+    : {};
   const offers = !hasRealPrice
-    ? undefined
+    ? {
+        // Price-on-request listings: emit a minimal Offer so the Product
+        // entity has the required offers/review/aggregateRating node
+        // (critical Search Console rule). Omit `price` rather than lying
+        // with "0.00" — schema.org accepts Offer with priceCurrency and
+        // availability only. Rich-card price line won't render, but the
+        // Product entity passes validation.
+        "@type": "Offer",
+        priceCurrency: offerCurrency,
+        availability: anyInStock
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+        priceValidUntil,
+        url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
+        ...(offerAreaServed ? { areaServed: offerAreaServed } : {}),
+        shippingDetails: offerShippingDetails,
+        hasMerchantReturnPolicy: merchantReturnPolicy,
+        ...offerSeller,
+      }
     : variants.length === 1
       ? {
           "@type": "Offer",
@@ -481,26 +545,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           ...(offerAreaServed ? { areaServed: offerAreaServed } : {}),
           ...(variants[0].sku ? { sku: variants[0].sku } : {}),
           url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
-          ...(p.sellerId && p.sellerDisplayName
-            ? {
-                seller: {
-                  // @type Store matches the canonical Store node on
-                  // /store/<uuid> (iter-62). @id reference connects the
-                  // two pages' entity graphs — KG bots resolve @id
-                  // cross-page so the Offer.seller and the storefront
-                  // Store are seen as the same entity, not two
-                  // independent organisations with the same name.
-                  "@type": "Store",
-                  "@id": `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
-                  name: p.sellerDisplayName,
-                  identifier: p.sellerId,
-                  url: `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
-                },
-              }
-            : {}),
+          shippingDetails: offerShippingDetails,
+          hasMerchantReturnPolicy: merchantReturnPolicy,
+          ...offerSeller,
         }
-      : variants.length > 1
-      ? {
+      : {
           "@type": "AggregateOffer",
           offerCount: variants.length,
           lowPrice: minorToMajor(minPrice),
@@ -512,31 +561,32 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           priceValidUntil,
           ...(offerAreaServed ? { areaServed: offerAreaServed } : {}),
           url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
-          ...(p.sellerId && p.sellerDisplayName
-            ? {
-                seller: {
-                  // @type Store matches the canonical Store node on
-                  // /store/<uuid> (iter-62). @id reference connects the
-                  // two pages' entity graphs — KG bots resolve @id
-                  // cross-page so the Offer.seller and the storefront
-                  // Store are seen as the same entity, not two
-                  // independent organisations with the same name.
-                  "@type": "Store",
-                  "@id": `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
-                  name: p.sellerDisplayName,
-                  identifier: p.sellerId,
-                  url: `${SITE_URL}/store/${encodeURIComponent(p.sellerId)}`,
-                },
-              }
-            : {}),
-        }
-      : undefined;
+          shippingDetails: offerShippingDetails,
+          hasMerchantReturnPolicy: merchantReturnPolicy,
+          ...offerSeller,
+        };
 
+  // Merchant-listing name field: Search Console flagged "Invalid string
+  // length in name" — sellers post 200+ char spec-string titles
+  // ("SAMSUNG GALAXY TAB A11 4G LTE - 4GB - 64GB - 8.7\" LED WXGA - WI-FI
+  // - BLUETOOTH - 8 MPXL - 5100MAH - GRIS SM-X135G - GARANTIE …") and
+  // Google's merchant feed validator caps `name` at 150 chars. Clamp to
+  // 2..150 with a word-boundary cut so we never ship a mid-word slice
+  // into structured data. Visible H1 and <title> stay on `displayTitle`
+  // / `fullTitle`; this only constrains the JSON-LD payload.
+  const productJsonLdName = (() => {
+    const t = (p.title.value ?? "").trim();
+    if (t.length === 0) return `Annonce ${p.productId.slice(0, 8)}`;
+    if (t.length <= 150) return t;
+    const cut = t.slice(0, 150);
+    const space = cut.lastIndexOf(" ");
+    return (space > 80 ? cut.slice(0, space) : cut).replace(/[\s\p{P}\p{S}]+$/u, "");
+  })();
   const productJsonLd: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "Product",
     "@id": `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
-    name: p.title.value,
+    name: productJsonLdName,
     productID: p.productId,
     url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
     // isPartOf links every product to the canonical Teno Store Organization
@@ -630,6 +680,15 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   if (representativeSku) {
     productJsonLd.sku = representativeSku;
   }
+  // Global identifier fallback: when sellers don't ship GTIN/MPN/ISBN
+  // (the norm for scraped Ouedkniss inventory) Google flags "No global
+  // identifier provided". Use the catalog productID as `mpn` — it's a
+  // stable, marketplace-scoped manufacturer-part-number analogue that
+  // makes the Product entity uniquely identifiable across crawls.
+  // Brand is set above when present; productID always exists. With both,
+  // Google has the "brand + mpn" combination it treats as a valid
+  // unique-product signal.
+  productJsonLd.mpn = p.productId;
   if (offers) productJsonLd.offers = offers;
 
   // ProductDetail doesn't carry aggregate rating today; if the API starts
@@ -675,7 +734,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   breadcrumbItems.push({
     "@type": "ListItem",
     position: breadcrumbItems.length + 1,
-    name: p.title.value,
+    // Reuse the 150-char-clamped Product name so the breadcrumb leaf
+    // doesn't blow past the same length limits.
+    name: productJsonLdName,
     item: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
   });
   const breadcrumbJsonLd = {

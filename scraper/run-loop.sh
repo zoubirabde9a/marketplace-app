@@ -458,7 +458,7 @@ run_scrape() {
     -v "$COMPOSE_DIR:/work" -w /work \
     --env-file "$ENV_FILE" \
     -e "CATEGORY=$CATEGORY" -e "PAGES=$PAGES" -e "MAX_LISTINGS=$MAX_LISTINGS" \
-    -e "START_PAGE=$START_PAGE" -e "MAX_AGE_DAYS=0" \
+    -e "START_PAGE=$START_PAGE" -e "MAX_AGE_DAYS=${MAX_AGE_DAYS:-30}" \
     "$NODE_IMAGE" node scripts/scrape-ouedkniss.mjs >>"$LOG_FILE" 2>&1
 }
 
