@@ -13,6 +13,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 - Shipped via tar+ssh per runbook 07; rebuilt `marketplace-api:local`; recreated `marketplace-api`. `web`/`caddy` untouched.
 - Verified: `livez` 200; first post-deploy scrape run (21:50 UTC) seeded 32 products with logged UUIDs and zero `failed [N]` lines. Loop is back to writing rows; cap still 280,000.
 
+## 2026-05-19 — vps-eu — deploy commit d3906ea (CSP for Google Sign-In + public copy refresh)
+
+- Same commit also re-shipped the drizzle fix above (now confirmed against `dist/repos/product.js` on the running api container) plus two web-only changes:
+  - `packages/web/next.config.mjs`: report-only CSP was flooding the seller sign-in console with violations against `accounts.google.com` (gsi/client SDK iframe + token endpoint) because `default-src 'self'` was the fallback for `frame-src` and `connect-src`. Added `accounts.google.com` / `apis.google.com` to `script-src`, `style-src`, `connect-src`, `frame-src`. Verified the live header at `https://teno-store.com/` contains `frame-src 'self' https://accounts.google.com`.
+  - `packages/web/src/app/{about,page,login,seller/page}.tsx`: refresh public copy to drop the "marketplace for AI agents / MCP / A2A / AP2" positioning. Reframed as a third-party Algerian marketplace ("Algeria's marketplace, refreshed in real time"; sign-in CTA simplified; FAQ entries rewritten; agent-deep-dive section removed from /about).
+- Deploy: tar+ssh ship, rebuilt api+web images, recreated containers. `marketplace-api` healthy in ~4s; `https://teno-store.com/` and `https://api.teno-store.com/livez` both 200.
+
+
+
 ## 2026-05-19 — vps-eu — deploy commit c83b4b8 (SEO/JSON-LD batch + scraper config)
 
 - Shipped working tree via tar+ssh per runbook 07; rebuilt `marketplace-web:local`; restarted `marketplace-web`. `api`, `caddy` left in place (no api code in this batch).
