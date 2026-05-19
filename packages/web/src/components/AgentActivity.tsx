@@ -85,7 +85,7 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
             <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">
               Recent activity
             </h2>
-            <span className="text-xs text-ink-mute">
+            <span className="text-xs text-ink-mute tabular-nums">
               {actionCount === 0 ? "no actions yet" : `${actionCount} actions`}
             </span>
           </header>
@@ -118,7 +118,7 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
                       <time
                         dateTime={a.occurredAt}
                         title={a.occurredAt}
-                        className="text-xs text-ink-soft"
+                        className="text-xs text-ink-soft tabular-nums"
                       >
                         {relTime(a.occurredAt)}
                       </time>

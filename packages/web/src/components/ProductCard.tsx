@@ -149,9 +149,9 @@ export function ProductCard({
           ) : null;
         })()}
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
-          <div className="text-base font-semibold text-ink tracking-tight">{priceLabel}</div>
+          <div className="text-base font-semibold text-ink tracking-tight tabular-nums">{priceLabel}</div>
           {hit.rating != null && (
-            <div className="text-[11px] text-ink-mute">{formatRating(hit.rating, hit.ratingCount)}</div>
+            <div className="text-[11px] text-ink-mute tabular-nums">{formatRating(hit.rating, hit.ratingCount)}</div>
           )}
         </div>
       </div>

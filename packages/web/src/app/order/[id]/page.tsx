@@ -72,11 +72,11 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 ) : (
                   <span className="text-sm text-ink-soft break-words">{l.sku ?? l.variantId}</span>
                 )}
-                <div className="text-xs text-ink-mute mt-0.5">
+                <div className="text-xs text-ink-mute mt-0.5 tabular-nums">
                   × {l.qty} · {formatPrice(l.unitPriceMinor, order.currency)} l’unité
                 </div>
               </div>
-              <div className="shrink-0 text-sm font-medium">
+              <div className="shrink-0 text-sm font-medium tabular-nums">
                 {formatPrice((BigInt(l.unitPriceMinor) * BigInt(l.qty)).toString(), order.currency)}
               </div>
             </li>

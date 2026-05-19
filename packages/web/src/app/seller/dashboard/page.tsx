@@ -258,7 +258,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                   </ul>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-sm font-medium">
+                  <div className="text-sm font-medium tabular-nums">
                     {formatPrice(o.subtotalMinor, o.currency)}
                   </div>
                 </div>

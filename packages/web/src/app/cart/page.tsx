@@ -68,7 +68,7 @@ export default async function CartPage() {
                   {l.sku && (
                     <div className="text-xs text-ink-mute font-mono mt-0.5 truncate">{l.sku}</div>
                   )}
-                  <div className="mt-2 text-sm">
+                  <div className="mt-2 text-sm tabular-nums">
                     {formatPrice(l.unitPriceMinor, cart!.currency)}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">

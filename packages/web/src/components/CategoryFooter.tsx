@@ -115,7 +115,7 @@ export async function CategoryFooter() {
                       className="inline-flex items-center px-3.5 h-9 sm:h-8 rounded-full bg-bg-soft border border-line-soft text-sm sm:text-xs text-ink-soft hover:border-accent/40 hover:text-ink active:border-accent/40 active:text-ink transition"
                     >
                       {human}
-                      <span className="ml-1.5 text-ink-mute">{c.count}</span>
+                      <span className="ml-1.5 text-ink-mute tabular-nums">{c.count}</span>
                     </Link>
                   </li>
                 );

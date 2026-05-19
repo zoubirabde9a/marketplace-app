@@ -124,7 +124,7 @@ export default async function CheckoutPage({
                   <div className="truncate untrusted">{l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}</div>
                   <div className="text-xs text-ink-mute">× {l.qty}</div>
                 </div>
-                <div className="shrink-0 text-right">
+                <div className="shrink-0 text-right tabular-nums">
                   {formatPrice(
                     (BigInt(l.unitPriceMinor) * BigInt(l.qty)).toString(),
                     cart.currency,
