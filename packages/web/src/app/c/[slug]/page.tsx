@@ -197,7 +197,7 @@ export default async function CategoryLandingPage({
   };
 
   return (
-    <div className="pt-4 sm:pt-8 pb-24">
+    <div className="pt-4 sm:pt-8 pb-12 sm:pb-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
@@ -242,7 +242,7 @@ export default async function CategoryLandingPage({
       </header>
 
       {sample.length > 0 && (
-        <section aria-labelledby="sample-heading" className="mb-12">
+        <section aria-labelledby="sample-heading" className="mb-8 sm:mb-12">
           <div className="flex items-end justify-between mb-4">
             <h2 id="sample-heading" className="text-xl font-medium text-ink">
               Annonces récentes
@@ -264,7 +264,7 @@ export default async function CategoryLandingPage({
           .filter((p): p is NonNullable<typeof p> => Boolean(p));
         if (blogLinks.length === 0) return null;
         return (
-          <section aria-labelledby="related-blog-heading" className="mb-12">
+          <section aria-labelledby="related-blog-heading" className="mb-8 sm:mb-12">
             <h2 id="related-blog-heading" className="text-xl font-medium text-ink mb-4">
               Articles à lire
             </h2>
@@ -287,7 +287,7 @@ export default async function CategoryLandingPage({
       })()}
 
       {content.related.length > 0 && (
-        <section aria-labelledby="related-heading" className="mb-12">
+        <section aria-labelledby="related-heading" className="mb-8 sm:mb-12">
           <h2 id="related-heading" className="text-xl font-medium text-ink mb-4">
             Catégories liées
           </h2>

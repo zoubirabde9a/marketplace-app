@@ -37,7 +37,7 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
     // switch voice + Lighthouse's "Document has a content-language" audit
     // passes — without this the section inherits <html lang="fr"> and emits
     // a mixed-language signal that hurts both a11y and SEO.
-    <section className="pt-12 pb-8 max-w-5xl mx-auto" lang="en">
+    <section className="pt-6 sm:pt-12 pb-8 max-w-5xl mx-auto" lang="en">
       <header className="mb-8">
         <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight break-words">
           Hi, {displayName}.
@@ -169,7 +169,7 @@ function ConnectAgentEmptyState() {
       {/* Primary path: Claude Desktop */}
       <div className="rounded-xl border border-line-soft bg-bg-elev/40 p-4">
         <div className="flex items-center justify-between gap-3 mb-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <h4 className="text-ink font-medium">Use with Claude Desktop</h4>
             <p className="text-xs text-ink-mute mt-0.5">Recommended · free · 5 minutes</p>
           </div>

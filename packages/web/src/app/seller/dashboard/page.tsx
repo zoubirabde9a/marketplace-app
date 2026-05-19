@@ -48,7 +48,7 @@ export default async function DashboardPage() {
   const sellers = sellersResp.data;
 
   return (
-    <section className="pt-6 sm:pt-10 pb-24 max-w-5xl mx-auto" lang="fr">
+    <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-5xl mx-auto" lang="fr">
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight break-words">Tableau de bord vendeur</h1>
         <LogoutButton />

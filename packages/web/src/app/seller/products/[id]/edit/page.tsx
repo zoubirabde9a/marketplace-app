@@ -26,7 +26,7 @@ export default async function EditProductPage({
   const product = await getProduct(id);
   if (!product) {
     return (
-      <section className="pt-6 sm:pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
+      <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-3xl mx-auto" lang="fr">
         <h1 className="text-2xl font-semibold">Modifier le produit</h1>
         <p className="mt-4 text-sm text-ink-soft">
           Produit introuvable.{" "}
@@ -48,7 +48,7 @@ export default async function EditProductPage({
   const owns = sellersResp.data.some((s) => s.sellerId === product.sellerId);
   if (!owns) {
     return (
-      <section className="pt-6 sm:pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
+      <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-3xl mx-auto" lang="fr">
         <h1 className="text-2xl font-semibold">Modifier le produit</h1>
         <p className="mt-4 text-sm text-bad">
           Vous n’êtes pas propriétaire de ce produit.
@@ -77,7 +77,7 @@ export default async function EditProductPage({
   };
 
   return (
-    <section className="pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
+    <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-3xl mx-auto" lang="fr">
       <Link href="/seller/dashboard" className="inline-flex items-center h-8 text-sm text-ink-soft hover:text-ink active:text-ink">
         ← Retour au tableau de bord
       </Link>

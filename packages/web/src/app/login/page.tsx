@@ -56,7 +56,7 @@ export default async function LoginPage({
   if (me && !code) redirect(next);
 
   return (
-    <div className="pt-16 pb-24 max-w-md mx-auto" lang="fr">
+    <div className="pt-8 sm:pt-16 pb-12 sm:pb-24 max-w-md mx-auto" lang="fr">
       <h1 className="text-3xl font-semibold tracking-tight mb-2 text-center">Connexion</h1>
       <p className="text-ink-soft text-center mb-8">
         Consultez ce que votre agent a cherché, comparé et acheté.

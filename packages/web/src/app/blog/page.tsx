@@ -72,7 +72,7 @@ export default function BlogIndexPage() {
     ],
   };
   return (
-    <div className="max-w-4xl mx-auto pt-6 sm:pt-12 pb-24">
+    <div className="max-w-4xl mx-auto pt-6 sm:pt-12 pb-12 sm:pb-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}

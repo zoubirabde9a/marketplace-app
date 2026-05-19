@@ -30,7 +30,7 @@ export default async function NewProductPage({
 
   if (sellers.length === 0) {
     return (
-      <section className="pt-6 sm:pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
+      <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-2xl mx-auto" lang="fr">
         <h1 className="text-2xl font-semibold">Nouveau produit</h1>
         <p className="mt-4 text-sm text-ink-soft">
           Vous devez d’abord créer une boutique.{" "}
@@ -48,7 +48,7 @@ export default async function NewProductPage({
     : sellers[0]!.sellerId;
 
   return (
-    <section className="pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
+    <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-2xl mx-auto" lang="fr">
       <Link href="/seller/dashboard" className="inline-flex items-center h-8 text-sm text-ink-soft hover:text-ink active:text-ink">
         ← Retour au tableau de bord
       </Link>

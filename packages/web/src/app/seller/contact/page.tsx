@@ -33,7 +33,7 @@ export default async function ContactPage({
 
   if (!seller) {
     return (
-      <section className="pt-6 sm:pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
+      <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-2xl mx-auto" lang="fr">
         <h1 className="text-2xl font-semibold">Modifier les coordonnées</h1>
         <p className="mt-4 text-sm text-ink-soft">
           Aucune boutique trouvée.{" "}
@@ -47,7 +47,7 @@ export default async function ContactPage({
   }
 
   return (
-    <section className="pt-10 pb-24 max-w-2xl mx-auto" lang="fr">
+    <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-2xl mx-auto" lang="fr">
       <Link href="/seller/dashboard" className="inline-flex items-center h-8 text-sm text-ink-soft hover:text-ink active:text-ink">
         ← Retour au tableau de bord
       </Link>

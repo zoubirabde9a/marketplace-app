@@ -77,7 +77,7 @@ export default async function Dashboard() {
 
 function YourStores({ sellers }: { sellers: SellerRecord[] }) {
   return (
-    <section className="pt-10 pb-2 max-w-5xl mx-auto">
+    <section className="pt-6 sm:pt-10 pb-2 max-w-5xl mx-auto">
       <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-5">
         <header className="flex items-baseline justify-between mb-3">
           <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">

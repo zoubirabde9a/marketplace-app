@@ -443,7 +443,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         </dl>
       </section>
       {recent.length > 0 && (
-        <section className="mt-12" aria-labelledby="recent-heading">
+        <section className="mt-8 sm:mt-12" aria-labelledby="recent-heading">
           <div className="flex items-baseline justify-between mb-4">
             <h2 id="recent-heading" className="text-xl font-semibold tracking-tight">Annonces récentes</h2>
             <Link href="/search" className="inline-flex items-center h-9 sm:h-8 text-sm text-ink-soft hover:text-ink active:text-ink transition">Voir tout →</Link>

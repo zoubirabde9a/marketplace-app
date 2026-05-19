@@ -143,7 +143,7 @@ export default function AboutPage() {
     ],
   };
   return (
-    <article className="max-w-3xl mx-auto pt-6 sm:pt-12 pb-24 prose-invert text-ink-soft">
+    <article className="max-w-3xl mx-auto pt-6 sm:pt-12 pb-12 sm:pb-24 prose-invert text-ink-soft">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
@@ -239,7 +239,7 @@ export default function AboutPage() {
             <Link href="/blog/vendre-sur-teno-store-7-conseils-annonces" className="text-accent hover:underline active:underline">7 conseils pour des annonces qui marchent</Link>.
           </li>
         </ul>
-        <section aria-labelledby="faq-heading" className="mt-12">
+        <section aria-labelledby="faq-heading" className="mt-8 sm:mt-12">
           <h2 id="faq-heading" className="text-2xl font-semibold tracking-tight text-ink mb-4">
             Questions fréquentes
           </h2>

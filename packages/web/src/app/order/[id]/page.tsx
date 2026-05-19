@@ -27,7 +27,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       : "Le vendeur vous appellera pour confirmer avant l’expédition.";
 
   return (
-    <section className="pt-6 sm:pt-10 pb-24 max-w-3xl mx-auto" lang="fr">
+    <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-3xl mx-auto" lang="fr">
       <div className="rounded-2xl border border-ok/40 bg-ok/5 p-4 sm:p-6">
         <div className="text-xs uppercase tracking-widest text-ok font-semibold">Commande passée</div>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">

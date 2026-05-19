@@ -20,7 +20,7 @@ export default async function CartPage() {
   const lines = cart?.lines ?? [];
 
   return (
-    <section className="pt-6 sm:pt-10 pb-24 max-w-4xl mx-auto" lang="fr">
+    <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-4xl mx-auto" lang="fr">
       <h1 className="text-3xl font-semibold tracking-tight">Votre panier</h1>
 
       {lines.length === 0 ? (

@@ -112,7 +112,7 @@ export default async function SellerLandingPage() {
   };
 
   return (
-    <section className="max-w-xl mx-auto pt-8 sm:pt-16 pb-24">
+    <section className="max-w-xl mx-auto pt-8 sm:pt-16 pb-12 sm:pb-24">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}

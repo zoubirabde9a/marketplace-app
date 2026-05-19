@@ -122,7 +122,7 @@ export default async function BlogPostPage({
     ],
   };
   return (
-    <article className="max-w-3xl mx-auto pt-6 sm:pt-12 pb-24 blog-prose text-ink-soft">
+    <article className="max-w-3xl mx-auto pt-6 sm:pt-12 pb-12 sm:pb-24 blog-prose text-ink-soft">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbJsonLd) }}
@@ -172,7 +172,7 @@ export default async function BlogPostPage({
       <div className="space-y-5 leading-relaxed">
         <post.Body />
       </div>
-      <footer className="mt-16 pt-8 border-t border-line-soft">
+      <footer className="mt-10 sm:mt-16 pt-6 sm:pt-8 border-t border-line-soft">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           {prev ? (
             <Link
