@@ -122,7 +122,7 @@ export default async function CheckoutPage({
               <li key={l.variantId} className="flex justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="truncate untrusted">{l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}</div>
-                  <div className="text-xs text-ink-mute">× {l.qty}</div>
+                  <div className="text-xs text-ink-mute tabular-nums">× {l.qty}</div>
                 </div>
                 <div className="shrink-0 text-right tabular-nums">
                   {formatPrice(

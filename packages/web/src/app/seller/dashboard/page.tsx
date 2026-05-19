@@ -191,7 +191,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span className="font-mono text-sm text-ink">#{o.publicNumber}</span>
-                    <span className="text-xs text-ink-mute">
+                    <span className="text-xs text-ink-mute tabular-nums">
                       {new Date(o.createdAt).toLocaleString("fr-DZ")}
                     </span>
                     <span
@@ -249,7 +249,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                             className="w-8 h-8 rounded border border-line-soft bg-bg-elev shrink-0"
                           />
                         )}
-                        <span className="truncate min-w-0 flex-1">
+                        <span className="truncate min-w-0 flex-1 tabular-nums">
                           × {l.qty}{" "}
                           <span className="untrusted">{l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}</span>
                         </span>

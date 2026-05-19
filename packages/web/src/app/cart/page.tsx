@@ -95,7 +95,7 @@ export default async function CartPage() {
                           max={99}
                           inputMode="numeric"
                           enterKeyHint="done"
-                          className="w-12 h-10 sm:h-8 bg-bg-elev text-base sm:text-sm text-center border-x border-line focus:outline-none focus:bg-bg-elev/60"
+                          className="w-12 h-10 sm:h-8 bg-bg-elev text-base sm:text-sm text-center tabular-nums border-x border-line focus:outline-none focus:bg-bg-elev/60"
                           aria-label="Quantité"
                         />
                       </form>
@@ -140,7 +140,7 @@ export default async function CartPage() {
                       cart!.currency,
                     )}
                   </div>
-                  <div className="text-xs text-ink-mute mt-1">× {l.qty}</div>
+                  <div className="text-xs text-ink-mute mt-1 tabular-nums">× {l.qty}</div>
                 </div>
               </li>
             ))}
