@@ -976,7 +976,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     {variants.map((v, i) => (
                       <tr key={v.id} className={i > 0 ? "border-t border-line-soft" : ""}>
                         <td className="px-3 sm:px-4 py-2 sm:py-3 font-mono text-xs text-ink-soft">{v.sku}</td>
-                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-medium">{formatPrice(v.priceMinor, v.currency)}</td>
+                        <td className="px-3 sm:px-4 py-2 sm:py-3 text-right font-medium tabular-nums">{formatPrice(v.priceMinor, v.currency)}</td>
                         <td className="px-3 sm:px-4 py-2 sm:py-3 text-right">
                           {v.inStock ? (
                             <span className="text-ok text-xs">

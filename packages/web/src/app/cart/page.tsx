@@ -134,7 +134,7 @@ export default async function CartPage() {
                   </div>
                 </div>
                 <div className="hidden sm:block text-right shrink-0">
-                  <div className="text-sm font-medium">
+                  <div className="text-sm font-medium tabular-nums">
                     {formatPrice(
                       (BigInt(l.unitPriceMinor) * BigInt(l.qty)).toString(),
                       cart!.currency,
@@ -151,7 +151,7 @@ export default async function CartPage() {
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between">
                 <dt className="text-ink-soft">Sous-total</dt>
-                <dd>{formatPrice(cart!.totals.subtotalMinor, cart!.currency)}</dd>
+                <dd className="tabular-nums">{formatPrice(cart!.totals.subtotalMinor, cart!.currency)}</dd>
               </div>
               <div className="flex flex-wrap justify-between gap-x-3 gap-y-0">
                 <dt className="text-ink-soft">Livraison</dt>
@@ -160,7 +160,7 @@ export default async function CartPage() {
             </dl>
             <div className="mt-4 pt-4 border-t border-line-soft flex justify-between text-base font-medium">
               <span>Total</span>
-              <span>{formatPrice(cart!.totals.totalMinor, cart!.currency)}</span>
+              <span className="tabular-nums">{formatPrice(cart!.totals.totalMinor, cart!.currency)}</span>
             </div>
             <Link
               href="/checkout"
