@@ -952,7 +952,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           {p.description && (
             <div className="rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-5">
               <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-2">Description</h2>
-              <p dir="auto" className="text-sm leading-relaxed text-ink-soft whitespace-pre-line untrusted">
+              <p dir="auto" className="text-sm leading-relaxed text-ink-soft whitespace-pre-line break-words untrusted">
                 {stripMaskedContactLines(p.description.value)}
               </p>
             </div>
@@ -960,14 +960,14 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
           {variants.length > 1 && (
             <section>
-              <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">Variants</h2>
+              <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">Variantes</h2>
               <div className="rounded-2xl border border-line-soft overflow-x-auto">
                 <table className="w-full text-sm min-w-[28rem]">
-                  <caption className="sr-only">Product variants — SKU, price, and stock status</caption>
+                  <caption className="sr-only">Variantes du produit — référence, prix et disponibilité</caption>
                   <thead className="bg-bg-elev text-ink-soft text-xs uppercase tracking-wider">
                     <tr>
-                      <th scope="col" className="text-left px-3 sm:px-4 py-2 font-medium">SKU</th>
-                      <th scope="col" className="text-right px-3 sm:px-4 py-2 font-medium">Price</th>
+                      <th scope="col" className="text-left px-3 sm:px-4 py-2 font-medium">Référence</th>
+                      <th scope="col" className="text-right px-3 sm:px-4 py-2 font-medium">Prix</th>
                       <th scope="col" className="text-right px-3 sm:px-4 py-2 font-medium">Stock</th>
                       <th scope="col" className="text-right px-3 sm:px-4 py-2 font-medium"><span className="sr-only">Action</span></th>
                     </tr>
@@ -980,11 +980,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                         <td className="px-3 sm:px-4 py-2 sm:py-3 text-right">
                           {v.inStock ? (
                             <span className="text-ok text-xs">
-                              <span aria-hidden>●</span> in stock
+                              <span aria-hidden>●</span> en stock
                             </span>
                           ) : (
                             <span className="text-ink-mute text-xs">
-                              <span aria-hidden>○</span> out
+                              <span aria-hidden>○</span> épuisé
                             </span>
                           )}
                         </td>

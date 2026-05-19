@@ -218,15 +218,17 @@ const MediaInputSchema = z.object({
   // Zod's `.url()` accepts any WHATWG-valid URL including `javascript:`,
   // `data:`, `file:`, `vbscript:` — all of which are XSS / local-disclosure
   // vectors when an `<img src>` on the storefront ends up rendering them.
-  // Same allow-list defense as the messaging-attachment fix (pass #37) and
-  // the upload endpoint's magic-byte validation (pass #46). Catalog media
-  // URLs MUST be http(s) only; the storefront renders them with `<img>` and
-  // a non-http scheme either won't load (data:) or runs code (javascript:).
+  // Allow-list: absolute http(s) URLs, OR same-origin `/v1/media/<filename>`
+  // paths produced by our own POST /v1/media upload endpoint (the seller
+  // dashboard flow). Same-origin paths are safe — they can only resolve to
+  // our own media handler and the filename grammar is enforced server-side.
   url: z
     .string()
-    .url()
     .max(2048)
-    .refine((u) => /^https?:\/\//i.test(u), { message: "media_url_scheme_not_allowed" }),
+    .refine(
+      (u) => /^https?:\/\/\S+$/i.test(u) || /^\/v1\/media\/[a-z0-9][a-z0-9.-]*$/i.test(u),
+      { message: "media_url_scheme_not_allowed" },
+    ),
   contentType: z.string().regex(/^image\/[a-z0-9.+-]+$/i).max(64),
   byteSize: z.number().int().positive().max(50_000_000).optional(),
   width: z.number().int().positive().max(20_000).optional(),
