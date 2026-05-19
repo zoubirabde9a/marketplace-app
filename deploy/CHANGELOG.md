@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-19 — vps-eu · api+web rebuild · scraper gate relaxation + product page polish
+
+- Shipped commits f380c1b, e39e88b, 33e9532 via tar+ssh; rebuilt api/web images, recreated containers. `livez=ok`, web returns 200.
+- Scraper: phones and unparseable prices are now metadata, not seed-time gates. Unowned reference listings don't transact, so the 2026-05-13 phone/price drops were rejecting 30–95% of every page for no downstream value. Unparseable prices become `priceMinor=0n` + `attributes.priceOnRequest`, already rendered as "Prix sur demande" everywhere.
+- `run-loop.sh`: stagnation reset — if the last 30 runs of a category seeded 0 rows and `start_page>100`, reset `next_start_page` to 1. Stops phone-heavy categories from grinding pages 3500+ that only exist as dedup-suppressed dupes. Also added `price_on_request` to the metrics line + JSONL.
+- Category rotation extended in `CLAUDE.md` to include emploi_offres, services, meubles_maison, sport (existing systemd timer reads from the env; this is just doc).
+- API: media URL allow-list extended to accept relative `/v1/media/<filename>` paths produced by our own upload endpoint, so the seller dashboard's create-listing flow stops rejecting freshly uploaded images. Absolute scheme still http(s)-only.
+- Web: product page variants table translated to French (Variantes / Référence / Prix / en stock / épuisé); `break-words` on description to prevent unbroken-string overflow on phones.
+
 ## 2026-05-19 — vps-eu · housekeeping sweep (logs, build cache, journal, scrape dumps, repo one-shots)
 
 - `/opt/marketplace/data/logs/`: deleted 9,936 scraper run logs older than 1 day (12,816 → 2,880 files; 196 MB → 45 MB). Rotate timer was only catching the last few days; one-shot brought the backlog current. Why: per-minute scrape loop produces ~1,440 logs/day; >1d retention is plenty.
@@ -13,6 +22,8 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 - Stale backups on server: removed `/opt/marketplace/.env.bak` (May 6) and `/opt/marketplace/scripts/seed-from-scraped.mjs.bak` (May 10). The current seeder is built into `marketplace-api:local` per the 2026-05-10 entry.
 - Docker: ran `docker buildx prune -af --filter until=24h` + legacy `docker builder prune` (build cache 3.97 GB → 1.17 GB, freed 2.8 GB). Removed unused `hello-world:latest` image and the exited one-shot `marketplace-api-migrate` container.
 - `journalctl --vacuum-time=7d`: 1.3 GB → 943 MB (freed 443 MB of archived journals).
+- Orphan debug artifacts in `/opt/marketplace/` root (all from May 11): removed `st.html` (256 KB rendered `/store/[id]` capture), `search.html` (188 KB rendered search capture), `sitemap.xml` (15.5 MB one-shot export — Caddy serves from `/opt/marketplace/data/sitemaps/` not this path, verified via Caddyfile rule), and `tsconfig.tsbuildinfo` (stray host-side `tsc` output). ~16 MB total. None of these were wired into a live route.
+- **Surfaced (not fixed here):** `/opt/marketplace/data/sitemaps/` is empty and `https://teno-store.com/sitemap.xml` returns 504 (Caddy falls through to the slow API path → audit `2026-05-17-2005-sitemap-cold-120s-exceeds-spec.md`). The `marketplace-sitemap-rebuild.timer` is not populating the dir. Homepage and product pages are fine. Needs operator follow-up on the sitemap-rebuild service.
 - Repo: deleted 12 stale files — `reports/anomalies.txt` (1,390-line freeform log superseded by `deploy/audits/`) and 11 one-shot helper scripts in `scripts/add-*.py` / `verify-seller-name-encoding.py` / `embed-mcp-schemas.py` / `ascii-escape-manifest-description.py` (all explicitly self-described as "One-shot helper" mutations to `agents.json` or one-time encoding fixes, long since committed). Also cleaned the dead `Reference: reports/anomalies.txt [56]` line in this changelog.
 
 
