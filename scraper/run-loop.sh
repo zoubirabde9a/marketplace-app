@@ -387,6 +387,60 @@ else
   log info "state: next_start_page=$START_PAGE (from $STATE_FILE, key $STATE_KEY)"
 fi
 
+# ─── step 2a.5: stagnation reset ─────────────────────────────────────────
+# If the last STAGNATION_THRESHOLD runs of THIS category all had seeded=0
+# AND the start page is past STAGNATION_PAGE_FLOOR, reset the page state
+# to 1 so we re-walk the front of the listing where fresh items appear.
+# Pre-2026-05-18 the page state would advance forever for phone-heavy
+# categories that had walked themselves into all-duplicate zones (the
+# skip-urls dedup set covers most of the early pages, so old pages
+# repeatedly produced seeded=0). Without this guard the loop spends 1/6
+# of every hour grinding pages 3500+ in immobilier/automobiles even
+# though Ouedkniss only has ~2000 real pages.
+#
+# Heuristic, tuned to be conservative: only triggers after sustained
+# zero-yield (default 30 runs ≈ 30 minutes per-category) AND only when
+# we're already past page 100 (so a category genuinely too thin to seed
+# from page 1 doesn't get stuck in a reset loop).
+STAGNATION_THRESHOLD="${STAGNATION_THRESHOLD:-30}"
+STAGNATION_PAGE_FLOOR="${STAGNATION_PAGE_FLOOR:-100}"
+if [[ -z "$START_PAGE_ARG" && "$START_PAGE" -gt "$STAGNATION_PAGE_FLOOR" && -s "$METRICS_FILE" ]]; then
+  STAGNATION_DETECTED="$(python3 - <<PY 2>/dev/null
+import json
+threshold = $STAGNATION_THRESHOLD
+category = "$CATEGORY"
+seen = 0
+total_seeded = 0
+try:
+    with open("$METRICS_FILE") as f:
+        # Tail-read: scan from EOF backwards is overkill; the file is
+        # one line per run, ~300 bytes each. Even at 30 runs/cat × 6 cats
+        # × 24h = 4320 lines/day this is trivially small to read forward.
+        lines = f.readlines()
+    for line in reversed(lines):
+        try:
+            row = json.loads(line)
+        except Exception:
+            continue
+        if row.get("category") != category:
+            continue
+        seen += 1
+        total_seeded += int(row.get("seeded") or 0)
+        if seen >= threshold:
+            break
+    if seen >= threshold and total_seeded == 0:
+        print("yes")
+except Exception:
+    pass
+PY
+)"
+  if [[ "$STAGNATION_DETECTED" == "yes" ]]; then
+    log warn "state: stagnation detected — last $STAGNATION_THRESHOLD runs of '$CATEGORY' seeded 0 rows; resetting next_start_page from $START_PAGE → 1"
+    write_state_page 1
+    START_PAGE=1
+  fi
+fi
+
 # ─── step 2b: scrape (or reuse) ──────────────────────────────────────────
 SCRAPE_FILE=""
 if (( REUSE_RECENT == 1 )); then
@@ -491,7 +545,7 @@ fi
 # "category structurally has no shop accounts" (every row drops on noPhone) from
 # "true validation failure" (catch-block on insert) — the audit
 # 2026-05-17-1942-scraper-invalid-skipped-50 flagged that bundling them hid this.
-SEEDED=0; SKIPPED=0; DUPS=0; NO_PHONE=0; NO_IMAGE=0
+SEEDED=0; SKIPPED=0; DUPS=0; NO_PHONE=0; NO_IMAGE=0; PRICE_ON_REQUEST=0
 SUMMARY="$(grep -E '^seeded [0-9]+ products' "$LOG_FILE" | tail -1 || true)"
 if [[ -n "$SUMMARY" ]]; then
   SEEDED="$(  echo "$SUMMARY" | sed -nE 's/^seeded ([0-9]+).*/\1/p')"
@@ -500,10 +554,20 @@ if [[ -n "$SUMMARY" ]]; then
   # sed match the trailing digit of the preceding number (so "30 dropped..."
   # parsed as "0"). Verified against a real summary line emitted by
   # packages/db/dist/seed-from-scraped.js.
-  NO_PHONE="$(echo "$SUMMARY" | sed -nE 's/.*, ([0-9]+) dropped for missing phone.*/\1/p')"
+  #
+  # Since 2026-05-18: phones are metadata, not a gate. The seeder emits
+  # `0 dropped for missing phone` unconditionally in the canonical sentence
+  # for back-compat, and the informational count lives in a new clause
+  # `N with no phone metadata`. We prefer the new clause when present.
+  NO_PHONE="$(echo "$SUMMARY" | sed -nE 's/.*, ([0-9]+) with no phone metadata.*/\1/p')"
+  if [[ -z "$NO_PHONE" ]]; then
+    NO_PHONE="$(echo "$SUMMARY" | sed -nE 's/.*, ([0-9]+) dropped for missing phone.*/\1/p')"
+  fi
   NO_IMAGE="$(echo "$SUMMARY" | sed -nE 's/.*, ([0-9]+) dropped for missing image.*/\1/p')"
+  PRICE_ON_REQUEST="$(echo "$SUMMARY" | sed -nE 's/.*, ([0-9]+) with price on request.*/\1/p')"
   : "${NO_PHONE:=0}"
   : "${NO_IMAGE:=0}"
+  : "${PRICE_ON_REQUEST:=0}"
   DUPS="$(    echo "$SUMMARY" | sed -nE 's/.*\(([0-9]+) as already-seeded.*/\1/p')"
 fi
 
@@ -594,16 +658,16 @@ else
 fi
 
 # ─── step 4: report ──────────────────────────────────────────────────────
-log info "result before=$BEFORE after=$AFTER delta=$DELTA seeded=$SEEDED dup_skipped=$DUPS invalid_skipped=$SKIPPED no_phone=$NO_PHONE no_image=$NO_IMAGE pruned=$PRUNED cap=${MAX_PRODUCTS:-none} scrape_listings=$SCRAPE_LISTINGS pages=$START_PAGE..$LAST_PAGE has_more=$HAS_MORE"
+log info "result before=$BEFORE after=$AFTER delta=$DELTA seeded=$SEEDED dup_skipped=$DUPS invalid_skipped=$SKIPPED no_phone=$NO_PHONE no_image=$NO_IMAGE price_on_request=$PRICE_ON_REQUEST pruned=$PRUNED cap=${MAX_PRODUCTS:-none} scrape_listings=$SCRAPE_LISTINGS pages=$START_PAGE..$LAST_PAGE has_more=$HAS_MORE"
 
 # Structured metric line — append-only JSONL for ad-hoc analysis.
 # `before`/`after`/`delta` become JSON null when the api was unreachable
 # (instead of silently logging 0, which used to produce bogus deltas).
-printf '{"ts":"%s","run_id":"%s","seller_id":"%s","category":"%s","start_page":%s,"last_page":%s,"has_more":%s,"next_start_page":%s,"before":%s,"after":%s,"delta":%s,"seeded":%s,"dup_skipped":%s,"invalid_skipped":%s,"no_phone":%s,"no_image":%s,"pruned":%s,"max_products":%s,"scrape_listings":%s,"skip_urls_count":%s}\n' \
+printf '{"ts":"%s","run_id":"%s","seller_id":"%s","category":"%s","start_page":%s,"last_page":%s,"has_more":%s,"next_start_page":%s,"before":%s,"after":%s,"delta":%s,"seeded":%s,"dup_skipped":%s,"invalid_skipped":%s,"no_phone":%s,"no_image":%s,"price_on_request":%s,"pruned":%s,"max_products":%s,"scrape_listings":%s,"skip_urls_count":%s}\n' \
   "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$RUN_ID" "$SELLER_ID" "$CATEGORY" \
   "$START_PAGE" "$LAST_PAGE" "$HAS_MORE" "$NEXT_START_PAGE" \
   "${BEFORE:-null}" "${AFTER:-null}" "${DELTA:-null}" \
-  "$SEEDED" "$DUPS" "$SKIPPED" "$NO_PHONE" "$NO_IMAGE" "$PRUNED" "${MAX_PRODUCTS:-null}" "$SCRAPE_LISTINGS" "$SKIP_COUNT" \
+  "$SEEDED" "$DUPS" "$SKIPPED" "$NO_PHONE" "$NO_IMAGE" "$PRICE_ON_REQUEST" "$PRUNED" "${MAX_PRODUCTS:-null}" "$SCRAPE_LISTINGS" "$SKIP_COUNT" \
   >> "$METRICS_FILE"
 
 # Brief, parseable single-line summary on stdout for cron-style invocations.

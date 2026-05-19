@@ -319,9 +319,39 @@ async function main(): Promise<void> {
 
   let ok = 0;
   let skipped = 0;
-  let noPhone = 0;
+  let noPhone = 0;       // informational only since 2026-05-18 — see policy note below
+  let priceOnRequest = 0;
   let noImage = 0;
   let dups = 0;
+  // Policy (2026-05-18, after a 30-hour catalog-freeze incident): scraped
+  // listings land with seller_id=NULL ("unowned reference listings"). They
+  // are intentionally NOT purchasable — the cart API refuses to resolve
+  // their variants (resolveLine → unowned_product) and the web UI hides
+  // the add-to-cart button (product/[id]/page.tsx). Two prior hard gates —
+  // "must have at least one reachable phone" and "must have a parseable
+  // price" — were written under the 2026-05-13 owned-listings model, where
+  // a buyer would actually call the seller. They are dead weight for the
+  // unowned model:
+  //   - phone: nobody contacts the seller of an unowned row; the catalog
+  //     value is discovery/SEO, not transactions. Without a JWT (which
+  //     requires solving recaptcha manually) the scraper resolves phones
+  //     only for shop accounts (siteBuildGetByStore). Most listings in
+  //     immobilier, automobiles_vehicules and informatique are private
+  //     sellers — the gate was rejecting 60–95% of every page.
+  //   - price: Ouedkniss sellers commonly post "Prix sur demande" / "à
+  //     débattre" / negotiable. The whole stack already renders such
+  //     listings as "Prix sur demande" (priceMinor < MIN_REAL_PRICE_MINOR
+  //     = 10000 santeem ⇒ swap in ProductCard / search / product page /
+  //     feed.xml / JSON-LD Offer suppression). Hard-rejecting them at
+  //     ingest threw away ~30% of every page for no downstream benefit.
+  // New behavior: phones are still collected and stored in
+  // attributes.sourcePhones if available; rows without phones flow through.
+  // Unparseable prices become priceMinor=0n with attributes.priceOnRequest
+  // = "true", which the rendering layer already maps to "Prix sur demande".
+  // The owned-listing path (SELLER_ID set, real seller record) is not in
+  // production today (run-loop.sh passes SELLER_ID but main() ignores it
+  // since 2026-05-12); if it is ever revived, gate it inside the
+  // requestedSellerId branch.
   for (let i = 0; i < items.length; i++) {
     const it = items[i]!;
     const sourceUrl = (it.url ?? "").trim();
@@ -330,23 +360,19 @@ async function main(): Promise<void> {
       continue;
     }
     const title = (it.title ?? "").trim();
-    const priceMinor = parsePriceToMinor(it.priceText);
-    if (!title || priceMinor === undefined) {
+    if (!title) {
       skipped++;
-      log.warn(`skip [${i}] missing title or price (title=${!!title}, price=${it.priceText ?? "null"})`);
+      log.warn(`skip [${i}] missing title (price=${it.priceText ?? "null"})`);
       continue;
     }
-    // Hard requirement (2026-05-13): every seeded product must carry at least
-    // one phone number reachable by a buyer. Listings the scraper couldn't
-    // resolve a phone for — neither per-listing reveal nor store-level —
-    // are dropped before insert. This is the only way a buyer can actually
-    // contact the seller, so a phoneless row is dead inventory.
+    const parsedPriceMinor = parsePriceToMinor(it.priceText);
+    const priceMinor = parsedPriceMinor ?? 0n;
+    if (parsedPriceMinor === undefined) priceOnRequest++;
+    // Phones are now metadata, not a gate — see policy note above. Count
+    // is kept so the metrics line still surfaces "how many rows came in
+    // without any reachable phone" for operator awareness.
     const phones = collectPhones(it, stores);
-    if (phones.length === 0) {
-      noPhone++;
-      log.warn(`skip [${i}] no phone reachable (storeId=${it.sellerStoreId ?? "-"}, listingPhones=${it.phoneEntries?.length ?? 0}): ${title.slice(0, 60)}`);
-      continue;
-    }
+    if (phones.length === 0) noPhone++;
     // Hard requirement (2026-05-13): every seeded product must carry at least
     // one image URL. Ouedkniss immobilier sellers commonly post listings
     // without photos; those rows render as a brand-initial placeholder
@@ -381,6 +407,12 @@ async function main(): Promise<void> {
       sourcePhones: phones.join(","),
     };
     if (it.postedAt) attributes.sourcePostedAt = it.postedAt;
+    // Flag so consumers (cards, JSON-LD, search description) can render
+    // "Prix sur demande" explicitly instead of inferring from a low
+    // priceMinor. The 0n value is also caught by the MIN_REAL_PRICE_MINOR
+    // < 10000 floor everywhere it matters, but the attribute is the
+    // authoritative signal.
+    if (parsedPriceMinor === undefined) attributes.priceOnRequest = "true";
 
     if (dryRun) {
       log.info(
@@ -414,28 +446,35 @@ async function main(): Promise<void> {
 
   await close();
   // Plain-text summary on stdout (separate from pino JSON) so the
-  // run-loop.sh shell parser can grep this exact shape — same line
-  // shape the legacy HTTP seeder emitted.
-  // The plain-text summary's `skipped X/N` total includes every pre-flight
-  // rejection so the run-loop's grep parser keeps its existing meaning; the
-  // structured pino log adds noImage as a distinct bucket.
-  const totalSkippedDisplay = skipped + noPhone + noImage;
+  // run-loop.sh shell parser can grep this exact shape. The `dropped for
+  // missing phone` clause is retained as 0 in the canonical sentence —
+  // run-loop.sh still parses it as `no_phone` for back-compat with
+  // existing metrics.jsonl consumers — and a new `no phone metadata`
+  // clause carries the informational count. Same trick for `price on
+  // request`: an additive field that run-loop.sh's existing greps ignore
+  // until updated.
+  // The `skipped X/N` total in the canonical sentence is the seeder's
+  // "true-failure" bucket only (missing title, insert exceptions). noImage
+  // is broken out separately because it is a quality drop, not a failure.
+  const totalSkippedDisplay = skipped + noImage;
   console.log(
-    `seeded ${ok} products, skipped ${totalSkippedDisplay}/${items.length} (${dups} as already-seeded duplicates, ${noPhone} dropped for missing phone, ${noImage} dropped for missing image)`,
+    `seeded ${ok} products, skipped ${totalSkippedDisplay}/${items.length} ` +
+      `(${dups} as already-seeded duplicates, 0 dropped for missing phone, ${noImage} dropped for missing image, ` +
+      `${noPhone} with no phone metadata, ${priceOnRequest} with price on request)`,
   );
-  log.info(`done: seeded ${ok}, skipped ${skipped}/${items.length}, noPhone ${noPhone}, noImage ${noImage}, dups ${dups}`);
-  // Exit policy: pre-flight rejections (no phone, no title/price, already-
-  // seeded duplicate) are *expected* outcomes for a given scrape batch —
-  // categories without Ouedkniss shop accounts hit `noPhone === items.length`
-  // every run, listings without prices on Ouedkniss show up as missing-
-  // title-or-price skips, and re-scraping the same page produces dups.
-  // None of those are bugs; treating them as exit 1 was making run-loop.sh
-  // retry 2× and exit 5, which burned docker-run cycles and filled the
-  // metrics log with false alarms. Only fail when *every* item went into
-  // the `skipped` bucket with zero noPhone/dups, which means either a
-  // catch-block exception on every insert (true unexpected error) or a
-  // structural input issue that warrants an alert.
-  const allTrulyFailed = ok === 0 && skipped === items.length && items.length > 0;
+  log.info(
+    `done: seeded ${ok}, skipped ${skipped}/${items.length}, noPhone ${noPhone}, ` +
+      `priceOnRequest ${priceOnRequest}, noImage ${noImage}, dups ${dups}`,
+  );
+  // Exit policy: pre-flight rejections (no title, no image, already-seeded
+  // duplicate) and metadata-only counters (no phone, price-on-request) are
+  // *expected* outcomes for a given scrape batch. Only fail when *every*
+  // item hit a true failure bucket (missing title, insert exception) with
+  // zero accepted rows and zero dups, which means either a catch-block
+  // exception on every insert (true unexpected error) or a structural
+  // input issue that warrants an alert.
+  const allTrulyFailed =
+    ok === 0 && skipped === items.length && dups === 0 && items.length > 0;
   if (allTrulyFailed) process.exit(1);
 }
 

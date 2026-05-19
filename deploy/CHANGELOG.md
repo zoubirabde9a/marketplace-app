@@ -6,7 +6,16 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
-## 2026-05-18 — vps-eu · mobile UI sweep (30 iterations) + Dockerfile/.npmrc + sitemap shard route force-dynamic
+## 2026-05-19 — vps-eu · housekeeping sweep (logs, build cache, journal, scrape dumps, repo one-shots)
+
+- `/opt/marketplace/data/logs/`: deleted 9,936 scraper run logs older than 1 day (12,816 → 2,880 files; 196 MB → 45 MB). Rotate timer was only catching the last few days; one-shot brought the backlog current. Why: per-minute scrape loop produces ~1,440 logs/day; >1d retention is plenty.
+- `/opt/marketplace/data/`: deleted 1,309 `ouedkniss-*.json` scrape dumps older than 7 days that the daily `marketplace-data-rotate.service` hadn't yet caught (12,814 → 11,505; 1.2 GB → 1.1 GB). Daily timer continues to bound steady-state.
+- Stale backups on server: removed `/opt/marketplace/.env.bak` (May 6) and `/opt/marketplace/scripts/seed-from-scraped.mjs.bak` (May 10). The current seeder is built into `marketplace-api:local` per the 2026-05-10 entry.
+- Docker: ran `docker buildx prune -af --filter until=24h` + legacy `docker builder prune` (build cache 3.97 GB → 1.17 GB, freed 2.8 GB). Removed unused `hello-world:latest` image and the exited one-shot `marketplace-api-migrate` container.
+- `journalctl --vacuum-time=7d`: 1.3 GB → 943 MB (freed 443 MB of archived journals).
+- Repo: deleted 12 stale files — `reports/anomalies.txt` (1,390-line freeform log superseded by `deploy/audits/`) and 11 one-shot helper scripts in `scripts/add-*.py` / `verify-seller-name-encoding.py` / `embed-mcp-schemas.py` / `ascii-escape-manifest-description.py` (all explicitly self-described as "One-shot helper" mutations to `agents.json` or one-time encoding fixes, long since committed). Also cleaned the dead `Reference: reports/anomalies.txt [56]` line in this changelog.
+
+
 
 - Deployed the 30-iteration mobile-UX sweep (commit `d4df314`): 2-col product grids on phones, 44px+ tap targets on every primary CTA, iOS auto-zoom eliminated on all inputs/textareas/selects (`text-base sm:text-sm`), header chrome compressed (icon-only sign-in/out, shorter SearchBar placeholder, `gap-2 sm:gap-6`), sticky-header anchor offset (`scroll-margin-top: 80px`), `prefers-reduced-motion` honored site-wide, `-webkit-tap-highlight-color: transparent` + `active:` states for clean tap feedback, dynamic viewport height via `@supports (height: 100dvh)`, container rhythm unified (`pt-6 sm:pt-10` / `p-4 sm:p-6`), Gallery swipe gestures + 44px lightbox close, breadcrumbs `py-1` + `flex-wrap`, variants tables `overflow-x-auto`, `GoogleSignInButton` width clamped to container so the fixed 320px button stops overflowing the seller card. Touched 47 files in `packages/web/**`. Tests: 171/171 passing.
 - Two unrelated build issues surfaced and were fixed inline (commit `5a36f3c`): (a) both Dockerfiles now COPY `.npmrc` so the `dangerously-allow-all-builds=true` setting reaches the in-image `pnpm install` (without it pnpm 10 refused with ERR_PNPM_IGNORED_BUILDS on esbuild/sharp); (b) `/sitemap-products-[shard].xml/route.ts` got `export const dynamic = "force-dynamic"` because Next.js was failing the build trying to statically prerender it with an undefined `[shard]` param.
@@ -1414,7 +1423,6 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 - Fix: `redis-cli config set maxmemory-policy allkeys-lru` (runtime, no restart) + edit `docker-compose.prod.yml` redis block so the policy survives the next `compose up -d redis`. Bumping the 2 GiB cap was explicitly NOT done — the keyspace is already 100% ephemeral snapshots so an eviction-friendly policy is the right shape, not more memory.
 - The original comment in the compose file argued `volatile-lru` protected "future durable session keys"; updated comment notes the rationale no longer holds at the current keyspace + LRU recency keeps hot session keys cached regardless.
 - Verified live: policy now `allkeys-lru`, used_memory 1.51 GiB, evicted_keys 0 (still under ceiling; eviction will trigger when next write pushes us over). Post-change: 1 api error from the restart window, then 0 errors. Cold home cache rebuild 13 s once, warm hits 100–170 ms.
-- Reference: reports/anomalies.txt [56].
 
 ## 2026-05-12 — vps-eu · api+web rebuild · SEO entity enrichment batch + operator cart/checkout polish
 
