@@ -58,6 +58,13 @@ ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID=
 ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
+# Where the web's /v1/media/* rewrite proxies to. next.config.mjs reads this at
+# next-build time and bakes it into the routes manifest, so it MUST be set as a
+# build arg (not just runtime env). Defaults to the in-docker api hostname so
+# production builds work without compose having to pass an explicit value.
+ARG MARKETPLACE_API_URL=http://api:3100
+ENV MARKETPLACE_API_URL=$MARKETPLACE_API_URL
+
 # @marketplace/web has no workspace siblings as deps (verify in
 # packages/web/package.json), so we only need to build web itself.
 RUN pnpm --filter @marketplace/web build

@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-19 — vps-eu — seller-uploaded images broken on storefront (fixed via /v1/media rewrite)
+
+- Symptom: products created through the seller UI (e.g. "eee" by Mahdi hakim, `019e423e-ff75-72a9-8418-58af7dce50ea`) had their image row written correctly in `catalog.media` (url `/v1/media/3775f84594f46c5be1bd2e9a35597ceb.jpg`) but rendered broken on `https://teno-store.com/product/<id>`. Scraper listings were unaffected because Ouedkniss URLs are absolute.
+- Root cause: `POST /v1/media` stores and returns a bare relative path, so the catalog row's `url` is `/v1/media/<hash>.<ext>`. The storefront renders `<Image src="/v1/media/...">`, which the browser resolves against the page host → `teno-store.com/v1/media/...` → 404 (the file lives on `api.teno-store.com`). `_next/image?url=/v1/media/...` failed identically because the optimizer fetches its `url` param same-origin.
+- Fix: added a Next.js `rewrites()` entry mapping `/v1/media/:path*` → `${MARKETPLACE_API_URL}/v1/media/:path*` (`packages/web/next.config.mjs`). Since rewrite destinations are baked into the routes manifest at `next build` time, `MARKETPLACE_API_URL` is now also a Dockerfile `ARG` (`packages/web/Dockerfile`) passed via `docker-compose.prod.yml` build args; defaults to `http://api:3100` so the rewrite resolves over the docker network.
+- Deploy: scp config files, `docker compose build web`, `up -d web`. Verified `GET https://teno-store.com/v1/media/3775f84594f46c5be1bd2e9a35597ceb.jpg → 200` (122 718 B, `image/jpeg`) and `GET /_next/image?url=%2Fv1%2Fmedia%2F...&w=640&q=75 → 200` (`image/jpeg`, 44 345 B WebP-transcoded). Product page HTML for "eee" now contains the `/_next/image` src for the uploaded jpg.
+
 ## 2026-05-19 — vps-eu — scraper seeder unblocked (null-prototype attributes → drizzle JSONB crash)
 
 - Patched `packages/db/src/repos/product.ts` (create + update paths) to spread `cleanAttrs`/`cleaned` into a plain `{}` before passing to drizzle. The 2026-05-15 hardening sweep had switched these to `Object.create(null)`, which crashed drizzle's JSONB serializer with `Cannot read properties of null (reading 'constructor')` on every insert. Prototype-pollution defense is preserved by the existing key-filter loop above the spread.

@@ -61,6 +61,10 @@ services:
         # Google OAuth client ID for the in-browser sign-in widget. Shipped to
         # the browser by design (it's the public half of an OAuth client).
         NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+        # Upstream for the /v1/media/* rewrite. Baked into the Next routes
+        # manifest at build time (next.config.mjs reads process.env there),
+        # so it has to come in as a build arg, not just runtime env.
+        MARKETPLACE_API_URL: http://api:3100
     image: marketplace-web:local
     container_name: marketplace-web
     restart: unless-stopped

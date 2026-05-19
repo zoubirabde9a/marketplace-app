@@ -169,6 +169,24 @@ const nextConfig = {
       },
     ];
   },
+  async rewrites() {
+    // Seller-uploaded images live on the API container's media volume and are
+    // served by Fastify at `/v1/media/<hash>.<ext>` (api/src/routes/products.ts).
+    // Both POST /v1/media (the upload reply) and GET /v1/products (image rows)
+    // return that path verbatim, so the URL stored in catalog.media.url is the
+    // bare relative path. On the storefront the same path resolves to
+    // teno-store.com/v1/media/... which 404s — and next/image with src=/v1/...
+    // produces /_next/image?url=%2Fv1%2Fmedia%2F... which also 404s because
+    // the optimizer fetches the url same-origin. Proxy the prefix here so
+    // both the bare-img path and the optimizer's upstream fetch reach the
+    // API container directly (inside the docker network in prod; localhost
+    // in dev). Scraper rows store absolute https://cdn*.ouedkniss.com URLs
+    // and are unaffected.
+    const apiBase = (process.env.MARKETPLACE_API_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3100").replace(/\/$/, "");
+    return [
+      { source: "/v1/media/:path*", destination: `${apiBase}/v1/media/:path*` },
+    ];
+  },
   async redirects() {
     return [
       { source: "/favicon.ico", destination: "/icon.svg", permanent: true },
