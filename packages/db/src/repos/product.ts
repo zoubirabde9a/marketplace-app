@@ -537,7 +537,7 @@ export function makeProductRepo(db: DbClient) {
             descriptionRaw: input.description ?? null,
             descriptionSanitized,
             brand: cleanBrand,
-            attributes: cleanAttrs,
+            attributes: { ...cleanAttrs },
             categoryIds: input.categoryIds && input.categoryIds.length > 0 ? input.categoryIds : null,
             shipsTo: input.shipsTo && input.shipsTo.length > 0 ? input.shipsTo : null,
             counterfeitRisk: "low",
@@ -684,7 +684,7 @@ export function makeProductRepo(db: DbClient) {
             });
             if (cleanKey.length > 0) cleaned[cleanKey] = cleanValue;
           }
-          u.attributes = cleaned;
+          u.attributes = { ...cleaned };
         }
         await tx.update(products).set(u).where(eq(products.id, productId));
 

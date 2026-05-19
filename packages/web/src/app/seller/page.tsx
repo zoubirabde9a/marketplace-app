@@ -157,8 +157,8 @@ export default async function SellerLandingPage() {
         <li className="flex items-start gap-3">
           <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
           <span>
-            Acheteurs algériens et assistants IA voient vos annonces — sans
-            paramétrage technique de votre côté.
+            Vos annonces sont visibles par les acheteurs algériens dès la
+            publication — aucun paramétrage technique requis.
           </span>
         </li>
         <li className="flex items-start gap-3">

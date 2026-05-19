@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-19 — vps-eu — scraper seeder unblocked (null-prototype attributes → drizzle JSONB crash)
+
+- Patched `packages/db/src/repos/product.ts` (create + update paths) to spread `cleanAttrs`/`cleaned` into a plain `{}` before passing to drizzle. The 2026-05-15 hardening sweep had switched these to `Object.create(null)`, which crashed drizzle's JSONB serializer with `Cannot read properties of null (reading 'constructor')` on every insert. Prototype-pollution defense is preserved by the existing key-filter loop above the spread.
+- Symptom: catalog frozen at 55,641 since 2026-05-17 ~18:01 UTC. Every `run-loop.sh` since then logged `seeded=0` with ~30 of 50 listings hitting the catch block per run.
+- Shipped via tar+ssh per runbook 07; rebuilt `marketplace-api:local`; recreated `marketplace-api`. `web`/`caddy` untouched.
+- Verified: `livez` 200; first post-deploy scrape run (21:50 UTC) seeded 32 products with logged UUIDs and zero `failed [N]` lines. Loop is back to writing rows; cap still 280,000.
+
 ## 2026-05-19 — vps-eu — deploy commit c83b4b8 (SEO/JSON-LD batch + scraper config)
 
 - Shipped working tree via tar+ssh per runbook 07; rebuilt `marketplace-web:local`; restarted `marketplace-web`. `api`, `caddy` left in place (no api code in this batch).

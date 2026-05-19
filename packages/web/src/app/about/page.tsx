@@ -78,7 +78,7 @@ export default function AboutPage() {
     },
     {
       q: "Comment acheter un produit sur Teno Store ?",
-      a: "Parcourez le catalogue, ouvrez une annonce, puis contactez directement le vendeur via les boutons d'appel, WhatsApp ou Viber affichés sur la page produit. Vous pouvez aussi déléguer un budget d'achat à un agent IA qui négocie et achète pour vous via les protocoles MCP, A2A et AP2.",
+      a: "Parcourez le catalogue, ouvrez une annonce, puis contactez directement le vendeur via les boutons d'appel, WhatsApp ou Viber affichés sur la page produit. L'échange et le paiement se font ensuite hors plateforme, comme sur les autres places de marché algériennes.",
     },
     {
       q: "Teno Store livre-t-il partout en Algérie ?",
@@ -90,11 +90,7 @@ export default function AboutPage() {
     },
     {
       q: "Puis-je vendre sur Teno Store ?",
-      a: "Oui. Inscrivez-vous gratuitement comme vendeur, publiez vos annonces via le tableau de bord vendeur en libre-service, et atteignez à la fois les acheteurs humains et les agents IA. Les prix se fixent par variante en DZD, et chaque annonce est exposée simultanément en HTML, REST, MCP et A2A.",
-    },
-    {
-      q: "Teno Store accepte-t-il les agents IA ?",
-      a: "Oui — Teno Store est conçu nativement comme un marketplace agent-à-agent. Les agents IA peuvent découvrir, comparer et acheter via une API REST publique (api.teno-store.com/v1), un serveur Model Context Protocol (MCP) en streamable HTTP, et un serveur Agent-to-Agent (A2A) avec mandats AP2. La découverte se fait via /.well-known/agents.json.",
+      a: "Oui. Inscrivez-vous gratuitement comme vendeur, publiez vos annonces via le tableau de bord vendeur en libre-service, et touchez les acheteurs algériens. Les prix se fixent par variante en DZD, et la mise en ligne ne demande aucun frais.",
     },
     // 7th entry — still under Google's 8-FAQ-entry "spammy" threshold.
     // Comparison queries ("Teno Store vs Ouedkniss / vs Jumia") are
@@ -104,7 +100,7 @@ export default function AboutPage() {
     // unrelated sources.
     {
       q: "Quelle est la différence entre Teno Store et Ouedkniss ou Jumia Algérie ?",
-      a: "Ouedkniss est une plateforme de petites annonces : l'échange se fait entièrement hors plateforme entre l'acheteur et le vendeur, sans API pour agents IA. Jumia Algérie est un détaillant intégré verticalement avec sa propre logistique et son propre stock. Teno Store est explicitement un marketplace pour agents : chaque annonce est exposée simultanément en HTML, REST, MCP et A2A, afin que les agents IA puissent parcourir et acheter sous mandats AP2, tout en permettant aux acheteurs humains de contacter directement les vendeurs. Le catalogue provient de vendeurs algériens, mais la couche de protocoles pour agents est unique à Teno Store.",
+      a: "Ouedkniss est une plateforme de petites annonces où l'échange se fait entièrement hors plateforme entre l'acheteur et le vendeur. Jumia Algérie est un détaillant intégré verticalement avec sa propre logistique et son propre stock. Teno Store est un marketplace de vendeurs tiers : les annonces, les prix et les coordonnées viennent directement de vendeurs algériens, et les acheteurs les contactent en direct. Le catalogue couvre les mêmes catégories que les autres places de marché du pays, avec une interface plus rapide et un signal de confiance par annonce.",
     },
   ];
   const faqJsonLd = {
@@ -175,28 +171,20 @@ export default function AboutPage() {
           actualisé en continu, donc les annonces que vous parcourez ici
           reflètent ce qui est réellement à vendre à l&rsquo;instant présent.
         </p>
-        <p className="leading-relaxed mt-3">
-          Techniquement, Teno Store est aussi un{" "}
-          <strong>marketplace agent-à-agent</strong> : des agents IA peuvent
-          découvrir, comparer et acheter des produits pour le compte
-          d&rsquo;acheteurs humains via MCP, A2A et AP2. Le site que vous lisez
-          est un miroir lisible humain de cette activité — vous pouvez regarder
-          votre agent travailler en temps réel, ou parcourir le catalogue
-          vous-même de la même manière qu&rsquo;un agent.
-        </p>
         <h2 className="text-xl font-medium text-ink mt-10 mb-2">Pour les acheteurs</h2>
         <p className="leading-relaxed">
-          Parcourez le catalogue librement, ou connectez-vous avec Google pour
-          déléguer un budget d&rsquo;achat à un agent IA. Vous gardez le
-          contrôle (révocation, journal d&rsquo;activité, signaux de confiance
-          par annonce, snapshots horodatés de ce que l&rsquo;agent a vu).
+          Parcourez le catalogue librement, sans inscription. Connectez-vous
+          avec Google pour enregistrer vos favoris, suivre vos recherches et
+          accéder à un historique de ce que vous avez consulté. Les signaux
+          de confiance (statut du vendeur, indicateur de contrefaçon, stock)
+          sont visibles sur chaque annonce.
         </p>
         <h2 className="text-xl font-medium text-ink mt-10 mb-2">Pour les vendeurs</h2>
         <p className="leading-relaxed">
-          Publiez vos annonces sur Teno Store et atteignez à la fois les
-          acheteurs humains et les agents IA. Tableau de bord vendeur en libre
-          service, prix par variante en DZD, signaux anti-contrefaçon visibles
-          sur chaque annonce.{" "}
+          Publiez vos annonces sur Teno Store et touchez les acheteurs
+          algériens. Tableau de bord vendeur en libre-service, prix par
+          variante en DZD, signaux anti-contrefaçon visibles sur chaque
+          annonce, aucun frais de listing.{" "}
           <Link href="/seller" className="text-accent hover:underline active:underline">
             S&rsquo;inscrire pour vendre →
           </Link>
@@ -264,12 +252,11 @@ export default function AboutPage() {
             <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
             <span>
               <strong className="text-ink">Ouedkniss</strong> est une plateforme
-              de petites annonces : aucune API pour agents IA, les transactions
-              et la confiance se gèrent hors plateforme entre l&rsquo;acheteur et
-              le vendeur. Teno Store complète Ouedkniss en exposant les mêmes
-              annonces dans des surfaces machine-lisibles (REST, MCP, A2A) afin
-              que les agents IA puissent les parcourir et acheter sous mandats
-              AP2 — tout en gardant l&rsquo;accès direct vendeur côté humain.
+              de petites annonces : les transactions et la confiance se gèrent
+              entièrement hors plateforme entre l&rsquo;acheteur et le vendeur.
+              Teno Store reprend une partie du même catalogue dans une
+              interface plus rapide, avec des signaux de confiance par
+              annonce (stock, indicateur de contrefaçon, profil vendeur).
             </span>
           </li>
           <li className="flex items-start gap-3">
@@ -279,8 +266,7 @@ export default function AboutPage() {
               détaillant intégré verticalement, avec son propre stock et sa
               propre logistique. Teno Store est un marketplace de vendeurs
               tiers : les annonces, les prix et les coordonnées de contact
-              viennent directement des vendeurs algériens, et les agents IA
-              négocient avec eux plutôt qu&rsquo;avec un guichet centralisé.
+              viennent directement des vendeurs algériens, sans intermédiaire.
             </span>
           </li>
           <li className="flex items-start gap-3">
@@ -317,102 +303,6 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section lang="en" className="mt-10 sm:mt-16 pt-8 sm:pt-12 border-t border-line-soft">
-        <h2 className="text-2xl font-semibold tracking-tight text-ink mb-3">
-          For agents &amp; developers
-        </h2>
-        <p className="leading-relaxed">
-          The rest of this page is in English — it&rsquo;s the agent /
-          developer deep-dive on how Teno Store works as a machine-readable
-          marketplace.
-        </p>
-
-      <h2 className="text-xl font-medium text-ink mt-10 mb-2">For buyers</h2>
-      <p className="leading-relaxed">
-        You don’t shop here directly. Your agent does — and you watch. Sign in
-        with Google to mint an Agent Passport that delegates a bounded
-        purchasing budget to an AI agent (yours or one provided by a third
-        party). The agent can search the catalog, read product pages, and
-        complete a purchase under the constraints you set. You can revoke the
-        passport at any time, see the full activity log, and view the exact
-        product detail the agent saw — including counterfeit-risk signals,
-        seller information, and prices.
-      </p>
-
-      <h2 className="text-xl font-medium text-ink mt-10 mb-2">For sellers</h2>
-      <p className="leading-relaxed">
-        List your products on Teno Store and reach AI agents shopping on behalf
-        of real buyers. Listings are exposed simultaneously over three
-        machine-readable surfaces — a REST API at{" "}
-        <code className="font-mono text-ink">api.teno-store.com/v1</code>, a
-        Model Context Protocol (MCP) server, and an Agent-to-Agent (A2A)
-        skill server — plus the human-readable HTML at{" "}
-        <code className="font-mono text-ink">teno-store.com</code>. Pricing is
-        per-variant in your own currency, stock and contact details are
-        editable from the seller dashboard, and every listing carries a
-        counterfeit-risk indicator alongside trusted sellers.{" "}
-        <Link href="/seller" className="text-accent hover:underline active:underline">
-          Sign up to sell →
-        </Link>
-      </p>
-
-      <h2 className="text-xl font-medium text-ink mt-10 mb-2">For agents</h2>
-      <p className="leading-relaxed">
-        The canonical machine-readable surface is the API. Agents authenticate
-        via OAuth 2.1 with PKCE and DPoP, mint a Passport JWT scoped to a
-        principal, and call the catalog, cart, and checkout endpoints under
-        that token. Capability discovery lives at{" "}
-        <code className="font-mono text-ink">/.well-known/agents.json</code>{" "}
-        on this host, with detailed protocol metadata for MCP, A2A, REST, and
-        AP2 mandates. Public catalog reads (
-        <code className="font-mono text-ink">GET /v1/products</code> and{" "}
-        <code className="font-mono text-ink">GET /v1/products/{`{id}`}</code>)
-        require no auth, so an agent can crawl the catalog before deciding
-        whether to onboard.
-      </p>
-
-      <h2 className="text-xl font-medium text-ink mt-10 mb-2">Trust signals</h2>
-      <ul className="list-none p-0 mt-2 space-y-3">
-        <li className="flex items-start gap-3">
-          <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-          <span>
-            <strong className="text-ink">Counterfeit-risk tiers</strong> are
-            attached to every listing. Suppressed and under-review listings
-            are clearly labelled both visually and in the structured data so
-            agents can de-prioritize them.
-          </span>
-        </li>
-        <li className="flex items-start gap-3">
-          <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-          <span>
-            <strong className="text-ink">Seller-supplied content</strong>{" "}
-            (titles, descriptions, attributes) is rendered with an explicit
-            untrusted-content marker so AI agents and humans don’t mistake it
-            for system UI.
-          </span>
-        </li>
-        <li className="flex items-start gap-3">
-          <span aria-hidden className="mt-1.5 w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
-          <span>
-            <strong className="text-ink">Public snapshot links</strong> at{" "}
-            <code className="font-mono text-ink">/s/{`{id}`}</code> let humans
-            re-view exactly what an agent saw at request time — frozen,
-            read-only, expiring 24 hours after capture.
-          </span>
-        </li>
-      </ul>
-
-      <h2 className="text-xl font-medium text-ink mt-10 mb-2">Get started</h2>
-      <p className="leading-relaxed">
-        <Link href="/search" className="text-accent hover:underline active:underline">
-          Browse the catalog →
-        </Link>
-        {" · "}
-        <Link href="/seller" className="text-accent hover:underline active:underline">
-          Sell on Teno Store →
-        </Link>
-      </p>
-      </section>
     </article>
   );
 }

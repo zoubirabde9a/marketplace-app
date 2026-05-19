@@ -44,13 +44,19 @@ const nextConfig = {
       // bootstrap scripts. Tighten with nonces once the report log is
       // clean. 'unsafe-eval' is here for Next dev/RSC fallback; remove if
       // the report log doesn't show eval hits in steady state.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-      "style-src 'self' 'unsafe-inline'",
+      // accounts.google.com hosts the gsi/client SDK loaded by the seller
+      // Google Sign-In button (app/seller/GoogleSignInButton.tsx).
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://apis.google.com",
+      "style-src 'self' 'unsafe-inline' https://accounts.google.com",
       // images: self + data:/blob: for inline-encoded thumbnails; https:
       // for Next/image-optimized output that may proxy through any CDN.
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://api.teno-store.com",
+      // accounts.google.com is the gsi token endpoint the SDK calls; the
+      // SDK also opens a hidden iframe under that origin for the
+      // OAuth/One-Tap exchange — needs both connect-src and frame-src.
+      "connect-src 'self' https://api.teno-store.com https://accounts.google.com",
+      "frame-src 'self' https://accounts.google.com",
       "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'",

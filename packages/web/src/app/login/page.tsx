@@ -59,15 +59,15 @@ export default async function LoginPage({
     <div className="pt-8 sm:pt-16 pb-12 sm:pb-24 max-w-md mx-auto" lang="fr">
       <h1 className="text-3xl font-semibold tracking-tight mb-2 text-center">Connexion</h1>
       <p className="text-ink-soft text-center mb-8">
-        Consultez ce que votre agent a cherché, comparé et acheté.
+        Retrouvez vos favoris, vos recherches et l&rsquo;historique de votre catalogue.
       </p>
 
       {code ? (
         <div className="rounded-2xl border border-accent/40 bg-accent/5 p-5 mb-6">
-          <h2 className="font-medium text-accent mb-1">Un agent vous a invité</h2>
+          <h2 className="font-medium text-accent mb-1">Lien d&rsquo;invitation</h2>
           <p className="text-sm text-ink-soft mb-4">
-            L’un de vos agents IA a généré ce lien. Cliquez ci-dessous
-            pour réclamer votre session.
+            Ce lien a été généré pour vous. Cliquez ci-dessous pour
+            réclamer votre session.
           </p>
           <Suspense fallback={<p className="text-sm text-ink-mute">Échange en cours…</p>}>
             <ExchangeLinkClient code={code} next={next} />

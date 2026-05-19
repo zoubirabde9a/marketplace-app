@@ -265,7 +265,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
     },
     {
       q: "Quels modes de paiement Teno Store accepte-t-il ?",
-      a: "Le paiement se règle directement entre l'acheteur et le vendeur — Teno Store ne traite pas les paiements lui-même. La plupart des vendeurs algériens acceptent l'espèces à la livraison, le virement Edahabia/CCP, ou le paiement à la remise en main propre. Pour les achats délégués à un agent IA, l'authorization se fait via mandats AP2 avant que l'agent ne contacte le vendeur.",
+      a: "Le paiement se règle directement entre l'acheteur et le vendeur — Teno Store ne traite pas les paiements lui-même. La plupart des vendeurs algériens acceptent l'espèces à la livraison, le virement Edahabia/CCP, ou le paiement à la remise en main propre.",
     },
     {
       q: "Dans quelles villes algériennes les vendeurs de Teno Store sont-ils basés ?",
@@ -334,17 +334,17 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           role="doc-subtitle"
           className="text-3xl sm:text-6xl font-semibold tracking-tight bg-gradient-to-b from-ink to-ink-soft bg-clip-text text-transparent"
         >
-          Watch your agent shop, in real time.
+          Algeria's marketplace, refreshed in real time.
         </p>
         <p className="mt-4 sm:mt-5 text-base sm:text-lg text-ink-soft leading-relaxed">
-          See every search, every product, every price your agent looked at — exactly as it saw them.
+          Thousands of fresh listings from Algerian sellers — phones, electronics, fashion, vehicles, all priced in DZD.
         </p>
         <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
           <Link
             href="/login"
             className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition shadow-glow"
           >
-            Sign in to see your agent →
+            Sign in →
           </Link>
           <Link
             href="/search"
@@ -384,8 +384,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         <p lang="en" className="text-sm text-ink-mute leading-relaxed">
           Browse a continuously-refreshed catalog of consumer goods listed for sale
           in Algeria — phones, computing, home appliances, fashion and vehicles —
-          priced in DZD, sourced from real Algerian sellers. Built API-first so AI
-          agents can shop on a buyer&rsquo;s behalf via MCP, A2A and AP2.
+          priced in DZD, sourced from real Algerian sellers.
         </p>
         <ul className="mt-5 flex flex-wrap gap-2 list-none p-0">
           {[
@@ -409,11 +408,11 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
           ))}
         </ul>
       </section>
-      <section lang="en" className="mt-10 sm:mt-16 max-w-4xl mx-auto" aria-labelledby="agent-heading">
-        <h2 id="agent-heading" className="sr-only">How the agent observer works</h2>
+      <section lang="en" className="mt-10 sm:mt-16 max-w-4xl mx-auto" aria-labelledby="why-heading">
+        <h2 id="why-heading" className="sr-only">Why shop on Teno Store</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">
-          <Card title="Deep-linked searches" body="When your agent narrows a search, you get a URL that mirrors the same filters and results." />
-          <Card title="Full product detail" body="Photos, variants, prices, attributes, and seller info — exactly what the agent saw." />
+          <Card title="Shareable searches" body="Every filter combination has its own URL, so you can bookmark or share exactly what you found." />
+          <Card title="Full product detail" body="Photos, variants, prices, attributes, and seller info — everything you need on one page." />
           <Card title="Trust signals" body="Stock state, verified seller information, and every listing scored on the same trust rubric." />
         </div>
       </section>
