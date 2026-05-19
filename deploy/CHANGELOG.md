@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-19 — vps-eu — deploy commit c83b4b8 (SEO/JSON-LD batch + scraper config)
+
+- Shipped working tree via tar+ssh per runbook 07; rebuilt `marketplace-web:local`; restarted `marketplace-web`. `api`, `caddy` left in place (no api code in this batch).
+- Verified: `https://teno-store.com/` 200; `marketplace-web` Up on new image; `/llms.txt` still serving fresher regenerator output (55,700 / 21:01 UTC) — confirms the server-side regenerator wins over the in-image static file as expected.
+- Why: ship the product + store JSON-LD hardening + scraper MAX_AGE_DAYS knob to clear Google Search Console alerts in production.
+
 ## 2026-05-19 — product + store JSON-LD: clear Google Search Console alerts (local)
 
 - Search Console flagged: critical "must specify offers/review/aggregateRating" on price-on-request products; non-critical "missing shippingDetails / hasMerchantReturnPolicy / description / global identifier" on merchant listings; "invalid string length in name" on the merchant entity.
