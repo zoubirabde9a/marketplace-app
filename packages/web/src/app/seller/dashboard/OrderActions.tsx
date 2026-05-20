@@ -14,7 +14,7 @@
 // here; the order list can carry many rows and modal stack management
 // would be heavy. Inline expansion keeps the gesture local.
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 type OrderStatus =
@@ -80,6 +80,17 @@ export function OrderActions({
   const [error, setError] = useState<string | null>(null);
   // Inline cancel-reason prompt — null = not open, "" = open but empty.
   const [cancelReason, setCancelReason] = useState<string | null>(null);
+  // Brief "✓ Marqué …" confirmation after a successful transition.
+  // router.refresh() updates the chip and buttons but doesn't itself
+  // tell the seller the action landed — positive feedback closes the
+  // loop. Auto-dismisses after a couple of seconds; cleared if the
+  // component unmounts mid-wait.
+  const [successLabel, setSuccessLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (!successLabel) return;
+    const t = setTimeout(() => setSuccessLabel(null), 2200);
+    return () => clearTimeout(t);
+  }, [successLabel]);
 
   const buttons = actionsFor(status);
   if (buttons.length === 0) return null;
@@ -111,6 +122,10 @@ export function OrderActions({
         setError(j.detail || j.error || `Échec (HTTP ${res.status})`);
         return;
       }
+      // The button label is past-tense-y enough ("Marquer en préparation"
+      // → confirmation "Marqué en préparation") that we can reuse it
+      // verbatim with the verb swapped to the participle.
+      setSuccessLabel(spec.label.replace(/^Marquer /, "Marqué "));
       router.refresh();
     });
   }
@@ -138,6 +153,7 @@ export function OrderActions({
         return;
       }
       setCancelReason(null);
+      setSuccessLabel("Commande annulée");
       router.refresh();
     });
   }
@@ -160,6 +176,19 @@ export function OrderActions({
             {b.label}
           </button>
         ))}
+        {successLabel && (
+          // role=status + aria-live=polite so screen readers also get
+          // confirmation. Visually a small green check + label that
+          // sits inline with the buttons and fades after ~2 seconds.
+          <span
+            role="status"
+            aria-live="polite"
+            className="inline-flex items-center gap-1.5 text-xs text-ok"
+          >
+            <span aria-hidden>✓</span>
+            {successLabel}
+          </span>
+        )}
       </div>
       {cancelReason !== null && (
         <form
