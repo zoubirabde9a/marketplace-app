@@ -6,6 +6,22 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy seller orders UX batch (be30cee..51133a8)
+
+- Shipped 7 commits via runbook 07 (tar+ssh). Rebuilt `marketplace-api:local` and `marketplace-web:local`, recreated `marketplace-api` + `marketplace-web`. Smoke: `/livez` ok, apex 200.
+- What shipped (web only — UX work on the seller orders surface):
+  - `be30cee` seller dashboard: group orders by date.
+  - `cd3698f` seller: unified cross-shop `/seller/orders` page.
+  - `915da3e` type-as-you-go search by order number or customer.
+  - `8565274` per-status tabs (Toutes / À traiter / Expédiées / Livrées / Annulées).
+  - `3cc37b7` inline copy buttons next to order number and customer phone.
+  - `7eba1e6` three-tile stats banner: à traiter / expédiées 7j / revenu 7j.
+  - `83b9a6d` actionable order count surfaced in the browser tab title.
+  - `51133a8` tap-to-copy public product link on each product row (seller dashboard).
+- Left uncommitted on the laptop: an in-progress `OrderRow` change that links the order number to a `/seller/orders/[orderId]` detail page that doesn't exist yet — kept out of this deploy to avoid shipping a broken link.
+
+---
+
 ## 2026-05-20 — vps-eu — deploy commits 09dbc92 + 4d4614f + e61adcd (seller order status management + product soft-delete)
 
 - Shipped working tree via runbook 07 (tar+ssh). Rebuilt both `marketplace-api:local` AND `marketplace-web:local` (api/db code changed for the first time in this batch). Recreated `marketplace-api` and `marketplace-web`. `caddy`/`postgres`/`redis` left in place.

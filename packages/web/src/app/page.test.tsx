@@ -5,9 +5,7 @@ import { render, cleanup } from "@testing-library/react";
 vi.mock("@/lib/sellerSession", () => ({
   getCurrentUser: vi.fn(async () => null),
 }));
-// Activity API isn't called in the signed-out branch, but keep the import safe.
 vi.mock("@/lib/api", () => ({
-  getMyActivity: vi.fn(),
   searchProducts: vi.fn(async () => ({
     data: [],
     pagination: { cursor: null, totalEstimate: 0 },

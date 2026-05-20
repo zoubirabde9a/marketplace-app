@@ -266,36 +266,6 @@ export async function getMe(sessionJwt: string): Promise<MeResponse> {
   return authedRequest<MeResponse>("/v1/auth/me", sessionJwt);
 }
 
-export interface MyAgentSummary {
-  id: string;
-  name: string;
-  kind: "buyer" | "seller" | "both";
-  status: string;
-  createdAt: number;
-}
-
-export interface AgentAction {
-  id: string;
-  agentId: string;
-  agentName: string;
-  toolName: string;
-  scope: string;
-  status: string;
-  latencyMs: number;
-  occurredAt: string;
-  errorCode: string | null;
-}
-
-export interface MyActivityResponse {
-  user: { id: string; email: string; displayName: string | null; picture: string | null } | null;
-  agents: MyAgentSummary[];
-  recentActions: AgentAction[];
-}
-
-export async function getMyActivity(sessionJwt: string): Promise<MyActivityResponse> {
-  return authedRequest<MyActivityResponse>("/v1/me/activity", sessionJwt);
-}
-
 export async function listMySellers(sessionJwt: string, ownerAgentId: string): Promise<SellersListResponse> {
   return authedRequest<SellersListResponse>(
     `/v1/sellers?ownerAgentId=${encodeURIComponent(ownerAgentId)}&limit=50`,

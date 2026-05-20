@@ -1,21 +1,13 @@
-// /dashboard — the signed-in agent-activity view. Was previously the
-// signed-in branch of `/`, but mixing per-request cookie reads with the
-// SEO landing prevented Next + Cloudflare from edge-caching the homepage.
-// Splitting routes lets `/` be fully ISR-cached for crawlers while the
-// authenticated experience lives here with its own dynamic policy.
-//
-// Routing: anonymous users hitting `/dashboard` get bounced to /login with
-// a next=/dashboard hint; users with an invalid/expired cookie get the
-// cookie cleared on the way out (otherwise the middleware redirect of
-// `/` → `/dashboard` would loop).
+// /dashboard — signed-in landing. Routes anonymous hits to /login; clears
+// invalid session cookies on the way out to break any redirect loop from
+// the middleware's `/` → `/dashboard` rewrite.
 
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getCurrentUser, SELLER_COOKIE, syntheticAgentId } from "@/lib/sellerSession";
-import { getMyActivity, listMySellers, type SellerRecord } from "@/lib/api";
-import { AgentActivity } from "@/components/AgentActivity";
+import { listMySellers, type SellerRecord } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
@@ -29,36 +21,13 @@ export const metadata: Metadata = {
 export default async function Dashboard() {
   const me = await getCurrentUser();
   if (!me) {
-    // If we got here via the middleware redirect, the session cookie was
-    // present but invalid. Clear it so the next hit on `/` doesn't bounce
-    // back into the same redirect loop, then send the user to /login.
     const jar = await cookies();
     if (jar.has(SELLER_COOKIE)) jar.delete(SELLER_COOKIE);
     redirect("/login?next=/dashboard");
   }
 
-  let activity;
-  try {
-    activity = await getMyActivity(me.jwt);
-  } catch {
-    // API hiccup — degrade gracefully to the empty-state view rather than
-    // failing the dashboard render.
-    activity = {
-      user: {
-        id: me.user.id,
-        email: me.user.email,
-        displayName: me.user.displayName,
-        picture: me.user.picture,
-      },
-      agents: [],
-      recentActions: [],
-    };
-  }
+  const displayName = me.user.displayName ?? me.user.email?.split("@")[0] ?? "there";
 
-  // Sellers the signed-in user owns. The agent-activity view doesn't surface
-  // these, so a user who created a store on /seller/dashboard had no way to
-  // discover it from the main /dashboard. Best-effort fetch — if it fails
-  // we just hide the section.
   let sellers: SellerRecord[] = [];
   try {
     const r = await listMySellers(me.jwt, syntheticAgentId(me.user.id));
@@ -68,10 +37,22 @@ export default async function Dashboard() {
   }
 
   return (
-    <>
+    <section className="pt-6 sm:pt-10 pb-12 max-w-5xl mx-auto">
+      <header className="mb-6 sm:mb-8 px-1">
+        <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight break-words">
+          Hi, {displayName}.
+        </h1>
+      </header>
       <YourStores sellers={sellers} />
-      <AgentActivity data={activity} />
-    </>
+      <div className="mt-6 px-1">
+        <Link
+          href="/search"
+          className="inline-flex h-11 px-5 items-center justify-center rounded-xl bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition shadow-glow"
+        >
+          Browse the catalog →
+        </Link>
+      </div>
+    </section>
   );
 }
 

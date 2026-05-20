@@ -6,6 +6,54 @@ and resolve disputes without ever touching a screen.
 
 Built on `@modelcontextprotocol/sdk` 1.29.
 
+## For operators (humans connecting an MCP-capable assistant)
+
+If you are a seller pointing Claude / GPT / a custom agent at this MCP and want
+to create a shop and list products, read this section before your first call.
+
+### The ownership model (read this first)
+
+Every shop created through the MCP is owned by the **agent identity** that
+called it (e.g. `agt_local_operator`, your IDE's agent passport, etc.), not
+by your web-login user account on `teno-store.com`.
+
+Concretely, that means:
+
+- Shops you create here are real, public, and reachable at the `storeUrl`
+  returned by `seller.create_account`. Buyers can browse them; you can keep
+  adding products via MCP.
+- They will **not** appear under "My stores" / "My products" when you log
+  into the website with email + password. There is no agent↔user linking
+  flow yet — it is on the roadmap, but today the two worlds are separate.
+- If you want a shop you can manage from the website AND from an agent,
+  today you need two shops, or pick one channel.
+
+When in doubt, keep the `sellerId` and `storeUrl` your agent prints back —
+those are how you find the shop again later.
+
+### Minimal flow (what to ask your agent for)
+
+1. "Create a seller called *<name>*, country DZ, phone +213…" — the agent
+   calls `seller.create_account`. Save the returned `sellerId` and
+   `storeUrl`.
+2. "Publish a product titled *<title>* under that seller, price X DZD,
+   image at <url>" — the agent calls `product.create_listing` with the
+   same `sellerId`. Save the returned `productUrl`.
+3. Open `productUrl` in a browser to confirm what buyers will see.
+
+### Common confusions
+
+- **"I don't see my product on my account page."** Expected. See the
+  ownership model above. Open the `productUrl` the agent returned.
+- **"My agent created a 'Random Test Shop' I didn't ask for."** The agent
+  invented a name because you didn't supply one. Always give the agent the
+  exact display name, country, and phone you want; the tool descriptions
+  explicitly tell the agent to ask if any of these are missing.
+- **"The image doesn't show on the listing."** The catalog stores image
+  *URLs*, not bytes. The URL must stay publicly fetchable forever — don't
+  pass localhost paths, signed S3 links that expire, or images behind a
+  login wall.
+
 ## Layout
 
 ```
