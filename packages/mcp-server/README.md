@@ -56,9 +56,12 @@ These are real product gaps an agent should NOT pretend to work around:
 - **No agent↔web-user account linking.** Shops created here cannot be
   managed from the operator's web login and vice versa. See the
   ownership model section above.
-- **No tool to update a listing's price/stock/description after publish.**
-  Re-creating the listing with new fields is the current workaround,
-  but that leaves the old one behind (see the previous gap).
+- **Limited listing updates.** `product.update_listing` covers title,
+  description, brand, attributes, categories, ship-to regions, and the
+  full variants array (price, sku, stock). It does NOT cover media —
+  if the operator wants to swap a product photo, the only path today
+  is re-creating the listing (which leaves the old one behind, see the
+  previous gap).
 - **No buyer-side "list my orders" without an `orderToken`.** Anonymous
   COD orders need the token saved at checkout.confirm time. If the
   operator lost it, the order can only be looked up from the seller
@@ -101,8 +104,9 @@ patterns, error shapes, ownership caveats).
 Currently registered tool families (see `src/tools/` for the source):
 
 - **Seller (write)** — `seller.create_account`, `seller.list_mine`,
-  `product.create_listing`. Create + rediscover agent-owned shops; publish
-  listings under them.
+  `product.create_listing`, `product.update_listing`. Create + rediscover
+  agent-owned shops; publish + update listings under them (media not
+  editable here).
 - **Seller (read/preview)** — `seller.preview_listing`, `seller.list_orders`.
   Dry-run listing text through the moderation pipeline; list orders for a
   shop you own.
