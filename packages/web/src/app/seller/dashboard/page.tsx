@@ -115,17 +115,30 @@ export default async function DashboardPage() {
   // Fan out the orders fetch at the page level so we can (a) aggregate
   // an actionable count across every shop for the header badge and (b)
   // hand each SellerSection its preloaded result instead of refetching.
-  // Each SellerSection still fetches its own products list — keeping
-  // those scoped per-section keeps the products + orders fan-out
-  // logically equivalent to the previous Promise.allSettled inside the
-  // section, just split across two layers.
-  const ordersResults = await Promise.allSettled(
-    sellers.map((s) => listSellerOrders(s.sellerId, session.jwt)),
-  );
+  // Same shape for products — adds an out-of-stock badge on the
+  // "Tous les produits" header link without each SellerSection
+  // double-fetching its own list. Both fan-outs run in parallel
+  // (Promise.all over the two Promise.allSettled calls) so wall-clock
+  // stays the slowest fetch, not the sum.
+  const [ordersResults, productsResults] = await Promise.all([
+    Promise.allSettled(sellers.map((s) => listSellerOrders(s.sellerId, session.jwt))),
+    Promise.allSettled(sellers.map((s) => listProductsBySeller(s.sellerId, session.jwt))),
+  ]);
   const ordersBySellerId = new Map<
     string,
     { orders: SellerOrder[]; error: string | null }
   >();
+  // Aggregate out-of-stock count for the "Tous les produits"
+  // header badge. The per-shop map isn't built yet — SellerSection
+  // still fetches its own products list for now (lifting that too
+  // is a larger refactor); we just compute the count here.
+  let aggregateOutOfStockCount = 0;
+  productsResults.forEach((r) => {
+    if (r.status === "fulfilled") {
+      aggregateOutOfStockCount += r.value.data.filter((h) => !h.inStock).length;
+    }
+  });
+
   let aggregateActionableCount = 0;
   ordersResults.forEach((r, i) => {
     const s = sellers[i]!;
@@ -260,9 +273,22 @@ export default async function DashboardPage() {
             // every shop's inventory into one searchable list.
             <Link
               href="/seller/products"
-              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center gap-2 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
             >
               Tous les produits
+              {aggregateOutOfStockCount > 0 && (
+                // Out-of-stock pill — warn-tinted to differentiate
+                // from the accent-tinted actionable orders badge.
+                // Catches "something I should fix in inventory"
+                // without expanding any shop.
+                <span
+                  className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-warn/15 border border-warn/40 text-warn text-[11px] font-semibold tabular-nums"
+                  aria-label={`${aggregateOutOfStockCount} produit${aggregateOutOfStockCount === 1 ? "" : "s"} en rupture`}
+                  title="Produits en rupture de stock"
+                >
+                  {aggregateOutOfStockCount}
+                </span>
+              )}
             </Link>
           )}
           {sellers.length > 0 && (
