@@ -9,13 +9,12 @@ import {
   type SellerOrder,
   type SellerRecord,
 } from "@/lib/api";
-import { cleanProductTitle, formatPrice, formatRelativeTime } from "@/lib/format";
+import { cleanProductTitle, formatPrice } from "@/lib/format";
 import { CreateSellerForm } from "./CreateSellerForm";
 import { LogoutButton } from "./LogoutButton";
-import { OrderActions } from "./OrderActions";
 import { OrdersListFilter } from "./OrdersListFilter";
 import { ProductsListFilter } from "./ProductsListFilter";
-import { OrderProgress } from "./OrderProgress";
+import { OrderRow } from "./OrderRow";
 import { StockToggle } from "./StockToggle";
 
 // Status set that the seller still owes the buyer some action on. Mirrors
@@ -122,7 +121,20 @@ export default async function DashboardPage() {
             )}
           </p>
         </div>
-        <LogoutButton />
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Cross-shop unified orders view. Hidden for sellers with
+              no shops yet — the link target redirects back here in
+              that case but showing it would be a dead-end loop. */}
+          {sellers.length > 0 && (
+            <Link
+              href="/seller/orders"
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+            >
+              Toutes les commandes
+            </Link>
+          )}
+          <LogoutButton />
+        </div>
       </header>
 
       {sellers.length === 0 ? (
@@ -359,124 +371,7 @@ async function SellerSection({
                 data-actionable={ACTIONABLE_STATUSES.has(o.status) ? "true" : "false"}
                 className="py-3 flex items-start justify-between gap-4"
               >
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span dir="ltr" className="font-mono text-sm text-ink">#{o.publicNumber}</span>
-                    <span
-                      className="text-xs text-ink-mute tabular-nums"
-                      title={new Date(o.createdAt).toLocaleString("fr-DZ")}
-                    >
-                      {formatRelativeTime(o.createdAt) ?? new Date(o.createdAt).toLocaleString("fr-DZ")}
-                    </span>
-                    <OrderProgress status={o.status} />
-                  </div>
-                  {o.customer && (
-                    <div className="mt-1 text-sm text-ink-soft">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        {/* `untrusted` adds the user-content indicator dot,
-                            matching the line-item titles and the rest of the
-                            app's convention for buyer/seller-supplied text. */}
-                        <span dir="auto" className="text-ink untrusted">{o.customer.name}</span>
-                        {/* Wilaya badge — sellers decide whether they can
-                            deliver based on the customer's region, so it
-                            needs to sit next to the customer's name rather
-                            than buried with the contact buttons. */}
-                        {o.customer.region && (
-                          <span
-                            className="inline-flex items-center gap-1 text-xs text-ink-soft"
-                            aria-label={`Wilaya : ${o.customer.region}`}
-                          >
-                            <span aria-hidden>📍</span>
-                            <span dir="auto">{o.customer.region}</span>
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <a
-                          href={`tel:${o.customer.phone}`}
-                          dir="ltr"
-                          className="inline-flex items-center gap-1 px-3 h-11 sm:h-7 rounded-full bg-bg-elev border border-line-soft font-mono text-xs hover:text-accent hover:border-accent/40 active:text-accent active:border-accent/40 transition"
-                          aria-label={`Appeler ${o.customer.name} au ${o.customer.phone}`}
-                        >
-                          {o.customer.phone}
-                        </a>
-                        {/* WhatsApp click-to-chat — most Algerian buyers prefer
-                            WhatsApp over a phone call. Strip non-digits; wa.me
-                            requires international format without the leading +.
-                            Pre-fill the message with the order number so the
-                            seller doesn't have to type a greeting on every
-                            call — the buyer immediately knows which order. */}
-                        <a
-                          href={`https://wa.me/${o.customer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
-                            `Bonjour ${o.customer.name}, je vous contacte au sujet de votre commande #${o.publicNumber} sur Teno Store.`,
-                          )}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label={`Discuter avec ${o.customer.name} sur WhatsApp au sujet de la commande ${o.publicNumber}`}
-                          className="inline-flex items-center gap-1 px-3 h-11 sm:h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 active:bg-emerald-500/25 transition"
-                        >
-                          WhatsApp
-                        </a>
-                      </div>
-                    </div>
-                  )}
-                  <ul className="mt-2 text-xs text-ink-mute space-y-1">
-                    {o.lines.map((l) => (
-                      <li key={l.variantId} className="flex items-center gap-2 min-w-0">
-                        {l.heroImageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={l.heroImageUrl}
-                            alt=""
-                            className="w-8 h-8 rounded object-cover border border-line-soft bg-bg shrink-0"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <span
-                            aria-hidden
-                            className="w-8 h-8 rounded border border-line-soft bg-bg-elev shrink-0"
-                          />
-                        )}
-                        {/* Qty badge in front of the title — won't truncate
-                            even when the title overflows on mobile, so the
-                            seller can always tell how many to pack. */}
-                        <span
-                          aria-label={`Quantité ${l.qty}`}
-                          className="shrink-0 inline-flex items-center justify-center min-w-[1.75rem] px-1.5 h-5 rounded-full border border-line text-ink-soft bg-bg/60 font-medium tabular-nums"
-                        >
-                          ×{l.qty}
-                        </span>
-                        {/* Stack title above the variant SKU so multi-
-                            variant products (same title, different colors
-                            or storage) are unambiguous — sellers need to
-                            know exactly which variant to pack. */}
-                        <span className="min-w-0 flex-1 flex flex-col">
-                          <span dir="auto" className="truncate untrusted">
-                            {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
-                          </span>
-                          {l.title && l.sku && (
-                            <span className="font-mono text-[10px] text-ink-mute truncate">{l.sku}</span>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                  {/* State-machine action buttons. The component handles
-                      its own pending/error state and only renders buttons
-                      that apply to the current status — closed orders
-                      (delivered/cancelled/refunded) get nothing. */}
-                  <OrderActions
-                    sellerId={seller.sellerId}
-                    orderId={o.orderId}
-                    status={o.status as Parameters<typeof OrderActions>[0]["status"]}
-                  />
-                </div>
-                <dl className="text-right shrink-0">
-                  <dt className="text-[10px] uppercase tracking-widest text-ink-mute">Total</dt>
-                  <dd className="text-sm font-medium tabular-nums">
-                    {formatPrice(o.subtotalMinor, o.currency, "fr-DZ")}
-                  </dd>
-                </dl>
+                <OrderRow order={o} sellerId={seller.sellerId} />
               </li>
               )),
             ])}
