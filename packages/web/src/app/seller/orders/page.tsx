@@ -177,12 +177,38 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
             )}
           </p>
         </div>
-        <Link
-          href="/seller/dashboard"
-          className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
-        >
-          ← Tableau de bord
-        </Link>
+        <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {orders.length > 0 && (
+            // <a> not <Link> — Link prefetches and renders client-side,
+            // but the export route returns text/csv with a
+            // Content-Disposition: attachment header. We need the
+            // browser to make a real navigation so the download
+            // dialog fires.
+            <a
+              href="/seller/orders/export"
+              download
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center gap-2 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+            >
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v14m0 0l-5-5m5 5l5-5M5 21h14" />
+              </svg>
+              Exporter
+            </a>
+          )}
+          <Link
+            href="/seller/dashboard"
+            className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+          >
+            ← Tableau de bord
+          </Link>
+        </div>
       </header>
 
       {orders.length > 0 && (
