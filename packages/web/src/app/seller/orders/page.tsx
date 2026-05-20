@@ -23,6 +23,7 @@ import { OrderRow } from "../dashboard/OrderRow";
 import { OrdersSearch } from "./OrdersSearch";
 import { OrdersStats } from "./OrdersStats";
 import { OrdersStatusTabs, type StatusTab } from "./OrdersStatusTabs";
+import { TabTitleBadge } from "./TabTitleBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -154,6 +155,7 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
       className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-5xl mx-auto"
       lang="fr"
     >
+      <TabTitleBadge count={actionableCount} />
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <h1 id="orders-heading" className="text-2xl sm:text-3xl font-semibold tracking-tight">
