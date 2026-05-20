@@ -21,6 +21,7 @@ import {
 } from "@/lib/api";
 import { OrderRow } from "../dashboard/OrderRow";
 import { OrdersListFilter } from "../dashboard/OrdersListFilter";
+import { OrdersSearch } from "./OrdersSearch";
 
 export const dynamic = "force-dynamic";
 
@@ -184,6 +185,7 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
             de vos produits, la commande apparaît ici.
           </p>
         ) : (
+          <OrdersSearch totalCount={orders.length}>
           <OrdersListFilter actionableCount={actionableCount} totalCount={orders.length}>
             <ul className="divide-y divide-line-soft">
               {buckets.flatMap((bucket) => [
@@ -191,6 +193,7 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
                   key={`h-${bucket.label}`}
                   role="presentation"
                   data-actionable={bucket.anyActionable ? "true" : "false"}
+                  data-search-heading={bucket.label}
                   className="pt-4 pb-1 text-[10px] uppercase tracking-widest text-ink-mute first:pt-1"
                 >
                   {bucket.label}
@@ -202,6 +205,14 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
                   <li
                     key={u.order.orderId}
                     data-actionable={ACTIONABLE_STATUSES.has(u.order.status) ? "true" : "false"}
+                    data-bucket={bucket.label}
+                    data-search={[
+                      u.order.publicNumber,
+                      u.order.customer?.name ?? "",
+                      u.shopName,
+                    ]
+                      .join(" ")
+                      .toLowerCase()}
                     className="py-3 flex items-start justify-between gap-4"
                   >
                     <OrderRow
@@ -214,6 +225,7 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
               ])}
             </ul>
           </OrdersListFilter>
+          </OrdersSearch>
         )}
       </div>
     </section>
