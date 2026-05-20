@@ -21,6 +21,7 @@ import { formatPrice, formatRelativeTime } from "@/lib/format";
 import { AutoRefresh } from "../orders/AutoRefresh";
 import { LastRefreshed } from "../orders/LastRefreshed";
 import { OfflineIndicator } from "../orders/OfflineIndicator";
+import { ResetFiltersWrapper } from "../orders/ResetFiltersWrapper";
 import { CustomersSearch } from "./CustomersSearch";
 import { CustomersSortToggle, type CustomersSort } from "./CustomersSortToggle";
 
@@ -294,6 +295,7 @@ export default async function SellerCustomersPage({
             il apparaît dans cette liste.
           </p>
         ) : (
+          <ResetFiltersWrapper>
           <CustomersSearch totalCount={customers.length}>
           <CustomersSortToggle />
           <ul className="divide-y divide-line-soft">
@@ -399,6 +401,7 @@ export default async function SellerCustomersPage({
             })}
           </ul>
           </CustomersSearch>
+          </ResetFiltersWrapper>
         )}
       </div>
     </section>
