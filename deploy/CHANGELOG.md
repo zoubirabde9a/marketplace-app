@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy "Voir la boutique" links + order-number copy (a91890a..b67a31c, 4 commits)
+
+- Rebuilt and rolled `marketplace-web:local` and `marketplace-api:local`. Web-only changes.
+- `3de14d8` / `bb0d76d`: single-shop sellers now see a "Voir la boutique" preview link on their products, orders, and customers pages.
+- `4b1e582`: order detail page h1 gets a copy-button next to the order number, matching the orders list pattern.
+- Transient github.com push timeout on the first attempt; succeeded on retry.
+- Smoke from vps-eu after 15s warmup: `/livez` → `{"status":"ok"}`, `https://teno-store.com/` → 200.
+
 ## 2026-05-20 — vps-eu — deploy large seller UX batch (1b78d46..a91890a, 21 commits)
 
 - Rebuilt `marketplace-web:local` and `marketplace-api:local`; rolled both. All commits are web-only.
