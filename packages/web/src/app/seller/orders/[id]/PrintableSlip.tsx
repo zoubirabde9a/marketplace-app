@@ -86,12 +86,20 @@ export function PrintableSlip({
           <p className="text-[10px] uppercase tracking-widest text-ink-mute print:text-black/50">
             Destinataire
           </p>
-          <p
+          {/* Customer name is a deep-link to that buyer's full order
+              history with the seller — same affordance as the order
+              row's name link (2745960). Useful from this page when
+              the seller is fielding a callback ("did they order
+              before?"). Underline-on-hover only; on paper the link
+              styling is invisible and the name reads as plain text. */}
+          <Link
+            href={`/seller/orders?q=${encodeURIComponent(order.customer.phone)}`}
             dir="auto"
-            className="mt-1 text-lg font-medium text-ink untrusted print:text-black print:[&::before]:hidden"
+            className="mt-1 block text-lg font-medium text-ink untrusted hover:text-accent active:text-accent transition print:text-black print:[&::before]:hidden"
+            aria-label={`Voir les commandes de ${order.customer.name}`}
           >
             {order.customer.name}
-          </p>
+          </Link>
           <p
             dir="ltr"
             className="mt-0.5 font-mono text-sm text-ink-soft print:text-black"
