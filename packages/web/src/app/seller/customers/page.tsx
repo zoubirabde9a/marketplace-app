@@ -332,10 +332,20 @@ export default async function SellerCustomersPage({
                         ariaLabel="Copier le numéro de téléphone"
                       />
                       <a
-                        href={`https://wa.me/${c.phone.replace(/\D/g, "")}`}
+                        // Generic friendly opener, no order context
+                        // here (the customers page is for cross-
+                        // order outreach: loyalty, new arrival
+                        // pings, follow-ups). Matches the order
+                        // surfaces' pre-fill pattern so the seller
+                        // doesn't have to type a salutation from
+                        // scratch.
+                        href={`https://wa.me/${c.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                          `Bonjour ${c.name}, je vous contacte depuis Teno Store. `,
+                        )}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 px-2 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 active:bg-emerald-500/25 transition"
+                        aria-label={`Discuter avec ${c.name} sur WhatsApp`}
                       >
                         WhatsApp
                       </a>
