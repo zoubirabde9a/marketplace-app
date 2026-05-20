@@ -26,6 +26,7 @@ import { OrdersSearch } from "./OrdersSearch";
 import { OrdersStats } from "./OrdersStats";
 import { OrdersStatusTabs, type StatusTab } from "./OrdersStatusTabs";
 import { OrdersRangeFilter, type RangeTab } from "./OrdersRangeFilter";
+import { OrdersShopFilter } from "./OrdersShopFilter";
 import { TabTitleBadge } from "./TabTitleBadge";
 import { AutoRefresh } from "./AutoRefresh";
 import { LastRefreshed } from "./LastRefreshed";
@@ -172,6 +173,15 @@ export default async function SellerOrdersPage({
     const t = new Date(u.order.createdAt).getTime();
     return Number.isNaN(t) ? Infinity : nowMs - t;
   }
+  // Per-shop counts for the shop filter chips (multi-shop only).
+  // Mirrors the same input as rangeCounts; both are derived from the
+  // already-fetched orders array so we don't fan out again.
+  const shopCounts = sellers.map((s) => ({
+    sellerId: s.sellerId,
+    displayName: s.displayName,
+    count: orders.filter((u) => u.sellerId === s.sellerId).length,
+  }));
+
   const rangeCounts: Record<RangeTab, number> = {
     all: orders.length,
     "30d": orders.filter((u) => ageMs(u) <= 30 * DAY_MS).length,
@@ -365,6 +375,7 @@ export default async function SellerOrdersPage({
           </div>
         ) : (
           <OrdersSearch totalCount={orders.length} initialQuery={initialQuery}>
+          <OrdersShopFilter shops={shopCounts} totalCount={orders.length}>
           <OrdersRangeFilter counts={rangeCounts}>
           <OrdersStatusTabs counts={tabCounts} totalCount={orders.length}>
             <ul className="divide-y divide-line-soft">
@@ -375,6 +386,12 @@ export default async function SellerOrdersPage({
                 // none of its rows pass the active range.
                 const anyWithin7d = bucket.orders.some((u) => ageMs(u) <= 7 * DAY_MS);
                 const anyWithin30d = bucket.orders.some((u) => ageMs(u) <= 30 * DAY_MS);
+                // Space-separated set of every shop with rows in this
+                // bucket — OrdersShopFilter hides the heading when
+                // its active shop isn't in this set.
+                const shopIds = Array.from(
+                  new Set(bucket.orders.map((u) => u.sellerId)),
+                ).join(" ");
                 return [
                 <li
                   key={`h-${bucket.label}`}
@@ -386,6 +403,7 @@ export default async function SellerOrdersPage({
                   ).join(" ")}
                   data-any-within-7d={anyWithin7d ? "true" : "false"}
                   data-any-within-30d={anyWithin30d ? "true" : "false"}
+                  data-shop-ids={shopIds}
                   className="pt-4 pb-1 text-[10px] uppercase tracking-widest text-ink-mute first:pt-1"
                 >
                   {bucket.label}
@@ -403,6 +421,7 @@ export default async function SellerOrdersPage({
                     data-bucket={bucket.label}
                     data-within-7d={a <= 7 * DAY_MS ? "true" : "false"}
                     data-within-30d={a <= 30 * DAY_MS ? "true" : "false"}
+                    data-shop-id={u.sellerId}
                     data-search={[
                       u.order.publicNumber,
                       u.order.customer?.name ?? "",
@@ -434,6 +453,7 @@ export default async function SellerOrdersPage({
             </ul>
           </OrdersStatusTabs>
           </OrdersRangeFilter>
+          </OrdersShopFilter>
           </OrdersSearch>
         )}
       </div>
