@@ -9,6 +9,7 @@
 // products search to here.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface CustomersSearchProps {
   totalCount: number;
@@ -23,7 +24,13 @@ export function CustomersSearch({
 }: CustomersSearchProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const [query, setQuery] = useState("");
+  // Pre-fill from ?q URL param so a deep-link to a specific
+  // customer pre-filters the list. Same pattern OrdersSearch
+  // uses (iteration 19). useSearchParams is client-only;
+  // useState seed runs once and ignores later URL changes
+  // (the seller can still edit the input freely from there).
+  const initialParams = useSearchParams();
+  const [query, setQuery] = useState(() => initialParams.get("q") ?? "");
   const [visibleCount, setVisibleCount] = useState(totalCount);
 
   const normalized = useMemo(() => query.trim().toLowerCase(), [query]);
@@ -80,7 +87,11 @@ export function CustomersSearch({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  if (totalCount < minCount) {
+  // Always render the input when we arrived with a pre-filled query
+  // (e.g. via /seller/customers?q=… deep-link), even on tiny lists
+  // — the seller needs to see why only a subset is showing AND have
+  // a clear path to clear back to "all customers".
+  if (totalCount < minCount && query === "") {
     return <div ref={containerRef}>{children}</div>;
   }
 
