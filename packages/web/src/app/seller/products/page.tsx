@@ -23,6 +23,7 @@ import { ProductsStockFilter, type StockTab } from "../dashboard/ProductsStockFi
 import { ProductsShopFilter } from "./ProductsShopFilter";
 import { AutoRefresh } from "../orders/AutoRefresh";
 import { LastRefreshed } from "../orders/LastRefreshed";
+import { ResetFiltersWrapper } from "../orders/ResetFiltersWrapper";
 
 export const dynamic = "force-dynamic";
 
@@ -197,6 +198,7 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
             </Link>
           </div>
         ) : (
+          <ResetFiltersWrapper>
           <ProductsShopFilter shops={shopCounts} totalCount={products.length}>
           <ProductsStockFilter counts={stockCounts}>
             <ProductsListFilter totalCount={products.length}>
@@ -218,6 +220,7 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
             </ProductsListFilter>
           </ProductsStockFilter>
           </ProductsShopFilter>
+          </ResetFiltersWrapper>
         )}
       </div>
     </section>
