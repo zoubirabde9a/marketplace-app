@@ -22,6 +22,7 @@ import { ProductsListFilter } from "../dashboard/ProductsListFilter";
 import { ProductsStockFilter, type StockTab } from "../dashboard/ProductsStockFilter";
 import { ProductsShopFilter } from "./ProductsShopFilter";
 import { AutoRefresh } from "../orders/AutoRefresh";
+import { LastRefreshed } from "../orders/LastRefreshed";
 
 export const dynamic = "force-dynamic";
 
@@ -128,6 +129,9 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
               </>
             )}
           </p>
+          <div className="mt-2">
+            <LastRefreshed renderedAt={new Date().toISOString()} />
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           {/* Primary CTA — completes the page's "manage products"

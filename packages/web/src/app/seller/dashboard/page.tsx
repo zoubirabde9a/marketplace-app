@@ -19,6 +19,7 @@ import { OrderRow } from "./OrderRow";
 import { ProductRow } from "./ProductRow";
 import { GetStartedChecklist } from "./GetStartedChecklist";
 import { AutoRefresh } from "../orders/AutoRefresh";
+import { LastRefreshed } from "../orders/LastRefreshed";
 
 // Status set that the seller still owes the buyer some action on. Mirrors
 // the actionableCount calculation below so the filter chip's count and the
@@ -167,6 +168,11 @@ export default async function DashboardPage() {
               <span dir="ltr" className="text-ink-soft break-all">{session.user.email}</span>
             )}
           </p>
+          {sellers.length > 0 && (
+            <div className="mt-2">
+              <LastRefreshed renderedAt={new Date().toISOString()} />
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {/* Cross-shop unified orders view. Hidden for sellers with
