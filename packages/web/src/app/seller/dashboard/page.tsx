@@ -436,10 +436,17 @@ export default async function DashboardPage() {
           {aggregateActionableCount > 0 && (
             <span>
               ·{" "}
-              <span className="text-accent font-medium tabular-nums">
-                {aggregateActionableCount}
-              </span>{" "}
-              à traiter
+              {/* The actionable count is the highest-value action
+                  in the Aujourd'hui strip — make it a one-tap jump
+                  to the unified orders list (where the seller's
+                  "À traiter" tab will isolate exactly these). */}
+              <Link
+                href="/seller/orders"
+                className="text-accent font-medium hover:underline active:underline transition"
+              >
+                <span className="tabular-nums">{aggregateActionableCount}</span>{" "}
+                à traiter
+              </Link>
             </span>
           )}
         </p>
