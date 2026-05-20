@@ -21,6 +21,7 @@ import { formatPrice, formatRelativeTime } from "@/lib/format";
 import { AutoRefresh } from "../orders/AutoRefresh";
 import { LastRefreshed } from "../orders/LastRefreshed";
 import { OfflineIndicator } from "../orders/OfflineIndicator";
+import { CustomersSearch } from "./CustomersSearch";
 
 export const dynamic = "force-dynamic";
 
@@ -153,6 +154,7 @@ export default async function SellerCustomersPage(): Promise<React.JSX.Element> 
             il apparaît dans cette liste.
           </p>
         ) : (
+          <CustomersSearch totalCount={customers.length}>
           <ul className="divide-y divide-line-soft">
             {customers.map((c) => {
               const topCcy = Object.entries(c.revenueByCcy).sort(
@@ -162,7 +164,11 @@ export default async function SellerCustomersPage(): Promise<React.JSX.Element> 
                 ? formatPrice(topCcy[1].toString(), topCcy[0], "fr-DZ")
                 : null;
               return (
-                <li key={c.phone} className="py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
+                <li
+                  key={c.phone}
+                  data-search={`${c.name} ${c.phone} ${c.region ?? ""}`.toLowerCase()}
+                  className="py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4"
+                >
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                       {/* Name links to the customer's full order
@@ -241,6 +247,7 @@ export default async function SellerCustomersPage(): Promise<React.JSX.Element> 
               );
             })}
           </ul>
+          </CustomersSearch>
         )}
       </div>
     </section>
