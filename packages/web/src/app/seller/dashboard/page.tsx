@@ -139,6 +139,18 @@ export default async function DashboardPage() {
     }
   });
 
+  // Total unique customers across every shop. Same dedup-by-phone
+  // logic as /seller/customers — the badge count below reconciles
+  // with what the seller will see on that page.
+  const aggregateCustomerPhones = new Set<string>();
+  ordersResults.forEach((r) => {
+    if (r.status !== "fulfilled") return;
+    for (const o of r.value.data) {
+      if (o.customer) aggregateCustomerPhones.add(o.customer.phone);
+    }
+  });
+  const aggregateCustomerCount = aggregateCustomerPhones.size;
+
   let aggregateActionableCount = 0;
   ordersResults.forEach((r, i) => {
     const s = sellers[i]!;
@@ -294,9 +306,22 @@ export default async function DashboardPage() {
           {sellers.length > 0 && (
             <Link
               href="/seller/customers"
-              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center gap-2 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
             >
               Clients
+              {aggregateCustomerCount > 0 && (
+                // Neutral-tinted count — relationship metric, not
+                // an action prompt; bg-bg-elev keeps the visual
+                // weight lower than the accent/warn pills on the
+                // siblings.
+                <span
+                  className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-bg-elev border border-line text-ink-soft text-[11px] font-semibold tabular-nums"
+                  aria-label={`${aggregateCustomerCount} client${aggregateCustomerCount === 1 ? "" : "s"} unique${aggregateCustomerCount === 1 ? "" : "s"}`}
+                  title="Nombre de clients uniques"
+                >
+                  {aggregateCustomerCount}
+                </span>
+              )}
             </Link>
           )}
           {sellers.length > 0 && (
