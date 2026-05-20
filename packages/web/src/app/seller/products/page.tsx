@@ -21,6 +21,7 @@ import { ProductRow, type ProductRowData } from "../dashboard/ProductRow";
 import { ProductsListFilter } from "../dashboard/ProductsListFilter";
 import { ProductsStockFilter, type StockTab } from "../dashboard/ProductsStockFilter";
 import { ProductsShopFilter } from "./ProductsShopFilter";
+import { ProductsSortToggle } from "./ProductsSortToggle";
 import { AutoRefresh } from "../orders/AutoRefresh";
 import { LastRefreshed } from "../orders/LastRefreshed";
 import { ResetFiltersWrapper } from "../orders/ResetFiltersWrapper";
@@ -43,7 +44,15 @@ interface UnifiedProduct {
   postedAt: string;
 }
 
-export default async function SellerProductsPage(): Promise<React.JSX.Element> {
+interface SellerProductsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function SellerProductsPage({
+  searchParams,
+}: SellerProductsPageProps): Promise<React.JSX.Element> {
+  const sp = await searchParams;
+  const sortOldestFirst = sp.sort === "oldest";
   const session = await getCurrentUser();
   if (!session) redirect("/seller");
   const agentId = syntheticAgentId(session.user.id);
@@ -83,9 +92,14 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
     }
   });
 
-  // Newest first by listing creation. Stable on tie via productId.
+  // Sort by listing creation — newest-first by default, oldest-
+  // first when the seller flips ?sort=oldest. Stable on tie via
+  // productId (UUIDv7 already orders by time, so ties only happen
+  // on simultaneous creates which are rare in practice).
   products.sort((a, b) => {
-    const cmp = b.postedAt.localeCompare(a.postedAt);
+    const cmp = sortOldestFirst
+      ? a.postedAt.localeCompare(b.postedAt)
+      : b.postedAt.localeCompare(a.postedAt);
     if (cmp !== 0) return cmp;
     return a.product.productId.localeCompare(b.product.productId);
   });
@@ -201,6 +215,7 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
           <ResetFiltersWrapper>
           <ProductsShopFilter shops={shopCounts} totalCount={products.length}>
           <ProductsStockFilter counts={stockCounts}>
+            <ProductsSortToggle />
             <ProductsListFilter totalCount={products.length}>
               <ul className="divide-y divide-line-soft">
                 {products.map((u) => (
