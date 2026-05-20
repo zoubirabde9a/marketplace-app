@@ -423,10 +423,17 @@ export default async function DashboardPage() {
           <span className="text-[10px] uppercase tracking-widest text-ink-mute">
             Aujourd’hui
           </span>
-          <span>
-            <span className="text-ink font-medium tabular-nums">{todayOrderCount}</span>{" "}
+          {/* Today's order count links to the unified orders page
+              for full consistency with the à-traiter link below.
+              Both metrics that imply "look at orders" are
+              one-tap. */}
+          <Link
+            href="/seller/orders"
+            className="text-ink hover:text-accent active:text-accent transition"
+          >
+            <span className="font-medium tabular-nums">{todayOrderCount}</span>{" "}
             commande{todayOrderCount === 1 ? "" : "s"}
-          </span>
+          </Link>
           {todayRevenueLabel && (
             <span>
               ·{" "}
