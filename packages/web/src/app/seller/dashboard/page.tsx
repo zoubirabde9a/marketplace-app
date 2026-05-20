@@ -394,6 +394,32 @@ async function SellerSection({
   }, {});
   const topCcy = Object.entries(revenueByCcy).sort((a, b) => Number(b[1] - a[1]))[0];
 
+  // Top-selling products by units across all the shop's orders.
+  // Aggregates line-item quantities by productId — quantity-weighted
+  // not just order-count, so a single-order × 5 ranks above five
+  // orders × 1. Keyed on productId so the same product with
+  // different per-order titles (typos, renames) collapses. Skipped
+  // entirely when no orders carry productId yet (early-shop state).
+  const productSalesByProductId = new Map<
+    string,
+    { title: string; qty: number }
+  >();
+  for (const o of orders) {
+    for (const l of o.lines) {
+      if (!l.productId || !l.title) continue;
+      const existing = productSalesByProductId.get(l.productId);
+      if (existing) {
+        existing.qty += l.qty;
+      } else {
+        productSalesByProductId.set(l.productId, { title: l.title, qty: l.qty });
+      }
+    }
+  }
+  const topSellingProducts = Array.from(productSalesByProductId.entries())
+    .map(([productId, v]) => ({ productId, title: v.title, qty: v.qty }))
+    .sort((a, b) => b.qty - a.qty)
+    .slice(0, 3);
+
   // Each shop is a self-contained unit — `<article>` is the right
   // semantic element. aria-labelledby points at the H2 so screen readers
   // announce "Article: <shop name>" when entering the card.
@@ -428,6 +454,31 @@ async function SellerSection({
               </span>
             )}
           </div>
+          {/* Top-selling products line — shows what's actually
+              moving so the seller can lean into restocking the
+              winners. Quantity-weighted; renders as a separator-
+              joined list under the metric chips when there's at
+              least one tracked sale. */}
+          {topSellingProducts.length > 0 && (
+            <p className="mt-1.5 text-xs text-ink-mute">
+              <span className="text-[10px] uppercase tracking-widest mr-1">
+                Top
+              </span>
+              {topSellingProducts.map((p, i) => (
+                <span key={p.productId}>
+                  {i > 0 && <span className="mx-1.5 text-ink-mute">·</span>}
+                  <Link
+                    href={`/seller/products/${encodeURIComponent(p.productId)}/edit`}
+                    dir="auto"
+                    className="text-ink-soft hover:text-accent active:text-accent transition"
+                  >
+                    {cleanProductTitle(p.title)}
+                  </Link>
+                  <span className="ml-1 text-ink-mute tabular-nums">×{p.qty}</span>
+                </span>
+              ))}
+            </p>
+          )}
           <ContactSummary seller={seller} />
         </div>
         {/* Primary action ("Nouveau produit") leads — most prominent in
