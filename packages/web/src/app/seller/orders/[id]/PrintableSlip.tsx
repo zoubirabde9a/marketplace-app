@@ -101,15 +101,14 @@ export function PrintableSlip({
           >
             {order.customer.name}
           </Link>
-          {/* Phone block — tappable to call + copy button next to
-              it. On print the button hides (print:hidden via the
-              CopyIconButton's own classes won't fire — wrap the
-              non-text chrome explicitly) so the courier sees just
-              the bare number. The `<a>` href doesn't render visibly
-              on paper either; browsers don't auto-insert tel URLs. */}
+          {/* Phone block — tappable to call, with copy + WhatsApp
+              affordances beside it. On print the buttons hide so
+              the courier sees just the bare number. The `<a>` href
+              doesn't render visibly on paper either; browsers
+              don't auto-insert tel/whatsapp URLs. */}
           <p
             dir="ltr"
-            className="mt-0.5 flex items-center gap-1 font-mono text-sm text-ink-soft print:text-black"
+            className="mt-0.5 flex flex-wrap items-center gap-1.5 font-mono text-sm text-ink-soft print:text-black"
           >
             <a
               href={`tel:${order.customer.phone}`}
@@ -118,11 +117,27 @@ export function PrintableSlip({
             >
               {order.customer.phone}
             </a>
-            <span className="print:hidden">
+            <span className="print:hidden inline-flex items-center gap-1.5">
               <CopyIconButton
                 value={order.customer.phone}
                 ariaLabel="Copier le numéro de téléphone"
               />
+              {/* wa.me click-to-chat with a pre-filled order
+                  reference so the buyer immediately knows which
+                  order the seller is messaging about. Strip
+                  non-digits; wa.me requires international format
+                  without the leading +. */}
+              <a
+                href={`https://wa.me/${order.customer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                  `Bonjour ${order.customer.name}, je vous contacte au sujet de votre commande #${order.publicNumber} sur Teno Store.`,
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-2 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 active:bg-emerald-500/25 transition"
+                aria-label={`Discuter avec ${order.customer.name} sur WhatsApp au sujet de la commande ${order.publicNumber}`}
+              >
+                WhatsApp
+              </a>
             </span>
           </p>
           {order.customer.region && (
