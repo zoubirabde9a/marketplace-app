@@ -184,6 +184,64 @@ describe("seller write tools — snapshots", () => {
     ).rejects.toThrow(/ISO 3166|country/i);
   });
 
+  it("seller.list_mine returns owned shops newest-first when the adapter implements listOwnedBy", async () => {
+    const reg = new McpRegistry();
+    const adapterWithList: SellerWriteAdapter = {
+      ...fakeAdapter,
+      sellers: {
+        ...fakeAdapter.sellers,
+        listOwnedBy: async (ownerAgentId) => {
+          expect(ownerAgentId).toBe("agt_1");
+          return [
+            { sellerId: "slr_b", displayName: "Newer Shop", countryCode: "DZ", city: "Oran", createdAt: 1_700_000_002_000 },
+            { sellerId: "slr_a", displayName: "Older Shop", countryCode: "DZ", createdAt: 1_700_000_000_000 },
+          ];
+        },
+      },
+    };
+    process.env.MARKETPLACE_WEB_BASE_URL = "https://example.test";
+    registerSellerWriteTools(reg, adapterWithList);
+
+    const out = (await reg.invoke("seller.list_mine", {}, ctx())) as {
+      data: Array<{ sellerId: string; displayName: string; storeUrl?: string; city: string | null }>;
+    };
+    expect(out.data).toHaveLength(2);
+    expect(out.data[0]?.sellerId).toBe("slr_b");
+    expect(out.data[0]?.storeUrl).toBe("https://example.test/store/slr_b");
+    expect(out.data[1]?.city).toBeNull();
+  });
+
+  it("seller.create_account duplicate-name error tells the agent to use the returned sellerId or seller.list_mine", async () => {
+    const reg = new McpRegistry();
+    const adapterWithDup: SellerWriteAdapter = {
+      ...fakeAdapter,
+      sellers: {
+        ...fakeAdapter.sellers,
+        findOwnedByName: async (ownerAgentId, displayName) => {
+          expect(ownerAgentId).toBe("agt_1");
+          expect(displayName).toBe("Tor Store");
+          return { sellerId: "slr_existing" };
+        },
+      },
+    };
+    registerSellerWriteTools(reg, adapterWithDup);
+    await expect(
+      reg.invoke(
+        "seller.create_account",
+        { displayName: "Tor Store", phone: "+213500000000", countryCode: "DZ" },
+        ctx(),
+      ),
+    ).rejects.toThrow(/duplicate_store_name[\s\S]*slr_existing[\s\S]*seller\.list_mine/);
+  });
+
+  it("seller.list_mine returns not_implemented when the adapter omits listOwnedBy", async () => {
+    const reg = new McpRegistry();
+    registerSellerWriteTools(reg, fakeAdapter);
+    await expect(
+      reg.invoke("seller.list_mine", {}, ctx()),
+    ).rejects.toThrow(/not_implemented/);
+  });
+
   it("omits snapshotUrl when no snapshot store is configured", async () => {
     const reg = new McpRegistry();
     registerSellerWriteTools(reg, fakeAdapter);

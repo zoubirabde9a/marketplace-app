@@ -238,6 +238,8 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
         },
         findOwnedByName: (ownerAgentId, displayName) =>
           opts.repos.sellers.findOwnedByName(ownerAgentId, displayName),
+        listOwnedBy: (ownerAgentId, listOpts) =>
+          opts.repos.sellers.listOwnedBy(ownerAgentId, listOpts),
       },
       products: {
         create: async (input) => {

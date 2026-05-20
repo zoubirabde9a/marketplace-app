@@ -75,8 +75,25 @@ const SlaOutput = z.object({
 export function registerDisputeTools(reg: McpRegistry): void {
   reg.register({
     name: "dispute.apply_event",
-    description:
-      "Apply a transition to a dispute (seller_respond / escalate / resolve_buyer / resolve_seller / withdraw). Returns the new status, terminal flag, and current SLA pressure.",
+    description: [
+      "Apply a transition to a dispute against the canonical state machine. Rejects invalid transitions.",
+      "",
+      "Event kinds and the seller-side meaning of each:",
+      "  • seller_respond — 'I have read the dispute and am submitting my side / evidence.' Stops the",
+      "    auto-escalation timer; expected within the SLA window.",
+      "  • escalate — push to platform/operator review. Buyer or seller may escalate; requires a `reason`.",
+      "  • resolve_buyer — settle in the buyer's favour (e.g. refund). Seller-initiated concession.",
+      "  • resolve_seller — settle in the seller's favour (dispute dismissed). Usually operator-driven.",
+      "  • withdraw — buyer drops the dispute (only the buyer can withdraw their own).",
+      "",
+      "Recommended pattern: call `dispute.check_sla` FIRST to see `hoursToDeadline` and whether",
+      "auto-escalation is imminent — that often dictates which event the seller actually wants. Letting",
+      "the SLA timer expire without responding leads to automatic escalation, which is worse for the",
+      "seller's standing than a timely `seller_respond`.",
+      "",
+      "The response includes the new SLA snapshot so the agent can immediately tell the operator how",
+      "much breathing room (if any) remains.",
+    ].join("\n"),
     scope: "dispute:write",
     auditEvent: "dispute.apply_event",
     idempotent: false,

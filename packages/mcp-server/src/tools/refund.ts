@@ -83,8 +83,24 @@ function buildRejectedRoutes(ctx: RefundContext): Array<{ kind: z.infer<typeof R
 export function registerRefundTools(reg: McpRegistry): void {
   reg.register({
     name: "refund.preview_route",
-    description:
-      "Preview the §7.2 refund-routing waterfall: original-instrument → wallet → manual payout → credit-note VDC. Returns the chosen route and the rejected legs (with the reason each was skipped). The caller's ledger service is responsible for executing the chosen leg.",
+    description: [
+      "Dry-run: ask the platform which refund channel WOULD be used for a given order/amount, without",
+      "actually moving any money. Returns the chosen channel and why each other channel was skipped.",
+      "",
+      "The platform tries channels in this order and picks the first viable one:",
+      "  1. original-instrument — refund back to the card/wallet the buyer paid with.",
+      "  2. wallet — credit the buyer's platform wallet.",
+      "  3. manual payout — operator (or seller) hands cash back; the platform just records it.",
+      "  4. credit-note VDC — a non-cash voucher.",
+      "",
+      "Cash-on-delivery context (the live Algerian marketplace): there is no original instrument because",
+      "the buyer paid cash to the courier, so this preview will normally route to `manual_payout`. That",
+      "means the SELLER is responsible for the physical/bank-transfer refund; the platform only records",
+      "it. Tell the operator this before they accept the routing.",
+      "",
+      "This tool only PREVIEWS — it does not move money. Executing the chosen leg is the caller's ledger",
+      "service's job (or, for COD/manual_payout, the seller's offline action plus an order.apply_event refund).",
+    ].join("\n"),
     scope: "return:write",
     auditEvent: "refund.preview_route",
     idempotent: true,

@@ -29,7 +29,9 @@ Concretely, that means:
   today you need two shops, or pick one channel.
 
 When in doubt, keep the `sellerId` and `storeUrl` your agent prints back —
-those are how you find the shop again later.
+those are how you find the shop again later. If you lose them, ask the agent
+to call `seller.list_mine`: it returns every shop the agent identity owns,
+newest first, with the `storeUrl` for each.
 
 ### Minimal flow (what to ask your agent for)
 
@@ -70,9 +72,30 @@ edge: parse, authorize, delegate.
 
 ## Tool surface
 
-The full tool catalog and schemas are in [`../../SPEC.md`](../../SPEC.md) §6.
-Source of truth at runtime is `registry.ts` — every tool registered there is
-discoverable via the standard MCP `tools/list` request.
+`registry.ts` is the **single source of truth** — every tool registered there
+is discoverable via the standard MCP `tools/list` request, and each tool's
+own `description` field carries the operator-facing usage notes (call
+patterns, error shapes, ownership caveats).
+
+Currently registered tool families (see `src/tools/` for the source):
+
+- **Seller (write)** — `seller.create_account`, `seller.list_mine`,
+  `product.create_listing`. Create + rediscover agent-owned shops; publish
+  listings under them.
+- **Seller (read/preview)** — `seller.preview_listing`, `seller.list_orders`.
+  Dry-run listing text through the moderation pipeline; list orders for a
+  shop you own.
+- **Buyer** — `cart.add_item`, `cart.update_qty`, `cart.remove_item`,
+  `cart.get`, `checkout.confirm`, `order.get`.
+- **Catalog** — `catalog.search`, `catalog.get_product`, `catalog.compare`,
+  `catalog.recommend`, `catalog.score_counterfeit`.
+- **Order state machine** — `order.apply_event`, `order.allowed_events`.
+- **Dispute** — `dispute.apply_event`, `dispute.check_sla`.
+- **Refund** — `refund.preview_route`.
+- **Review** — `review.write`.
+- **Payment guards** — `payment.check_spend_cap`, `payment.check_velocity`.
+- **Subscription** — `subscription.preview_renewal`,
+  `subscription.plan_retry`.
 
 ## Auth
 

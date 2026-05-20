@@ -505,6 +505,45 @@ export function makeSellerRepo(db: DbClient) {
       return rows[0] ? { sellerId: rows[0].id } : undefined;
     },
 
+    // List sellers owned by `ownerAgentId`, newest first. Backs the MCP
+    // `seller.list_mine` tool (packages/mcp-server/src/tools/seller-write.ts).
+    // Lean projection — no phones join, no full seller shape — because the
+    // tool's caller is an agent re-orienting at session start, not rendering
+    // a storefront card. `limit` is bounded at 100 by the MCP schema; we
+    // apply a server-side ceiling of 200 here as defense in depth.
+    async listOwnedBy(
+      ownerAgentId: string,
+      opts?: { limit?: number },
+    ): Promise<Array<{
+      sellerId: string;
+      displayName: string;
+      countryCode?: string;
+      city?: string;
+      createdAt: number;
+    }>> {
+      const limit = Math.min(opts?.limit ?? 50, 200);
+      const rows = await db
+        .select({
+          sellerId: sellerProfiles.orgId,
+          displayName: sellerProfiles.storeName,
+          city: sellerProfiles.city,
+          countryCode: organizations.countryCode,
+          createdAt: sellerProfiles.createdAt,
+        })
+        .from(sellerProfiles)
+        .leftJoin(organizations, eq(organizations.id, sellerProfiles.orgId))
+        .where(eq(sellerProfiles.ownerAgentId, ownerAgentId))
+        .orderBy(desc(sellerProfiles.createdAt))
+        .limit(limit);
+      return rows.map((r) => ({
+        sellerId: r.sellerId,
+        displayName: r.displayName,
+        ...(r.countryCode ? { countryCode: r.countryCode } : {}),
+        ...(r.city ? { city: r.city } : {}),
+        createdAt: Number(r.createdAt instanceof Date ? r.createdAt.getTime() : r.createdAt),
+      }));
+    },
+
     async countProducts(sellerId: string): Promise<number> {
       if (!isUuid(sellerId)) return 0;
       // Match the active-only filter every public-read product surface

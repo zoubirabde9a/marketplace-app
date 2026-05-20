@@ -76,8 +76,22 @@ const Output = z.object({
 export function registerReviewTools(reg: McpRegistry): void {
   reg.register({
     name: "review.write",
-    description:
-      "Submit a product review. Gated by verified-purchase + review-window + one-per-order-item; moderation classifier runs synchronously and is returned alongside the persisted review id.",
+    description: [
+      "Submit a product review on behalf of a BUYER who has actually purchased the product. This is not",
+      "a seller tool — a seller agent should not call this to write reviews of its own listings.",
+      "",
+      "The platform gates the call on three conditions, all enforced server-side:",
+      "  • verified-purchase: the reviewer must have a settled order containing this product.",
+      "  • review-window: the order's settlement must be within `reviewWindowDays`.",
+      "  • one-per-order-item: each settled order-item can only be reviewed once.",
+      "Self-review (the buyer is also the seller of the listing) is also rejected.",
+      "",
+      "A moderation classifier runs synchronously and the routing decision is returned alongside the",
+      "review id. If the routing is `review_block` the review is rejected and not persisted; if",
+      "`moderation_queue` the review is held for human review before going live. Tell the operator about",
+      "either outcome rather than retrying with reworded text — re-submitting a flagged review without",
+      "addressing the underlying signal often makes the score worse.",
+    ].join("\n"),
     scope: "review:write",
     auditEvent: "review.write",
     idempotent: false,

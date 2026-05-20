@@ -72,6 +72,20 @@ export interface SellerWriteAdapter {
      * skipped and create proceeds (in-memory test adapters don't need it).
      */
     findOwnedByName?(ownerAgentId: string, displayName: string): Promise<{ sellerId: string } | undefined>;
+    /**
+     * Optional. List sellers owned by `ownerAgentId`, ordered by creation time
+     * (newest first). When implemented, `seller.list_mine` exposes it so an
+     * agent can rediscover shops it owns across sessions. When omitted, the
+     * tool returns a `not_implemented` error so the agent can tell the operator
+     * the platform doesn't support discovery yet.
+     */
+    listOwnedBy?(ownerAgentId: string, opts?: { limit?: number }): Promise<Array<{
+      sellerId: string;
+      displayName: string;
+      countryCode?: string;
+      city?: string;
+      createdAt: number;
+    }>>;
   };
   products: {
     create(input: {
@@ -364,7 +378,7 @@ export function registerSellerWriteTools(
         const existing = await deps.sellers.findOwnedByName(ctx.agentId, input.displayName);
         if (existing) {
           throw new ValidationError([
-            { path: "displayName", message: `duplicate_store_name: you already own a store named "${input.displayName}" (sellerId=${existing.sellerId})` },
+            { path: "displayName", message: `duplicate_store_name: you already own a store named "${input.displayName}" (sellerId=${existing.sellerId}). Use that sellerId for product.create_listing, or call seller.list_mine to see all shops you own.` },
           ]);
         }
       }
@@ -406,6 +420,57 @@ export function registerSellerWriteTools(
         ...(snapUrl
           ? { snapshotUrl: snapUrl, snapshotCreatedAt: snap!.createdAt, snapshotExpiresAt: snap!.expiresAt }
           : {}),
+      };
+    },
+  });
+
+  reg.register({
+    name: "seller.list_mine",
+    description: [
+      "List the sellers (shops) owned by the calling agent identity, newest first. Use this at the start",
+      "of a session to rediscover shops the agent created in previous sessions — there is no other way",
+      "to enumerate them, because `seller.get` requires a sellerId you already know.",
+      "",
+      "Returns sellerId, displayName, countryCode, city, createdAt, and a public `storeUrl` for each.",
+      "If the platform doesn't have a discovery index wired up, the call returns `not_implemented` and",
+      "the agent should tell the operator they need to remember the sellerId/storeUrl from the original",
+      "`seller.create_account` response.",
+    ].join("\n"),
+    scope: "seller:write",
+    auditEvent: "seller.list_mine",
+    idempotent: true,
+    inputSchema: z.object({
+      limit: z.number().int().positive().max(100).optional(),
+    }),
+    outputSchema: z.object({
+      data: z.array(z.object({
+        sellerId: z.string(),
+        displayName: z.string(),
+        countryCode: z.string().nullable(),
+        city: z.string().nullable(),
+        createdAt: z.string(),
+        storeUrl: z.string().url().optional(),
+      })),
+    }),
+    handler: async (input, ctx) => {
+      if (!deps.sellers.listOwnedBy) {
+        throw new ValidationError([
+          { path: "_", message: "not_implemented:seller_discovery_unsupported" },
+        ]);
+      }
+      const rows = await deps.sellers.listOwnedBy(ctx.agentId, input.limit !== undefined ? { limit: input.limit } : undefined);
+      return {
+        data: rows.map((r) => {
+          const sUrl = storeWebUrl(r.sellerId);
+          return {
+            sellerId: r.sellerId,
+            displayName: r.displayName,
+            countryCode: r.countryCode ?? null,
+            city: r.city ?? null,
+            createdAt: new Date(r.createdAt).toISOString(),
+            ...(sUrl ? { storeUrl: sUrl } : {}),
+          };
+        }),
       };
     },
   });

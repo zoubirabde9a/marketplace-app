@@ -99,8 +99,25 @@ const ListOutput = z.object({
 export function registerOrderTools(reg: McpRegistry): void {
   reg.register({
     name: "order.apply_event",
-    description:
-      "Apply a transition to an order (authorize / capture / begin_fulfillment / ship / deliver / cancel / refund / open_dispute) against the canonical state machine. Rejects invalid transitions.",
+    description: [
+      "Apply a transition to an order against the canonical state machine. Rejects invalid transitions.",
+      "",
+      "Event kinds and the seller-side meaning of each:",
+      "  • authorize / capture — online-payment flow only; the live Algerian marketplace runs cash-on-",
+      "    delivery, so sellers typically do NOT call these.",
+      "  • begin_fulfillment — 'I have confirmed the buyer by phone and am preparing the package.' Call",
+      "    this once the COD confirmation call has succeeded.",
+      "  • ship — 'package handed to the courier.' Optionally include tracking info.",
+      "  • deliver — 'courier confirmed delivery / cash collected.' Terminal-ish (refund/dispute still possible).",
+      "  • cancel — buyer or seller withdraws before delivery. Requires a `reason` string.",
+      "  • refund — money returned post-delivery; use refund.preview_route first to pick the route.",
+      "  • open_dispute — escalate to the platform's dispute workflow. Requires a `reason` string.",
+      "",
+      "Recommended pattern: call `order.allowed_events` FIRST with the order's current state — it returns",
+      "the legal next events so the agent can offer the operator a valid menu rather than guessing and",
+      "hitting `order_invalid_transition`. The `current` field passed here must match the order's actual",
+      "current status; fetch it via order.get (or seller.list_orders) immediately before this call.",
+    ].join("\n"),
     scope: "order:write",
     auditEvent: "order.apply_event",
     idempotent: false,

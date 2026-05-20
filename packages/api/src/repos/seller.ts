@@ -63,5 +63,22 @@ export interface SellerRepo {
     displayName: string,
   ): Promise<{ sellerId: string } | undefined>;
 
+  /**
+   * List sellers owned by `ownerAgentId`, newest first. Backs the
+   * `seller.list_mine` MCP tool so an agent can rediscover the shops it owns
+   * across sessions. Returns a lean projection (no phones lookup) — callers
+   * needing full seller records should hit `get(sellerId)` per row.
+   */
+  listOwnedBy(
+    ownerAgentId: string,
+    opts?: { limit?: number },
+  ): Promise<Array<{
+    sellerId: string;
+    displayName: string;
+    countryCode?: string;
+    city?: string;
+    createdAt: number;
+  }>>;
+
   countProducts(sellerId: string): Promise<number>;
 }
