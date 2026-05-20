@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy product.delete_listing MCP tool (0cb4805, api-only)
+
+- Rebuilt and rolled `marketplace-api:local`; web untouched.
+- New MCP tool `product.delete_listing` wraps the existing `ProductRepo.softDelete` (status='removed', idempotent). Closes the second-largest gap from `packages/mcp-server/README.md`'s Known Gaps section — agents can now take down listings, not just create and update them.
+- Verified registration via api logs (`mcp_tool_registered` in all workers).
+- `/livez` returned `{"status":"ok"}` after restart.
+
 ## 2026-05-20 — vps-eu — deploy product.update_listing fix (993d0cb, api-only)
 
 - Rebuilt and rolled `marketplace-api:local`; web skipped (broken at source by an unrelated WIP type error in `OrdersStats.tsx`).
