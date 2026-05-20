@@ -242,6 +242,30 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
           opts.repos.sellers.listOwnedBy(ownerAgentId, listOpts),
       },
       products: {
+        getOwner: async (productId) => {
+          const ownerAgentId = await opts.repos.products.getOwnerAgentId(productId);
+          if (!ownerAgentId) return undefined;
+          const p = await opts.repos.products.loadOne(productId);
+          if (!p || !p.sellerId) return undefined;
+          return { sellerId: p.sellerId, ownerAgentId };
+        },
+        update: async (productId, patch) => {
+          const u = await opts.repos.products.update(productId, patch);
+          if (!u || !u.sellerId) return undefined;
+          return {
+            productId: u.productId,
+            sellerId: u.sellerId,
+            titleSanitized: u.titleSanitized,
+            variants: u.variants.map((v) => ({
+              id: v.id,
+              sku: v.sku,
+              priceMinor: v.priceMinor,
+              currency: v.currency,
+              inStock: v.inStock,
+            })),
+            updatedAt: u.updatedAt,
+          };
+        },
         create: async (input) => {
           const p = await opts.repos.products.create(input);
           // The MCP seller-write adapter only exposes product.create to a

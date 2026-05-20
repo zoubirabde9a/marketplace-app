@@ -116,6 +116,35 @@ export interface SellerWriteAdapter {
       heroMediaId?: string;
       createdAt: number;
     }>;
+    /**
+     * Optional. Look up the owning agent + seller for a product so the MCP
+     * update tool can do an ownership check without leaking existence to
+     * unauthorized callers. When omitted, `product.update_listing` returns
+     * `not_implemented` so the agent can tell the operator the platform
+     * doesn't expose updates yet.
+     */
+    getOwner?(productId: string): Promise<{ sellerId: string; ownerAgentId: string } | undefined>;
+    /**
+     * Optional. Patch an existing product's fields. Variants is a FULL
+     * replacement (the repo diffs by sku and applies adds/updates/removes
+     * within a transaction); the rest are partial — undefined leaves the
+     * field alone, null clears nullable fields (description/brand).
+     */
+    update?(productId: string, patch: {
+      title?: string;
+      description?: string | null;
+      brand?: string | null;
+      categoryIds?: string[];
+      shipsTo?: string[];
+      attributes?: Record<string, string>;
+      variants?: Array<{ sku: string; priceMinor: bigint; currency: string; inStock?: boolean }>;
+    }): Promise<{
+      productId: string;
+      sellerId: string;
+      titleSanitized: string;
+      variants: Array<{ id: string; sku: string; priceMinor: bigint; currency: string; inStock: boolean }>;
+      updatedAt: number;
+    } | undefined>;
   };
 }
 
@@ -471,6 +500,117 @@ export function registerSellerWriteTools(
             ...(sUrl ? { storeUrl: sUrl } : {}),
           };
         }),
+      };
+    },
+  });
+
+  reg.register({
+    name: "product.update_listing",
+    description: [
+      "Update an existing product you own. Fails if the product is owned by a different agent. Use this",
+      "to flip a variant in/out of stock, correct a price, fix a typo, or refresh the description — the",
+      "MCP equivalent of the seller dashboard's edit screen.",
+      "",
+      "Partial-update semantics: each top-level field is independent. `undefined` leaves the field alone;",
+      "`null` clears `description` or `brand`. `variants` is a FULL REPLACEMENT — the server diffs by sku",
+      "and applies adds/updates/removes inside one transaction. To toggle stock on a single variant of a",
+      "multi-variant product you MUST first fetch the existing variants (via `catalog.get_product`),",
+      "mutate the one entry, and pass the whole array back; otherwise the omitted variants get deleted.",
+      "",
+      "Pricing footgun: `priceMinor` is in the smallest currency unit (×100 for cent-subdivided",
+      "currencies — same rule as `product.create_listing`). Always read the converted price back to the",
+      "operator before calling.",
+      "",
+      "Limitations to disclose to the operator:",
+      "  • Media is not editable here — there is no add/remove image flow in the MCP today.",
+      "  • If the product is currently in a buyer's cart, in-flight changes (price drop, out-of-stock)",
+      "    take effect at the next read; orders already placed are immutable.",
+    ].join("\n"),
+    scope: "seller:product:write",
+    auditEvent: "product.update_listing",
+    idempotent: false,
+    inputSchema: z.object({
+      productId: z.string().min(1).max(200),
+      title: z.string().min(3).max(300).optional(),
+      description: z.string().min(30).max(5000).nullable().optional(),
+      brand: z.string().max(120).nullable().optional(),
+      attributes: z
+        .record(z.string().max(64), z.string().max(1024))
+        .refine((v) => Object.keys(v).length <= 32, { message: "at_most_32_attributes" })
+        .optional(),
+      categoryIds: z.array(z.string().min(1).max(120)).max(20).optional(),
+      shipsTo: z.array(Iso3166Alpha2Schema).max(250).optional(),
+      variants: z.array(VariantInput).min(1).max(200).optional(),
+    }).refine(
+      (d) =>
+        d.title !== undefined ||
+        d.description !== undefined ||
+        d.brand !== undefined ||
+        d.attributes !== undefined ||
+        d.categoryIds !== undefined ||
+        d.shipsTo !== undefined ||
+        d.variants !== undefined,
+      { message: "at_least_one_field_to_update" },
+    ),
+    outputSchema: z.object({
+      productId: z.string(),
+      sellerId: z.string(),
+      title: z.string(),
+      variants: z.array(z.object({
+        id: z.string(),
+        sku: z.string(),
+        priceMinor: z.string(),
+        currency: z.string(),
+        inStock: z.boolean(),
+      })),
+      updatedAt: z.string(),
+      productUrl: z.string().url().optional(),
+      storeUrl: z.string().url().optional(),
+    }),
+    handler: async (input, ctx) => {
+      if (!deps.products.getOwner || !deps.products.update) {
+        throw new ValidationError([
+          { path: "_", message: "not_implemented:product_update_unsupported" },
+        ]);
+      }
+      const owner = await deps.products.getOwner(input.productId);
+      if (!owner) throw new NotFoundError("product", input.productId);
+      if (owner.ownerAgentId !== ctx.agentId) {
+        throw new UnauthorizedError("not_seller_owner");
+      }
+      const patch: Parameters<NonNullable<typeof deps.products.update>>[1] = {};
+      if (input.title !== undefined) patch.title = input.title;
+      if (input.description !== undefined) patch.description = input.description;
+      if (input.brand !== undefined) patch.brand = input.brand;
+      if (input.attributes !== undefined) patch.attributes = input.attributes;
+      if (input.categoryIds !== undefined) patch.categoryIds = input.categoryIds;
+      if (input.shipsTo !== undefined) patch.shipsTo = input.shipsTo;
+      if (input.variants !== undefined) {
+        patch.variants = input.variants.map((v) => ({
+          sku: v.sku,
+          priceMinor: v.priceMinor,
+          currency: v.currency,
+          ...(v.inStock !== undefined ? { inStock: v.inStock } : {}),
+        }));
+      }
+      const updated = await deps.products.update(input.productId, patch);
+      if (!updated) throw new NotFoundError("product", input.productId);
+      const pUrl = productWebUrl(updated.productId);
+      const sUrl = storeWebUrl(updated.sellerId);
+      return {
+        productId: updated.productId,
+        sellerId: updated.sellerId,
+        title: updated.titleSanitized,
+        variants: updated.variants.map((v) => ({
+          id: v.id,
+          sku: v.sku,
+          priceMinor: v.priceMinor.toString(),
+          currency: v.currency,
+          inStock: v.inStock,
+        })),
+        updatedAt: new Date(updated.updatedAt).toISOString(),
+        ...(pUrl ? { productUrl: pUrl } : {}),
+        ...(sUrl ? { storeUrl: sUrl } : {}),
       };
     },
   });

@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy 13 seller-UX commits + MCP description expansion (727430c)
+
+- Tar-shipped working tree, rebuilt `marketplace-web:local` and `marketplace-api:local`, rolled `web` + `api`.
+- Frontend: printable packing slip + bulk print, CSV exports (products & orders), keyboard shortcuts on orders list, loading skeletons, à-traiter badge aggregation, stock filter, "client habitué" chip + deep-link, "Bien démarrer" onboarding checklist, custom not-found / loading on order detail, removal of legacy `AgentActivity` dashboard widget.
+- MCP server: expanded tool descriptions (unowned_product / currency_mismatch / agent-vs-web ownership / priceMinor off-by-100 / preview dry-run) — no code change, image rebuild still required.
+- Footgun encountered: `tar | ssh` doesn't propagate file deletions, so `AgentActivity.tsx` lingered on the server and broke the web build with a stale type import. Manually `rm`d it on the server, then rebuild succeeded. If this recurs often, switch to `rsync --delete` or the "clean wipe" path from runbook 07.
+- Smoke tests from vps-eu: `/livez` → `{"status":"ok"}`, `https://teno-store.com/` → 200.
+
 ## 2026-05-20 — vps-eu — deploy cart/order title-asymmetry doc (4393c50)
 
 - Rebuilt and rolled `marketplace-api:local`; web and caddy untouched.

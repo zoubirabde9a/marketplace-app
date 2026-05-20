@@ -18,9 +18,14 @@ import type { SellerOrder } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 
 interface OrdersStatsProps {
-  orders: ReadonlyArray<{ order: SellerOrder }>;
+  orders: ReadonlyArray<{ order: SellerOrder; sellerId?: string; shopName?: string }>;
   actionableCount: number;
   now: Date;
+  /** When the seller owns more than one shop, render a compact per-
+   *  shop breakdown strip beneath the aggregate tiles. The page
+   *  passes this only in the multi-shop case; single-shop sellers
+   *  see just the three aggregate tiles. */
+  shops?: ReadonlyArray<{ sellerId: string; displayName: string }>;
 }
 
 // Statuses that represent real revenue (money has moved or will move on
@@ -34,19 +39,33 @@ const REVENUE_STATUSES: ReadonlySet<string> = new Set([
   "delivered",
 ]);
 
-export function OrdersStats({ orders, actionableCount, now }: OrdersStatsProps): React.JSX.Element {
+export function OrdersStats({ orders, actionableCount, now, shops }: OrdersStatsProps): React.JSX.Element {
   const DAY_MS = 86_400_000;
   const sevenDaysAgo = now.getTime() - 7 * DAY_MS;
 
   let shippedThisWeek = 0;
   const revenueByCcy: Record<string, bigint> = {};
-  for (const { order: o } of orders) {
+  // Per-shop tallies — keyed by sellerId; only used when the caller
+  // passes a `shops` list, which it only does in the multi-shop
+  // case. Single-shop sellers skip this whole accounting layer.
+  const perShop = new Map<string, { revenueByCcy: Record<string, bigint> }>();
+  for (const item of orders) {
+    const o = item.order;
+    const sellerId = item.sellerId;
     const t = new Date(o.createdAt).getTime();
     const within7d = !Number.isNaN(t) && t >= sevenDaysAgo;
     if (within7d && o.status === "shipped") shippedThisWeek++;
     if (within7d && REVENUE_STATUSES.has(o.status)) {
       try {
         revenueByCcy[o.currency] = (revenueByCcy[o.currency] ?? 0n) + BigInt(o.subtotalMinor);
+        if (shops && sellerId) {
+          let s = perShop.get(sellerId);
+          if (!s) {
+            s = { revenueByCcy: {} };
+            perShop.set(sellerId, s);
+          }
+          s.revenueByCcy[o.currency] = (s.revenueByCcy[o.currency] ?? 0n) + BigInt(o.subtotalMinor);
+        }
       } catch {
         // unparseable subtotal — skip rather than blow up the tile
       }
@@ -57,7 +76,24 @@ export function OrdersStats({ orders, actionableCount, now }: OrdersStatsProps):
     ? formatPrice(topCcyEntry[1].toString(), topCcyEntry[0], "fr-DZ")
     : null;
 
+  // Per-shop breakdown — only for multi-shop sellers. Each entry
+  // surfaces the same dominant-currency revenue collapse used for the
+  // top tile, scoped to one shop. Skipped when fewer than 2 shops
+  // (the top tile already serves that case).
+  const perShopBreakdown =
+    shops && shops.length > 1
+      ? shops.map((s) => {
+          const entry = perShop.get(s.sellerId);
+          const top = entry
+            ? Object.entries(entry.revenueByCcy).sort((a, b) => Number(b[1] - a[1]))[0]
+            : null;
+          const label = top ? formatPrice(top[1].toString(), top[0], "fr-DZ") : "—";
+          return { sellerId: s.sellerId, displayName: s.displayName, label };
+        })
+      : null;
+
   return (
+    <>
     <dl
       aria-label="Indicateurs des commandes"
       className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3"
