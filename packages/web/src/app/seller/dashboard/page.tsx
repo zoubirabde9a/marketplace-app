@@ -94,6 +94,37 @@ export default async function DashboardPage() {
   const sellersResp = await listMySellers(session.jwt, agentId);
   const sellers = sellersResp.data;
 
+  // Fan out the orders fetch at the page level so we can (a) aggregate
+  // an actionable count across every shop for the header badge and (b)
+  // hand each SellerSection its preloaded result instead of refetching.
+  // Each SellerSection still fetches its own products list — keeping
+  // those scoped per-section keeps the products + orders fan-out
+  // logically equivalent to the previous Promise.allSettled inside the
+  // section, just split across two layers.
+  const ordersResults = await Promise.allSettled(
+    sellers.map((s) => listSellerOrders(s.sellerId, session.jwt)),
+  );
+  const ordersBySellerId = new Map<
+    string,
+    { orders: SellerOrder[]; error: string | null }
+  >();
+  let aggregateActionableCount = 0;
+  ordersResults.forEach((r, i) => {
+    const s = sellers[i]!;
+    if (r.status === "fulfilled") {
+      const list = r.value.data;
+      ordersBySellerId.set(s.sellerId, { orders: list, error: null });
+      aggregateActionableCount += list.filter((o) =>
+        ACTIONABLE_STATUSES.has(o.status),
+      ).length;
+    } else {
+      ordersBySellerId.set(s.sellerId, {
+        orders: [],
+        error: (r.reason as Error).message,
+      });
+    }
+  });
+
   return (
     <section aria-labelledby="dashboard-heading" className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-5xl mx-auto" lang="fr">
       <header className="flex items-start justify-between gap-4">
@@ -131,9 +162,22 @@ export default async function DashboardPage() {
           {sellers.length > 0 && (
             <Link
               href="/seller/orders"
-              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center gap-2 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
             >
               Toutes les commandes
+              {/* Aggregate à-traiter badge across every shop, mirrored
+                  from the per-shop chips inside each SellerSection so
+                  the seller catches "there's work waiting" without
+                  expanding cards. Hidden when there's nothing to act
+                  on — an empty pill is just noise. */}
+              {aggregateActionableCount > 0 && (
+                <span
+                  className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full bg-accent text-bg text-[11px] font-semibold tabular-nums"
+                  aria-label={`${aggregateActionableCount} commande${aggregateActionableCount === 1 ? "" : "s"} à traiter`}
+                >
+                  {aggregateActionableCount}
+                </span>
+              )}
             </Link>
           )}
           <LogoutButton />
@@ -164,6 +208,7 @@ export default async function DashboardPage() {
               // disclosure entirely and render as before.
               collapsible={sellers.length > 1}
               defaultOpen={i === 0}
+              preloadedOrders={ordersBySellerId.get(s.sellerId)}
             />
           ))}
         </div>
@@ -195,6 +240,7 @@ async function SellerSection({
   sessionJwt,
   collapsible = false,
   defaultOpen = true,
+  preloadedOrders,
 }: {
   seller: SellerRecord;
   sessionJwt: string;
@@ -205,6 +251,12 @@ async function SellerSection({
    * initially. The first shop in the list gets this; subsequent shops
    * default closed. */
   defaultOpen?: boolean;
+  /** Pre-fetched orders for this shop. The page-level fan-out already
+   * hit listSellerOrders to compute the aggregate actionable badge;
+   * we pass the result down so SellerSection doesn't refetch. When
+   * omitted the section falls back to its own fetch (kept for now so
+   * SellerSection stays standalone-callable). */
+  preloadedOrders?: { orders: SellerOrder[]; error: string | null };
 }) {
   let products: {
     productId: string;
@@ -221,14 +273,12 @@ async function SellerSection({
   let productsError: string | null = null;
   let orders: SellerOrder[] = [];
   let ordersError: string | null = null;
-  // Run the two independent fetches in parallel — they had been sequential,
-  // doubling the latency of every shop render. allSettled keeps independent
-  // error handling so a failure on one side doesn't lose the other side's
-  // data.
-  const [productsRes, ordersRes] = await Promise.allSettled([
+  // Products is always per-section. Orders comes from the page-level
+  // fan-out when available; the fallback fetch keeps SellerSection
+  // self-contained when called outside the dashboard page.
+  const productsRes = await Promise.allSettled([
     listProductsBySeller(seller.sellerId, sessionJwt),
-    listSellerOrders(seller.sellerId, sessionJwt),
-  ]);
+  ]).then((r) => r[0]!);
   if (productsRes.status === "fulfilled") {
     products = productsRes.value.data.map((h) => ({
       productId: h.productId,
@@ -245,10 +295,15 @@ async function SellerSection({
   } else {
     productsError = (productsRes.reason as Error).message;
   }
-  if (ordersRes.status === "fulfilled") {
-    orders = ordersRes.value.data;
+  if (preloadedOrders) {
+    orders = preloadedOrders.orders;
+    ordersError = preloadedOrders.error;
   } else {
-    ordersError = (ordersRes.reason as Error).message;
+    try {
+      orders = (await listSellerOrders(seller.sellerId, sessionJwt)).data;
+    } catch (e) {
+      ordersError = (e as Error).message;
+    }
   }
 
   // Glance metrics row: total orders, total revenue across orders, product
