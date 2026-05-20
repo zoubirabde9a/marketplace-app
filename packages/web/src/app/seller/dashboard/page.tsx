@@ -18,6 +18,7 @@ import { ProductsStockFilter, type StockTab } from "./ProductsStockFilter";
 import { OrderRow } from "./OrderRow";
 import { ProductRow } from "./ProductRow";
 import { GetStartedChecklist } from "./GetStartedChecklist";
+import { ClearLocalNotesButton } from "./ClearLocalNotesButton";
 import { AutoRefresh } from "../orders/AutoRefresh";
 import { LastRefreshed } from "../orders/LastRefreshed";
 import { CopyIconButton } from "@/components/CopyButton";
@@ -413,17 +414,23 @@ export default async function DashboardPage() {
           had no point of contact from inside the dashboard. One link,
           pre-filled subject, no chrome. `<footer>` so it lands as a
           proper landmark in the page outline. */}
-      <footer className="mt-10 pt-6 border-t border-line-soft text-xs text-ink-mute text-center">
-        Besoin d’aide ?{" "}
-        <a
-          href={`mailto:mahlledz@gmail.com?subject=${encodeURIComponent("Aide vendeur")}&body=${encodeURIComponent(
-            "Bonjour,\n\nJ'ai besoin d'aide concernant :\n\n",
-          )}`}
-          className="text-accent hover:underline active:underline"
-        >
-          contactez-nous
-        </a>
-        .
+      <footer className="mt-10 pt-6 border-t border-line-soft text-xs text-ink-mute text-center space-y-2">
+        <p>
+          Besoin d’aide ?{" "}
+          <a
+            href={`mailto:mahlledz@gmail.com?subject=${encodeURIComponent("Aide vendeur")}&body=${encodeURIComponent(
+              "Bonjour,\n\nJ'ai besoin d'aide concernant :\n\n",
+            )}`}
+            className="text-accent hover:underline active:underline"
+          >
+            contactez-nous
+          </a>
+          .
+        </p>
+        {/* Local-notes cleanup. Only appears when the device has at
+            least one saved note — hidden otherwise so the footer
+            stays minimal for first-time and quiet sellers. */}
+        <ClearLocalNotesButton />
       </footer>
     </section>
   );
