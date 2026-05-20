@@ -6,6 +6,14 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy product.add_media + product.remove_media (4e0b30d, api-only)
+
+- Rebuilt and rolled `marketplace-api:local`; web untouched.
+- Two new MCP tools wrap the existing `ProductRepo.addMedia` / `removeMedia` so an agent can swap a product photo (add the new one, then remove the old; removing the last image is rejected with `last_image`).
+- Closes the last concrete item in `packages/mcp-server/README.md`'s Known Gaps section — sellers now have full lifecycle coverage in the MCP (create / list / update / soft-delete / add image / remove image).
+- Verified registration via api logs (both tools in multiple workers).
+- `/livez` returned `{"status":"ok"}` after restart.
+
 ## 2026-05-20 — vps-eu — deploy product.delete_listing MCP tool (0cb4805, api-only)
 
 - Rebuilt and rolled `marketplace-api:local`; web untouched.
