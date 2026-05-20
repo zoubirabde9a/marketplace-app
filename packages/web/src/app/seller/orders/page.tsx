@@ -19,6 +19,8 @@ import {
   type SellerOrder,
   type SellerRecord,
 } from "@/lib/api";
+import { CopyIconButton } from "@/components/CopyButton";
+import { SITE_URL } from "@/lib/sitemap";
 import { OrderRow } from "../dashboard/OrderRow";
 import { OrdersSearch } from "./OrdersSearch";
 import { OrdersStats } from "./OrdersStats";
@@ -314,10 +316,53 @@ export default async function SellerOrdersPage({
 
       <div className="mt-8 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-6">
         {orders.length === 0 ? (
-          <p className="text-sm text-ink-mute">
-            Aucune commande pour le moment. Dès qu’un acheteur commande l’un
-            de vos produits, la commande apparaît ici.
-          </p>
+          // Empty-state with a "go promote your shop" nudge — sellers
+          // waiting for first orders are most helped by a clear next
+          // action, not just "wait for buyers". The store-link copy
+          // buttons let them paste the URL into WhatsApp, social
+          // posts, signage QR codes, etc.
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-lg font-medium text-ink">
+                Pas encore de commande
+              </h2>
+              <p className="mt-1 text-sm text-ink-soft">
+                Dès qu’un acheteur passe commande, vous la verrez apparaître ici.
+                En attendant, partagez votre boutique pour ramener les premiers
+                clients.
+              </p>
+            </div>
+            <ul className="space-y-2">
+              {sellers.map((s) => {
+                const storeUrl = `${SITE_URL}/store/${s.sellerId}`;
+                return (
+                  <li
+                    key={s.sellerId}
+                    className="flex flex-wrap items-center gap-2 rounded-lg border border-line-soft bg-bg/40 px-3 py-2"
+                  >
+                    {sellers.length > 1 && (
+                      <span dir="auto" className="text-sm text-ink-soft truncate">
+                        {s.displayName}
+                      </span>
+                    )}
+                    <a
+                      href={storeUrl}
+                      target="_blank"
+                      rel="noopener"
+                      dir="ltr"
+                      className="font-mono text-xs text-ink-soft hover:text-accent active:text-accent transition truncate min-w-0 flex-1"
+                    >
+                      {storeUrl}
+                    </a>
+                    <CopyIconButton
+                      value={storeUrl}
+                      ariaLabel={`Copier le lien de la boutique${sellers.length > 1 ? ` ${s.displayName}` : ""}`}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         ) : (
           <OrdersSearch totalCount={orders.length} initialQuery={initialQuery}>
           <OrdersRangeFilter counts={rangeCounts}>
