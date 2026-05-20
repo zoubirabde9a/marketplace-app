@@ -242,7 +242,12 @@ export default async function DashboardPage() {
           price/stock editors live inline on rows). */}
       <AutoRefresh />
       <OfflineIndicator />
-      <header className="flex items-start justify-between gap-4">
+      {/* flex-wrap so the heading + identity block and the action
+          buttons stack on narrow viewports instead of overflowing.
+          The buttons cluster also wraps internally (own flex-wrap)
+          so individual pills can flow to a second/third row when
+          they all don't fit. */}
+      <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <h1 id="dashboard-heading" className="text-2xl sm:text-3xl font-semibold tracking-tight break-words">Tableau de bord vendeur</h1>
           {/* Signed-in identity — quick "yes, this is my account" check
@@ -275,7 +280,7 @@ export default async function DashboardPage() {
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">
           {/* Cross-shop unified orders view. Hidden for sellers with
               no shops yet — the link target redirects back here in
               that case but showing it would be a dead-end loop. */}
