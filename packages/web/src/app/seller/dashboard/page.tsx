@@ -179,6 +179,27 @@ export default async function DashboardPage() {
     ? formatPrice(todayTopCcy[1].toString(), todayTopCcy[0], "fr-DZ")
     : null;
 
+  // Stale-actionable detection: orders that landed in paid /
+  // fulfilling > 48h ago and the seller hasn't moved them along. A
+  // backlog of 5 newly-paid orders is normal; a paid order sitting
+  // there for two days means a buyer is waiting and the seller is
+  // probably losing them. Surface a warn banner so the seller can't
+  // miss it in the daily scroll. 48h is conservative — typical
+  // marketplace SLA is 24h-acknowledge, this gives one full
+  // business day of slack before flagging.
+  const STALE_AFTER_MS = 48 * 60 * 60_000;
+  const STALE_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling"]);
+  let staleActionableCount = 0;
+  ordersResults.forEach((r) => {
+    if (r.status !== "fulfilled") return;
+    for (const o of r.value.data) {
+      if (!STALE_STATUSES.has(o.status)) continue;
+      const t = new Date(o.createdAt).getTime();
+      if (Number.isNaN(t)) continue;
+      if (Date.now() - t > STALE_AFTER_MS) staleActionableCount++;
+    }
+  });
+
   return (
     <section aria-labelledby="dashboard-heading" className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-5xl mx-auto" lang="fr">
       {/* Same 60s polling pattern as /seller/orders: aggregate
@@ -283,6 +304,41 @@ export default async function DashboardPage() {
           <LogoutButton />
         </div>
       </header>
+
+      {/* Stale-actionable warning — paid/fulfilling orders sitting
+          unactioned for more than 48 hours. Surfaces above today's
+          summary because a stuck order is more urgent than a fresh
+          one. Links into /seller/orders pre-filtered to À traiter
+          so one tap brings the seller to the offending rows. */}
+      {staleActionableCount > 0 && (
+        <Link
+          href="/seller/orders"
+          className="mt-6 flex items-start gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-warn hover:bg-warn/15 active:bg-warn/20 transition"
+        >
+          <svg
+            className="w-5 h-5 shrink-0 mt-0.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          </svg>
+          <div className="min-w-0">
+            <p className="text-sm font-medium">
+              {staleActionableCount} commande
+              {staleActionableCount === 1 ? "" : "s"} en attente depuis plus de
+              48 heures
+            </p>
+            <p className="mt-0.5 text-xs text-warn/80">
+              Marquez-{staleActionableCount === 1 ? "la" : "les"} en préparation
+              ou expédiée{staleActionableCount === 1 ? "" : "s"} — les acheteurs
+              attendent. <span className="underline">Voir les commandes</span>
+            </p>
+          </div>
+        </Link>
+      )}
 
       {/* "Aujourd'hui" aggregate strip. Renders only when the seller
           has at least one shop AND there's at least one order today
