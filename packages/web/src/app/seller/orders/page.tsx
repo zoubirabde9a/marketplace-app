@@ -21,6 +21,7 @@ import {
 } from "@/lib/api";
 import { OrderRow } from "../dashboard/OrderRow";
 import { OrdersSearch } from "./OrdersSearch";
+import { OrdersStats } from "./OrdersStats";
 import { OrdersStatusTabs, type StatusTab } from "./OrdersStatusTabs";
 
 export const dynamic = "force-dynamic";
@@ -181,6 +182,10 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
           ← Tableau de bord
         </Link>
       </header>
+
+      {orders.length > 0 && (
+        <OrdersStats orders={orders} actionableCount={actionableCount} now={new Date()} />
+      )}
 
       {anyFetchFailed && (
         <p className="mt-4 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
