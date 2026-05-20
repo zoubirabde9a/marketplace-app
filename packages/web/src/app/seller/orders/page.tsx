@@ -24,6 +24,7 @@ import { OrdersSearch } from "./OrdersSearch";
 import { OrdersStats } from "./OrdersStats";
 import { OrdersStatusTabs, type StatusTab } from "./OrdersStatusTabs";
 import { TabTitleBadge } from "./TabTitleBadge";
+import { AutoRefresh } from "./AutoRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -184,6 +185,7 @@ export default async function SellerOrdersPage({
       lang="fr"
     >
       <TabTitleBadge count={actionableCount} />
+      <AutoRefresh />
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <h1 id="orders-heading" className="text-2xl sm:text-3xl font-semibold tracking-tight">
