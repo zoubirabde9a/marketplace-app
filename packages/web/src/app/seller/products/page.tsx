@@ -223,6 +223,27 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
           </ResetFiltersWrapper>
         )}
       </div>
+
+      {/* Mobile-only floating "+" CTA. The header CTA above is great
+          on desktop, but mobile sellers scrolling a long list lose
+          sight of it. The FAB stays in thumb reach the entire scroll.
+          sm:hidden — desktop sellers use the header CTA. */}
+      <Link
+        href="/seller/products/new"
+        aria-label="Nouveau produit"
+        className="sm:hidden fixed bottom-5 right-5 z-20 inline-flex items-center justify-center w-14 h-14 rounded-full bg-accent text-bg shadow-xl hover:bg-accent-hover active:brightness-90 transition"
+      >
+        <svg
+          className="w-7 h-7"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
+        </svg>
+      </Link>
     </section>
   );
 }
