@@ -6,6 +6,18 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy large seller UX batch (1b78d46..a91890a, 21 commits)
+
+- Rebuilt `marketplace-web:local` and `marketplace-api:local`; rolled both. All commits are web-only.
+- Highlights:
+  - New `/seller/customers` aggregate-buyer page: search, sort (Récents / Dépense / Commandes), CSV export, stats strip (count, revenue, avg orders), pre-filled WhatsApp opener.
+  - "Stale" surfacing across the seller UI: banners (orders detail, dashboard) showing oldest-waiting age; "Lent · Nj" row chips with actual age; stale-banner deep-links to `?sort=oldest`.
+  - Slip improvements: WhatsApp chip + tap-to-call + copy on customer phone; line-item titles link to public PDP.
+  - Dashboard wiring: Aujourd'hui à-traiter and commandes counts link to filtered orders; customer count and out-of-stock badges in the side links; header wraps on narrow viewports.
+  - Misc: products "Voir l'annonce en ligne" external-link button; products URL-driven sort toggle; cancel-reason now textarea (avoids accidental submit); offline indicator on all live seller pages.
+- Concurrent-session collision flagged mid-iteration: my staged working-tree changes were absorbed into `a91890a` by a parallel session before I could commit them. No corruption, but documenting per the loop's "pause and flag" rule.
+- Smoke from vps-eu after 15s warmup: `/livez` → `{"status":"ok"}`, `https://teno-store.com/` → 200.
+
 ## 2026-05-20 — vps-eu — deploy seller UX batch (cc8546e..1b78d46, 4 commits)
 
 - Rebuilt `marketplace-web:local` and `marketplace-api:local`; rolled both.
