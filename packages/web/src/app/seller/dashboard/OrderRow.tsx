@@ -24,9 +24,22 @@ interface OrderRowProps {
   /** Show the owning shop's display name next to the order number.
    *  Used by the unified /seller/orders page. */
   shopName?: string;
+  /** Total number of orders this customer has placed (count of the
+   *  same phone across the seller's history). When >= 2 the row
+   *  shows a "client habitué" chip — small but persistent signal so
+   *  the seller knows to prioritize the relationship. The caller
+   *  computes this once over the full dataset; the row only renders.
+   */
+  customerOrderCount?: number;
 }
 
-export function OrderRow({ order: o, sellerId, shopName }: OrderRowProps): React.JSX.Element {
+export function OrderRow({
+  order: o,
+  sellerId,
+  shopName,
+  customerOrderCount,
+}: OrderRowProps): React.JSX.Element {
+  const isRepeat = (customerOrderCount ?? 0) >= 2;
   return (
     <div className="min-w-0 flex-1 flex items-start justify-between gap-4">
       <div className="min-w-0 flex-1">
@@ -64,6 +77,16 @@ export function OrderRow({ order: o, sellerId, shopName }: OrderRowProps): React
           <div className="mt-1 text-sm text-ink-soft">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span dir="auto" className="text-ink untrusted">{o.customer.name}</span>
+              {isRepeat && (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border border-accent/40 bg-accent/10 text-accent"
+                  aria-label={`Client habitué — ${customerOrderCount} commandes`}
+                  title={`Client habitué — ${customerOrderCount} commandes`}
+                >
+                  <span aria-hidden>★</span>
+                  Client habitué
+                </span>
+              )}
               {o.customer.region && (
                 <span
                   className="inline-flex items-center gap-1 text-xs text-ink-soft"

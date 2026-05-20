@@ -148,6 +148,17 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
   // Show shop name on each row only when the seller owns more than one
   // shop. For single-shop sellers it would be redundant noise.
   const showShopName = sellers.length > 1;
+  // Count occurrences of each customer phone across the seller's
+  // full order history. Rows whose phone hits the threshold render
+  // a "client habitué" chip — small signal that costs nothing to
+  // compute here and saves the seller from manually noticing a
+  // repeat buyer.
+  const customerOrderCounts = new Map<string, number>();
+  for (const u of orders) {
+    const phone = u.order.customer?.phone;
+    if (!phone) continue;
+    customerOrderCounts.set(phone, (customerOrderCounts.get(phone) ?? 0) + 1);
+  }
 
   return (
     <section
@@ -267,6 +278,11 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
                       order={u.order}
                       sellerId={u.sellerId}
                       shopName={showShopName ? u.shopName : undefined}
+                      customerOrderCount={
+                        u.order.customer
+                          ? customerOrderCounts.get(u.order.customer.phone)
+                          : undefined
+                      }
                     />
                   </li>
                 )),

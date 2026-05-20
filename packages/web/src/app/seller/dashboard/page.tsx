@@ -261,6 +261,16 @@ async function SellerSection({
   // Excludes shipped/delivered/cancelled/refunded (closed) and
   // created/authorized (pre-payment, no seller action yet).
   const actionableCount = orders.filter((o) => ACTIONABLE_STATUSES.has(o.status)).length;
+  // Repeat-customer detection within this shop's order history.
+  // Same logic as the unified /seller/orders page but scoped to one
+  // seller — a buyer who orders twice from this same shop earns the
+  // "client habitué" chip on every row of theirs.
+  const customerOrderCounts = new Map<string, number>();
+  for (const o of orders) {
+    const phone = o.customer?.phone;
+    if (!phone) continue;
+    customerOrderCounts.set(phone, (customerOrderCounts.get(phone) ?? 0) + 1);
+  }
 
   const revenueByCcy = orders.reduce<Record<string, bigint>>((acc, o) => {
     try {
@@ -373,7 +383,13 @@ async function SellerSection({
                 data-actionable={ACTIONABLE_STATUSES.has(o.status) ? "true" : "false"}
                 className="py-3 flex items-start justify-between gap-4"
               >
-                <OrderRow order={o} sellerId={seller.sellerId} />
+                <OrderRow
+                  order={o}
+                  sellerId={seller.sellerId}
+                  customerOrderCount={
+                    o.customer ? customerOrderCounts.get(o.customer.phone) : undefined
+                  }
+                />
               </li>
               )),
             ])}
