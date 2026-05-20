@@ -74,10 +74,33 @@ export function ProductRow({ product: p, shopName }: ProductRowProps): React.JSX
             loading="lazy"
           />
         ) : (
+          // Empty image is a real merchandising problem — listings
+          // without photos consistently underperform. Render a
+          // warn-tinted camera icon instead of a blank square so the
+          // gap is visible in the row scan. Row is already a click-
+          // to-edit link, so no extra affordance needed; the seller
+          // taps the row to fix it.
           <span
-            aria-hidden
-            className="w-10 h-10 rounded border border-line-soft bg-bg-elev shrink-0"
-          />
+            aria-label="Photo manquante"
+            title="Photo manquante — ajoutez une image pour mieux vendre"
+            className="w-10 h-10 rounded border border-warn/40 bg-warn/10 text-warn shrink-0 inline-flex items-center justify-center"
+          >
+            <svg
+              className="w-5 h-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.75}
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M3 7a2 2 0 0 1 2-2h2.5l1.5-2h6l1.5 2H19a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
+              />
+              <circle cx="12" cy="13" r="3.5" />
+            </svg>
+          </span>
         )}
         <div className="min-w-0 flex-1">
           <div dir="auto" className="text-ink truncate">{cleanProductTitle(p.title)}</div>
