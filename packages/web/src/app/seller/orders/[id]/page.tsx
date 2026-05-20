@@ -21,10 +21,9 @@ import {
   type SellerOrder,
   type SellerRecord,
 } from "@/lib/api";
-import { cleanProductTitle, formatPrice } from "@/lib/format";
 import { OrderActions } from "../../dashboard/OrderActions";
-import { OrderProgress } from "../../dashboard/OrderProgress";
 import { PrintButton } from "./PrintButton";
+import { PrintableSlip } from "./PrintableSlip";
 
 export const dynamic = "force-dynamic";
 
@@ -94,113 +93,9 @@ export default async function OrderDetailPage({ params }: PageProps): Promise<Re
         <PrintButton />
       </header>
 
-      {/* The printable slip itself. The card chrome (rounded, border)
-          carries over to print as a thin black frame — gives the
-          courier a single visual unit to look at on the page. */}
-      <article className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-5 sm:p-8 print:bg-white print:text-black print:border-black/30 print:rounded-none print:p-6">
-        {/* Top strip: shop name on the left (origin of the package),
-            print-only date stamp on the right (so the courier knows
-            when it was prepared). On screen, the date already lives in
-            the order metadata; printing it again is redundant noise. */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="text-[10px] uppercase tracking-widest text-ink-mute print:text-black/50">
-              Boutique
-            </p>
-            <p
-              dir="auto"
-              className="text-lg font-medium text-ink print:text-black"
-            >
-              {owningSeller.displayName}
-            </p>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="text-[10px] uppercase tracking-widest text-ink-mute print:text-black/50">
-              Statut
-            </p>
-            <div className="mt-1">
-              <OrderProgress status={order.status} />
-            </div>
-          </div>
-        </div>
-
-        {/* Customer block — the courier reads this. Tel + WhatsApp
-            links are hidden on print (no clickable URL on paper); the
-            number is rendered as plain text inside the same block. */}
-        {order.customer && (
-          <div className="mt-6 pt-4 border-t border-line-soft print:border-black/30">
-            <p className="text-[10px] uppercase tracking-widest text-ink-mute print:text-black/50">
-              Destinataire
-            </p>
-            <p
-              dir="auto"
-              className="mt-1 text-lg font-medium text-ink untrusted print:text-black print:[&::before]:hidden"
-            >
-              {order.customer.name}
-            </p>
-            <p dir="ltr" className="mt-0.5 font-mono text-sm text-ink-soft print:text-black">
-              {order.customer.phone}
-            </p>
-            {order.customer.region && (
-              <p
-                dir="auto"
-                className="mt-0.5 text-sm text-ink-soft print:text-black"
-              >
-                Wilaya : <span className="text-ink print:text-black">{order.customer.region}</span>
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Line items — what the seller has to physically pack. Same
-            qty-badge + title pattern as the dashboard row, but bigger
-            and with more whitespace because this is the focus of the
-            printed page. */}
-        <div className="mt-6 pt-4 border-t border-line-soft print:border-black/30">
-          <p className="text-[10px] uppercase tracking-widest text-ink-mute print:text-black/50">
-            Articles ({order.lines.length})
-          </p>
-          <ul className="mt-2 space-y-2">
-            {order.lines.map((l) => (
-              <li key={l.variantId} className="flex items-start gap-3">
-                <span
-                  aria-label={`Quantité ${l.qty}`}
-                  className="shrink-0 inline-flex items-center justify-center min-w-[2rem] px-2 h-7 rounded-md border border-line text-ink bg-bg/60 font-semibold tabular-nums print:bg-white print:text-black print:border-black/40"
-                >
-                  ×{l.qty}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p
-                    dir="auto"
-                    className="text-ink untrusted truncate print:text-black print:[&::before]:hidden"
-                  >
-                    {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
-                  </p>
-                  {l.sku && (
-                    <p className="font-mono text-[11px] text-ink-mute print:text-black/60">
-                      SKU {l.sku}
-                    </p>
-                  )}
-                </div>
-                <p className="text-sm text-ink-soft tabular-nums shrink-0 print:text-black">
-                  {formatPrice(l.unitPriceMinor, order.currency, "fr-DZ")}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Total block — the seller and courier both verify against
-            this. Rendered as a big right-aligned number on print. */}
-        <div className="mt-6 pt-4 border-t border-line-soft flex items-baseline justify-between print:border-black/30">
-          <span className="text-[10px] uppercase tracking-widest text-ink-mute print:text-black/50">
-            Total
-          </span>
-          <span className="text-2xl font-semibold tabular-nums text-ink print:text-black">
-            {formatPrice(order.subtotalMinor, order.currency, "fr-DZ")}
-          </span>
-        </div>
-      </article>
+      <div className="mt-6">
+        <PrintableSlip order={order} shopName={owningSeller.displayName} />
+      </div>
 
       {/* Action buttons — hidden on print. Same OrderActions component
           the list uses; here it serves the "I just packed this, mark

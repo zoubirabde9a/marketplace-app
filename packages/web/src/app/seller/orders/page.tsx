@@ -206,6 +206,32 @@ export default async function SellerOrdersPage({
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {actionableCount > 0 && (
+            // Bulk packing-slip print — one slip per page for every
+            // À-traiter order. Surfaces here (not the dashboard)
+            // because seller workflow is: open /seller/orders, scope
+            // to À-traiter, click "Imprimer les bons", run the
+            // physical prep.
+            <Link
+              href="/seller/orders/print"
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center gap-2 rounded-md border border-accent/40 text-accent hover:bg-accent/10 active:bg-accent/15 transition"
+              title={`Imprimer les ${actionableCount} bons à traiter`}
+            >
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 9V2h12v7" />
+                <rect x="2" y="9" width="20" height="9" rx="2" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 14h12v8H6z" />
+              </svg>
+              Imprimer les bons <span className="tabular-nums">({actionableCount})</span>
+            </Link>
+          )}
           {orders.length > 0 && (
             // <a> not <Link> — Link prefetches and renders client-side,
             // but the export route returns text/csv with a
