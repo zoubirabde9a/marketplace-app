@@ -11,6 +11,7 @@
 // the caller is the unified view — the seller needs to know which shop
 // the order belongs to when they're looking at a mixed stream.
 
+import Link from "next/link";
 import type { SellerOrder } from "@/lib/api";
 import { cleanProductTitle, formatPrice, formatRelativeTime } from "@/lib/format";
 import { CopyIconButton } from "@/components/CopyButton";
@@ -30,7 +31,14 @@ export function OrderRow({ order: o, sellerId, shopName }: OrderRowProps): React
     <div className="min-w-0 flex-1 flex items-start justify-between gap-4">
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span dir="ltr" className="font-mono text-sm text-ink">#{o.publicNumber}</span>
+          <Link
+            href={`/seller/orders/${encodeURIComponent(o.orderId)}`}
+            dir="ltr"
+            className="font-mono text-sm text-ink hover:text-accent active:text-accent transition"
+            aria-label={`Voir le détail de la commande ${o.publicNumber}`}
+          >
+            #{o.publicNumber}
+          </Link>
           <CopyIconButton
             value={o.publicNumber}
             ariaLabel={`Copier le numéro de commande ${o.publicNumber}`}
