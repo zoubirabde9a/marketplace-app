@@ -163,6 +163,23 @@ export default async function SellerProductsPage({
           >
             <span aria-hidden>+</span> Nouveau produit
           </Link>
+          {sellers.length === 1 && products.length > 0 && (
+            // Single-shop sellers get a one-tap preview of their
+            // public storefront — the most common "I just edited
+            // a listing, let me see how it looks to buyers" path
+            // without going via the dashboard. Multi-shop sellers
+            // skip this link (ambiguous which store to open) and
+            // use each shop card's "Voir la boutique" link instead.
+            <a
+              href={`/store/${encodeURIComponent(sellers[0]!.sellerId)}`}
+              target="_blank"
+              rel="noopener"
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center gap-1 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+              title="Voir la boutique publique"
+            >
+              Voir la boutique <span aria-hidden>↗</span>
+            </a>
+          )}
           {products.length > 0 && (
             <a
               href="/seller/products/export"
