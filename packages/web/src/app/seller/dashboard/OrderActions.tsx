@@ -203,16 +203,24 @@ export function OrderActions({
           }}
           className="flex flex-wrap items-center gap-2"
         >
-          <label className="text-xs text-ink-soft inline-flex items-center gap-2 flex-1 min-w-0">
-            Motif :
-            <input
-              type="text"
+          <label className="text-xs text-ink-soft flex-1 min-w-0 flex flex-col gap-1">
+            <span>Motif</span>
+            {/* textarea instead of single-line input: gives the
+                seller more room to explain at length when needed
+                ("client a refusé après vérification de l'IMEI" type
+                multi-line stories), and Enter creates a newline
+                instead of accidentally submitting the form while
+                the seller is still composing. Explicit confirm
+                button click is the only submit path. */}
+            <textarea
               value={cancelReason}
               onChange={(e) => setCancelReason(e.target.value)}
-              placeholder="ex. acheteur injoignable"
+              placeholder="ex. acheteur injoignable · rupture de stock · adresse hors zone"
               autoFocus
               maxLength={200}
-              className="flex-1 min-w-0 rounded-md bg-bg border border-line px-2 h-9 text-xs text-ink focus:border-accent/60 outline-none"
+              rows={2}
+              dir="auto"
+              className="w-full min-w-0 rounded-md bg-bg border border-line px-2 py-1.5 text-xs text-ink focus:border-accent/60 outline-none resize-y"
             />
           </label>
           <button
