@@ -518,6 +518,16 @@ async function SellerSection({
   // Excludes shipped/delivered/cancelled/refunded (closed) and
   // created/authorized (pre-payment, no seller action yet).
   const actionableCount = orders.filter((o) => ACTIONABLE_STATUSES.has(o.status)).length;
+  // Stale-actionable count scoped to this shop — same threshold as
+  // the dashboard banner (b552ef5), used to add a small "X lent"
+  // chip on the multi-shop collapsed disclosure summary so a
+  // seller with several shops can see at a glance which shop is
+  // carrying the laggers without expanding each card.
+  const shopStaleCount = orders.filter(
+    (o) =>
+      STALE_ROW_STATUSES.has(o.status) &&
+      Date.now() - new Date(o.createdAt).getTime() > STALE_AFTER_MS_ROW,
+  ).length;
   // Repeat-customer detection within this shop's order history.
   // Same logic as the unified /seller/orders page but scoped to one
   // seller — a buyer who orders twice from this same shop earns the
@@ -813,6 +823,21 @@ async function SellerSection({
           >
             <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-accent" />
             <span className="font-medium tabular-nums">{actionableCount}</span> à traiter
+          </span>
+        )}
+        {shopStaleCount > 0 && (
+          // Stale chip on the collapsed disclosure summary — tells
+          // the seller "this shop's actionable backlog has lagger
+          // orders inside" without expanding the card. Warn-tinted
+          // to match the row chips and dashboard banner.
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-warn/40 bg-warn/10 text-warn text-xs shrink-0"
+            aria-label={`${shopStaleCount} commande${shopStaleCount === 1 ? "" : "s"} en attente depuis plus de 48 heures`}
+            title="Commandes en attente depuis plus de 48 heures"
+          >
+            <span aria-hidden>⏳</span>
+            <span className="font-medium tabular-nums">{shopStaleCount}</span> lent
+            {shopStaleCount === 1 ? "" : "s"}
           </span>
         )}
         <span className="text-xs text-ink-mute tabular-nums shrink-0 hidden sm:inline">
