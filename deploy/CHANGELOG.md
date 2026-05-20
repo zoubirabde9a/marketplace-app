@@ -6,6 +6,23 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy commit 20a81e2 (web-only: seller UX sweep, ~1300 LOC across seller surfaces)
+
+- Shipped working tree via runbook 07 (tar+ssh); rebuilt `marketplace-web:local`; recreated `marketplace-web`. `api`/`caddy` left in place (no api/db code in this batch).
+- Verified post-deploy:
+  - `https://teno-store.com/` 200, `https://teno-store.com/seller` 200, `https://teno-store.com/search` 200, `/store/<sellerId>` 200, `/seller/dashboard` 307 → /seller (expected, no session)
+  - `api.teno-store.com/livez` 200 (`{"status":"ok"}`)
+  - HTML on /seller contains the new "Gratuit · sans commission" chip, the "par appel ou WhatsApp" bullet, and the "une image, un titre" image-required hint
+  - Storefront /store/019e08a4-97cd-7d98-afd7-670878dc51c2 contains the new pre-filled wa.me URL with `?text=Bonjour%2C%20je%20vous%20contacte%20au%20sujet%20de%20votre%20boutique%20«%20Smart%20Phone%20DZ%20…%20»%20sur%20Teno%20Store.`
+- Known pre-existing issue (not caused by this deploy): `https://teno-store.com/sitemap.xml` returns 504 from Caddy — Next.js sitemap route takes too long under load and Caddy hits its proxy-read timeout. Sitemap generates correctly from inside the container (`docker exec marketplace-web wget -qO- http://127.0.0.1:3200/sitemap.xml` returns valid XML). Out of scope for this batch; should be addressed by either a sitemap regenerator service (like the one for `/llms.txt`) or a longer Caddy timeout for `/sitemap.xml`.
+- What shipped (seller UX sweep, 34 files, 1329 insertions, 450 deletions):
+  - Forms (new + edit product, contact, create seller): mobile numeric-keypad price with live "29 999,00 DA" preview, currency-aware PriceField (reads v0.currency, defaults to DZD), drag-and-drop image upload with click-to-retry, "Couverture" badge on first image, failed-upload count warning, smart submit-button states (idle / no-image / uploading / submitting) with cursor-not-allowed + aria-busy, required-field asterisks + aria-required, description placeholder/counter, stock toggle with explanatory subtext (aria-describedby), multi-variant warning with mailto link, dir="auto" on text inputs, network try/catch around every fetch, success indicators with useEffect cleanup
+  - Dashboard: per-shop "à traiter" actionable chip (paid/fulfilling/disputed), relative-time order timestamps, status badges in three color tiers, full-row clickable product links, quantity pill + variant SKU subtitle + thumbnail on order lines, wilaya badge with location pin, pre-filled WhatsApp message including order #, ContactSummary with clickable tel/wa.me/url/mailto links, identity line "Connecté en tant que [name] (email)" + shop count for multi-shop sellers, support-mailto footer, parallel product+order fetch per shop (`Promise.allSettled`), variants-count pill on products list
+  - Storefront: pre-filled WhatsApp click-to-chat with shop name, "Voir le catalogue complet →" CTA on empty storefronts, `untrusted` + `dir="auto"` on every buyer-facing seller-typed string, "E-mail" label (was "Contact")
+  - Localization: `formatPrice` default switched from `en-US` to `fr-DZ` (was leaking `DZD 29,999.00` into French-primary pages); pluralization on count-in-heading labels across dashboard/storefront/cart/order
+  - Accessibility: explicit landmark naming via `aria-labelledby` on every page section + per-shop article; semantic HTML upgrades (article/section/header/footer/dl/dt/dd); `aria-hidden` on decorative arrows; `dir="ltr"` on phone/URL/email/order-number; touch targets bumped to ≥44px on mobile across all primary actions
+  - Real bug fixes: edit form no longer drops trailing `categoryIds` on multi-category products and preserves niche current category as a dynamic option; French translation of stray English Google Sign-In error; CreateSellerForm error path now reads `detail || error` (was error-only)
+
 ## 2026-05-19 — vps-eu — seller-uploaded images broken on storefront (fixed via /v1/media rewrite)
 
 - Symptom: products created through the seller UI (e.g. "eee" by Mahdi hakim, `019e423e-ff75-72a9-8418-58af7dce50ea`) had their image row written correctly in `catalog.media` (url `/v1/media/3775f84594f46c5be1bd2e9a35597ceb.jpg`) but rendered broken on `https://teno-store.com/product/<id>`. Scraper listings were unaffected because Ouedkniss URLs are absolute.
