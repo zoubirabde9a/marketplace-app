@@ -101,21 +101,29 @@ export function OrderRow({
               Nouveau
             </span>
           )}
-          {isStale && (
-            // Stale-actionable: warn-tinted chip on rows the
-            // dashboard banner is counting. Mutually exclusive in
-            // practice with "Nouveau" (10min vs 48h windows can't
-            // overlap) but rendered independently so they wouldn't
-            // collide even if they did.
-            <span
-              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-warn/15 border border-warn/40 text-warn"
-              aria-label="En attente depuis plus de 48 heures"
-              title="En attente depuis plus de 48 heures — pensez à marquer en préparation ou expédiée"
-            >
-              <span aria-hidden>⏳</span>
-              Lent
-            </span>
-          )}
+          {isStale && (() => {
+            // Stale-actionable chip + age. The dashboard / row /
+            // detail-page banner all use 48h paid|fulfilling as
+            // the "stale" definition; here we ALSO surface the
+            // actual age so a row tells the seller "this one's 5
+            // days old" vs "this one's only just stale". Same
+            // formatting rule as the detail banner (jours once
+            // past 2 days, hours up to that).
+            const ageMs = Date.now() - new Date(o.createdAt).getTime();
+            const ageHours = Math.floor(ageMs / (60 * 60_000));
+            const ageDays = Math.floor(ageHours / 24);
+            const ageLabel = ageDays >= 2 ? `${ageDays}j` : `${ageHours}h`;
+            return (
+              <span
+                className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-warn/15 border border-warn/40 text-warn"
+                aria-label={`En attente depuis ${ageDays >= 2 ? `${ageDays} jours` : `${ageHours} heures`}`}
+                title={`En attente depuis ${ageDays >= 2 ? `${ageDays} jours` : `${ageHours} heures`} — pensez à marquer en préparation ou expédiée`}
+              >
+                <span aria-hidden>⏳</span>
+                Lent · <span className="tabular-nums">{ageLabel}</span>
+              </span>
+            );
+          })()}
           <OrderNoteIndicator orderId={o.orderId} />
           <OrderProgress status={o.status} />
         </div>
