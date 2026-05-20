@@ -95,9 +95,27 @@ export function OrderNoteField({ orderId }: OrderNoteFieldProps): React.JSX.Elem
         placeholder="Ex. : appeler après 18h · livraison rapide demandée · vérifier la couleur exacte"
         className="mt-3 w-full rounded-lg bg-bg border border-line px-3 py-2 text-sm text-ink focus:border-accent/60 outline-none placeholder:text-ink-mute disabled:opacity-60"
       />
-      <p className="mt-1 text-[10px] text-ink-mute tabular-nums text-right">
-        {value.length}/500
-      </p>
+      <div className="mt-1 flex items-center justify-between text-[10px] text-ink-mute">
+        {value.length > 0 ? (
+          // Explicit cleanup affordance. The textarea's select-all-
+          // and-delete works but is two-step on mobile; this is one
+          // tap to wipe. Persist removes the localStorage key
+          // entirely (zero-length value path).
+          <button
+            type="button"
+            onClick={() => {
+              setValue("");
+              persist("");
+            }}
+            className="text-ink-mute hover:text-bad active:text-bad underline-offset-2 hover:underline active:underline transition"
+          >
+            Effacer la note
+          </button>
+        ) : (
+          <span />
+        )}
+        <span className="tabular-nums">{value.length}/500</span>
+      </div>
     </section>
   );
 }
