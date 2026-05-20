@@ -117,6 +117,23 @@ export function OrdersStats({ orders, actionableCount, now, shops }: OrdersStats
         hint="Total des commandes non annulées des 7 derniers jours"
       />
     </dl>
+    {perShopBreakdown && (
+      <dl
+        aria-label="Revenu par boutique (7 jours)"
+        className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-soft"
+      >
+        <dt className="text-[10px] uppercase tracking-widest text-ink-mute">
+          Par boutique
+        </dt>
+        {perShopBreakdown.map((s) => (
+          <div key={s.sellerId} className="inline-flex items-baseline gap-1.5">
+            <dd className="text-ink-soft" dir="auto">{s.displayName}</dd>
+            <dd className="tabular-nums text-ink font-medium">{s.label}</dd>
+          </div>
+        ))}
+      </dl>
+    )}
+    </>
   );
 }
 

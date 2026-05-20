@@ -316,7 +316,12 @@ export default async function SellerOrdersPage({
       </header>
 
       {orders.length > 0 && (
-        <OrdersStats orders={orders} actionableCount={actionableCount} now={new Date()} />
+        <OrdersStats
+          orders={orders}
+          actionableCount={actionableCount}
+          now={new Date()}
+          shops={sellers.length > 1 ? sellers : undefined}
+        />
       )}
 
       {anyFetchFailed && (
