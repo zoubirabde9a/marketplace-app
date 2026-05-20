@@ -266,6 +266,14 @@ export default async function DashboardPage() {
             </Link>
           )}
           {sellers.length > 0 && (
+            <Link
+              href="/seller/customers"
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+            >
+              Clients
+            </Link>
+          )}
+          {sellers.length > 0 && (
             // <a> not <Link> — the export route returns text/csv with
             // a Content-Disposition: attachment header; Next's Link
             // would prefetch and never trigger the browser's download

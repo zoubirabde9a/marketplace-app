@@ -1,0 +1,248 @@
+// Aggregated customers view — every unique buyer the seller has shipped
+// to, deduped by phone, with their lifetime order count, total spend
+// (dominant currency), wilaya, and last-order time. Built entirely off
+// the orders the dashboard / unified view already fetches; no new
+// endpoint needed. Sellers managing relationships ("who's my best
+// customer, when did Yacine last order?") get the answer here without
+// having to scroll through order history.
+
+import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCurrentUser, syntheticAgentId } from "@/lib/sellerSession";
+import {
+  listMySellers,
+  listSellerOrders,
+  type SellerOrder,
+  type SellerRecord,
+} from "@/lib/api";
+import { CopyIconButton } from "@/components/CopyButton";
+import { formatPrice, formatRelativeTime } from "@/lib/format";
+import { AutoRefresh } from "../orders/AutoRefresh";
+import { LastRefreshed } from "../orders/LastRefreshed";
+import { OfflineIndicator } from "../orders/OfflineIndicator";
+
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Clients",
+  robots: { index: false, follow: false },
+};
+
+interface CustomerAggregate {
+  phone: string;
+  /** Customer name from the most recent order — buyers occasionally
+   *  update their delivery name across orders; the latest one is the
+   *  closest to truth. */
+  name: string;
+  region: string;
+  orderCount: number;
+  revenueByCcy: Record<string, bigint>;
+  lastOrderAt: string;
+  firstOrderAt: string;
+}
+
+export default async function SellerCustomersPage(): Promise<React.JSX.Element> {
+  const session = await getCurrentUser();
+  if (!session) redirect("/seller");
+  const agentId = syntheticAgentId(session.user.id);
+  const sellersResp = await listMySellers(session.jwt, agentId);
+  const sellers: SellerRecord[] = sellersResp.data;
+  if (sellers.length === 0) redirect("/seller/dashboard");
+
+  const results = await Promise.allSettled(
+    sellers.map((s) => listSellerOrders(s.sellerId, session.jwt)),
+  );
+  // Aggregate by phone — same dedup key the repeat-customer chips use
+  // elsewhere, so this view's count of customers reconciles with the
+  // chip on each row.
+  const byPhone = new Map<string, CustomerAggregate>();
+  let anyFetchFailed = false;
+  results.forEach((r) => {
+    if (r.status !== "fulfilled") {
+      anyFetchFailed = true;
+      return;
+    }
+    for (const o of r.value.data as SellerOrder[]) {
+      if (!o.customer) continue;
+      const phone = o.customer.phone;
+      const existing = byPhone.get(phone);
+      if (existing) {
+        existing.orderCount++;
+        if (o.createdAt > existing.lastOrderAt) {
+          existing.lastOrderAt = o.createdAt;
+          existing.name = o.customer.name;
+          existing.region = o.customer.region;
+        }
+        if (o.createdAt < existing.firstOrderAt) {
+          existing.firstOrderAt = o.createdAt;
+        }
+        try {
+          existing.revenueByCcy[o.currency] =
+            (existing.revenueByCcy[o.currency] ?? 0n) + BigInt(o.subtotalMinor);
+        } catch {
+          /* skip unparseable subtotal */
+        }
+      } else {
+        const agg: CustomerAggregate = {
+          phone,
+          name: o.customer.name,
+          region: o.customer.region,
+          orderCount: 1,
+          revenueByCcy: {},
+          lastOrderAt: o.createdAt,
+          firstOrderAt: o.createdAt,
+        };
+        try {
+          agg.revenueByCcy[o.currency] = BigInt(o.subtotalMinor);
+        } catch {
+          /* skip */
+        }
+        byPhone.set(phone, agg);
+      }
+    }
+  });
+  const customers = Array.from(byPhone.values()).sort(
+    // Newest-last-order first — the "who just bought from me?" sort.
+    (a, b) => b.lastOrderAt.localeCompare(a.lastOrderAt),
+  );
+
+  return (
+    <section
+      aria-labelledby="customers-heading"
+      className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-5xl mx-auto"
+      lang="fr"
+    >
+      <AutoRefresh />
+      <OfflineIndicator />
+      <header className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="min-w-0">
+          <h1 id="customers-heading" className="text-2xl sm:text-3xl font-semibold tracking-tight">
+            Clients
+          </h1>
+          <p className="mt-2 text-xs text-ink-mute">
+            <span className="text-ink-soft tabular-nums">{customers.length}</span>{" "}
+            client{customers.length === 1 ? "" : "s"} unique
+            {customers.length === 1 ? "" : "s"}
+          </p>
+          {customers.length > 0 && (
+            <div className="mt-2">
+              <LastRefreshed renderedAt={new Date().toISOString()} />
+            </div>
+          )}
+        </div>
+        <Link
+          href="/seller/dashboard"
+          className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition shrink-0"
+        >
+          ← Tableau de bord
+        </Link>
+      </header>
+
+      {anyFetchFailed && (
+        <p className="mt-4 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
+          Certaines boutiques n’ont pas pu être chargées. La liste ci-dessous
+          peut être incomplète.
+        </p>
+      )}
+
+      <div className="mt-8 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-6">
+        {customers.length === 0 ? (
+          <p className="text-sm text-ink-mute">
+            Aucun client pour le moment. Une fois qu’un acheteur passe commande,
+            il apparaît dans cette liste.
+          </p>
+        ) : (
+          <ul className="divide-y divide-line-soft">
+            {customers.map((c) => {
+              const topCcy = Object.entries(c.revenueByCcy).sort(
+                (a, b) => Number(b[1] - a[1]),
+              )[0];
+              const revenue = topCcy
+                ? formatPrice(topCcy[1].toString(), topCcy[0], "fr-DZ")
+                : null;
+              return (
+                <li key={c.phone} className="py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      {/* Name links to the customer's full order
+                          history with the seller — same pattern as
+                          the order row's name link (2745960). */}
+                      <Link
+                        href={`/seller/orders?q=${encodeURIComponent(c.phone)}`}
+                        dir="auto"
+                        className="text-base font-medium text-ink untrusted hover:text-accent active:text-accent transition"
+                      >
+                        {c.name}
+                      </Link>
+                      {c.orderCount >= 2 && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border border-accent/40 bg-accent/10 text-accent"
+                          aria-label={`${c.orderCount} commandes`}
+                        >
+                          <span aria-hidden>★</span>
+                          {c.orderCount} commande{c.orderCount === 1 ? "" : "s"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-soft">
+                      <a
+                        href={`tel:${c.phone}`}
+                        dir="ltr"
+                        className="inline-flex items-center gap-1 font-mono hover:text-accent active:text-accent transition"
+                        aria-label={`Appeler ${c.name}`}
+                      >
+                        {c.phone}
+                      </a>
+                      <CopyIconButton
+                        value={c.phone}
+                        ariaLabel="Copier le numéro de téléphone"
+                      />
+                      <a
+                        href={`https://wa.me/${c.phone.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 h-6 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 active:bg-emerald-500/25 transition"
+                      >
+                        WhatsApp
+                      </a>
+                      {c.region && (
+                        <span
+                          className="inline-flex items-center gap-1"
+                          aria-label={`Wilaya : ${c.region}`}
+                        >
+                          <span aria-hidden>📍</span>
+                          <span dir="auto">{c.region}</span>
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-ink-mute tabular-nums">
+                      Dernière commande{" "}
+                      <span
+                        className="text-ink-soft"
+                        title={new Date(c.lastOrderAt).toLocaleString("fr-DZ")}
+                      >
+                        {formatRelativeTime(c.lastOrderAt) ??
+                          new Date(c.lastOrderAt).toLocaleString("fr-DZ")}
+                      </span>
+                    </p>
+                  </div>
+                  {revenue && (
+                    <dl className="text-right shrink-0">
+                      <dt className="text-[10px] uppercase tracking-widest text-ink-mute">
+                        Total dépensé
+                      </dt>
+                      <dd className="text-sm font-medium tabular-nums text-ink">
+                        {revenue}
+                      </dd>
+                    </dl>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
