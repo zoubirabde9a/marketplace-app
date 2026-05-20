@@ -160,6 +160,30 @@ export default async function DashboardPage() {
               no shops yet — the link target redirects back here in
               that case but showing it would be a dead-end loop. */}
           {sellers.length > 0 && (
+            // <a> not <Link> — the export route returns text/csv with
+            // a Content-Disposition: attachment header; Next's Link
+            // would prefetch and never trigger the browser's download
+            // dialog. Same shape as the orders CSV link.
+            <a
+              href="/seller/products/export"
+              download
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center gap-2 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+              title="Exporter tous les produits en CSV"
+            >
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                aria-hidden
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v14m0 0l-5-5m5 5l5-5M5 21h14" />
+              </svg>
+              Exporter
+            </a>
+          )}
+          {sellers.length > 0 && (
             <Link
               href="/seller/orders"
               className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center gap-2 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
