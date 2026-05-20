@@ -168,6 +168,32 @@ export function ProductRow({ product: p, shopName }: ProductRowProps): React.JSX
           value={publicUrl}
           ariaLabel="Copier le lien public du produit"
         />
+        {/* Open the storefront PDP in a new tab — useful when the
+            seller wants to verify exactly what the buyer sees (image
+            order, copy, price, related items) without leaving the
+            dashboard. stopPropagation so this doesn't also trigger
+            the parent row's edit-page navigation. */}
+        <a
+          href={publicUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          aria-label="Voir l’annonce en ligne"
+          title="Voir l’annonce en ligne"
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink-mute hover:text-accent hover:bg-bg-elev active:text-accent active:bg-bg-elev transition shrink-0"
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M14 4h6v6m0-6L10 14M9 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-4" />
+          </svg>
+        </a>
         {/* WhatsApp share — opens wa.me with a pre-filled message
             (title, price, link). The contact picker that opens lets
             the seller blast it across multiple chats in one go.
