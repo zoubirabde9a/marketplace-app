@@ -25,6 +25,13 @@ import { AutoRefresh } from "../orders/AutoRefresh";
 // per-row `data-actionable` attribute can't drift apart.
 const ACTIONABLE_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling", "disputed"]);
 
+// How recently an order must have been created to render the "Nouveau"
+// chip. 10 minutes balances "long enough that auto-refresh ticks
+// usually catch the order while it's still flagged" with "short enough
+// that the chip doesn't linger across a seller's coffee break and stop
+// meaning fresh".
+const NEW_ORDER_WINDOW_MS = 10 * 60_000;
+
 // Group orders by calendar bucket relative to `now`. Returns the buckets in
 // chronological display order (newest first), with empty buckets dropped so
 // the dashboard never renders a "Hier" heading above zero rows. `anyActionable`
@@ -486,6 +493,7 @@ async function SellerSection({
                   customerOrderCount={
                     o.customer ? customerOrderCounts.get(o.customer.phone) : undefined
                   }
+                  isNew={Date.now() - new Date(o.createdAt).getTime() < NEW_ORDER_WINDOW_MS}
                 />
               </li>
               )),

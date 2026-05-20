@@ -31,6 +31,13 @@ interface OrderRowProps {
    *  computes this once over the full dataset; the row only renders.
    */
   customerOrderCount?: number;
+  /** Mark the row as "fresh" — typically computed by the page as
+   *  "createdAt within the last 10 minutes from now". Pairs with the
+   *  auto-refresh polling: when a new order lands via router.refresh()
+   *  the seller sees a "Nouveau" chip on it, drawing the eye without
+   *  needing to scan the whole list.
+   */
+  isNew?: boolean;
 }
 
 export function OrderRow({
@@ -38,6 +45,7 @@ export function OrderRow({
   sellerId,
   shopName,
   customerOrderCount,
+  isNew,
 }: OrderRowProps): React.JSX.Element {
   const isRepeat = (customerOrderCount ?? 0) >= 2;
   return (
@@ -71,6 +79,19 @@ export function OrderRow({
           >
             {formatRelativeTime(o.createdAt) ?? new Date(o.createdAt).toLocaleString("fr-DZ")}
           </span>
+          {isNew && (
+            // Small pulse-dot chip drawn the eye to just-arrived rows.
+            // bg-accent dot subtly animates so it stands out in a list
+            // of similar-looking rows. Auto-fades the moment the order
+            // crosses the freshness threshold on the next refresh.
+            <span
+              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-accent/15 border border-accent/40 text-accent"
+              aria-label="Nouvelle commande"
+            >
+              <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+              Nouveau
+            </span>
+          )}
           <OrderProgress status={o.status} />
         </div>
         {o.customer && (

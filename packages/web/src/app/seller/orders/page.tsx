@@ -35,6 +35,13 @@ export const metadata: Metadata = {
 
 const ACTIONABLE_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling", "disputed"]);
 
+// Mirrors the dashboard's NEW_ORDER_WINDOW_MS — orders created within
+// this many milliseconds of now render with a "Nouveau" chip in the
+// row. Pairs with the 60s AutoRefresh tick: the seller catches the
+// chip on the first refresh after the order lands and it auto-fades
+// after the window elapses on subsequent refreshes.
+const NEW_ORDER_WINDOW_MS = 10 * 60_000;
+
 // Cross-shop annotation. Each order keeps a reference back to its owning
 // shop so the row component can label it and OrderActions can submit the
 // transition against the right seller ID.
@@ -327,6 +334,10 @@ export default async function SellerOrdersPage({
                         u.order.customer
                           ? customerOrderCounts.get(u.order.customer.phone)
                           : undefined
+                      }
+                      isNew={
+                        Date.now() - new Date(u.order.createdAt).getTime() <
+                        NEW_ORDER_WINDOW_MS
                       }
                     />
                   </li>
