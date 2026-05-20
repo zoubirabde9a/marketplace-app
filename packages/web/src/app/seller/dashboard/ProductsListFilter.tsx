@@ -33,10 +33,42 @@ export function ProductsListFilter({
   children,
 }: ProductsListFilterProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState("");
   const [visibleCount, setVisibleCount] = useState(totalCount);
 
   const normalized = useMemo(() => query.trim().toLowerCase(), [query]);
+
+  // Same global keyboard shortcuts as OrdersSearch (23e151a): "/" to
+  // focus the input from anywhere on the page, Escape to clear + blur.
+  // Keeps both unified search surfaces (orders + products) consistent
+  // so the seller doesn't have to remember which one supports which
+  // shortcut. Only attaches when the input is actually rendered —
+  // when totalCount < minCount we early-return below and this effect's
+  // cleanup pulls the listener.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    function onKeyDown(e: KeyboardEvent): void {
+      const ae = document.activeElement as HTMLElement | null;
+      const inField =
+        ae != null &&
+        (ae.tagName === "INPUT" ||
+          ae.tagName === "TEXTAREA" ||
+          ae.tagName === "SELECT" ||
+          ae.isContentEditable);
+      if (e.key === "/" && !inField && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        inputRef.current?.focus();
+        return;
+      }
+      if (e.key === "Escape" && ae === inputRef.current) {
+        setQuery("");
+        inputRef.current?.blur();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -88,12 +120,24 @@ export function ProductsListFilter({
             🔍
           </span>
           <input
+            ref={inputRef}
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Filtrer par titre ou marque…"
-            className="w-full rounded-full bg-bg border border-line pl-9 pr-3 h-9 text-sm text-ink focus:border-accent/60 outline-none placeholder:text-ink-mute"
+            className="w-full rounded-full bg-bg border border-line pl-9 pr-12 h-9 text-sm text-ink focus:border-accent/60 outline-none placeholder:text-ink-mute"
           />
+          {/* "/" discoverability cue, mirroring OrdersSearch (23e151a).
+              Hidden on mobile (no hardware keyboard) and once typing
+              begins so it doesn't compete with content. */}
+          {query === "" && (
+            <kbd
+              aria-hidden
+              className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 items-center justify-center min-w-[1.25rem] h-5 px-1 rounded border border-line text-[10px] text-ink-mute bg-bg-elev pointer-events-none"
+            >
+              /
+            </kbd>
+          )}
         </label>
         {query !== "" && (
           <button
