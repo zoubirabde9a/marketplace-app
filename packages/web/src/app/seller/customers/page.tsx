@@ -215,6 +215,20 @@ export default async function SellerCustomersPage({
               Exporter
             </a>
           )}
+          {sellers.length === 1 && (
+            // Storefront preview — symmetric with the other unified
+            // pages. Single-shop sellers only; multi-shop case uses
+            // the per-shop dashboard cards.
+            <a
+              href={`/store/${encodeURIComponent(sellers[0]!.sellerId)}`}
+              target="_blank"
+              rel="noopener"
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center gap-1 rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+              title="Voir la boutique publique"
+            >
+              Voir la boutique <span aria-hidden>↗</span>
+            </a>
+          )}
           <Link
             href="/seller/dashboard"
             className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
