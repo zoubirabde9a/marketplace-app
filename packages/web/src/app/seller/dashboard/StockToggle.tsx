@@ -39,16 +39,26 @@ export function StockToggle({ productId, initialInStock }: StockToggleProps): Re
     setError(null);
     startTransition(async () => {
       let res: Response;
+      // 30s safety timeout via AbortController — same pattern as
+      // OrderActions (33cf141). A stuck network would otherwise
+      // leave useTransition pending forever and the toggle
+      // disabled with no feedback.
+      const ctrl = new AbortController();
+      const timeoutId = window.setTimeout(() => ctrl.abort(), 30_000);
       try {
         res = await fetch(`/api/seller/products/${encodeURIComponent(productId)}/stock`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ inStock: next }),
+          signal: ctrl.signal,
         });
-      } catch {
+      } catch (e) {
+        const aborted = (e as { name?: string }).name === "AbortError";
         setOptimistic(!next);
-        setError("Connexion impossible.");
+        setError(aborted ? "Délai dépassé" : "Connexion impossible");
         return;
+      } finally {
+        window.clearTimeout(timeoutId);
       }
       if (!res.ok) {
         setOptimistic(!next);

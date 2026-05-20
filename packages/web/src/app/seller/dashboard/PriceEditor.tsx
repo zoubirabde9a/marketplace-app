@@ -90,16 +90,26 @@ export function PriceEditor({
     setError(null);
     startTransition(async () => {
       let res: Response;
+      // 30s safety timeout — same pattern as OrderActions and
+      // StockToggle. Without it a stuck network would leave the
+      // useTransition pending forever, the editor disabled with
+      // no feedback.
+      const ctrl = new AbortController();
+      const timeoutId = window.setTimeout(() => ctrl.abort(), 30_000);
       try {
         res = await fetch(`/api/seller/products/${encodeURIComponent(productId)}/price`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ priceMajor: trimmed }),
+          signal: ctrl.signal,
         });
-      } catch {
+      } catch (e) {
+        const aborted = (e as { name?: string }).name === "AbortError";
         setOptimisticMinor(previousMinor);
-        setError("Connexion impossible");
+        setError(aborted ? "Délai dépassé" : "Connexion impossible");
         return;
+      } finally {
+        window.clearTimeout(timeoutId);
       }
       if (!res.ok) {
         setOptimisticMinor(previousMinor);
