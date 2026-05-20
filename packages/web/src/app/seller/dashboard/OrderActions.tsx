@@ -104,6 +104,14 @@ export function OrderActions({
     setError(null);
     start(async () => {
       let res: Response;
+      // 30s timeout on the transition fetch via AbortController.
+      // Without this, a stuck network leaves the useTransition's
+      // pending state forever — the action buttons stay disabled
+      // and the seller has no feedback. The cap is generous
+      // (transitions normally complete in 1-3s) so happy-path
+      // requests never trip it.
+      const ctrl = new AbortController();
+      const timeoutId = window.setTimeout(() => ctrl.abort(), 30_000);
       try {
         res = await fetch(
           `/api/seller/sellers/${encodeURIComponent(sellerId)}/orders/${encodeURIComponent(orderId)}/transition`,
@@ -111,11 +119,19 @@ export function OrderActions({
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ event: spec.event }),
+            signal: ctrl.signal,
           },
         );
-      } catch {
-        setError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+      } catch (e) {
+        const aborted = (e as { name?: string }).name === "AbortError";
+        setError(
+          aborted
+            ? "Le serveur ne répond pas — réessayez dans un instant."
+            : "Connexion impossible. Vérifiez votre réseau et réessayez.",
+        );
         return;
+      } finally {
+        window.clearTimeout(timeoutId);
       }
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { detail?: string; error?: string };
@@ -134,6 +150,8 @@ export function OrderActions({
     setError(null);
     start(async () => {
       let res: Response;
+      const ctrl = new AbortController();
+      const timeoutId = window.setTimeout(() => ctrl.abort(), 30_000);
       try {
         res = await fetch(
           `/api/seller/sellers/${encodeURIComponent(sellerId)}/orders/${encodeURIComponent(orderId)}/transition`,
@@ -141,11 +159,19 @@ export function OrderActions({
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({ event: "cancel", reason }),
+            signal: ctrl.signal,
           },
         );
-      } catch {
-        setError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+      } catch (e) {
+        const aborted = (e as { name?: string }).name === "AbortError";
+        setError(
+          aborted
+            ? "Le serveur ne répond pas — réessayez dans un instant."
+            : "Connexion impossible. Vérifiez votre réseau et réessayez.",
+        );
         return;
+      } finally {
+        window.clearTimeout(timeoutId);
       }
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { detail?: string; error?: string };
