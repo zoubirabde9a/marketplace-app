@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy MCP state-machine pair docs (ae225c5)
+
+- Rebuilt and rolled `marketplace-api:local`; web and caddy untouched.
+- `dispute.check_sla`, `order.allowed_events`, `order.get` descriptions overhauled with seller-actionable patterns (pre-check before mutating, menu vs error-after-the-fact, route sellers to `seller.list_orders`).
+- `/livez` returned `{"status":"ok"}` after restart.
+
 ## 2026-05-20 — vps-eu — deploy MCP catalog + risk doc batch (008a264)
 
 - Rebuilt and rolled `marketplace-api:local`; web and caddy untouched.
