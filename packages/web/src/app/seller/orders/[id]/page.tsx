@@ -108,8 +108,20 @@ export default async function OrderDetailPage({ params }: PageProps): Promise<Re
           urgency cue. Fires when paid/fulfilling AND >48h old.
           Print-hidden because the courier never needs to read
           "this took us too long" on the slip. */}
-      {(order.status === "paid" || order.status === "fulfilling") &&
-        Date.now() - new Date(order.createdAt).getTime() > 48 * 60 * 60_000 && (
+      {(() => {
+        // Compute the order's age in hours and decide whether the
+        // stale banner fires. Threshold + status set match the
+        // dashboard banner (b552ef5) and row chip (206a116) so
+        // counts reconcile. The age label uses days once we cross
+        // 48 hours so "3 jours" reads at a glance more sharply
+        // than "72 heures".
+        if (order.status !== "paid" && order.status !== "fulfilling") return null;
+        const ageMs = Date.now() - new Date(order.createdAt).getTime();
+        if (ageMs <= 48 * 60 * 60_000) return null;
+        const ageHours = Math.floor(ageMs / (60 * 60_000));
+        const ageDays = Math.floor(ageHours / 24);
+        const ageLabel = ageDays >= 2 ? `${ageDays} jours` : `${ageHours} heures`;
+        return (
           <div className="mt-6 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-warn print:hidden flex items-start gap-3">
             <svg
               className="w-5 h-5 shrink-0 mt-0.5"
@@ -123,14 +135,15 @@ export default async function OrderDetailPage({ params }: PageProps): Promise<Re
             </svg>
             <div className="min-w-0">
               <p className="text-sm font-medium">
-                Commande en attente depuis plus de 48 heures
+                Commande en attente depuis {ageLabel}
               </p>
               <p className="mt-0.5 text-xs text-warn/80">
                 Marquez-la en préparation ou expédiée — l’acheteur attend.
               </p>
             </div>
           </div>
-        )}
+        );
+      })()}
 
       <div className="mt-6">
         <PrintableSlip order={order} shopName={owningSeller.displayName} />
