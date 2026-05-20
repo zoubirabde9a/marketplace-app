@@ -46,6 +46,18 @@ export function LastRefreshed({ renderedAt }: LastRefreshedProps): React.JSX.Ele
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [renderedAt]);
 
+  // Safety timeout: if router.refresh() never lands a new
+  // renderedAt prop (offline mid-refresh, server timeout, etc.),
+  // the spinning state would persist forever. Cap it at 5
+  // seconds — long enough for the refresh to win in normal
+  // conditions, short enough that the seller doesn't stare at a
+  // broken-looking spinner indefinitely.
+  useEffect(() => {
+    if (!spinning) return;
+    const t = window.setTimeout(() => setSpinning(false), 5000);
+    return () => window.clearTimeout(t);
+  }, [spinning]);
+
   useEffect(() => {
     const id = window.setInterval(() => force((x) => x + 1), 10_000);
     return () => window.clearInterval(id);
