@@ -188,6 +188,13 @@ export function NewProductForm({
         setError(null);
         start(async () => {
           let r: Response;
+          // 30s safety timeout via AbortController — same pattern
+          // every other seller-write fetch now uses (f8bc969). The
+          // create-product POST is a single JSON request, so 30s
+          // is generous; without it a stalled network leaves the
+          // useTransition pending forever and the form locked.
+          const ctrl = new AbortController();
+          const timeoutId = window.setTimeout(() => ctrl.abort(), 30_000);
           try {
             r = await fetch("/api/seller/products", {
               method: "POST",
@@ -205,13 +212,21 @@ export function NewProductForm({
                   byteSize: x.uploaded!.byteSize,
                 })),
               }),
+              signal: ctrl.signal,
             });
-          } catch {
-            // Network-layer failure (offline, DNS, CORS) — fetch throws
-            // before any response. Without this catch the rejection was
-            // unhandled and the form snapped back to idle silently.
-            setError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+          } catch (e) {
+            // Network-layer failure OR our timeout firing. Without
+            // this catch the rejection was unhandled and the form
+            // snapped back to idle silently.
+            const aborted = (e as { name?: string }).name === "AbortError";
+            setError(
+              aborted
+                ? "Le serveur ne répond pas — réessayez dans un instant."
+                : "Connexion impossible. Vérifiez votre réseau et réessayez.",
+            );
             return;
+          } finally {
+            window.clearTimeout(timeoutId);
           }
           if (!r.ok) {
             const j = (await r.json().catch(() => ({}))) as { error?: string; detail?: string };
