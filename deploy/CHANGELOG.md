@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy cart/order title-asymmetry doc (4393c50)
+
+- Rebuilt and rolled `marketplace-api:local`; web and caddy untouched.
+- `cart.add_item` and `order.get` descriptions now flag that title is returned as a plain string (not the `untrusted_content` envelope catalog.* uses) — surfaced by a live smoke test of the seller → buyer-side flow.
+- `/livez` returned `{"status":"ok"}` after restart.
+
 ## 2026-05-20 — vps-eu — deploy MCP state-machine pair docs (ae225c5)
 
 - Rebuilt and rolled `marketplace-api:local`; web and caddy untouched.
