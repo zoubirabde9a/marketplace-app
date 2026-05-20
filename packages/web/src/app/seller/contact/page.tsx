@@ -52,9 +52,46 @@ export default async function ContactPage({
         <span aria-hidden>←</span> Retour au tableau de bord
       </Link>
       <h1 id="contact-edit-heading" className="mt-3 text-2xl font-semibold tracking-tight">Modifier les coordonnées</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        Boutique : <span dir="auto" className="text-ink">{seller.displayName}</span>
-      </p>
+      {sellers.length > 1 ? (
+        // Multi-shop sellers: render a chip strip to switch shops in
+        // place. Each chip is a plain Link that re-renders the page
+        // with ?sellerId=X — no client state, no extra fetch beyond
+        // the single getMySellers the page already makes.
+        <div
+          role="tablist"
+          aria-label="Choisir la boutique"
+          className="mt-3 flex flex-wrap items-center gap-2"
+        >
+          <span className="text-[10px] uppercase tracking-widest text-ink-mute mr-1">
+            Boutique
+          </span>
+          {sellers.map((s) => {
+            const active = s.sellerId === seller.sellerId;
+            return (
+              <Link
+                key={s.sellerId}
+                href={`/seller/contact?sellerId=${encodeURIComponent(s.sellerId)}`}
+                role="tab"
+                aria-selected={active}
+                className={
+                  "inline-flex items-center gap-1.5 px-3 h-8 rounded-full text-xs font-medium transition " +
+                  (active
+                    ? "bg-accent/15 text-accent border border-accent/40"
+                    : "border border-line text-ink-mute hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40")
+                }
+              >
+                <span dir="auto" className="truncate max-w-[12rem]">
+                  {s.displayName}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="mt-2 text-sm text-ink-soft">
+          Boutique : <span dir="auto" className="text-ink">{seller.displayName}</span>
+        </p>
+      )}
       {/* All fields are nullable in the API — sellers don't have to set
           phone + WhatsApp + website all at once. State this upfront so
           they don't feel obligated to fill every input before saving. */}
