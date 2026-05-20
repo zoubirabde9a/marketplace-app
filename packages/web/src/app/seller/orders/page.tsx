@@ -49,6 +49,11 @@ const ACTIONABLE_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling", 
 // after the window elapses on subsequent refreshes.
 const NEW_ORDER_WINDOW_MS = 10 * 60_000;
 
+// Stale-actionable: same 48h threshold as the dashboard banner
+// (b552ef5) so the count and the per-row chip stay in sync.
+const STALE_AFTER_MS = 48 * 60 * 60_000;
+const STALE_ROW_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling"]);
+
 // Cross-shop annotation. Each order keeps a reference back to its owning
 // shop so the row component can label it and OrderActions can submit the
 // transition against the right seller ID.
@@ -452,6 +457,11 @@ export default async function SellerOrdersPage({
                       isNew={
                         Date.now() - new Date(u.order.createdAt).getTime() <
                         NEW_ORDER_WINDOW_MS
+                      }
+                      isStale={
+                        STALE_ROW_STATUSES.has(u.order.status) &&
+                        Date.now() - new Date(u.order.createdAt).getTime() >
+                          STALE_AFTER_MS
                       }
                     />
                   </li>

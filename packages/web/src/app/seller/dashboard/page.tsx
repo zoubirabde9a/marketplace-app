@@ -35,6 +35,12 @@ const ACTIONABLE_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling", 
 // meaning fresh".
 const NEW_ORDER_WINDOW_MS = 10 * 60_000;
 
+// Mirror of STALE_AFTER_MS used by the dashboard's banner so the
+// banner count and the chip count can't drift. Stale = paid /
+// fulfilling AND > 48h old.
+const STALE_AFTER_MS_ROW = 48 * 60 * 60_000;
+const STALE_ROW_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling"]);
+
 // Group orders by calendar bucket relative to `now`. Returns the buckets in
 // chronological display order (newest first), with empty buckets dropped so
 // the dashboard never renders a "Hier" heading above zero rows. `anyActionable`
@@ -717,6 +723,10 @@ async function SellerSection({
                     o.customer ? customerOrderCounts.get(o.customer.phone) : undefined
                   }
                   isNew={Date.now() - new Date(o.createdAt).getTime() < NEW_ORDER_WINDOW_MS}
+                  isStale={
+                    STALE_ROW_STATUSES.has(o.status) &&
+                    Date.now() - new Date(o.createdAt).getTime() > STALE_AFTER_MS_ROW
+                  }
                 />
               </li>
               )),

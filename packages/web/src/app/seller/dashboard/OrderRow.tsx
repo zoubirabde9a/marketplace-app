@@ -38,6 +38,13 @@ interface OrderRowProps {
    *  needing to scan the whole list.
    */
   isNew?: boolean;
+  /** Mark the row as "stale" — paid/fulfilling and unactioned >48h.
+   *  Mirror of the dashboard's stale-actionable warning banner
+   *  (b552ef5); same threshold so the count in the banner equals
+   *  the count of chips in the list. Renders a small warn-tinted
+   *  chip drawing the eye to laggers the seller should clear first.
+   */
+  isStale?: boolean;
 }
 
 export function OrderRow({
@@ -46,6 +53,7 @@ export function OrderRow({
   shopName,
   customerOrderCount,
   isNew,
+  isStale,
 }: OrderRowProps): React.JSX.Element {
   const isRepeat = (customerOrderCount ?? 0) >= 2;
   return (
@@ -90,6 +98,21 @@ export function OrderRow({
             >
               <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
               Nouveau
+            </span>
+          )}
+          {isStale && (
+            // Stale-actionable: warn-tinted chip on rows the
+            // dashboard banner is counting. Mutually exclusive in
+            // practice with "Nouveau" (10min vs 48h windows can't
+            // overlap) but rendered independently so they wouldn't
+            // collide even if they did.
+            <span
+              className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-warn/15 border border-warn/40 text-warn"
+              aria-label="En attente depuis plus de 48 heures"
+              title="En attente depuis plus de 48 heures — pensez à marquer en préparation ou expédiée"
+            >
+              <span aria-hidden>⏳</span>
+              Lent
             </span>
           )}
           <OrderProgress status={o.status} />
