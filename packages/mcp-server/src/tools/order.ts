@@ -161,8 +161,22 @@ export function registerOrderTools(reg: McpRegistry): void {
 
   reg.register({
     name: "order.allowed_events",
-    description:
-      "Return the events that are allowed from the current order state. Read-only; useful for an agent that wants to plan its next move without trying transitions blindly.",
+    description: [
+      "Return the events that are allowed from the current order state. Read-only; pure function over",
+      "(current state) — cheap to call before any `order.apply_event`.",
+      "",
+      "Returned fields:",
+      "  • `allowedEvents`: list of event kinds the agent is permitted to send next. Use this to offer",
+      "    the operator a concrete menu ('You can ship, cancel, or refund — which?') rather than asking",
+      "    an open question and risking an invalid transition.",
+      "  • `terminal`: true ⇒ the order is in a final state (delivered + refunded, or fully canceled).",
+      "    No more transitions possible; tell the operator the order is closed.",
+      "",
+      "Recommended pattern: when an operator says 'mark this shipped' or 'cancel this', call this first",
+      "to confirm the requested transition is legal in the current state. Beats catching",
+      "`order_invalid_transition` after the fact, because the error doesn't tell the operator WHICH",
+      "transitions would have worked — this tool does.",
+    ].join("\n"),
     scope: "order:read",
     auditEvent: "order.allowed_events",
     idempotent: true,

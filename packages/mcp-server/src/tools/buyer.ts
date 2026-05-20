@@ -602,9 +602,14 @@ export function registerBuyerTools(reg: McpRegistry, deps: BuyerAdapter): void {
   reg.register({
     name: "order.get",
     description: [
-      "Fetch a placed order by id. For anonymous orders (the COD flow we ship today) pass the",
-      "`orderToken` returned by checkout.confirm — without it the call is rejected with",
-      "order_access_denied. Returns the same line items + customer + totals the seller dashboard sees.",
+      "Fetch a placed order by id. This is the BUYER-side fetch — the agent must either be the order",
+      "owner (user-bound order) or pass the `orderToken` returned by checkout.confirm (anonymous COD",
+      "order). Without one of those, the call returns `order_access_denied`.",
+      "",
+      "Seller-side use: a seller agent should NOT use this tool to inspect orders against shops it owns",
+      "— it lacks the ownership shortcut. Use `seller.list_orders` instead, which returns the same",
+      "line items + customer + totals scoped to a single sellerId and filters out other sellers'",
+      "lines automatically.",
     ].join("\n"),
     scope: "buyer:order:read",
     auditEvent: "order.get",

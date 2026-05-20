@@ -133,8 +133,22 @@ export function registerDisputeTools(reg: McpRegistry): void {
 
   reg.register({
     name: "dispute.check_sla",
-    description:
-      "Check SLA pressure for an open dispute: should-auto-escalate, approaching-deadline notice, and hours-remaining.",
+    description: [
+      "Check SLA pressure for an open dispute. Pure read; cheap to call before any dispute.apply_event.",
+      "",
+      "Returned fields and what to do with them:",
+      "  • `hoursToDeadline`: hours until the dispute auto-escalates. Show this to the operator verbatim",
+      "    (e.g. 'You have 18 hours to respond before this auto-escalates.'). Drives urgency.",
+      "  • `shouldNotifyApproachingDeadline`: true when the deadline is close enough that the platform",
+      "    will start sending nudges. If the operator hasn't responded yet, this is the moment to act.",
+      "  • `shouldAutoEscalate`: true when the SLA has effectively expired and the dispute will be",
+      "    auto-escalated on the next sweep. At this point, `seller_respond` is still possible but the",
+      "    escalation is already imminent — surface that to the operator so they know the standing hit.",
+      "",
+      "Recommended pattern: any time the agent is about to call `dispute.apply_event`, call this first to",
+      "give the operator a concrete deadline number rather than vague 'soon'. Read-only, no audit-write,",
+      "no rate-limit-meaningful cost.",
+    ].join("\n"),
     // Read-only: pure function over (status, openedAt, now). Was previously
     // gated on dispute:write, which forced every observer (oncall dashboard,
     // notifier worker, escalation cron) to hold a write capability just to
