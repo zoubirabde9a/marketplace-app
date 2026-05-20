@@ -14,11 +14,15 @@ const ALLOWED_EVENTS = new Set(["begin_fulfillment", "ship", "deliver", "cancel"
 
 export async function POST(
   req: Request,
-  ctx: { params: Promise<{ sellerId: string; orderId: string }> },
+  // Next.js requires the same slug name at each tree depth. The parallel
+  // /api/seller/sellers/[id]/ route already uses `id` for sellerId, so
+  // this nested route reuses the same slug rather than introducing a
+  // conflicting [sellerId] segment.
+  ctx: { params: Promise<{ id: string; orderId: string }> },
 ): Promise<Response> {
   const jwt = await getSessionJwt();
   if (!jwt) return NextResponse.json({ ok: false, error: "not_signed_in" }, { status: 401 });
-  const { sellerId, orderId } = await ctx.params;
+  const { id: sellerId, orderId } = await ctx.params;
   let body: SellerOrderEvent;
   try {
     body = (await req.json()) as SellerOrderEvent;
