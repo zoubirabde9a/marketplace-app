@@ -24,6 +24,7 @@ import {
 import { OrderActions } from "../../dashboard/OrderActions";
 import { PrintButton } from "./PrintButton";
 import { PrintableSlip } from "./PrintableSlip";
+import { OrderNoteField } from "./OrderNoteField";
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +105,13 @@ export default async function OrderDetailPage({ params }: PageProps): Promise<Re
       <div className="mt-6">
         <PrintableSlip order={order} shopName={owningSeller.displayName} />
       </div>
+
+      {/* Local-only seller note. Lives below the slip and above the
+          action bar; hidden on print so the courier never sees the
+          internal note. Per-device persistence via localStorage —
+          enough for the in-the-moment "I'm on a call, jot it down"
+          workflow without needing backend. */}
+      <OrderNoteField orderId={order.orderId} />
 
       {/* Action buttons — hidden on print. Same OrderActions component
           the list uses; here it serves the "I just packed this, mark
