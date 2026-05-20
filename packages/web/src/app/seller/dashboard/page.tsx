@@ -23,6 +23,58 @@ import { StockToggle } from "./StockToggle";
 // per-row `data-actionable` attribute can't drift apart.
 const ACTIONABLE_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling", "disputed"]);
 
+// Group orders by calendar bucket relative to `now`. Returns the buckets in
+// chronological display order (newest first), with empty buckets dropped so
+// the dashboard never renders a "Hier" heading above zero rows. `anyActionable`
+// is precomputed per bucket so the rendered heading can carry a data-actionable
+// attribute and be hidden together with its rows when the "À traiter" filter
+// is on — that way headings don't strand above empty groups after filtering.
+function bucketOrdersByDate(
+  orders: ReadonlyArray<SellerOrder>,
+  now: Date,
+): Array<{ label: string; orders: SellerOrder[]; anyActionable: boolean }> {
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const DAY_MS = 86_400_000;
+  const startOfYesterday = startOfToday - DAY_MS;
+  // "Cette semaine" = rolling 7-day window ending today; inclusive of today
+  // and yesterday, so the actual lower bound is 6 days before today.
+  const startOfWeek = startOfToday - 6 * DAY_MS;
+  const groups: Record<"today" | "yesterday" | "week" | "older", SellerOrder[]> = {
+    today: [],
+    yesterday: [],
+    week: [],
+    older: [],
+  };
+  for (const o of orders) {
+    const t = new Date(o.createdAt).getTime();
+    if (Number.isNaN(t)) {
+      groups.older.push(o);
+      continue;
+    }
+    if (t >= startOfToday) groups.today.push(o);
+    else if (t >= startOfYesterday) groups.yesterday.push(o);
+    else if (t >= startOfWeek) groups.week.push(o);
+    else groups.older.push(o);
+  }
+  const LABELS: Record<keyof typeof groups, string> = {
+    today: "Aujourd’hui",
+    yesterday: "Hier",
+    week: "Cette semaine",
+    older: "Plus anciennes",
+  };
+  const out: Array<{ label: string; orders: SellerOrder[]; anyActionable: boolean }> = [];
+  for (const key of ["today", "yesterday", "week", "older"] as const) {
+    const list = groups[key];
+    if (list.length === 0) continue;
+    out.push({
+      label: LABELS[key],
+      orders: list,
+      anyActionable: list.some((o) => ACTIONABLE_STATUSES.has(o.status)),
+    });
+  }
+  return out;
+}
+
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -285,7 +337,23 @@ async function SellerSection({
         ) : (
           <OrdersListFilter actionableCount={actionableCount} totalCount={orders.length}>
           <ul className="divide-y divide-line-soft">
-            {orders.map((o) => (
+            {bucketOrdersByDate(orders, new Date()).flatMap((bucket) => [
+              // role="presentation" tells screen readers to skip the
+              // visual bucket label — each order row already contains
+              // its own relative time ("il y a 2 heures") so the
+              // heading is purely a sighted-user grouping cue.
+              <li
+                key={`h-${bucket.label}`}
+                role="presentation"
+                data-actionable={bucket.anyActionable ? "true" : "false"}
+                className="pt-4 pb-1 text-[10px] uppercase tracking-widest text-ink-mute first:pt-1"
+              >
+                {bucket.label}
+                <span className="ml-2 normal-case tracking-normal text-ink-mute">
+                  ({bucket.orders.length})
+                </span>
+              </li>,
+              ...bucket.orders.map((o) => (
               <li
                 key={o.orderId}
                 data-actionable={ACTIONABLE_STATUSES.has(o.status) ? "true" : "false"}
@@ -410,7 +478,8 @@ async function SellerSection({
                   </dd>
                 </dl>
               </li>
-            ))}
+              )),
+            ])}
           </ul>
           </OrdersListFilter>
         )}
