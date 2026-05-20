@@ -62,7 +62,17 @@ export function ProductRow({ product: p, shopName }: ProductRowProps): React.JSX
     <Link
       href={`/seller/products/${encodeURIComponent(p.productId)}/edit`}
       aria-label={`Modifier ${cleanProductTitle(p.title)}`}
-      className="-mx-2 px-2 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 rounded-lg hover:bg-bg/60 active:bg-bg/60 transition"
+      className={
+        "-mx-2 px-2 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 rounded-lg hover:bg-bg/60 active:bg-bg/60 transition " +
+        // Out-of-stock listings can't be bought — fade them back so
+        // the seller's eye lands on the actively-selling rows first.
+        // Not display:none because the seller still needs to see
+        // them (to flip stock back on, share the link in a
+        // pre-order conversation, edit, etc.); just less visual
+        // weight. Children stay full-opacity on hover so the row
+        // doesn't feel broken when the seller is reading it.
+        (p.inStock ? "" : "opacity-60 hover:opacity-100")
+      }
     >
       <div className="flex items-center gap-3 min-w-0 sm:flex-1">
         {p.heroImageUrl ? (
