@@ -26,15 +26,19 @@ interface OrdersSearchProps {
   totalCount: number;
   minCount?: number;
   children: React.ReactNode;
+  /** Pre-fill the search input — used when arriving via /seller/orders?q=
+   * (e.g. clicking the "Client habitué" chip on a row). */
+  initialQuery?: string;
 }
 
 export function OrdersSearch({
   totalCount,
   minCount = 6,
   children,
+  initialQuery = "",
 }: OrdersSearchProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [visibleCount, setVisibleCount] = useState(totalCount);
 
   const normalized = useMemo(() => query.trim().toLowerCase(), [query]);
@@ -81,7 +85,10 @@ export function OrdersSearch({
     setVisibleCount(visible);
   }, [normalized, children]);
 
-  if (totalCount < minCount) {
+  // Always render the input when we arrived with a pre-filled query —
+  // even a tiny shop needs the visible filter UI so the seller can see
+  // why only a subset is showing (and clear the filter back to all).
+  if (totalCount < minCount && initialQuery === "") {
     return <div ref={containerRef}>{children}</div>;
   }
 

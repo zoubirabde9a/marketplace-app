@@ -77,15 +77,20 @@ export function OrderRow({
           <div className="mt-1 text-sm text-ink-soft">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span dir="auto" className="text-ink untrusted">{o.customer.name}</span>
-              {isRepeat && (
-                <span
-                  className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border border-accent/40 bg-accent/10 text-accent"
-                  aria-label={`Client habitué — ${customerOrderCount} commandes`}
-                  title={`Client habitué — ${customerOrderCount} commandes`}
+              {isRepeat && o.customer && (
+                // Deep-links to /seller/orders pre-filtered by this
+                // customer's phone, so the seller sees the buyer's
+                // full history in one tap. OrdersSearch reads ?q from
+                // the URL and pre-fills its input.
+                <Link
+                  href={`/seller/orders?q=${encodeURIComponent(o.customer.phone)}`}
+                  className="inline-flex items-center gap-1 text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border border-accent/40 bg-accent/10 text-accent hover:bg-accent/15 active:bg-accent/20 transition"
+                  aria-label={`Voir l’historique du client (${customerOrderCount} commandes)`}
+                  title={`Voir l’historique du client — ${customerOrderCount} commandes`}
                 >
                   <span aria-hidden>★</span>
                   Client habitué
-                </span>
+                </Link>
               )}
               {o.customer.region && (
                 <span

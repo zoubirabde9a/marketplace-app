@@ -90,7 +90,24 @@ function bucketUnifiedByDate(
   return out;
 }
 
-export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
+interface SellerOrdersPageProps {
+  // Next 15 passes searchParams as a Promise on async server components.
+  // We read `q` to pre-fill the search input — used by the "Client
+  // habitué" chip deep-link.
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function SellerOrdersPage({
+  searchParams,
+}: SellerOrdersPageProps): Promise<React.JSX.Element> {
+  const sp = await searchParams;
+  const initialQueryRaw = sp.q;
+  const initialQuery =
+    typeof initialQueryRaw === "string"
+      ? initialQueryRaw
+      : Array.isArray(initialQueryRaw)
+      ? initialQueryRaw[0] ?? ""
+      : "";
   const session = await getCurrentUser();
   if (!session) redirect("/seller");
   const agentId = syntheticAgentId(session.user.id);
@@ -240,7 +257,7 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
             de vos produits, la commande apparaît ici.
           </p>
         ) : (
-          <OrdersSearch totalCount={orders.length}>
+          <OrdersSearch totalCount={orders.length} initialQuery={initialQuery}>
           <OrdersStatusTabs counts={tabCounts} totalCount={orders.length}>
             <ul className="divide-y divide-line-soft">
               {buckets.flatMap((bucket) => [
