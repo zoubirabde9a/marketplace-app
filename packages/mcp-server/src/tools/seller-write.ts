@@ -138,6 +138,27 @@ export interface SellerWriteAdapter {
      * `product.delete_listing` returns `not_implemented`.
      */
     softDelete?(productId: string, callerAgentId: string): Promise<"removed" | "not_found" | "not_owned" | "already_removed">;
+    /**
+     * Optional. Attach an already-fetchable image URL to a product. The
+     * catalog stores URLs only, not bytes — the operator must host the
+     * image somewhere publicly reachable. Returns the new media row or
+     * `media_cap_exceeded` when the product already has the maximum number
+     * of images.
+     */
+    addMedia?(productId: string, input: {
+      url: string;
+      contentType: string;
+      byteSize?: number;
+      width?: number;
+      height?: number;
+      altText?: string;
+    }): Promise<{ id: string; url: string } | "media_cap_exceeded" | undefined>;
+    /**
+     * Optional. Remove one media row from a product. Returns `last_image`
+     * when the product would have zero images left after removal — the
+     * platform refuses that because listings without images convert badly.
+     */
+    removeMedia?(productId: string, mediaId: string): Promise<"removed" | "not_found" | "last_image">;
     update?(productId: string, patch: {
       title?: string;
       description?: string | null;
@@ -508,6 +529,103 @@ export function registerSellerWriteTools(
           };
         }),
       };
+    },
+  });
+
+  reg.register({
+    name: "product.add_media",
+    description: [
+      "Attach a publicly-fetchable image URL to a product you own. The catalog stores URLs only, not",
+      "bytes — the URL must stay reachable forever (don't pass localhost paths, signed S3 links that",
+      "expire, or images behind a login wall). The first image attached to an imageless product also",
+      "becomes the hero.",
+      "",
+      "Use this to swap a product photo: `add_media` the new image, then `remove_media` the old one",
+      "(in that order — removing the last image before adding the replacement is rejected as",
+      "`last_image`).",
+      "",
+      "Output `result`: `added` (success, body includes the new media id + url) or `media_cap_exceeded`",
+      "(product already has the max allowed images — remove one before adding another). Tell the",
+      "operator the cap; the agent should not retry blindly.",
+    ].join("\n"),
+    scope: "seller:product:write",
+    auditEvent: "product.add_media",
+    idempotent: false,
+    inputSchema: z.object({
+      productId: z.string().min(1).max(200),
+      url: z.string().url().max(2048).refine((u) => /^https?:\/\//i.test(u), { message: "media_url_scheme_not_allowed" }),
+      contentType: z.string().regex(/^image\/[a-z0-9.+-]+$/i).max(64).optional(),
+      byteSize: z.number().int().positive().max(50_000_000).optional(),
+      width: z.number().int().positive().max(20_000).optional(),
+      height: z.number().int().positive().max(20_000).optional(),
+      altText: z.string().max(500).optional(),
+    }),
+    outputSchema: z.object({
+      productId: z.string(),
+      result: z.enum(["added", "media_cap_exceeded", "not_found", "not_owned"]),
+      mediaId: z.string().optional(),
+      url: z.string().url().optional(),
+    }),
+    handler: async (input, ctx) => {
+      if (!deps.products.getOwner || !deps.products.addMedia) {
+        throw new ValidationError([{ path: "_", message: "not_implemented:product_media_unsupported" }]);
+      }
+      const owner = await deps.products.getOwner(input.productId);
+      if (!owner) return { productId: input.productId, result: "not_found" as const };
+      if (owner.ownerAgentId !== ctx.agentId) {
+        return { productId: input.productId, result: "not_owned" as const };
+      }
+      const contentType = input.contentType ?? inferImageContentType(input.url);
+      const res = await deps.products.addMedia(input.productId, {
+        url: input.url,
+        contentType,
+        ...(input.byteSize !== undefined ? { byteSize: input.byteSize } : {}),
+        ...(input.width !== undefined ? { width: input.width } : {}),
+        ...(input.height !== undefined ? { height: input.height } : {}),
+        ...(input.altText !== undefined ? { altText: input.altText } : {}),
+      });
+      if (res === "media_cap_exceeded") {
+        return { productId: input.productId, result: "media_cap_exceeded" as const };
+      }
+      if (!res) return { productId: input.productId, result: "not_found" as const };
+      return { productId: input.productId, result: "added" as const, mediaId: res.id, url: res.url };
+    },
+  });
+
+  reg.register({
+    name: "product.remove_media",
+    description: [
+      "Remove one image from a product you own. The platform rejects removal when it would leave the",
+      "product with zero images — listings without images convert badly. To swap a photo, `add_media`",
+      "the replacement first, then `remove_media` the old one.",
+      "",
+      "Output `result`: `removed` (success), `last_image` (refused — add a replacement first),",
+      "`not_found` (product or mediaId doesn't exist), or `not_owned` (the agent doesn't own this",
+      "product's seller). The agent should explain the outcome to the operator rather than retry.",
+    ].join("\n"),
+    scope: "seller:product:write",
+    auditEvent: "product.remove_media",
+    idempotent: false,
+    inputSchema: z.object({
+      productId: z.string().min(1).max(200),
+      mediaId: z.string().min(1).max(200),
+    }),
+    outputSchema: z.object({
+      productId: z.string(),
+      mediaId: z.string(),
+      result: z.enum(["removed", "last_image", "not_found", "not_owned"]),
+    }),
+    handler: async (input, ctx) => {
+      if (!deps.products.getOwner || !deps.products.removeMedia) {
+        throw new ValidationError([{ path: "_", message: "not_implemented:product_media_unsupported" }]);
+      }
+      const owner = await deps.products.getOwner(input.productId);
+      if (!owner) return { productId: input.productId, mediaId: input.mediaId, result: "not_found" as const };
+      if (owner.ownerAgentId !== ctx.agentId) {
+        return { productId: input.productId, mediaId: input.mediaId, result: "not_owned" as const };
+      }
+      const result = await deps.products.removeMedia(input.productId, input.mediaId);
+      return { productId: input.productId, mediaId: input.mediaId, result };
     },
   });
 

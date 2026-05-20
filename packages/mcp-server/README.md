@@ -53,12 +53,11 @@ These are real product gaps an agent should NOT pretend to work around:
 - **No agent↔web-user account linking.** Shops created here cannot be
   managed from the operator's web login and vice versa. See the
   ownership model section above.
-- **Limited listing updates.** `product.update_listing` covers title,
-  description, brand, attributes, categories, ship-to regions, and the
-  full variants array (price, sku, stock). It does NOT cover media —
-  if the operator wants to swap a product photo, the only path today
-  is re-creating the listing (which leaves the old one behind, see the
-  previous gap).
+- **No combined "edit listing" tool.** `product.update_listing` covers
+  text/variants and `product.add_media` / `product.remove_media` cover
+  images, but an operator wanting to swap one image must call add then
+  remove in that order (removing the last image is rejected with
+  `last_image`).
 - **No buyer-side "list my orders" without an `orderToken`.** Anonymous
   COD orders need the token saved at checkout.confirm time. If the
   operator lost it, the order can only be looked up from the seller
@@ -101,10 +100,10 @@ patterns, error shapes, ownership caveats).
 Currently registered tool families (see `src/tools/` for the source):
 
 - **Seller (write)** — `seller.create_account`, `seller.list_mine`,
-  `product.create_listing`, `product.update_listing`, `product.delete_listing`.
-  Create + rediscover agent-owned shops; publish, update, and soft-delete
-  listings under them (media still not editable in place — re-create to
-  swap photos).
+  `product.create_listing`, `product.update_listing`, `product.delete_listing`,
+  `product.add_media`, `product.remove_media`. Full seller lifecycle:
+  create + rediscover shops; publish, update, swap images, and
+  soft-delete listings.
 - **Seller (read/preview)** — `seller.preview_listing`, `seller.list_orders`.
   Dry-run listing text through the moderation pipeline; list orders for a
   shop you own.

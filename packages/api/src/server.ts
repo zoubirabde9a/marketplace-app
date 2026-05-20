@@ -242,6 +242,14 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
           opts.repos.sellers.listOwnedBy(ownerAgentId, listOpts),
       },
       products: {
+        addMedia: async (productId, input) => {
+          const r = await opts.repos.products.addMedia(productId, input);
+          if (r === "media_cap_exceeded") return r;
+          if (!r) return undefined;
+          return { id: r.id, url: r.url };
+        },
+        removeMedia: (productId, mediaId) =>
+          opts.repos.products.removeMedia(productId, mediaId),
         softDelete: (productId, callerAgentId) =>
           opts.repos.products.softDelete(productId, callerAgentId),
         getOwner: async (productId) => {

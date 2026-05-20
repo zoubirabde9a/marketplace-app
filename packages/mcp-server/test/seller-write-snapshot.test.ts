@@ -184,6 +184,89 @@ describe("seller write tools — snapshots", () => {
     ).rejects.toThrow(/ISO 3166|country/i);
   });
 
+  it("product.add_media + remove_media: happy path swaps an image, last_image is refused", async () => {
+    const reg = new McpRegistry();
+    let imageCount = 1;
+    const adapter: SellerWriteAdapter = {
+      ...fakeAdapter,
+      products: {
+        ...fakeAdapter.products,
+        getOwner: async () => ({ sellerId: "slr_1", ownerAgentId: "agt_1" }),
+        addMedia: async (productId, input) => {
+          imageCount++;
+          return { id: `med_${imageCount}`, url: input.url };
+        },
+        removeMedia: async () => {
+          imageCount--;
+          return imageCount < 1 ? "last_image" : "removed";
+        },
+      },
+    };
+    registerSellerWriteTools(reg, adapter);
+
+    const add = (await reg.invoke(
+      "product.add_media",
+      { productId: "prd_1", url: "https://example.test/new.jpg" },
+      ctx(),
+    )) as { result: string; mediaId?: string };
+    expect(add.result).toBe("added");
+    expect(add.mediaId).toBe("med_2");
+
+    const remove1 = (await reg.invoke(
+      "product.remove_media",
+      { productId: "prd_1", mediaId: "med_1" },
+      ctx(),
+    )) as { result: string };
+    expect(remove1.result).toBe("removed");
+
+    const remove2 = (await reg.invoke(
+      "product.remove_media",
+      { productId: "prd_1", mediaId: "med_2" },
+      ctx(),
+    )) as { result: string };
+    expect(remove2.result).toBe("last_image");
+  });
+
+  it("product.add_media surfaces media_cap_exceeded without throwing", async () => {
+    const reg = new McpRegistry();
+    const adapter: SellerWriteAdapter = {
+      ...fakeAdapter,
+      products: {
+        ...fakeAdapter.products,
+        getOwner: async () => ({ sellerId: "slr_1", ownerAgentId: "agt_1" }),
+        addMedia: async () => "media_cap_exceeded",
+      },
+    };
+    registerSellerWriteTools(reg, adapter);
+    const out = (await reg.invoke(
+      "product.add_media",
+      { productId: "prd_1", url: "https://example.test/another.jpg" },
+      ctx(),
+    )) as { result: string };
+    expect(out.result).toBe("media_cap_exceeded");
+  });
+
+  it("product.add_media rejects wrong-owner without calling addMedia", async () => {
+    const reg = new McpRegistry();
+    let addCalled = false;
+    const adapter: SellerWriteAdapter = {
+      ...fakeAdapter,
+      products: {
+        ...fakeAdapter.products,
+        getOwner: async () => ({ sellerId: "slr_x", ownerAgentId: "agt_other" }),
+        addMedia: async () => { addCalled = true; return undefined; },
+      },
+    };
+    registerSellerWriteTools(reg, adapter);
+    const out = (await reg.invoke(
+      "product.add_media",
+      { productId: "prd_other", url: "https://example.test/x.jpg" },
+      ctx(),
+    )) as { result: string };
+    expect(out.result).toBe("not_owned");
+    expect(addCalled).toBe(false);
+  });
+
   it("product.delete_listing returns removed for an owned product", async () => {
     const reg = new McpRegistry();
     const adapter: SellerWriteAdapter = {
