@@ -6,6 +6,23 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy commits 09dbc92 + 4d4614f + e61adcd (seller order status management + product soft-delete)
+
+- Shipped working tree via runbook 07 (tar+ssh). Rebuilt both `marketplace-api:local` AND `marketplace-web:local` (api/db code changed for the first time in this batch). Recreated `marketplace-api` and `marketplace-web`. `caddy`/`postgres`/`redis` left in place.
+- What shipped:
+  - **API**: `DELETE /v1/products/:id` — soft-delete (flips products.status to "removed"). Hard delete is intentionally avoided: order_items.variant_id references productVariants without ON DELETE CASCADE, so purging a previously-ordered product would violate the FK or destroy order history. The "removed" status is already filtered out of every public read query (search, listForSeller, getProductsByIds, loadOneActive). Idempotent: re-deleting returns 204.
+  - **API**: `POST /v1/sellers/:sellerId/orders/:orderId/transition` — apply a seller-driven domain event (begin_fulfillment / ship / deliver / cancel) on an order. Calls into `orderDomain.applyEvent` for the state machine, writes the new status on the order row AND a row in `order_status_history` so we can audit transitions later. Requires the caller to own at least one line in the order. Cancel requires a non-empty reason.
+  - **DB**: new `ProductRepo.softDelete` and `OrderRepo.applySellerEvent` methods (typed contracts on both the api/repos interfaces and the db/repos implementations).
+  - **Web**: edit-product page now has a "Zone dangereuse" section with type-the-title confirm modal (09dbc92, separate commit by parallel session).
+  - **Web**: new client component `<OrderActions>` on the dashboard order list. Renders the state-machine transitions that apply to each order's current status: paid → "Marquer en préparation" + "Annuler", fulfilling → "Marquer expédié" + "Annuler", shipped → "Marquer livré". Cancel opens an inline reason prompt. Closed/pre-payment orders get no buttons (no transitions exposed).
+  - **Web**: new `/api/seller/sellers/[id]/orders/[orderId]/transition` Next.js route handler proxies to the new API endpoint.
+- Hiccup hit and resolved mid-deploy: first deploy of the transition route landed it under `[sellerId]/`. Next.js requires the same slug name at each tree depth and the parallel `[id]/` segment for the existing contact PATCH route caused every page to render 500 with "You cannot use different slug names for the same dynamic path ('id' !== 'sellerId')" looping in web logs. Fix (e61adcd) renamed the directory to `[id]/`, re-shipped, rebuilt+restarted web. ~5 min of 500s.
+- Verified post-deploy:
+  - `https://teno-store.com/` 200, `/seller` 200, `/seller/dashboard` 307 → /seller (expected), `/store/<sellerId>` 200, `/search` 200
+  - `api.teno-store.com/livez` 200 (`{"status":"ok"}`)
+  - All containers healthy: marketplace-api (Up, healthy), marketplace-web (Up), marketplace-caddy/postgres/redis untouched
+- Known carried-over issue (unchanged from previous deploy): `https://teno-store.com/sitemap.xml` still 504s from Caddy on the slow generation. Sitemap regenerator service still owed (see 2026-05-20 first entry below).
+
 ## 2026-05-20 — vps-eu — deploy commit 20a81e2 (web-only: seller UX sweep, ~1300 LOC across seller surfaces)
 
 - Shipped working tree via runbook 07 (tar+ssh); rebuilt `marketplace-web:local`; recreated `marketplace-web`. `api`/`caddy` left in place (no api/db code in this batch).
