@@ -26,6 +26,7 @@ import { OrdersStatusTabs, type StatusTab } from "./OrdersStatusTabs";
 import { OrdersRangeFilter, type RangeTab } from "./OrdersRangeFilter";
 import { TabTitleBadge } from "./TabTitleBadge";
 import { AutoRefresh } from "./AutoRefresh";
+import { LastRefreshed } from "./LastRefreshed";
 
 export const dynamic = "force-dynamic";
 
@@ -231,6 +232,14 @@ export default async function SellerOrdersPage({
               </>
             )}
           </p>
+          {/* Liveness signal. Pairs with AutoRefresh — gives the
+              seller visible confidence that the page is polling and
+              when the last fresh data landed. renderedAt is captured
+              fresh on each server render, so router.refresh() ticks
+              snap the label back to "à l'instant". */}
+          <div className="mt-2">
+            <LastRefreshed renderedAt={new Date().toISOString()} />
+          </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap shrink-0">
           {actionableCount > 0 && (
