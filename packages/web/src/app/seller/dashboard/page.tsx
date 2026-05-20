@@ -112,8 +112,19 @@ export default async function DashboardPage() {
         </section>
       ) : (
         <div className="mt-10 space-y-10">
-          {sellers.map((s) => (
-            <SellerSection key={s.sellerId} seller={s} sessionJwt={session.jwt} />
+          {sellers.map((s, i) => (
+            <SellerSection
+              key={s.sellerId}
+              seller={s}
+              sessionJwt={session.jwt}
+              // Multi-shop sellers see every shop in a collapsible
+              // disclosure: the first stays open, the rest fold to a
+              // single summary row so the page is scannable at a
+              // glance. Single-shop sellers (the common case) skip the
+              // disclosure entirely and render as before.
+              collapsible={sellers.length > 1}
+              defaultOpen={i === 0}
+            />
           ))}
         </div>
       )}
@@ -139,7 +150,22 @@ export default async function DashboardPage() {
   );
 }
 
-async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; sessionJwt: string }) {
+async function SellerSection({
+  seller,
+  sessionJwt,
+  collapsible = false,
+  defaultOpen = true,
+}: {
+  seller: SellerRecord;
+  sessionJwt: string;
+  /** Wrap the article in a <details> disclosure. Set true when the
+   * seller owns more than one shop so the dashboard stays scannable. */
+  collapsible?: boolean;
+  /** When `collapsible` is true, render the disclosure expanded
+   * initially. The first shop in the list gets this; subsequent shops
+   * default closed. */
+  defaultOpen?: boolean;
+}) {
   let products: {
     productId: string;
     title: string;
@@ -211,7 +237,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
   // semantic element. aria-labelledby points at the H2 so screen readers
   // announce "Article: <shop name>" when entering the card.
   const headingId = `shop-heading-${seller.sellerId}`;
-  return (
+  const article = (
     <article aria-labelledby={headingId} className="rounded-2xl border border-line-soft bg-bg-soft/60">
       <header className="p-4 sm:p-6 border-b border-line-soft flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="min-w-0 sm:flex-1">
@@ -520,6 +546,45 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
         )}
       </section>
     </article>
+  );
+
+  if (!collapsible) return article;
+
+  // Multi-shop disclosure. A thin clickable bar opens/closes the full
+  // shop card. Even when expanded the bar stays — it's the affordance to
+  // collapse back. `[&::-webkit-details-marker]:hidden` strips the
+  // default browser triangle; we render our own chevron that flips on
+  // open via `group-open:rotate-90`.
+  return (
+    <details open={defaultOpen} className="group rounded-2xl">
+      <summary
+        aria-controls={headingId}
+        className="cursor-pointer list-none [&::-webkit-details-marker]:hidden flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-bg-soft/40 active:bg-bg-soft/40 transition select-none"
+      >
+        <span
+          aria-hidden
+          className="text-ink-mute text-xs transition-transform duration-150 group-open:rotate-90 shrink-0"
+        >
+          ▶
+        </span>
+        <span dir="auto" className="text-sm font-medium text-ink truncate min-w-0 flex-1">
+          {seller.displayName}
+        </span>
+        {actionableCount > 0 && (
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-accent/40 bg-accent/10 text-accent text-xs shrink-0"
+            aria-label={`${actionableCount} commande${actionableCount === 1 ? "" : "s"} à traiter`}
+          >
+            <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-accent" />
+            <span className="font-medium tabular-nums">{actionableCount}</span> à traiter
+          </span>
+        )}
+        <span className="text-xs text-ink-mute tabular-nums shrink-0 hidden sm:inline">
+          {products.length} produit{products.length === 1 ? "" : "s"}
+        </span>
+      </summary>
+      <div className="mt-2">{article}</div>
+    </details>
   );
 }
 
