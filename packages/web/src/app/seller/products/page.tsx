@@ -20,6 +20,7 @@ import { cleanProductTitle } from "@/lib/format";
 import { ProductRow, type ProductRowData } from "../dashboard/ProductRow";
 import { ProductsListFilter } from "../dashboard/ProductsListFilter";
 import { ProductsStockFilter, type StockTab } from "../dashboard/ProductsStockFilter";
+import { AutoRefresh } from "../orders/AutoRefresh";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,7 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
       className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-5xl mx-auto"
       lang="fr"
     >
+      <AutoRefresh />
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <h1 id="products-heading" className="text-2xl sm:text-3xl font-semibold tracking-tight">

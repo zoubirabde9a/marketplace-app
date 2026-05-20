@@ -18,6 +18,7 @@ import { ProductsStockFilter, type StockTab } from "./ProductsStockFilter";
 import { OrderRow } from "./OrderRow";
 import { ProductRow } from "./ProductRow";
 import { GetStartedChecklist } from "./GetStartedChecklist";
+import { AutoRefresh } from "../orders/AutoRefresh";
 
 // Status set that the seller still owes the buyer some action on. Mirrors
 // the actionableCount calculation below so the filter chip's count and the
@@ -126,6 +127,12 @@ export default async function DashboardPage() {
 
   return (
     <section aria-labelledby="dashboard-heading" className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-5xl mx-auto" lang="fr">
+      {/* Same 60s polling pattern as /seller/orders: aggregate
+          actionable badge, per-shop counts, stock chips, and inline
+          editors' baseline values all stay fresh without manual F5.
+          Pauses when tab is hidden or any input has focus (the
+          price/stock editors live inline on rows). */}
+      <AutoRefresh />
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 id="dashboard-heading" className="text-2xl sm:text-3xl font-semibold tracking-tight break-words">Tableau de bord vendeur</h1>
