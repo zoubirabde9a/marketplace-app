@@ -3,7 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FR_CATEGORY } from "@/lib/categories";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, cleanProductTitle } from "@/lib/format";
+import { ConfirmModal } from "@/components/ConfirmModal";
 
 const SELLER_CATEGORIES: ReadonlyArray<{ slug: string; label: string }> = [
   { slug: "telephones", label: FR_CATEGORY.telephones },
@@ -58,6 +59,40 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
   const [descriptionLen, setDescriptionLen] = useState(initial.description.length);
   const [inStock, setInStock] = useState<boolean>(initial.variants[0]?.inStock ?? true);
   const [isDragging, setIsDragging] = useState(false);
+  // Delete-product modal state. Kept local to the form so the confirm flow
+  // composes with the same `useTransition` UX the seller sees on save: the
+  // modal disables its confirm button while the network call is in flight,
+  // and on success we navigate back to the dashboard.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDelete(): Promise<void> {
+    setDeleting(true);
+    setDeleteError(null);
+    let res: Response;
+    try {
+      res = await fetch(`/api/seller/products/${encodeURIComponent(initial.productId)}`, {
+        method: "DELETE",
+      });
+    } catch {
+      setDeleteError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+      setDeleting(false);
+      return;
+    }
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { detail?: string; error?: string };
+      setDeleteError(j.detail || j.error || `Échec (HTTP ${res.status})`);
+      setDeleting(false);
+      return;
+    }
+    // Don't flip `deleting` back to false — we're navigating away. Doing
+    // so would briefly re-enable the confirm button if the modal stayed
+    // mounted longer than expected.
+    setDeleteOpen(false);
+    router.push("/seller/dashboard");
+    router.refresh();
+  }
 
   // Auto-dismiss the success indicator with useEffect cleanup — if the
   // seller navigates away mid-wait, the timer cancels instead of firing
@@ -170,6 +205,7 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
   }
 
   return (
+    <>
     <form
       onSubmit={(e) => {
         e.preventDefault();
@@ -511,6 +547,60 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
         })()}
       </div>
     </form>
+
+    {/* Zone dangereuse — irreversibility is the whole point of separating
+        this from the save form. Sits *outside* the <form> so it can never
+        be triggered by the implicit submit-on-Enter behavior in a price
+        input. The confirm modal requires the seller to type the product
+        title verbatim before the red button enables. */}
+    <section
+      aria-labelledby="danger-heading"
+      className="mt-8 rounded-2xl border border-bad/30 bg-bad/5 p-4 sm:p-5"
+    >
+      <h2 id="danger-heading" className="text-sm font-semibold text-bad tracking-tight">
+        Zone dangereuse
+      </h2>
+      <p className="mt-1 text-xs text-ink-soft">
+        La suppression retire l’annonce de votre boutique, de la recherche et
+        des résultats de catégorie. Les commandes déjà passées restent
+        consultables dans votre historique.
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          setDeleteError(null);
+          setDeleteOpen(true);
+        }}
+        className="mt-3 inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg border border-bad/40 text-bad hover:bg-bad/10 active:bg-bad/15 transition font-medium"
+      >
+        Supprimer le produit
+      </button>
+    </section>
+
+    <ConfirmModal
+      open={deleteOpen}
+      onClose={() => {
+        if (!deleting) setDeleteOpen(false);
+      }}
+      onConfirm={handleDelete}
+      tone="danger"
+      title="Supprimer ce produit ?"
+      description={
+        <>
+          <p>
+            <span dir="auto" className="font-medium text-ink">{cleanProductTitle(initial.title)}</span>{" "}
+            disparaîtra immédiatement de votre boutique et de la recherche. Cette
+            action est définitive — elle ne peut pas être annulée depuis le
+            tableau de bord.
+          </p>
+        </>
+      }
+      confirmPhrase={cleanProductTitle(initial.title)}
+      confirmLabel="Supprimer définitivement"
+      busy={deleting}
+      errorMessage={deleteError}
+    />
+    </>
   );
 }
 

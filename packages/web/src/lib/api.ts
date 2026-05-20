@@ -404,6 +404,21 @@ export async function updateProduct(
   });
 }
 
+// Soft-delete a product. Server-side API flips status to "removed" so order
+// history (orders.variant_id → catalog.variants → catalog.products FK) is
+// preserved; from the seller's perspective the listing is gone — disappears
+// from the dashboard, store, search.
+export async function deleteProduct(
+  sessionJwt: string,
+  productId: string,
+): Promise<void> {
+  await authedRequest<unknown>(
+    `/v1/products/${encodeURIComponent(productId)}`,
+    sessionJwt,
+    { method: "DELETE", headers: { "idempotency-key": cryptoRandomKey() } },
+  );
+}
+
 export async function attachProductMedia(
   sessionJwt: string,
   productId: string,
@@ -481,6 +496,35 @@ export async function listSellerOrders(
   return authedRequest<{ data: SellerOrder[] }>(
     `/v1/sellers/${encodeURIComponent(sellerId)}/orders`,
     sessionJwt,
+  );
+}
+
+/** Apply a seller-driven domain event to an order. The four exposed events:
+ *  - `begin_fulfillment` (paid → fulfilling)
+ *  - `ship`              (fulfilling → shipped)
+ *  - `deliver`           (shipped → delivered)
+ *  - `cancel`            (paid|fulfilling → cancelled; requires `reason`)
+ */
+export type SellerOrderEvent =
+  | { event: "begin_fulfillment" }
+  | { event: "ship" }
+  | { event: "deliver" }
+  | { event: "cancel"; reason: string };
+
+export async function transitionSellerOrder(
+  sessionJwt: string,
+  sellerId: string,
+  orderId: string,
+  event: SellerOrderEvent,
+): Promise<{ orderId: string; status: string }> {
+  return authedRequest(
+    `/v1/sellers/${encodeURIComponent(sellerId)}/orders/${encodeURIComponent(orderId)}/transition`,
+    sessionJwt,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json", "idempotency-key": cryptoRandomKey() },
+      body: JSON.stringify(event),
+    },
   );
 }
 

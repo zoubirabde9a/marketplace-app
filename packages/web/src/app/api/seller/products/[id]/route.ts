@@ -6,7 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { getSessionJwt } from "@/lib/sellerSession";
-import { updateProduct, type ApiError, type UpdateProductInput } from "@/lib/api";
+import { updateProduct, deleteProduct, type ApiError, type UpdateProductInput } from "@/lib/api";
 
 export async function PATCH(
   req: Request,
@@ -29,6 +29,30 @@ export async function PATCH(
     console.error("[api/seller/products/:id] update_failed", err.status, err.message);
     return NextResponse.json(
       { ok: false, error: err.message || "update_failed", detail: err.detail },
+      { status: err.status ?? 500 },
+    );
+  }
+}
+
+// DELETE /api/seller/products/:id — proxy soft-delete to the API. The
+// dashboard surfaces this from the edit page's "Danger zone" with a
+// type-the-title confirmation modal, so by the time we land here the
+// seller has already confirmed intent.
+export async function DELETE(
+  _req: Request,
+  ctx: { params: Promise<{ id: string }> },
+): Promise<Response> {
+  const jwt = await getSessionJwt();
+  if (!jwt) return NextResponse.json({ ok: false, error: "not_signed_in" }, { status: 401 });
+  const { id } = await ctx.params;
+  try {
+    await deleteProduct(jwt, id);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    const err = e as ApiError;
+    console.error("[api/seller/products/:id] delete_failed", err.status, err.message);
+    return NextResponse.json(
+      { ok: false, error: err.message || "delete_failed", detail: err.detail },
       { status: err.status ?? 500 },
     );
   }
