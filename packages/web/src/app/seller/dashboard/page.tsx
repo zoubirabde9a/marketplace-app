@@ -634,11 +634,23 @@ async function SellerSection({
   // chip on the multi-shop collapsed disclosure summary so a
   // seller with several shops can see at a glance which shop is
   // carrying the laggers without expanding each card.
-  const shopStaleCount = orders.filter(
-    (o) =>
-      STALE_ROW_STATUSES.has(o.status) &&
-      Date.now() - new Date(o.createdAt).getTime() > STALE_AFTER_MS_ROW,
-  ).length;
+  let shopStaleCount = 0;
+  let shopOldestStaleMs = 0;
+  for (const o of orders) {
+    if (!STALE_ROW_STATUSES.has(o.status)) continue;
+    const ageMs = Date.now() - new Date(o.createdAt).getTime();
+    if (ageMs <= STALE_AFTER_MS_ROW) continue;
+    shopStaleCount++;
+    if (ageMs > shopOldestStaleMs) shopOldestStaleMs = ageMs;
+  }
+  // Human-readable label for the oldest stale order's age in this
+  // shop. Same hours/days formatting rule as the row chip (dae63da)
+  // and the detail-page banner (87efc85).
+  const shopStaleAgeLabel = ((): string => {
+    const hours = Math.floor(shopOldestStaleMs / (60 * 60_000));
+    const days = Math.floor(hours / 24);
+    return days >= 2 ? `${days} jours` : `${hours} heures`;
+  })();
   // Repeat-customer detection within this shop's order history.
   // Same logic as the unified /seller/orders page but scoped to one
   // seller — a buyer who orders twice from this same shop earns the
@@ -943,8 +955,8 @@ async function SellerSection({
           // to match the row chips and dashboard banner.
           <span
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-warn/40 bg-warn/10 text-warn text-xs shrink-0"
-            aria-label={`${shopStaleCount} commande${shopStaleCount === 1 ? "" : "s"} en attente depuis plus de 48 heures`}
-            title="Commandes en attente depuis plus de 48 heures"
+            aria-label={`${shopStaleCount} commande${shopStaleCount === 1 ? "" : "s"} en attente, dont la plus ancienne depuis ${shopStaleAgeLabel}`}
+            title={`Plus ancienne en attente depuis ${shopStaleAgeLabel}`}
           >
             <span aria-hidden>⏳</span>
             <span className="font-medium tabular-nums">{shopStaleCount}</span> lent
