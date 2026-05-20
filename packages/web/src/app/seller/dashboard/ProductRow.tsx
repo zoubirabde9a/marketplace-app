@@ -44,6 +44,20 @@ interface ProductRowProps {
 
 export function ProductRow({ product: p, shopName }: ProductRowProps): React.JSX.Element {
   const isSingleVariant = p.variantCount === undefined || p.variantCount <= 1;
+  // Compose a one-line share message: title, price (when known), URL.
+  // wa.me opens WhatsApp's contact picker with the text pre-filled —
+  // beats the seller copying the link, typing the title, typing the
+  // price, then pasting the link into each conversation.
+  const publicUrl = `${SITE_URL}/product/${p.productId}`;
+  const titleClean = cleanProductTitle(p.title);
+  const priceForShare =
+    p.priceMinor && p.currency
+      ? formatPrice(p.priceMinor, p.currency, "fr-DZ")
+      : p.priceFromMinor && p.currency
+      ? `à partir de ${formatPrice(p.priceFromMinor, p.currency, "fr-DZ")}`
+      : null;
+  const shareText = [titleClean, priceForShare, publicUrl].filter(Boolean).join(" — ");
+  const waShareUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
   return (
     <Link
       href={`/seller/products/${encodeURIComponent(p.productId)}/edit`}
@@ -118,9 +132,37 @@ export function ProductRow({ product: p, shopName }: ProductRowProps): React.JSX
           </span>
         )}
         <CopyIconButton
-          value={`${SITE_URL}/product/${p.productId}`}
+          value={publicUrl}
           ariaLabel="Copier le lien public du produit"
         />
+        {/* WhatsApp share — opens wa.me with a pre-filled message
+            (title, price, link). The contact picker that opens lets
+            the seller blast it across multiple chats in one go.
+            stopPropagation so this doesn't also trigger the parent
+            row's edit-page navigation. */}
+        <a
+          href={waShareUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          aria-label="Partager sur WhatsApp"
+          title="Partager sur WhatsApp"
+          className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink-mute hover:text-emerald-400 hover:bg-emerald-500/10 active:text-emerald-400 active:bg-emerald-500/15 transition shrink-0"
+        >
+          {/* Speech-bubble silhouette — recognizable as messaging
+              without taking on WhatsApp's brand asset. */}
+          <svg
+            className="w-3.5 h-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </svg>
+        </a>
         <span aria-hidden className="text-ink-mute">›</span>
       </div>
     </Link>
