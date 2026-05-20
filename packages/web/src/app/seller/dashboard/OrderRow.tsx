@@ -17,6 +17,7 @@ import { cleanProductTitle, formatPrice, formatRelativeTime } from "@/lib/format
 import { CopyIconButton } from "@/components/CopyButton";
 import { OrderActions } from "./OrderActions";
 import { OrderProgress } from "./OrderProgress";
+import { OrderNoteIndicator } from "./OrderNoteIndicator";
 
 interface OrderRowProps {
   order: SellerOrder;
@@ -115,6 +116,7 @@ export function OrderRow({
               Lent
             </span>
           )}
+          <OrderNoteIndicator orderId={o.orderId} />
           <OrderProgress status={o.status} />
         </div>
         {o.customer && (
