@@ -20,8 +20,8 @@ import {
   type SellerRecord,
 } from "@/lib/api";
 import { OrderRow } from "../dashboard/OrderRow";
-import { OrdersListFilter } from "../dashboard/OrdersListFilter";
 import { OrdersSearch } from "./OrdersSearch";
+import { OrdersStatusTabs, type StatusTab } from "./OrdersStatusTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -130,6 +130,17 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
   const actionableCount = orders.filter((u) =>
     ACTIONABLE_STATUSES.has(u.order.status),
   ).length;
+  // Per-tab counts for the status filter strip. "closed" combines
+  // cancelled + refunded since both share a single "Annulées" tab.
+  const tabCounts: Record<StatusTab, number> = {
+    all: orders.length,
+    actionable: actionableCount,
+    shipped: orders.filter((u) => u.order.status === "shipped").length,
+    delivered: orders.filter((u) => u.order.status === "delivered").length,
+    closed: orders.filter(
+      (u) => u.order.status === "cancelled" || u.order.status === "refunded",
+    ).length,
+  };
 
   const buckets = bucketUnifiedByDate(orders, new Date());
   // Show shop name on each row only when the seller owns more than one
@@ -186,7 +197,7 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
           </p>
         ) : (
           <OrdersSearch totalCount={orders.length}>
-          <OrdersListFilter actionableCount={actionableCount} totalCount={orders.length}>
+          <OrdersStatusTabs counts={tabCounts} totalCount={orders.length}>
             <ul className="divide-y divide-line-soft">
               {buckets.flatMap((bucket) => [
                 <li
@@ -194,6 +205,9 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
                   role="presentation"
                   data-actionable={bucket.anyActionable ? "true" : "false"}
                   data-search-heading={bucket.label}
+                  data-status-set={Array.from(
+                    new Set(bucket.orders.map((u) => u.order.status)),
+                  ).join(" ")}
                   className="pt-4 pb-1 text-[10px] uppercase tracking-widest text-ink-mute first:pt-1"
                 >
                   {bucket.label}
@@ -205,6 +219,7 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
                   <li
                     key={u.order.orderId}
                     data-actionable={ACTIONABLE_STATUSES.has(u.order.status) ? "true" : "false"}
+                    data-status={u.order.status}
                     data-bucket={bucket.label}
                     data-search={[
                       u.order.publicNumber,
@@ -224,7 +239,7 @@ export default async function SellerOrdersPage(): Promise<React.JSX.Element> {
                 )),
               ])}
             </ul>
-          </OrdersListFilter>
+          </OrdersStatusTabs>
           </OrdersSearch>
         )}
       </div>
