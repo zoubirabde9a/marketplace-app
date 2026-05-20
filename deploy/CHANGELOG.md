@@ -6,6 +6,12 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy MCP catalog + risk doc batch (008a264)
+
+- Rebuilt and rolled `marketplace-api:local`; web and caddy untouched.
+- `catalog.search`, `catalog.get_product`, `catalog.score_counterfeit` descriptions overhauled with seller-actionable language (untrusted_content envelope shape, index-lag caveat, false-positive walkthrough for counterfeit-risk).
+- `/livez` returned `{"status":"ok"}` after restart.
+
 ## 2026-05-20 — vps-eu — deploy MCP seller usability overhaul (76d8234, 52eea20)
 
 - Rebuilt and rolled `marketplace-api:local`; `web` and `caddy` untouched.
