@@ -197,17 +197,29 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
     }
     setImages((prev) => prev.map((r) => (r.id === mediaId ? { ...r, removing: true } : r)));
     let res: Response;
+    // 30s safety timeout via AbortController, matching the pattern
+    // of every other seller-write fetch (58711de). Without it, a
+    // stalled network leaves the image stuck on "Suppression…"
+    // forever with no signal.
+    const ctrl = new AbortController();
+    const timeoutId = window.setTimeout(() => ctrl.abort(), 30_000);
     try {
       res = await fetch(
         `/api/seller/products/${encodeURIComponent(initial.productId)}/media/${encodeURIComponent(mediaId)}`,
-        { method: "DELETE" },
+        { method: "DELETE", signal: ctrl.signal },
       );
-    } catch {
-      // Network-layer failure — without this catch the image stayed
-      // stuck on "Suppression…" forever and the seller had no signal.
-      setError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+    } catch (e) {
+      // Network-layer failure OR our timeout firing.
+      const aborted = (e as { name?: string }).name === "AbortError";
+      setError(
+        aborted
+          ? "Le serveur ne répond pas — réessayez dans un instant."
+          : "Connexion impossible. Vérifiez votre réseau et réessayez.",
+      );
       setImages((prev) => prev.map((r) => (r.id === mediaId ? { ...r, removing: false } : r)));
       return;
+    } finally {
+      window.clearTimeout(timeoutId);
     }
     if (!res.ok) {
       const j = (await res.json().catch(() => ({}))) as { detail?: string; error?: string };
