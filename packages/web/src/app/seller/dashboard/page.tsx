@@ -14,6 +14,7 @@ import { CreateSellerForm } from "./CreateSellerForm";
 import { LogoutButton } from "./LogoutButton";
 import { OrdersListFilter } from "./OrdersListFilter";
 import { ProductsListFilter } from "./ProductsListFilter";
+import { ProductsStockFilter, type StockTab } from "./ProductsStockFilter";
 import { OrderRow } from "./OrderRow";
 import { StockToggle } from "./StockToggle";
 import { CopyIconButton } from "@/components/CopyButton";
@@ -416,12 +417,25 @@ async function SellerSection({
             </Link>
           </div>
         ) : (
+          (() => {
+            // Counts for the stock tab strip. Computed inline so the
+            // SellerSection body stays a flat JSX expression — no
+            // additional top-level vars to hoist past the existing
+            // products/orders fetch dance.
+            const stockCounts: Record<StockTab, number> = {
+              all: products.length,
+              in: products.filter((p) => p.inStock).length,
+              out: products.filter((p) => !p.inStock).length,
+            };
+            return (
+          <ProductsStockFilter counts={stockCounts}>
           <ProductsListFilter totalCount={products.length}>
           <ul className="divide-y divide-line-soft">
             {products.map((p) => (
               <li
                 key={p.productId}
                 data-search={`${cleanProductTitle(p.title)} ${p.brand ?? ""}`.toLowerCase()}
+                data-stock={p.inStock ? "in" : "out"}
               >
                 {/* Whole row is the edit affordance — bigger tap target on
                     mobile than the old "Détails" pill, and there's no second
@@ -508,6 +522,9 @@ async function SellerSection({
             ))}
           </ul>
           </ProductsListFilter>
+          </ProductsStockFilter>
+            );
+          })()
         )}
       </section>
     </article>
