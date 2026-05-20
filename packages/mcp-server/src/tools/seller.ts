@@ -52,8 +52,21 @@ function routingFor(flagged: boolean, score: number): "auto_publish" | "moderati
 export function registerSellerTools(reg: McpRegistry): void {
   reg.register({
     name: "seller.preview_listing",
-    description:
-      "Run seller-supplied listing text through the untrusted-content envelope. Returns sanitised wrapped fields, suspicion score, and a routing decision (auto_publish / moderation_queue / review_block) so the seller can fix issues before submitting.",
+    description: [
+      "Run seller-supplied listing text through the untrusted-content envelope. Returns sanitised wrapped",
+      "fields, a suspicion score (0–100), and a routing decision: `auto_publish` / `moderation_queue` /",
+      "`review_block`.",
+      "",
+      "When to call: any time the title / description / attributes come from the human operator and the",
+      "agent is about to call `product.create_listing` OR `product.update_listing`. Both write paths",
+      "run the same sanitiser server-side, so the preview matches reality.",
+      "",
+      "Read-only (no audit-write, no side effects) — safe to call as many times as needed while the",
+      "operator iterates on copy. Specifically: if routing comes back `review_block`, the agent should",
+      "NOT proceed to create / update — fix the input with the operator and re-preview until routing is",
+      "`auto_publish` or `moderation_queue`. Submitting flagged text through the write path doesn't",
+      "improve the outcome — it just creates a paper trail of rejected submissions.",
+    ].join("\n"),
     scope: "seller:product:write",
     auditEvent: "seller.preview_listing",
     idempotent: true,
