@@ -29,6 +29,7 @@ import { OrdersRangeFilter, type RangeTab } from "./OrdersRangeFilter";
 import { OrdersShopFilter } from "./OrdersShopFilter";
 import { OrdersDensityToggle } from "./OrdersDensityToggle";
 import { ResetFiltersWrapper } from "./ResetFiltersWrapper";
+import { OrdersSortToggle } from "./OrdersSortToggle";
 import { TabTitleBadge } from "./TabTitleBadge";
 import { AutoRefresh } from "./AutoRefresh";
 import { LastRefreshed } from "./LastRefreshed";
@@ -128,6 +129,8 @@ export default async function SellerOrdersPage({
       : Array.isArray(initialQueryRaw)
       ? initialQueryRaw[0] ?? ""
       : "";
+  const sortParam = typeof sp.sort === "string" ? sp.sort : "newest";
+  const sortOldestFirst = sortParam === "oldest";
   const session = await getCurrentUser();
   if (!session) redirect("/seller");
   const agentId = syntheticAgentId(session.user.id);
@@ -207,7 +210,19 @@ export default async function SellerOrdersPage({
     ).length,
   };
 
-  const buckets = bucketUnifiedByDate(orders, new Date());
+  // Bucketing operates on the chronologically-sorted orders array;
+  // for oldest-first we reverse the buckets and their contents
+  // *after* bucketing so the date partitioning is identical (the
+  // bucket assignment depends on calendar boundaries, not on
+  // order order). Reversing here keeps the bucketing helper
+  // untouched.
+  const bucketsNewestFirst = bucketUnifiedByDate(orders, new Date());
+  const buckets = sortOldestFirst
+    ? bucketsNewestFirst
+        .slice()
+        .reverse()
+        .map((b) => ({ ...b, orders: b.orders.slice().reverse() }))
+    : bucketsNewestFirst;
   // Show shop name on each row only when the seller owns more than one
   // shop. For single-shop sellers it would be redundant noise.
   const showShopName = sellers.length > 1;
@@ -391,6 +406,7 @@ export default async function SellerOrdersPage({
           <OrdersShopFilter shops={shopCounts} totalCount={orders.length}>
           <OrdersRangeFilter counts={rangeCounts}>
           <OrdersStatusTabs counts={tabCounts} totalCount={orders.length}>
+          <OrdersSortToggle />
           <OrdersDensityToggle>
             <ul className="divide-y divide-line-soft">
               {buckets.flatMap((bucket) => {
