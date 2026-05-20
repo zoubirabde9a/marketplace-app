@@ -99,4 +99,24 @@ export interface ProductRepo {
     productId: string,
     mediaId: string,
   ): Promise<"removed" | "not_found" | "last_image">;
+
+  /**
+   * Soft-delete a product by flipping its catalog status to "removed".
+   * Verifies that `callerAgentId` owns the seller backing the product.
+   * Idempotent: deleting an already-removed product returns
+   * "already_removed" (not an error). Returns "not_owned" when the
+   * caller isn't the owning agent, "not_found" when the product doesn't
+   * exist (or has sellerId=null, ie scraper-orphan rows).
+   *
+   * Hard delete is intentionally not exposed: order_items.variant_id
+   * references productVariants without ON DELETE CASCADE, so purging a
+   * product that's been ordered would either violate the FK or destroy
+   * order history. Soft-delete hides the product from every public
+   * surface (search filters status='active') while preserving
+   * referential integrity.
+   */
+  softDelete(
+    productId: string,
+    callerAgentId: string,
+  ): Promise<"removed" | "not_found" | "not_owned" | "already_removed">;
 }

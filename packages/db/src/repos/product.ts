@@ -854,6 +854,46 @@ export function makeProductRepo(db: DbClient) {
       });
     },
 
+    // Soft-delete a product by flipping its status to "removed". We don't
+    // hard-DELETE because order_items.variant_id references productVariants
+    // without onDelete:cascade — purging a previously-ordered product
+    // would violate the FK constraint and lose order history. Setting
+    // status='removed' takes the product out of every search/browse
+    // surface (every read query filters status='active') while preserving
+    // referential integrity for past orders.
+    //
+    // Returns "removed" on success, "not_found" if the product doesn't
+    // exist, "not_owned" if the caller doesn't own it (caller-supplied
+    // ownerAgentId), or "already_removed" if it's already in that state
+    // (idempotent — callers can DELETE the same product twice without
+    // observing two different outcomes).
+    async softDelete(
+      productId: string,
+      callerAgentId: string,
+    ): Promise<"removed" | "not_found" | "not_owned" | "already_removed"> {
+      if (!isUuid(productId)) return "not_found";
+      return db.transaction(async (tx) => {
+        const rows = await tx.select().from(products).where(eq(products.id, productId)).limit(1);
+        const row = rows[0];
+        if (!row) return "not_found";
+        if (row.sellerId === null) return "not_owned";
+        const sellerRows = await tx
+          .select({ ownerAgentId: sellerProfiles.ownerAgentId })
+          .from(sellerProfiles)
+          .where(eq(sellerProfiles.orgId, row.sellerId))
+          .limit(1);
+        if (!sellerRows[0] || sellerRows[0].ownerAgentId !== callerAgentId) {
+          return "not_owned";
+        }
+        if (row.status === "removed") return "already_removed";
+        await tx
+          .update(products)
+          .set({ status: "removed", updatedAt: new Date() })
+          .where(eq(products.id, productId));
+        return "removed";
+      });
+    },
+
     async getProductsByIds(ids: string[]): Promise<Array<StoredProduct | null>> {
       if (ids.length === 0) return [];
       const validIds = ids.filter(isUuid);

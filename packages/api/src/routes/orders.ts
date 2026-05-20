@@ -2,11 +2,27 @@
 
 import type { FastifyInstance } from "fastify";
 import { timingSafeEqual } from "node:crypto";
-import { NotFoundError, UnauthorizedError } from "@marketplace/shared/errors";
+import { z } from "zod";
+import { NotFoundError, UnauthorizedError, ConflictError } from "@marketplace/shared/errors";
+import { order as orderDomain } from "@marketplace/domain";
 import { requirePrincipal, requireUser } from "../middleware/auth.js";
 import type { OrderRepo, OrderRecord } from "../repos/order.js";
 import type { SellerRepo } from "../repos/seller.js";
 import type { CartLineInfo, CartRepo } from "../repos/cart.js";
+
+// Body schema for the seller-driven transition endpoint. The state machine
+// supports more events than sellers can trigger from the dashboard
+// (authorize/capture are buyer/payment-side; refund needs an amount we
+// don't surface yet). We only expose the four transitions that make
+// sense for a COD-style fulfilment flow: start packing, ship, deliver,
+// cancel. Reason is required when cancelling (state machine rejects
+// empty strings on cancel/open_dispute — see domain/order/state-machine).
+const SellerOrderTransitionSchema = z.discriminatedUnion("event", [
+  z.object({ event: z.literal("begin_fulfillment") }),
+  z.object({ event: z.literal("ship") }),
+  z.object({ event: z.literal("deliver") }),
+  z.object({ event: z.literal("cancel"), reason: z.string().min(1).max(200) }),
+]);
 
 // Constant-time token comparison. `===` leaks length+prefix-match info via
 // timing; with the 192-bit token here a remote attacker can't realistically
@@ -140,4 +156,47 @@ export async function registerOrderRoutes(
     const infos = await enrichFor(list);
     return { data: list.map((o) => shapeOrderForSeller(o, req.params.id, infos)) };
   });
+
+  // Seller-driven order transition. Applies a domain event (begin_fulfillment
+  // /ship/deliver/cancel) on an order. The caller must own at least one line
+  // item in the order (verified inside the repo against orderItems.sellerId).
+  // Returns the new status.
+  app.post<{ Params: { sellerId: string; orderId: string } }>(
+    "/v1/sellers/:sellerId/orders/:orderId/transition",
+    async (req, reply) => {
+      reply.header("cache-control", "private, no-store");
+      const principal = requirePrincipal(req);
+      const { sellerId, orderId } = req.params;
+      const seller = await sellers.get(sellerId);
+      if (!seller) throw new NotFoundError("seller", sellerId);
+      if (seller.ownerAgentId !== principal.agentId) {
+        throw new UnauthorizedError("not_seller_owner");
+      }
+      const body = SellerOrderTransitionSchema.parse(req.body);
+      const event: orderDomain.OrderEvent =
+        body.event === "cancel"
+          ? { kind: "cancel", reason: body.reason }
+          : { kind: body.event };
+      const result = await orders.applySellerEvent({
+        orderId,
+        sellerId,
+        event,
+        actorAgentId: principal.agentId,
+      });
+      if (result.kind === "not_found") throw new NotFoundError("order", orderId);
+      if (result.kind === "not_owned") {
+        // Order exists but this seller has no lines in it. Same 401 shape
+        // as the seller-list endpoint so the seller dashboard handles
+        // both consistently.
+        throw new UnauthorizedError("not_seller_owner");
+      }
+      if (result.kind === "invalid_transition") {
+        throw new ConflictError(
+          `order_invalid_transition:${result.current}->${body.event}`,
+        );
+      }
+      void reply.code(200);
+      return { orderId, status: result.status };
+    },
+  );
 }

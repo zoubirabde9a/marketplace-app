@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, inArray } from "drizzle-orm";
 import { uuidv7 } from "@marketplace/shared/ids";
 import { order as orderDomain, type cart as cartDomain } from "@marketplace/domain";
-import { orders, orderItems } from "../schema/order.js";
+import { orders, orderItems, orderStatusHistory } from "../schema/order.js";
 import type { DbClient } from "../client.js";
 import type { StoredCart } from "./cart.js";
 import { isUuid } from "./_uuid.js";
@@ -220,6 +220,79 @@ export function makeOrderRepo(db: DbClient) {
         .orderBy(desc(orders.createdAt))
         .limit(1);
       return rows[0] ? shape(db, rows[0]) : undefined;
+    },
+
+    // Seller-driven status transition. Applies an order-domain event
+    // (begin_fulfillment/ship/deliver/cancel) and writes both the new
+    // status on the order row AND a history entry so we can audit who
+    // transitioned what when. Caller must own at least one line in the
+    // order — verified outside via the seller-scope check, but we also
+    // assert it inside the tx for double-safety against route-layer
+    // mistakes. `actor` distinguishes seller transitions ("human") from
+    // future automated ones.
+    async applySellerEvent(input: {
+      orderId: string;
+      sellerId: string;
+      event: orderDomain.OrderEvent;
+      actorAgentId: string;
+    }): Promise<
+      | { kind: "ok"; status: orderDomain.OrderStatus }
+      | { kind: "not_found" }
+      | { kind: "not_owned" }
+      | { kind: "invalid_transition"; current: orderDomain.OrderStatus }
+    > {
+      if (!isUuid(input.orderId)) return { kind: "not_found" };
+      return db.transaction(async (tx) => {
+        const orderRows = await tx
+          .select()
+          .from(orders)
+          .where(eq(orders.id, input.orderId))
+          .limit(1);
+        const orderRow = orderRows[0];
+        if (!orderRow) return { kind: "not_found" };
+        // Confirm the caller's seller has at least one line in this order.
+        const ownership = await tx
+          .select({ id: orderItems.id })
+          .from(orderItems)
+          .where(and(
+            eq(orderItems.orderId, input.orderId),
+            eq(orderItems.sellerId, input.sellerId),
+          ))
+          .limit(1);
+        if (ownership.length === 0) return { kind: "not_owned" };
+        let nextStatus: orderDomain.OrderStatus;
+        try {
+          nextStatus = orderDomain.applyEvent(
+            orderRow.status as orderDomain.OrderStatus,
+            input.event,
+          );
+        } catch {
+          // Domain throws ConflictError on invalid transition / bad payload.
+          return {
+            kind: "invalid_transition",
+            current: orderRow.status as orderDomain.OrderStatus,
+          };
+        }
+        const now = new Date();
+        await tx
+          .update(orders)
+          .set({ status: nextStatus, updatedAt: now })
+          .where(eq(orders.id, input.orderId));
+        await tx.insert(orderStatusHistory).values({
+          id: uuidv7(),
+          orderId: input.orderId,
+          fromStatus: orderRow.status,
+          toStatus: nextStatus,
+          reason:
+            input.event.kind === "cancel" || input.event.kind === "open_dispute"
+              ? input.event.reason
+              : null,
+          actorKind: "human",
+          actorId: input.actorAgentId,
+          occurredAt: now,
+        });
+        return { kind: "ok", status: nextStatus };
+      });
     },
 
     async listForSeller(sellerId: string): Promise<StoredOrder[]> {

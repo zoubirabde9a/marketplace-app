@@ -751,6 +751,29 @@ export async function registerProductWriteRoutes(
     void reply.code(204);
     return "";
   });
+
+  // ── DELETE /v1/products/:id ────────────────────────────────────────────
+  // Soft-delete a product (flips its status to "removed"). Owner-authed.
+  // Hard DELETE is intentionally not used — order_items.variant_id has no
+  // ON DELETE CASCADE, so purging a previously-ordered product would
+  // violate the FK constraint AND erase order history. Soft-delete takes
+  // the product out of every search/browse surface (every read filters
+  // status='active') while preserving referential integrity.
+  app.delete<{ Params: { id: string } }>("/v1/products/:id", async (req, reply) => {
+    const principal = requirePrincipal(req);
+    const { id } = req.params;
+    const result = await deps.products.softDelete(id, principal.agentId);
+    if (result === "not_found") {
+      void reply.code(404);
+      return { error: "not_found", detail: `product ${id} not found` };
+    }
+    if (result === "not_owned") {
+      throw new UnauthorizedError("not_seller_owner");
+    }
+    // "already_removed" → idempotent 204 (the caller's intent is satisfied).
+    void reply.code(204);
+    return "";
+  });
 }
 
 function resolveBaseUrl(req: { protocol: string; hostname: string; headers: Record<string, unknown> }): string {

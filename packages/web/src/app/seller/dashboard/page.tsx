@@ -12,6 +12,7 @@ import {
 import { cleanProductTitle, formatPrice, formatRelativeTime } from "@/lib/format";
 import { CreateSellerForm } from "./CreateSellerForm";
 import { LogoutButton } from "./LogoutButton";
+import { OrderActions } from "./OrderActions";
 
 // Maps the domain order-status enum (packages/domain/src/order/state-machine.ts)
 // to French labels for the seller dashboard badge. The raw enum is English
@@ -391,6 +392,15 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
                       </li>
                     ))}
                   </ul>
+                  {/* State-machine action buttons. The component handles
+                      its own pending/error state and only renders buttons
+                      that apply to the current status — closed orders
+                      (delivered/cancelled/refunded) get nothing. */}
+                  <OrderActions
+                    sellerId={seller.sellerId}
+                    orderId={o.orderId}
+                    status={o.status as Parameters<typeof OrderActions>[0]["status"]}
+                  />
                 </div>
                 <dl className="text-right shrink-0">
                   <dt className="text-[10px] uppercase tracking-widest text-ink-mute">Total</dt>
