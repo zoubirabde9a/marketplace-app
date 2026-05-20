@@ -13,6 +13,7 @@
 
 import type { SellerOrder } from "@/lib/api";
 import { cleanProductTitle, formatPrice, formatRelativeTime } from "@/lib/format";
+import { CopyIconButton } from "@/components/CopyButton";
 import { OrderActions } from "./OrderActions";
 import { OrderProgress } from "./OrderProgress";
 
@@ -30,6 +31,10 @@ export function OrderRow({ order: o, sellerId, shopName }: OrderRowProps): React
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span dir="ltr" className="font-mono text-sm text-ink">#{o.publicNumber}</span>
+          <CopyIconButton
+            value={o.publicNumber}
+            ariaLabel={`Copier le numéro de commande ${o.publicNumber}`}
+          />
           {shopName && (
             <span
               dir="auto"
@@ -70,6 +75,10 @@ export function OrderRow({ order: o, sellerId, shopName }: OrderRowProps): React
               >
                 {o.customer.phone}
               </a>
+              <CopyIconButton
+                value={o.customer.phone}
+                ariaLabel={`Copier le numéro de téléphone ${o.customer.phone}`}
+              />
               <a
                 href={`https://wa.me/${o.customer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
                   `Bonjour ${o.customer.name}, je vous contacte au sujet de votre commande #${o.publicNumber} sur Teno Store.`,
