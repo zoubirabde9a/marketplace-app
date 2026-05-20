@@ -13,6 +13,7 @@
 // effect resets the comparison anchor.
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatRelativeTime } from "@/lib/format";
 
 interface LastRefreshedProps {
@@ -22,15 +23,28 @@ interface LastRefreshedProps {
 }
 
 export function LastRefreshed({ renderedAt }: LastRefreshedProps): React.JSX.Element {
+  const router = useRouter();
   // Re-tick the displayed value every 10 seconds so the label ages
   // gracefully ("à l'instant" → "il y a 1 minute") even when no
   // refresh has fired. 10s is enough granularity for the seller to
   // sense liveness without burning a tight setInterval.
   const [, force] = useState(0);
+  const [spinning, setSpinning] = useState(false);
   const renderedAtRef = useRef(renderedAt);
   // Keep the ref in sync with the prop so the relative-time math
   // anchors against the latest render's timestamp, not the first.
   renderedAtRef.current = renderedAt;
+
+  // Clear the spin animation as soon as a new renderedAt prop lands
+  // — that's the proxy signal that the manual refresh actually
+  // completed.
+  useEffect(() => {
+    if (spinning) setSpinning(false);
+    // We intentionally depend on renderedAt only — the local
+    // spinning state shouldn't drive its own reset, otherwise we'd
+    // loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [renderedAt]);
 
   useEffect(() => {
     const id = window.setInterval(() => force((x) => x + 1), 10_000);
@@ -53,6 +67,35 @@ export function LastRefreshed({ renderedAt }: LastRefreshedProps): React.JSX.Ele
         className="w-1.5 h-1.5 rounded-full bg-ok/70 animate-pulse"
       />
       Mis à jour {label}
+      {/* Manual refresh — for the seller who wants to know RIGHT NOW
+          whether anything new came in instead of waiting up to 60
+          seconds for the next polling tick. Spinning until the
+          renderedAt prop changes (server re-render landed). */}
+      <button
+        type="button"
+        onClick={() => {
+          setSpinning(true);
+          router.refresh();
+        }}
+        disabled={spinning}
+        aria-label="Recharger maintenant"
+        title="Recharger maintenant"
+        className="ml-1 inline-flex items-center justify-center w-5 h-5 rounded-full text-ink-mute hover:text-ink hover:bg-bg-elev active:text-ink active:bg-bg-elev transition disabled:cursor-not-allowed"
+      >
+        <svg
+          className={"w-3 h-3 " + (spinning ? "animate-spin" : "")}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 0 1 15.5-6.3L21 8" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 3v5h-5" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 0 1-15.5 6.3L3 16" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 21v-5h5" />
+        </svg>
+      </button>
     </span>
   );
 }
