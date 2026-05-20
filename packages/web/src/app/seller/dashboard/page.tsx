@@ -17,6 +17,7 @@ import { ProductsListFilter } from "./ProductsListFilter";
 import { ProductsStockFilter, type StockTab } from "./ProductsStockFilter";
 import { OrderRow } from "./OrderRow";
 import { StockToggle } from "./StockToggle";
+import { PriceEditor } from "./PriceEditor";
 import { GetStartedChecklist } from "./GetStartedChecklist";
 import { CopyIconButton } from "@/components/CopyButton";
 import { SITE_URL } from "@/lib/sitemap";
@@ -541,13 +542,24 @@ async function SellerSection({
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-ink-soft pl-[52px] sm:pl-0">
                     {p.currency && (p.priceMinor || p.priceFromMinor) && (
-                      <span className="text-ink">
-                        {p.priceMinor
-                          ? formatPrice(p.priceMinor, p.currency, "fr-DZ")
-                          : p.priceToMinor && p.priceToMinor !== p.priceFromMinor
-                          ? `${formatPrice(p.priceFromMinor!, p.currency, "fr-DZ")} – ${formatPrice(p.priceToMinor, p.currency, "fr-DZ")}`
-                          : formatPrice(p.priceFromMinor!, p.currency, "fr-DZ")}
-                      </span>
+                      // Single-variant + single-price → inline editor;
+                      // any range or multi-variant pricing stays read-
+                      // only here and routes through the edit page.
+                      p.priceMinor && (p.variantCount === undefined || p.variantCount <= 1) ? (
+                        <PriceEditor
+                          productId={p.productId}
+                          initialPriceMinor={p.priceMinor}
+                          currency={p.currency}
+                        />
+                      ) : (
+                        <span className="text-ink">
+                          {p.priceMinor
+                            ? formatPrice(p.priceMinor, p.currency, "fr-DZ")
+                            : p.priceToMinor && p.priceToMinor !== p.priceFromMinor
+                            ? `${formatPrice(p.priceFromMinor!, p.currency, "fr-DZ")} – ${formatPrice(p.priceToMinor, p.currency, "fr-DZ")}`
+                            : formatPrice(p.priceFromMinor!, p.currency, "fr-DZ")}
+                        </span>
+                      )
                     )}
                     {/* Variants badge — sellers managing multi-variant
                         listings (3 colors / 4 sizes / etc.) can spot them
