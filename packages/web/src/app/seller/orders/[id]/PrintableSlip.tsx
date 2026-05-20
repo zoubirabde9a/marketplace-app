@@ -10,6 +10,7 @@
 // time each slip was rendered — they'd vary by microseconds otherwise
 // in the SSR pass and that's noise).
 
+import Link from "next/link";
 import type { SellerOrder } from "@/lib/api";
 import { cleanProductTitle, formatPrice } from "@/lib/format";
 import { OrderProgress } from "../../dashboard/OrderProgress";
@@ -120,12 +121,31 @@ export function PrintableSlip({
                 ×{l.qty}
               </span>
               <div className="min-w-0 flex-1">
-                <p
-                  dir="auto"
-                  className="text-ink untrusted truncate print:text-black print:[&::before]:hidden"
-                >
-                  {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
-                </p>
+                {/* Title links to the public PDP when the line still
+                    references a live product — handy when the seller
+                    is fielding a buyer question ("can I get this in
+                    blue?") and wants to look at what the buyer saw.
+                    Falls back to plain text when productId is null
+                    (orphaned line / product since removed). Underline
+                    only on screen; on paper the URL is invisible. */}
+                {l.productId && l.title ? (
+                  <Link
+                    href={`/product/${encodeURIComponent(l.productId)}`}
+                    target="_blank"
+                    rel="noopener"
+                    dir="auto"
+                    className="text-ink untrusted truncate hover:text-accent active:text-accent transition block print:text-black print:[&::before]:hidden"
+                  >
+                    {cleanProductTitle(l.title)}
+                  </Link>
+                ) : (
+                  <p
+                    dir="auto"
+                    className="text-ink untrusted truncate print:text-black print:[&::before]:hidden"
+                  >
+                    {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
+                  </p>
+                )}
                 {l.sku && (
                   <p className="font-mono text-[11px] text-ink-mute print:text-black/60">
                     SKU {l.sku}
