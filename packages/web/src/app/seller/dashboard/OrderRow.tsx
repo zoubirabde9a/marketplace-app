@@ -212,9 +212,27 @@ export function OrderRow({
                 ×{l.qty}
               </span>
               <span className="min-w-0 flex-1 flex flex-col">
-                <span dir="auto" className="truncate untrusted">
-                  {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
-                </span>
+                {/* Title links to the public PDP when the line still
+                    references a live product — mirrors the slip's
+                    line-item links (a5800a2). Useful when the seller
+                    is fielding a buyer question about a specific
+                    item in a multi-line order. Falls back to plain
+                    text when productId is null (orphaned line). */}
+                {l.productId && l.title ? (
+                  <Link
+                    href={`/product/${encodeURIComponent(l.productId)}`}
+                    target="_blank"
+                    rel="noopener"
+                    dir="auto"
+                    className="truncate untrusted hover:text-accent active:text-accent transition"
+                  >
+                    {cleanProductTitle(l.title)}
+                  </Link>
+                ) : (
+                  <span dir="auto" className="truncate untrusted">
+                    {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
+                  </span>
+                )}
                 {l.title && l.sku && (
                   <span className="font-mono text-[10px] text-ink-mute truncate">{l.sku}</span>
                 )}
