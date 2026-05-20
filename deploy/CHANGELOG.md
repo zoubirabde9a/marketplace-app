@@ -6,6 +6,15 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy MCP seller usability overhaul (76d8234, 52eea20)
+
+- Rebuilt and rolled `marketplace-api:local`; `web` and `caddy` untouched.
+- New MCP tool `seller.list_mine` is now live (verified via api logs `mcp_tool_registered`); agents can rediscover the shops their identity owns instead of guessing.
+- All seller-touching MCP tool descriptions overhauled to flag the agent-vs-user ownership model, the priceMinor off-by-100 footgun, and recommended check-then-act patterns.
+- Operator-facing README quickstart added at `packages/mcp-server/README.md`.
+- 52eea20 (seller products page keyboard shortcuts) hitch-hiked the deploy — appeared on `main` between commit and push from another session.
+- `/livez` returned `{"status":"ok"}` after restart.
+
 ## 2026-05-20 — vps-eu — deploy seller orders UX batch (be30cee..51133a8)
 
 - Shipped 7 commits via runbook 07 (tar+ssh). Rebuilt `marketplace-api:local` and `marketplace-web:local`, recreated `marketplace-api` + `marketplace-web`. Smoke: `/livez` ok, apex 200.
