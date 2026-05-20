@@ -28,6 +28,7 @@ import { OrdersStatusTabs, type StatusTab } from "./OrdersStatusTabs";
 import { OrdersRangeFilter, type RangeTab } from "./OrdersRangeFilter";
 import { OrdersShopFilter } from "./OrdersShopFilter";
 import { OrdersDensityToggle } from "./OrdersDensityToggle";
+import { ResetFiltersWrapper } from "./ResetFiltersWrapper";
 import { TabTitleBadge } from "./TabTitleBadge";
 import { AutoRefresh } from "./AutoRefresh";
 import { LastRefreshed } from "./LastRefreshed";
@@ -375,6 +376,7 @@ export default async function SellerOrdersPage({
             </ul>
           </div>
         ) : (
+          <ResetFiltersWrapper>
           <OrdersSearch totalCount={orders.length} initialQuery={initialQuery}>
           <OrdersShopFilter shops={shopCounts} totalCount={orders.length}>
           <OrdersRangeFilter counts={rangeCounts}>
@@ -458,6 +460,7 @@ export default async function SellerOrdersPage({
           </OrdersRangeFilter>
           </OrdersShopFilter>
           </OrdersSearch>
+          </ResetFiltersWrapper>
         )}
       </div>
     </section>
