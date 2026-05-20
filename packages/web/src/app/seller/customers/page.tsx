@@ -22,6 +22,7 @@ import { AutoRefresh } from "../orders/AutoRefresh";
 import { LastRefreshed } from "../orders/LastRefreshed";
 import { OfflineIndicator } from "../orders/OfflineIndicator";
 import { CustomersSearch } from "./CustomersSearch";
+import { CustomersSortToggle, type CustomersSort } from "./CustomersSortToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,18 @@ interface CustomerAggregate {
   firstOrderAt: string;
 }
 
-export default async function SellerCustomersPage(): Promise<React.JSX.Element> {
+interface SellerCustomersPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function SellerCustomersPage({
+  searchParams,
+}: SellerCustomersPageProps): Promise<React.JSX.Element> {
+  const sp = await searchParams;
+  const sortParam = typeof sp.sort === "string" ? sp.sort : "recent";
+  const sortBy: CustomersSort =
+    sortParam === "spend" || sortParam === "orders" ? sortParam : "recent";
+
   const session = await getCurrentUser();
   if (!session) redirect("/seller");
   const agentId = syntheticAgentId(session.user.id);
@@ -103,10 +115,32 @@ export default async function SellerCustomersPage(): Promise<React.JSX.Element> 
       }
     }
   });
-  const customers = Array.from(byPhone.values()).sort(
-    // Newest-last-order first — the "who just bought from me?" sort.
-    (a, b) => b.lastOrderAt.localeCompare(a.lastOrderAt),
-  );
+  const customers = Array.from(byPhone.values()).sort((a, b) => {
+    if (sortBy === "orders") {
+      // Most loyal first; tie-break by recent-activity so frequent
+      // buyers don't get re-ordered randomly when their counts tie.
+      const cmp = b.orderCount - a.orderCount;
+      if (cmp !== 0) return cmp;
+      return b.lastOrderAt.localeCompare(a.lastOrderAt);
+    }
+    if (sortBy === "spend") {
+      // Biggest spenders first. Compare via the dominant-currency
+      // amount per side — for the dashboard's single-currency
+      // marketplace (DZD) this is just the only currency; mixed-
+      // currency sellers compare apples-to-apples within whichever
+      // currency dominates each customer.
+      const aTop = Object.entries(a.revenueByCcy).sort(
+        (x, y) => Number(y[1] - x[1]),
+      )[0]?.[1] ?? 0n;
+      const bTop = Object.entries(b.revenueByCcy).sort(
+        (x, y) => Number(y[1] - x[1]),
+      )[0]?.[1] ?? 0n;
+      if (bTop !== aTop) return bTop > aTop ? 1 : -1;
+      return b.lastOrderAt.localeCompare(a.lastOrderAt);
+    }
+    // Default: newest-last-order first — "who just bought from me?".
+    return b.lastOrderAt.localeCompare(a.lastOrderAt);
+  });
 
   return (
     <section
@@ -155,6 +189,7 @@ export default async function SellerCustomersPage(): Promise<React.JSX.Element> 
           </p>
         ) : (
           <CustomersSearch totalCount={customers.length}>
+          <CustomersSortToggle />
           <ul className="divide-y divide-line-soft">
             {customers.map((c) => {
               const topCcy = Object.entries(c.revenueByCcy).sort(
