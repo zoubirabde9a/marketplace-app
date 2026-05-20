@@ -13,6 +13,7 @@
 import Link from "next/link";
 import type { SellerOrder } from "@/lib/api";
 import { cleanProductTitle, formatPrice } from "@/lib/format";
+import { CopyIconButton } from "@/components/CopyButton";
 import { OrderProgress } from "../../dashboard/OrderProgress";
 
 interface PrintableSlipProps {
@@ -100,11 +101,29 @@ export function PrintableSlip({
           >
             {order.customer.name}
           </Link>
+          {/* Phone block — tappable to call + copy button next to
+              it. On print the button hides (print:hidden via the
+              CopyIconButton's own classes won't fire — wrap the
+              non-text chrome explicitly) so the courier sees just
+              the bare number. The `<a>` href doesn't render visibly
+              on paper either; browsers don't auto-insert tel URLs. */}
           <p
             dir="ltr"
-            className="mt-0.5 font-mono text-sm text-ink-soft print:text-black"
+            className="mt-0.5 flex items-center gap-1 font-mono text-sm text-ink-soft print:text-black"
           >
-            {order.customer.phone}
+            <a
+              href={`tel:${order.customer.phone}`}
+              className="hover:text-accent active:text-accent transition print:text-black"
+              aria-label={`Appeler ${order.customer.name} au ${order.customer.phone}`}
+            >
+              {order.customer.phone}
+            </a>
+            <span className="print:hidden">
+              <CopyIconButton
+                value={order.customer.phone}
+                ariaLabel="Copier le numéro de téléphone"
+              />
+            </span>
           </p>
           {order.customer.region && (
             <p dir="auto" className="mt-0.5 text-sm text-ink-soft print:text-black">
