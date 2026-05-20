@@ -19,7 +19,7 @@ const API_URL = (process.env.MARKETPLACE_API_URL ?? "http://localhost:3100").rep
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const metadata: Metadata = {
-  title: "Agent result snapshot",
+  title: "Snapshot",
   robots: { index: false, follow: false },
 };
 
@@ -123,14 +123,14 @@ export default async function SnapshotPage({ params }: { params: Promise<{ id: s
   };
   const heading =
     snap.kind === "seller_create" || snap.kind === "product_create"
-      ? "What the agent created"
-      : "What the agent saw";
+      ? "Created snapshot"
+      : "Saved snapshot";
 
   return (
     <article className="max-w-5xl mx-auto p-4 sm:p-6" lang="en">
       <header className="mb-6 border-b border-line-soft pb-4">
         <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold">
-          Agent {kindLabel[snap.kind]} snapshot
+          {kindLabel[snap.kind]} snapshot
         </p>
         <h1 className="text-2xl font-semibold mt-1">{heading}</h1>
         <p className="text-sm text-ink-soft mt-2">
@@ -305,7 +305,7 @@ function SellerCreateSnapshot({ output }: { output: unknown }) {
         {!hasPhones && s.whatsapp ? (<><dt className="text-ink-mute">WhatsApp</dt><dd className="font-mono">{s.whatsapp}</dd></>) : null}
         {s.website ? (<><dt className="text-ink-mute">Website</dt><dd className="break-all"><a className="text-accent hover:underline active:underline" href={s.website}>{s.website}</a></dd></>) : null}
         {s.supportEmail ? (<><dt className="text-ink-mute">Support</dt><dd className="break-all"><a className="text-accent hover:underline active:underline" href={`mailto:${s.supportEmail}`}>{s.supportEmail}</a></dd></>) : null}
-        {s.ownerAgentId ? (<><dt className="text-ink-mute">Owner agent</dt><dd className="font-mono text-xs break-all">{s.ownerAgentId}</dd></>) : null}
+        {s.ownerAgentId ? (<><dt className="text-ink-mute">Owner</dt><dd className="font-mono text-xs break-all">{s.ownerAgentId}</dd></>) : null}
         {s.createdAt ? (<><dt className="text-ink-mute">Created</dt><dd>{s.createdAt}</dd></>) : null}
       </dl>
       {s.sellerId && (

@@ -335,10 +335,9 @@ export const post: BlogPost = {
             livraison.
           </li>
           <li>
-            Votre annonce est exposée simultanément aux acheteurs humains
-            (sur le site web) et aux agents IA (via les protocoles MCP,
-            A2A, REST documentés dans{" "}
-            <code>/.well-known/agents.json</code>).
+            Votre annonce est visible immédiatement par les acheteurs
+            algériens qui parcourent le catalogue, et apparaît dans les
+            résultats de recherche et le flux des annonces récentes.
           </li>
         </ol>
         <p>

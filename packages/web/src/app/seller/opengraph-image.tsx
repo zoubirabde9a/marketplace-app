@@ -74,7 +74,7 @@ export default function OG() {
             lineHeight: 1.3,
           }}
         >
-          Publiez vos annonces · atteignez acheteurs humains et agents IA · prix en DZD · inscription gratuite.
+          Publiez vos annonces · touchez les acheteurs algériens · prix en DZD · inscription gratuite.
         </div>
       </div>
     ),

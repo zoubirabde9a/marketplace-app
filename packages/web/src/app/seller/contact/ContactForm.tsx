@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -13,6 +13,16 @@ export function ContactForm({ sellerId, initial }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, start] = useTransition();
+
+  // Auto-dismiss the success indicator via useEffect so the timer is
+  // cleaned up if the seller navigates away mid-wait. Previously a bare
+  // setTimeout would fire setState on an unmounted component (harmless
+  // but noisy in dev).
+  useEffect(() => {
+    if (!success) return;
+    const t = setTimeout(() => setSuccess(null), 2500);
+    return () => clearTimeout(t);
+  }, [success]);
 
   return (
     <form
@@ -32,11 +42,17 @@ export function ContactForm({ sellerId, initial }: Props) {
         setError(null);
         setSuccess(null);
         start(async () => {
-          const r = await fetch(`/api/seller/sellers/${encodeURIComponent(sellerId)}`, {
-            method: "PATCH",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify(patch),
-          });
+          let r: Response;
+          try {
+            r = await fetch(`/api/seller/sellers/${encodeURIComponent(sellerId)}`, {
+              method: "PATCH",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify(patch),
+            });
+          } catch {
+            setError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+            return;
+          }
           if (!r.ok) {
             const j = (await r.json().catch(() => ({}))) as {
               error?: string;
@@ -45,8 +61,9 @@ export function ContactForm({ sellerId, initial }: Props) {
             setError(j.detail || j.error || `Échec (HTTP ${r.status})`);
             return;
           }
-          setSuccess("Enregistré.");
+          setSuccess("Enregistré");
           router.refresh();
+          // Auto-dismiss is handled by the success useEffect above.
         });
       }}
       className="grid gap-4"
@@ -54,18 +71,29 @@ export function ContactForm({ sellerId, initial }: Props) {
     >
       {/* Placeholders use an Algerian-shaped number on a DZ-primary marketplace
           — US examples ("+1 555 ...") were confusing for sellers in Alger. */}
-      <Field label="Téléphone" name="phone" defaultValue={initial.phone} placeholder="+213 555 12 34 56" />
-      <Field label="WhatsApp" name="whatsapp" defaultValue={initial.whatsapp} placeholder="+213555123456" />
-      <Field label="Site web" name="website" defaultValue={initial.website} placeholder="https://exemple.dz" type="url" />
+      {/* Both placeholders share the same readable spaced format. The
+          storefront renders whichever raw value the seller submits, so
+          a spaced format flows visually; wa.me strips non-digits when
+          building click-to-chat links so spaces don't break that path. */}
+      <Field label="Téléphone" name="phone" defaultValue={initial.phone} placeholder="+213 555 12 34 56" type="tel" inputMode="tel" autoComplete="tel" />
+      <Field label="WhatsApp" name="whatsapp" defaultValue={initial.whatsapp} placeholder="+213 555 12 34 56" type="tel" inputMode="tel" autoComplete="tel" />
+      <Field label="Site web" name="website" defaultValue={initial.website} placeholder="https://exemple.dz" type="url" inputMode="url" autoComplete="url" />
       {error && <p className="text-sm text-bad" role="alert">{error}</p>}
-      {success && <p className="text-sm text-ok">{success}</p>}
-      <button
-        type="submit"
-        disabled={pending}
-        className="self-stretch sm:self-start inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition disabled:opacity-60"
-      >
-        {pending ? "Enregistrement…" : "Enregistrer"}
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="submit"
+          disabled={pending}
+          aria-busy={pending}
+          className="self-stretch sm:self-auto inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {pending ? "Enregistrement…" : "Enregistrer"}
+        </button>
+        {success && (
+          <span className="text-sm text-ok inline-flex items-center gap-1.5" role="status">
+            <span aria-hidden>✓</span> {success}
+          </span>
+        )}
+      </div>
     </form>
   );
 }
@@ -76,12 +104,16 @@ function Field({
   defaultValue,
   placeholder,
   type = "text",
+  inputMode,
+  autoComplete,
 }: {
   label: string;
   name: string;
   defaultValue?: string;
   placeholder?: string;
   type?: string;
+  inputMode?: "tel" | "url" | "email" | "numeric" | "decimal" | "text" | "search";
+  autoComplete?: string;
 }) {
   return (
     <label className="text-sm">
@@ -91,6 +123,8 @@ function Field({
         name={name}
         defaultValue={defaultValue}
         placeholder={placeholder}
+        inputMode={inputMode}
+        autoComplete={autoComplete}
         className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
       />
     </label>

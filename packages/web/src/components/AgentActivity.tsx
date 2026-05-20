@@ -44,20 +44,20 @@ export function AgentActivity({ data }: { data: MyActivityResponse }) {
         </h1>
         <p className="mt-2 text-ink-soft">
           {agentCount === 0
-            ? "No agents linked to your account yet."
-            : `Watching ${agentCount} agent${agentCount === 1 ? "" : "s"} on your behalf.`}
+            ? "No apps connected to your account yet."
+            : `${agentCount} connected app${agentCount === 1 ? "" : "s"}.`}
         </p>
       </header>
 
-      {/* Agents */}
+      {/* Connected apps */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-10">
         <div className="lg:col-span-1 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-5">
           <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold mb-3">
-            Your agents
+            Connected apps
           </h2>
           {agentCount === 0 ? (
             <p className="text-sm text-ink-soft">
-              No agent linked yet. See <em>How to connect an agent</em> on the right.
+              No app connected yet. See <em>How to connect an app</em> on the right.
             </p>
           ) : (
             <ul className="space-y-2">
@@ -148,7 +148,7 @@ function NoActivityYet() {
     <div className="text-sm text-ink-soft space-y-2">
       <p>Nothing here yet.</p>
       <p className="text-ink-mute">
-        Once your agent searches or browses on Teno Store, you&apos;ll see every step it took right here.
+        Once a connected app searches or browses on Teno Store, every step shows up here.
       </p>
     </div>
   );
@@ -158,11 +158,10 @@ function ConnectAgentEmptyState() {
   return (
     <div className="text-sm text-ink-soft space-y-6">
       <div>
-        <h3 className="text-ink font-medium text-base mb-1">Set up your shopping agent</h3>
+        <h3 className="text-ink font-medium text-base mb-1">Connect an app to your account</h3>
         <p className="text-ink-mute">
-          Teno Store is shopped by AI agents on your behalf. You watch what they do here.
-          You&apos;ll need an AI app that can connect to outside services — most popular is{" "}
-          <strong className="text-ink-soft">Claude Desktop</strong>. Pick one below.
+          Connect a desktop assistant or developer tool to browse and shop the Teno Store
+          catalog from outside the website. Activity from each connected app appears here.
         </p>
       </div>
 
@@ -170,7 +169,7 @@ function ConnectAgentEmptyState() {
       <div className="rounded-xl border border-line-soft bg-bg-elev/40 p-4">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="min-w-0 flex-1">
-            <h4 className="text-ink font-medium">Use with Claude Desktop</h4>
+            <h4 className="text-ink font-medium">Connect Claude Desktop</h4>
             <p className="text-xs text-ink-mute mt-0.5">Recommended · free · 5 minutes</p>
           </div>
           <a
@@ -207,7 +206,7 @@ function ConnectAgentEmptyState() {
             <span className="shrink-0 w-6 h-6 rounded-full bg-bg-soft border border-line-soft text-xs font-medium flex items-center justify-center text-ink-mute">3</span>
             <span>
               Claude will pop up a sign-in window for Teno Store and ask you to approve.
-              Click <strong className="text-ink">Allow</strong>. That&apos;s it — your agent is connected.
+              Click <strong className="text-ink">Allow</strong>. That&apos;s it — your app is connected.
             </span>
           </li>
         </ol>
@@ -221,10 +220,10 @@ function ConnectAgentEmptyState() {
 
       {/* Secondary path: any other MCP-compatible app */}
       <div className="rounded-xl border border-line-soft bg-bg-elev/40 p-4">
-        <h4 className="text-ink font-medium mb-1">Use with another AI app</h4>
+        <h4 className="text-ink font-medium mb-1">Connect another desktop app</h4>
         <p className="text-ink-mute text-xs mb-3">
-          Any app that supports the Model Context Protocol (MCP) works the same way —
-          ChatGPT desktop, Cursor, Zed, custom assistants. Add this as a new MCP server:
+          Compatible desktop apps (ChatGPT desktop, Cursor, Zed and similar
+          tools) connect the same way. Add this as a new server in your app:
         </p>
         <div className="flex items-center gap-2">
           <code className="flex-1 inline-flex items-center font-mono text-xs bg-bg/60 border border-line-soft rounded-md px-3 h-10 sm:h-8 text-ink truncate">
@@ -238,14 +237,14 @@ function ConnectAgentEmptyState() {
       <details className="group">
         <summary className="cursor-pointer text-xs text-ink-mute hover:text-ink-soft active:text-ink-soft list-none flex items-center gap-1.5 py-2 sm:py-0">
           <span className="transition group-open:rotate-90">▸</span>
-          For developers · build your own agent
+          For developers · API integration
         </summary>
         <div className="mt-3 pl-4 space-y-3 text-xs text-ink-mute">
           <p>
-            The full protocol surface (REST / MCP / A2A / AP2) is documented at{" "}
+            Full protocol details are documented at{" "}
             <a href="/.well-known/agents.json" className="text-accent hover:underline active:underline">
               /.well-known/agents.json
-            </a>. To mint an Agent Passport directly:
+            </a>. To mint an access token directly:
           </p>
           <pre className="bg-bg/60 border border-line-soft rounded-lg p-3 overflow-x-auto font-mono text-ink whitespace-pre">
 {`curl -X POST https://api.teno-store.com/v1/auth/passports \\
@@ -260,7 +259,7 @@ function ConnectAgentEmptyState() {
   }'`}
           </pre>
           <p>
-            Returns a DPoP-bound Passport JWT. Send it as{" "}
+            Returns a DPoP-bound access token. Send it as{" "}
             <code className="font-mono">Authorization: DPoP &lt;jwt&gt;</code> on calls to{" "}
             <code className="font-mono">/v1/...</code>, <code className="font-mono">/mcp</code>, or{" "}
             <code className="font-mono">/a2a</code>.

@@ -75,7 +75,7 @@ export default function OG() {
             lineHeight: 1.3,
           }}
         >
-          Annonces de vendeurs algériens · prix en dinars (DZD) · conçu pour acheteurs humains et agents IA.
+          Annonces de vendeurs algériens · prix en dinars (DZD) · catalogue actualisé en continu.
         </div>
       </div>
     ),

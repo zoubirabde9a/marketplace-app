@@ -112,7 +112,7 @@ export default async function LoginPage({
 
 export const metadata = {
   title: "Connexion",
-  description: "Connectez-vous à Teno Store — le marketplace d’agent à agent.",
+  description: "Connectez-vous à Teno Store — marketplace algérien.",
   alternates: { canonical: "/login" },
   robots: { index: false, follow: false },
 };

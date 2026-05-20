@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FR_CATEGORY } from "@/lib/categories";
+import { formatPrice } from "@/lib/format";
 
 // A short curated list of seller-facing categories. The full FR_CATEGORY map
 // has nested/duplicate slugs (smartphones vs telephones, voitures vs
@@ -55,6 +56,7 @@ export function NewProductForm({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [images, setImages] = useState<StagedImage[]>([]);
+  const [descriptionLen, setDescriptionLen] = useState(0);
 
   function addFiles(files: FileList | null): void {
     if (!files) return;
@@ -117,6 +119,22 @@ export function NewProductForm({
     }
   }
 
+  // Retry a previously-failed upload — flip its state back to uploading
+  // (clearing the error) and dispatch a fresh uploadOne with the same
+  // file the seller already picked. Beats forcing them to remove + re-pick.
+  function retryUpload(localId: string): void {
+    const target = images.find((x) => x.localId === localId);
+    if (!target || target.uploaded || target.uploading) return;
+    setImages((prev) =>
+      prev.map((x) =>
+        x.localId === localId
+          ? { ...x, uploading: true, error: undefined }
+          : x,
+      ),
+    );
+    void uploadOne({ ...target, uploading: true, error: undefined });
+  }
+
   function removeImage(localId: string): void {
     setImages((prev) => {
       const target = prev.find((x) => x.localId === localId);
@@ -169,23 +187,32 @@ export function NewProductForm({
 
         setError(null);
         start(async () => {
-          const r = await fetch("/api/seller/products", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              sellerId,
-              title,
-              ...(brand ? { brand } : {}),
-              ...(description ? { description } : {}),
-              ...(category ? { categoryIds: [category] } : {}),
-              variants: [{ sku, priceMinor, currency, inStock: true }],
-              media: successful.map((x) => ({
-                url: x.uploaded!.url,
-                contentType: x.uploaded!.contentType,
-                byteSize: x.uploaded!.byteSize,
-              })),
-            }),
-          });
+          let r: Response;
+          try {
+            r = await fetch("/api/seller/products", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                sellerId,
+                title,
+                ...(brand ? { brand } : {}),
+                ...(description ? { description } : {}),
+                ...(category ? { categoryIds: [category] } : {}),
+                variants: [{ sku, priceMinor, currency, inStock: true }],
+                media: successful.map((x) => ({
+                  url: x.uploaded!.url,
+                  contentType: x.uploaded!.contentType,
+                  byteSize: x.uploaded!.byteSize,
+                })),
+              }),
+            });
+          } catch {
+            // Network-layer failure (offline, DNS, CORS) — fetch throws
+            // before any response. Without this catch the rejection was
+            // unhandled and the form snapped back to idle silently.
+            setError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+            return;
+          }
           if (!r.ok) {
             const j = (await r.json().catch(() => ({}))) as { error?: string; detail?: string };
             setError(j.detail || j.error || `Échec (HTTP ${r.status})`);
@@ -226,17 +253,41 @@ export function NewProductForm({
         images={images}
         onAdd={addFiles}
         onRemove={removeImage}
+        onRetry={retryUpload}
       />
 
-      <Field label="Titre" name="title" required maxLength={300} />
-      <Field label="Marque" name="brand" maxLength={120} />
+      {/* Concrete placeholder examples — sellers leaving the listing
+          quality untouched ("phone", "iphone for sale") get poor search
+          visibility. A worked example nudges them toward model + storage
+          + condition without forcing a structured form. */}
+      <Field
+        label="Titre"
+        name="title"
+        required
+        maxLength={300}
+        placeholder="iPhone 13 Pro 256 Go — Comme neuf, garantie 6 mois"
+      />
+      <Field label="Marque" name="brand" maxLength={120} placeholder="Apple, Samsung, Xiaomi…" />
       <label className="text-sm">
-        <span className="block text-ink-soft mb-1">Description</span>
+        <span className="flex items-baseline justify-between mb-1">
+          <span className="text-ink-soft">Description</span>
+          <span
+            className={
+              "text-xs tabular-nums " +
+              (descriptionLen > 4500 ? "text-warn" : "text-ink-mute")
+            }
+          >
+            {descriptionLen}/5000
+          </span>
+        </span>
         <textarea
           name="description"
           maxLength={5000}
           rows={4}
-          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
+          dir="auto"
+          onChange={(e) => setDescriptionLen(e.target.value.length)}
+          placeholder="État, accessoires inclus, garantie, défauts éventuels, ville de livraison — plus c’est précis, moins l’acheteur pose de questions."
+          className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none placeholder:text-ink-mute"
         />
       </label>
       <label className="text-sm">
@@ -254,8 +305,9 @@ export function NewProductForm({
           ))}
         </select>
       </label>
-      <fieldset className="grid grid-cols-2 gap-3">
-        <Field label="Prix (DZD)" name="priceMajor" required placeholder="29999" />
+      <fieldset className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <legend className="sr-only">Prix et SKU</legend>
+        <PriceField />
         <Field label="SKU (optionnel)" name="sku" maxLength={64} placeholder="généré automatiquement" />
       </fieldset>
       {error && (
@@ -263,13 +315,46 @@ export function NewProductForm({
           {error}
         </p>
       )}
-      <button
-        type="submit"
-        disabled={pending || images.some((x) => x.uploading)}
-        className="self-stretch sm:self-start inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition disabled:opacity-60"
-      >
-        {pending ? "Création…" : "Créer le produit"}
-      </button>
+      {(() => {
+        const uploading = images.some((x) => x.uploading);
+        const hasReadyImage = images.some((x) => x.uploaded);
+        const failedCount = images.filter((x) => x.error).length;
+        // Disable + relabel for each state the seller can be in. Previously
+        // a zero-image submit was caught only after click via setError —
+        // making the button reflect the requirement up front avoids the
+        // "click, see error, scroll up" round trip.
+        const disabled = pending || uploading || !hasReadyImage;
+        const label = pending
+          ? "Création…"
+          : uploading
+          ? "Téléversement des images…"
+          : !hasReadyImage
+          ? "Ajoutez d’abord une image"
+          : "Créer le produit";
+        return (
+          <div className="flex flex-col gap-2 self-stretch sm:self-start">
+            <button
+              type="submit"
+              disabled={disabled}
+              aria-busy={pending}
+              className="self-stretch sm:self-start inline-flex h-11 sm:h-10 px-4 items-center justify-center rounded-lg bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {label}
+            </button>
+            {/* Surface failed-upload count near submit so sellers don't
+                publish thinking N images went through when N-k did.
+                The per-tile "Échec / Réessayer" is still the action; this
+                is just a heads-up summary co-located with the submit. */}
+            {failedCount > 0 && !uploading && (
+              <p className="text-xs text-warn">
+                {failedCount === 1
+                  ? "1 image n’a pas pu être téléversée — elle ne sera pas incluse."
+                  : `${failedCount} images n’ont pas pu être téléversées — elles ne seront pas incluses.`}
+              </p>
+            )}
+          </div>
+        );
+      })()}
     </form>
   );
 }
@@ -278,19 +363,54 @@ function ImageUploader({
   images,
   onAdd,
   onRemove,
+  onRetry,
 }: {
   images: StagedImage[];
   onAdd: (files: FileList | null) => void;
   onRemove: (localId: string) => void;
+  onRetry: (localId: string) => void;
 }): React.ReactElement {
   const canAddMore = images.length < MAX_IMAGES;
+  const [isDragging, setIsDragging] = useState(false);
   return (
-    <div className="text-sm">
+    <div
+      className="text-sm"
+      // Drag-and-drop wrapper. Mobile sellers see no difference (no drag
+      // events fire); desktop sellers can drop straight from their file
+      // explorer instead of going through the file picker.
+      onDragOver={(e) => {
+        e.preventDefault();
+        if (!canAddMore) return;
+        if (!isDragging) setIsDragging(true);
+      }}
+      onDragLeave={(e) => {
+        // currentTarget contains check avoids flicker as drag passes over
+        // children — only un-highlight when leaving the wrapper itself.
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setIsDragging(false);
+      }}
+      onDrop={(e) => {
+        // Always preventDefault so the browser doesn't navigate to the
+        // dropped file. Pass through to addFiles even when at the cap;
+        // addFiles surfaces the "Maximum N images" error via setError
+        // instead of dropping the gesture silently like the previous
+        // early-return did.
+        e.preventDefault();
+        setIsDragging(false);
+        if (e.dataTransfer?.files?.length) onAdd(e.dataTransfer.files);
+      }}
+    >
       <span className="block text-ink-soft mb-1">
-        Images <span className="text-ink-mute">({images.length}/{MAX_IMAGES}, JPG/PNG/WEBP)</span>
+        Images<span className="ml-1 text-ink-mute" aria-hidden>*</span>{" "}
+        <span className="text-ink-mute">({images.length}/{MAX_IMAGES}, JPG/PNG/WEBP/AVIF/GIF)</span>
       </span>
-      <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-        {images.map((img) => (
+      <div
+        className={
+          "grid grid-cols-3 sm:grid-cols-4 gap-3 rounded-lg transition " +
+          (isDragging ? "ring-2 ring-accent/60 ring-offset-2 ring-offset-bg" : "")
+        }
+      >
+        {images.map((img, idx) => (
           <div
             key={img.localId}
             className="relative aspect-square rounded-lg border border-line bg-bg overflow-hidden"
@@ -301,18 +421,33 @@ function ImageUploader({
               alt=""
               className="w-full h-full object-cover"
             />
+            {/* "Couverture" badge marks the first image — the one that
+                renders as the hero on /search, /store, /product. Without
+                this, sellers can't tell which image they're actually
+                promoting and end up with random first uploads as cover. */}
+            {idx === 0 && (
+              <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider bg-accent text-bg font-medium">
+                Couverture
+              </span>
+            )}
             {img.uploading && (
               <div className="absolute inset-0 bg-bg/60 flex items-center justify-center text-xs text-ink-soft">
                 Téléversement…
               </div>
             )}
             {img.error && (
-              <div
-                className="absolute inset-0 bg-bad/20 flex items-center justify-center text-xs text-bad px-1 text-center"
+              // Click-to-retry overlay — sellers previously had to remove
+              // and re-add a failed upload; now a tap reuses the same file.
+              <button
+                type="button"
+                onClick={() => onRetry(img.localId)}
                 title={img.error}
+                aria-label={`Réessayer le téléversement : ${img.error}`}
+                className="absolute inset-0 bg-bad/20 hover:bg-bad/30 active:bg-bad/30 flex flex-col items-center justify-center gap-0.5 text-xs text-bad px-1 text-center transition cursor-pointer"
               >
-                Échec
-              </div>
+                <span className="font-medium">Échec</span>
+                <span className="text-[10px] underline-offset-2 underline">Réessayer</span>
+              </button>
             )}
             <button
               type="button"
@@ -340,12 +475,58 @@ function ImageUploader({
           </label>
         )}
       </div>
-      {images.length === 0 && (
+      {images.length === 0 ? (
         <p className="mt-2 text-xs text-ink-mute">
           Au moins une image est requise — sans image, le produit n’apparaîtra pas dans le catalogue.
         </p>
-      )}
+      ) : images.length < 3 && images.length < MAX_IMAGES ? (
+        // Nudge sellers toward multiple angles once they've cleared the
+        // 1-image minimum but are still under-stocked. Listings with 3+
+        // photos convert better; sellers commonly stop at 1.
+        <p className="mt-2 text-xs text-ink-mute">
+          Ajoutez plusieurs angles (face, dos, accessoires) pour rassurer l’acheteur — jusqu’à {MAX_IMAGES} photos.
+        </p>
+      ) : null}
     </div>
+  );
+}
+
+// Price field with mobile numeric keypad (inputMode="decimal") and a live
+// formatted preview below ("29 999,00 DA"). Catches missing-digit typos that
+// are easy to make when typing five- to six-figure DZD prices on a phone.
+function PriceField({ defaultValue }: { defaultValue?: string } = {}) {
+  const [raw, setRaw] = useState(defaultValue ?? "");
+  const trimmed = raw.trim();
+  const valid = /^\d+(\.\d{1,2})?$/.test(trimmed);
+  let preview: string | null = null;
+  if (valid) {
+    const [whole, frac = ""] = trimmed.split(".");
+    const minor = `${whole}${frac.padEnd(2, "0").slice(0, 2)}`.replace(/^0+(?=\d)/, "");
+    preview = formatPrice(minor, "DZD", "fr-DZ");
+  }
+  return (
+    <label className="text-sm">
+      <span className="block text-ink-soft mb-1">
+        Prix (DZD)<span className="ml-1 text-ink-mute" aria-hidden>*</span>
+      </span>
+      <input
+        name="priceMajor"
+        required
+        aria-required="true"
+        value={raw}
+        onChange={(e) => setRaw(e.target.value)}
+        inputMode="decimal"
+        autoComplete="off"
+        placeholder="29999"
+        className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none tabular-nums"
+      />
+      <span
+        aria-live="polite"
+        className={"mt-1 block text-xs tabular-nums " + (preview ? "text-ink-soft" : "text-ink-mute")}
+      >
+        {preview ?? (trimmed === "" ? " " : "Format invalide")}
+      </span>
+    </label>
   );
 }
 
@@ -378,13 +559,22 @@ function Field({
 }) {
   return (
     <label className="text-sm">
-      <span className="block text-ink-soft mb-1">{label}</span>
+      <span className="block text-ink-soft mb-1">
+        {label}
+        {required && (
+          <span className="ml-1 text-ink-mute" aria-hidden>
+            *
+          </span>
+        )}
+      </span>
       <input
         name={name}
         required={required}
         maxLength={maxLength}
         defaultValue={defaultValue}
         placeholder={placeholder}
+        dir="auto"
+        aria-required={required || undefined}
         className="w-full rounded-lg bg-bg border border-line px-3 py-2 text-base sm:text-sm text-ink focus:border-accent/60 outline-none"
       />
     </label>

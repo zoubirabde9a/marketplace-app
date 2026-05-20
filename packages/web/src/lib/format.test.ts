@@ -39,11 +39,14 @@ describe("formatPrice", () => {
   });
 
   it("formats whole-number USD without trailing zeros", () => {
-    expect(formatPrice("1000", "USD")).toMatch(/^\$10$|^US\$10$/);
+    // Pass explicit en-US locale — these tests assert en-US-specific
+    // formatting ($, dot decimals). Default locale was changed to fr-DZ
+    // to match the rest of the French-Algeria-primary site.
+    expect(formatPrice("1000", "USD", "en-US")).toMatch(/^\$10$|^US\$10$/);
   });
 
   it("formats fractional USD with two decimals", () => {
-    expect(formatPrice("1999", "USD")).toMatch(/19\.99/);
+    expect(formatPrice("1999", "USD", "en-US")).toMatch(/19\.99/);
   });
 
   it("formats DZD without decimals (large round numbers)", () => {
@@ -56,17 +59,17 @@ describe("formatPrice", () => {
 
 describe("formatPriceRange", () => {
   it("returns single price when from === to", () => {
-    expect(formatPriceRange("1999", "1999", "USD")).toMatch(/19\.99/);
+    expect(formatPriceRange("1999", "1999", "USD", "en-US")).toMatch(/19\.99/);
   });
 
   it("returns a range when from !== to", () => {
-    const out = formatPriceRange("1000", "2000", "USD");
+    const out = formatPriceRange("1000", "2000", "USD", "en-US");
     expect(out).toContain("–");
   });
 
   it("falls back to single side when one is missing", () => {
-    expect(formatPriceRange("1000", null, "USD")).toMatch(/10/);
-    expect(formatPriceRange(null, "2000", "USD")).toMatch(/20/);
+    expect(formatPriceRange("1000", null, "USD", "en-US")).toMatch(/10/);
+    expect(formatPriceRange(null, "2000", "USD", "en-US")).toMatch(/20/);
   });
 });
 

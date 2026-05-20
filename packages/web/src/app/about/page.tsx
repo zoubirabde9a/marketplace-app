@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   // earlier English-only "About" title.
   title: "À propos",
   description:
-    "Teno Store — marketplace algérien avec des milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA.",
+    "Teno Store — marketplace algérien avec des milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD), catalogue actualisé en continu.",
   alternates: {
     canonical: "/about",
     // Re-declare hreflang so Next's wholesale replacement of layout-level
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     type: "website",
     url: `${SITE_URL}/about`,
     locale: "fr_DZ",
-    alternateLocale: ["en_US", "ar_DZ"],
+    alternateLocale: ["ar_DZ"],
   },
 };
 
@@ -45,11 +45,11 @@ export default function AboutPage() {
     url: `${SITE_URL}/about`,
     name: "À propos de Teno Store",
     description:
-      "À propos de Teno Store — marketplace algérien d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA (MCP, A2A, AP2) avec des signaux de confiance explicites sur chaque annonce.",
-    // Page now ships a French primary intro followed by an English deep-dive
-    // for the agent-developer audience. Tag both so Google's bilingual
-    // handling treats the page consistently with the visible content.
-    inLanguage: ["fr", "en"],
+      "À propos de Teno Store — marketplace algérien d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD) avec des signaux de confiance explicites sur chaque annonce.",
+    // Page is single-language French now (the prior English deep-dive
+    // section was removed). Match the visible content with a single-locale
+    // inLanguage tag.
+    inLanguage: ["fr"],
     // dateModified gives AI crawlers (Perplexity, ChatGPT search, Google AI
     // Overviews) an explicit freshness signal — pages with recent
     // dateModified are weighted higher in source ranking for time-sensitive

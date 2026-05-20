@@ -33,8 +33,8 @@ export default async function ContactPage({
 
   if (!seller) {
     return (
-      <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-2xl mx-auto" lang="fr">
-        <h1 className="text-2xl font-semibold">Modifier les coordonnées</h1>
+      <section aria-labelledby="contact-edit-heading" className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-2xl mx-auto" lang="fr">
+        <h1 id="contact-edit-heading" className="text-2xl font-semibold">Modifier les coordonnées</h1>
         <p className="mt-4 text-sm text-ink-soft">
           Aucune boutique trouvée.{" "}
           <Link href="/seller/dashboard" className="text-accent hover:underline active:underline">
@@ -47,13 +47,19 @@ export default async function ContactPage({
   }
 
   return (
-    <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-2xl mx-auto" lang="fr">
+    <section aria-labelledby="contact-edit-heading" className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-2xl mx-auto" lang="fr">
       <Link href="/seller/dashboard" className="inline-flex items-center h-8 text-sm text-ink-soft hover:text-ink active:text-ink">
-        ← Retour au tableau de bord
+        <span aria-hidden>←</span> Retour au tableau de bord
       </Link>
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight">Modifier les coordonnées</h1>
+      <h1 id="contact-edit-heading" className="mt-3 text-2xl font-semibold tracking-tight">Modifier les coordonnées</h1>
       <p className="mt-2 text-sm text-ink-soft">
-        Boutique : <span className="text-ink">{seller.displayName}</span>
+        Boutique : <span dir="auto" className="text-ink">{seller.displayName}</span>
+      </p>
+      {/* All fields are nullable in the API — sellers don't have to set
+          phone + WhatsApp + website all at once. State this upfront so
+          they don't feel obligated to fill every input before saving. */}
+      <p className="mt-1 text-xs text-ink-mute">
+        Tous les champs sont optionnels — laissez vide ce que vous ne souhaitez pas afficher.
       </p>
       <div className="mt-6 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-6">
         <ContactForm
@@ -65,9 +71,24 @@ export default async function ContactPage({
           }}
         />
       </div>
-      <p className="mt-4 text-xs text-ink-mute">
-        Le nom de la boutique et l’e-mail de support ne sont pas encore modifiables — contactez-nous si vous devez les changer.
-      </p>
+      <footer className="mt-4 text-xs text-ink-mute">
+        Le nom de la boutique et l’e-mail de support ne sont pas encore modifiables —{" "}
+        {/* mailto link instead of bare "contactez-nous" so sellers can
+            actually act on the instruction with one tap. Subject is
+            pre-filled with the seller name so the support inbox knows
+            which shop the request is about. */}
+        <a
+          href={`mailto:mahlledz@gmail.com?subject=${encodeURIComponent(
+            `Modification de boutique : ${seller.displayName}`,
+          )}&body=${encodeURIComponent(
+            `Bonjour,\n\nJe souhaite modifier la boutique « ${seller.displayName} ». Changement demandé :\n\n`,
+          )}`}
+          className="text-accent hover:underline active:underline"
+        >
+          contactez-nous
+        </a>{" "}
+        si vous devez les changer.
+      </footer>
     </section>
   );
 }

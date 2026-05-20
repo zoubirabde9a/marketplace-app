@@ -685,10 +685,6 @@ const GENERIC_FAQ: CategoryFaqItem[] = [
     q: "Comment contacter le vendeur ?",
     a: "Chaque annonce affiche les coordonnées du vendeur — numéro de téléphone, WhatsApp ou Viber. Cliquez sur le bouton de contact pour ouvrir une conversation directe.",
   },
-  {
-    q: "Teno Store accepte-t-il les achats par agent IA ?",
-    a: "Oui. Teno Store est conçu nativement comme un marketplace agent-à-agent. Les agents IA peuvent découvrir, comparer et acheter via les protocoles MCP, A2A et AP2.",
-  },
 ];
 
 export function getCategoryContent(slug: string): CategoryContent {

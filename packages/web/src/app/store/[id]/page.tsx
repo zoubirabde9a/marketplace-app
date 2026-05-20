@@ -142,6 +142,12 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   const totalEstimate = listings?.pagination.totalEstimate ?? 0;
 
   const phones = seller.phones ?? [];
+  // Pre-filled WhatsApp message — sellers report substantially higher reply
+  // rate when buyers arrive in WhatsApp with a ready-to-send greeting that
+  // names the shop, vs an empty chat. Mirrors the per-product page chip's
+  // pattern but the storefront context names the shop rather than the
+  // product. URL-encoded; wa.me decodes ?text= as the draft message.
+  const waText = `Bonjour, je vous contacte au sujet de votre boutique « ${seller.displayName} » sur Teno Store.`;
   // Visible location uses the French country name (frCountry()) so the
   // header reads "Alger, Algérie" rather than "Alger, DZ"; matches the
   // meta description and the rest of the French-locale page copy.
@@ -381,7 +387,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   };
 
   return (
-    <article className="max-w-6xl mx-auto px-0 py-4 sm:p-6">
+    <article aria-labelledby="storefront-heading" className="max-w-6xl mx-auto px-0 py-4 sm:p-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLdString(storeJsonLd) }}
@@ -398,11 +404,19 @@ export default async function StorePage({ params }: { params: Promise<Params> })
       )}
 
       <header className="border-b border-line-soft pb-6 mb-6">
-        <p className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Boutique</p>
-        <h1 className="text-2xl sm:text-3xl font-semibold mt-1 break-words">{seller.displayName}</h1>
-        {location ? <p className="text-sm text-ink-soft mt-1">{location}</p> : null}
+        <p aria-hidden className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Boutique</p>
+        {/* `untrusted` flags the seller-supplied display name — matches
+            the rest of the app's convention for buyer-facing rendering
+            of user-generated text (product titles, order names, etc.). */}
+        <h1 id="storefront-heading" dir="auto" className="text-2xl sm:text-3xl font-semibold mt-1 break-words untrusted">{seller.displayName}</h1>
+        {location ? <p dir="auto" className="text-sm text-ink-soft mt-1">{location}</p> : null}
         {seller.description ? (
-          <p className="mt-4 text-ink-soft whitespace-pre-wrap max-w-2xl">{seller.description}</p>
+          <p
+            dir="auto"
+            className="mt-4 text-ink-soft whitespace-pre-wrap max-w-2xl untrusted"
+          >
+            {seller.description}
+          </p>
         ) : null}
 
         <dl className="mt-5 text-sm grid grid-cols-1 sm:grid-cols-[max-content_1fr] gap-x-4 gap-y-1 max-w-xl">
@@ -410,13 +424,26 @@ export default async function StorePage({ params }: { params: Promise<Params> })
             <>
               <dt className="text-ink-mute">Téléphone{phones.length > 1 ? "s" : ""}</dt>
               <dd>
-                <ul>
+                <ul className="space-y-1.5">
                   {phones.map((p) => (
-                    <li key={p.phone}>
-                      <a className="inline-block py-1 sm:py-0 font-mono text-accent hover:underline active:underline" href={`tel:${p.phone}`}>{p.phone}</a>
-                      {p.isPrimary ? <span className="text-xs text-ink-mute"> · principal</span> : null}
-                      {p.isWhatsapp ? <span className="text-xs text-ink-mute"> · WhatsApp</span> : null}
-                      {p.isViber ? <span className="text-xs text-ink-mute"> · Viber</span> : null}
+                    <li key={p.phone} className="flex flex-wrap items-center gap-2">
+                      <a className="inline-block py-1 sm:py-0 font-mono text-accent hover:underline active:underline" href={`tel:${p.phone}`} dir="ltr">{p.phone}</a>
+                      {p.isPrimary ? <span className="text-xs text-ink-mute">principal</span> : null}
+                      {/* wa.me click-to-chat: most Algerian buyers prefer
+                          WhatsApp over a phone call. Strip non-digits — wa.me
+                          requires international format without the leading +. */}
+                      {p.isWhatsapp ? (
+                        <a
+                          href={`https://wa.me/${p.phone.replace(/\D/g, "")}?text=${encodeURIComponent(waText)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-3 h-11 sm:h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 active:bg-emerald-500/25 transition"
+                          aria-label={`Discuter sur WhatsApp avec ${seller.displayName}`}
+                        >
+                          WhatsApp
+                        </a>
+                      ) : null}
+                      {p.isViber ? <span className="text-xs text-ink-mute">Viber</span> : null}
                     </li>
                   ))}
                 </ul>
@@ -425,34 +452,58 @@ export default async function StorePage({ params }: { params: Promise<Params> })
           ) : seller.phone ? (
             <>
               <dt className="text-ink-mute">Téléphone</dt>
-              <dd><a className="inline-block py-1 sm:py-0 font-mono text-accent hover:underline active:underline" href={`tel:${seller.phone}`}>{seller.phone}</a></dd>
+              <dd className="flex flex-wrap items-center gap-2">
+                <a className="inline-block py-1 sm:py-0 font-mono text-accent hover:underline active:underline" href={`tel:${seller.phone}`} dir="ltr">{seller.phone}</a>
+                {seller.whatsapp ? (
+                  <a
+                    href={`https://wa.me/${seller.whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(waText)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-3 h-11 sm:h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 hover:bg-emerald-500/20 active:bg-emerald-500/25 transition"
+                    aria-label={`Discuter sur WhatsApp avec ${seller.displayName}`}
+                  >
+                    WhatsApp
+                  </a>
+                ) : null}
+              </dd>
             </>
           ) : null}
           {seller.website ? (
             <>
               <dt className="text-ink-mute">Site web</dt>
-              <dd><a className="inline-block py-1 sm:py-0 text-accent hover:underline active:underline break-all" href={seller.website} rel="nofollow noopener">{seller.website}</a></dd>
+              <dd><a dir="ltr" className="inline-block py-1 sm:py-0 text-accent hover:underline active:underline break-all" href={seller.website} rel="nofollow noopener">{seller.website}</a></dd>
             </>
           ) : null}
           {seller.supportEmail ? (
             <>
-              <dt className="text-ink-mute">Contact</dt>
-              <dd><a className="inline-block py-1 sm:py-0 text-accent hover:underline active:underline break-all" href={`mailto:${seller.supportEmail}`}>{seller.supportEmail}</a></dd>
+              <dt className="text-ink-mute">E-mail</dt>
+              <dd><a dir="ltr" className="inline-block py-1 sm:py-0 text-accent hover:underline active:underline break-all" href={`mailto:${seller.supportEmail}`}>{seller.supportEmail}</a></dd>
             </>
           ) : null}
         </dl>
       </header>
 
-      <section>
-        <h2 className="text-xl font-medium mb-4">
+      <section aria-labelledby="store-listings-heading">
+        <h2 id="store-listings-heading" className="text-xl font-medium mb-4">
           {totalEstimate > 0
-            ? `Annonces (${totalEstimate})`
+            ? `${totalEstimate === 1 ? "Annonce" : "Annonces"} (${totalEstimate})`
             : "Pas encore d’annonces"}
         </h2>
         {hits.length > 0 ? (
           <ProductGrid hits={hits} />
         ) : (
-          <p className="text-ink-soft">Cette boutique n’a pas encore publié d’annonces.</p>
+          // CTA to the full catalog keeps buyers on-site when they land
+          // on an empty storefront (rather than bouncing). Common path
+          // when a seller is freshly signed up but hasn't listed yet.
+          <div>
+            <p className="text-ink-soft">Cette boutique n’a pas encore publié d’annonces.</p>
+            <Link
+              href="/search"
+              className="mt-3 inline-flex items-center text-sm text-accent hover:underline active:underline"
+            >
+              Voir le catalogue complet <span aria-hidden>→</span>
+            </Link>
+          </div>
         )}
         {/*
           'Voir les N annonces →' link removed. Previously pointed at

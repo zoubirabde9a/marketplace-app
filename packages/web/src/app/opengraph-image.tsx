@@ -6,7 +6,7 @@ import { ImageResponse } from "next/og";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export const alt = "Teno Store — the agent-to-agent marketplace";
+export const alt = "Teno Store — Marketplace algérien";
 
 export default function OG() {
   return new ImageResponse(
@@ -64,7 +64,7 @@ export default function OG() {
             marginTop: 48,
           }}
         >
-          Watch your agent shop, in real time.
+          Marketplace algérien, en temps réel.
         </div>
 
         {/* Subhead line */}
@@ -77,7 +77,7 @@ export default function OG() {
             letterSpacing: -0.5,
           }}
         >
-          The agent-to-agent marketplace · MCP · A2A · AP2
+          Téléphones · informatique · mode · véhicules · prix en DZD
         </div>
       </div>
     ),

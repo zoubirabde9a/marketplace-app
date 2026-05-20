@@ -11,7 +11,12 @@ export function minorToMajor(minor: string | number | bigint | null | undefined,
   return n / 10 ** exp;
 }
 
-export function formatPrice(minor: string | number | bigint | null | undefined, currency: string | null | undefined, locale = "en-US"): string {
+// Default locale is fr-DZ to match the rest of the site, which is
+// French-Algeria primary (`lang="fr"` throughout, og:locale=fr_DZ, etc.).
+// Previously en-US, which leaked "DZD 29,999.00" formatting into pages
+// the rest of which were French — mismatched separators, wrong currency
+// position. Pass an explicit locale only when an alternative is needed.
+export function formatPrice(minor: string | number | bigint | null | undefined, currency: string | null | undefined, locale = "fr-DZ"): string {
   if (minor == null || !currency) return "—";
   const major = minorToMajor(minor, currency);
   if (major == null) return "—";
@@ -33,12 +38,13 @@ export function formatPriceRange(
   fromMinor: string | null | undefined,
   toMinor: string | null | undefined,
   currency: string | null | undefined,
+  locale = "fr-DZ",
 ): string {
   if (!currency) return "—";
   if (fromMinor && toMinor && fromMinor !== toMinor) {
-    return `${formatPrice(fromMinor, currency)} – ${formatPrice(toMinor, currency)}`;
+    return `${formatPrice(fromMinor, currency, locale)} – ${formatPrice(toMinor, currency, locale)}`;
   }
-  return formatPrice(fromMinor ?? toMinor, currency);
+  return formatPrice(fromMinor ?? toMinor, currency, locale);
 }
 
 export function formatRating(rating?: number | null, count?: number | null): string {

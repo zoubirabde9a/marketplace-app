@@ -43,24 +43,20 @@ export const metadata: Metadata = {
     "ordinateurs portables algérie",
     "électroménager algérie",
     "vente Algérie",
+    "acheter en ligne Algérie",
+    "Ouedkniss alternative",
+    "petites annonces Algérie",
     "Algerian marketplace",
     "Algeria phones",
     "DZD listings",
-    // Agent-marketplace angle
-    "agent-to-agent marketplace",
-    "AI agent shopping",
-    "MCP marketplace",
-    "A2A protocol",
-    "AP2 mandates",
-    "agentic commerce",
     // Brand
     "Teno Store",
   ],
   openGraph: {
     siteName: "Teno Store",
-    title: "Teno Store — the agent-to-agent marketplace",
+    title: "Teno Store — Marketplace algérien",
     description:
-      "Marketplace algérien — milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA (MCP, A2A, AP2).",
+      "Marketplace algérien — milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD), catalogue actualisé en continu.",
     type: "website",
     url: SITE_URL,
     // Primary content language is French (every product title, description,
@@ -79,8 +75,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Teno Store — the agent-to-agent marketplace",
-    description: "Marketplace algérien · annonces de vendeurs algériens en DZD · conçu pour acheteurs humains et agents IA.",
+    title: "Teno Store — Marketplace algérien",
+    description: "Marketplace algérien · annonces de vendeurs algériens en DZD · catalogue actualisé en continu.",
     // Intentionally omit `images` so Next's file-based opengraph-image.tsx
     // convention also fills twitter:image. Previously hard-coded to
     // /apple-icon (180×180), which fails Twitter's summary_large_image

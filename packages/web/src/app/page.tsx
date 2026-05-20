@@ -138,7 +138,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         // French og:description shipped earlier so the brand entity
         // description is consistent with what social/SERP previews show.
         description:
-          "Marketplace algérien — milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA (MCP, A2A, AP2).",
+          "Marketplace algérien — milliers d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD), catalogue actualisé en continu.",
         inLanguage: ["fr", "ar", "en"],
         url: SITE_URL,
         publisher: { "@id": `${SITE_URL}/#organization` },
@@ -174,7 +174,7 @@ function SignedOutLanding({ recent }: { recent: SearchHit[] }) {
         // the @graph paint the same picture. Without this Google's brand
         // panel was scraping page body text to summarise the entity.
         description:
-          "Marketplace algérien d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD). Conçu pour acheteurs humains et agents IA.",
+          "Marketplace algérien d'annonces de téléphones, informatique, électroménager, mode et véhicules. Vendeurs algériens, prix en dinars (DZD), catalogue actualisé en continu.",
         url: SITE_URL,
         logo: {
           "@type": "ImageObject",

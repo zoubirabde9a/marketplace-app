@@ -62,7 +62,7 @@ describe("SnapshotPage", () => {
     expect(container.textContent).toContain("blue widget"); // query echoed
     expect(container.textContent).toContain("Acme");
     expect(container.textContent).toContain("19.99 USD");
-    expect(container.textContent).toContain("Agent search snapshot");
+    expect(container.textContent).toContain("search snapshot");
   });
 
   it("renders product snapshot with variants", async () => {
@@ -149,6 +149,6 @@ describe("SnapshotPage", () => {
     const pre = container.querySelector("pre");
     expect(pre).not.toBeNull();
     expect(pre!.textContent).toContain("rows");
-    expect(container.textContent).toContain("Agent compare snapshot");
+    expect(container.textContent).toContain("compare snapshot");
   });
 });

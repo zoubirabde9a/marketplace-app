@@ -114,8 +114,12 @@ export function GoogleSignInButton({
 
     const onError = () => {
       if (cancelled) return;
+      // French copy — the rest of the seller surface is French-primary, so
+      // a stray English error felt jarring on the only path users actually
+      // saw it (corporate networks blocking accounts.google.com, ad/script
+      // blockers, etc.).
       setError(
-        "Couldn’t load Google Sign-In. This usually means the network is blocking accounts.google.com — try a different network or disable a script blocker.",
+        "Impossible de charger la connexion Google. Votre réseau bloque peut-être accounts.google.com — essayez un autre réseau ou désactivez votre bloqueur de scripts.",
       );
     };
 

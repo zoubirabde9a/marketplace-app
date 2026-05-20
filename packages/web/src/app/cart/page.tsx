@@ -20,8 +20,15 @@ export default async function CartPage() {
   const lines = cart?.lines ?? [];
 
   return (
-    <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-4xl mx-auto" lang="fr">
-      <h1 className="text-3xl font-semibold tracking-tight">Votre panier</h1>
+    <section aria-labelledby="cart-heading" className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-4xl mx-auto" lang="fr">
+      <h1 id="cart-heading" className="text-3xl font-semibold tracking-tight">
+        Votre panier
+        {lines.length > 0 && (
+          <span className="ml-2 text-base text-ink-mute font-medium tabular-nums">
+            ({lines.length} {lines.length === 1 ? "article" : "articles"})
+          </span>
+        )}
+      </h1>
 
       {lines.length === 0 ? (
         <div className="mt-8 sm:mt-10 rounded-2xl border border-line-soft bg-bg-soft/60 p-6 sm:p-8 text-center">
@@ -30,7 +37,7 @@ export default async function CartPage() {
             href="/search"
             className="mt-4 inline-flex items-center justify-center px-5 h-11 sm:h-10 rounded-md bg-accent text-bg text-sm font-medium hover:brightness-110 active:brightness-90 transition"
           >
-            Parcourir les produits
+            Parcourir les produits <span aria-hidden>→</span>
           </Link>
         </div>
       ) : (
@@ -58,6 +65,7 @@ export default async function CartPage() {
                   {l.productId ? (
                     <Link
                       href={`/product/${encodeURIComponent(l.productId)}`}
+                      dir="auto"
                       className="text-sm font-medium text-ink hover:text-accent active:text-accent line-clamp-2 untrusted"
                     >
                       {l.title ? cleanProductTitle(l.title) : (l.sku ?? l.variantId)}
@@ -79,7 +87,7 @@ export default async function CartPage() {
                         <input type="hidden" name="delta" value={-1} />
                         <PendingButton
                           ariaLabel="Diminuer la quantité"
-                          className="w-10 h-10 sm:w-8 sm:h-8 text-base sm:text-sm text-ink-soft hover:bg-bg-elev active:bg-bg-elev disabled:opacity-30 transition"
+                          className="w-11 h-11 sm:w-8 sm:h-8 text-base sm:text-sm text-ink-soft hover:bg-bg-elev active:bg-bg-elev disabled:opacity-30 disabled:cursor-not-allowed transition"
                           disabled={l.qty <= 1}
                         >
                           −
@@ -95,7 +103,7 @@ export default async function CartPage() {
                           max={99}
                           inputMode="numeric"
                           enterKeyHint="done"
-                          className="w-12 h-10 sm:h-8 bg-bg-elev text-base sm:text-sm text-center tabular-nums border-x border-line focus:outline-none focus:bg-bg-elev/60"
+                          className="w-12 h-11 sm:h-8 bg-bg-elev text-base sm:text-sm text-center tabular-nums border-x border-line focus:outline-none focus:bg-bg-elev/60"
                           aria-label="Quantité"
                         />
                       </form>
@@ -105,7 +113,7 @@ export default async function CartPage() {
                         <input type="hidden" name="delta" value={1} />
                         <PendingButton
                           ariaLabel="Augmenter la quantité"
-                          className="w-10 h-10 sm:w-8 sm:h-8 text-base sm:text-sm text-ink-soft hover:bg-bg-elev active:bg-bg-elev disabled:opacity-30 transition"
+                          className="w-11 h-11 sm:w-8 sm:h-8 text-base sm:text-sm text-ink-soft hover:bg-bg-elev active:bg-bg-elev disabled:opacity-30 disabled:cursor-not-allowed transition"
                           disabled={l.qty >= 99}
                         >
                           +
@@ -114,7 +122,7 @@ export default async function CartPage() {
                     </div>
                     <form action={removeLineAction}>
                       <input type="hidden" name="variantId" value={l.variantId} />
-                      <PendingButton className="h-10 sm:h-8 px-3.5 rounded border border-line text-sm sm:text-xs text-ink-mute hover:text-bad hover:border-bad/40 active:text-bad active:border-bad/40 transition disabled:opacity-60">
+                      <PendingButton className="h-11 sm:h-8 px-3.5 rounded border border-line text-sm sm:text-xs text-ink-mute hover:text-bad hover:border-bad/40 active:text-bad active:border-bad/40 transition disabled:opacity-60 disabled:cursor-not-allowed">
                         Retirer
                       </PendingButton>
                     </form>
@@ -146,7 +154,7 @@ export default async function CartPage() {
             ))}
           </ul>
 
-          <aside className="rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-6 h-fit">
+          <aside aria-label="Résumé du panier" className="rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-6 h-fit">
             <h2 className="text-xs uppercase tracking-widest text-ink-mute font-semibold">Récapitulatif</h2>
             <dl className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between">
@@ -158,10 +166,10 @@ export default async function CartPage() {
                 <dd className="text-ink-mute text-right">Gratuite (paiement à la livraison)</dd>
               </div>
             </dl>
-            <div className="mt-4 pt-4 border-t border-line-soft flex justify-between text-base font-medium">
-              <span>Total</span>
-              <span className="tabular-nums">{formatPrice(cart!.totals.totalMinor, cart!.currency)}</span>
-            </div>
+            <dl className="mt-4 pt-4 border-t border-line-soft flex justify-between text-base font-medium">
+              <dt>Total</dt>
+              <dd className="tabular-nums">{formatPrice(cart!.totals.totalMinor, cart!.currency)}</dd>
+            </dl>
             <Link
               href="/checkout"
               prefetch
@@ -171,9 +179,9 @@ export default async function CartPage() {
             </Link>
             <Link
               href="/search"
-              className="mt-3 flex items-center justify-center h-9 text-sm sm:text-xs text-ink-mute hover:text-ink-soft active:text-ink-soft transition"
+              className="mt-3 flex items-center justify-center h-11 sm:h-9 text-sm sm:text-xs text-ink-mute hover:text-ink-soft active:text-ink-soft transition"
             >
-              ← Continuer mes achats
+              <span aria-hidden>←</span> Continuer mes achats
             </Link>
             <p className="mt-4 text-xs text-ink-mute leading-relaxed">
               Paiement à la livraison. Votre numéro de téléphone et votre

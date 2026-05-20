@@ -97,15 +97,14 @@ export const post: BlogPost = {
           pour signaler que vous êtes actif.
         </p>
 
-        <h2>7. Le passage à l&rsquo;agent IA</h2>
+        <h2>7. Structurez les détails techniques</h2>
         <p>
-          C&rsquo;est ce qui distingue Teno Store d&rsquo;une plateforme
-          classique : votre annonce est aussi exposée à des agents IA qui
-          achètent au nom d&rsquo;acheteurs humains. Pour qu&rsquo;un agent
-          retienne votre annonce, les détails techniques doivent être
-          structurés — capacité, couleur, état, garantie en champs séparés
-          plutôt que noyés dans un paragraphe. Le tableau de bord vendeur
-          gère ça automatiquement si vous remplissez les champs proposés.
+          Les détails techniques — capacité, couleur, état, garantie —
+          doivent être renseignés en champs séparés plutôt que noyés dans
+          un paragraphe de description. Les filtres du catalogue s&rsquo;en
+          servent pour faire ressortir votre annonce, et les acheteurs
+          comparent plus vite. Le tableau de bord vendeur gère ça
+          automatiquement si vous remplissez les champs proposés.
         </p>
 
         <h2>Pour aller plus loin</h2>

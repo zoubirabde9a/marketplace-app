@@ -43,11 +43,11 @@ export default async function CheckoutPage({
       : "Paiement à la livraison. Le vendeur vous appellera pour confirmer avant l’expédition.";
 
   return (
-    <section className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-3xl mx-auto" lang="fr">
+    <section aria-labelledby="checkout-heading" className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-3xl mx-auto" lang="fr">
       <Link href="/cart" className="inline-flex items-center h-8 text-sm sm:text-xs text-ink-mute hover:text-ink-soft active:text-ink-soft">
         ← Retour au panier
       </Link>
-      <h1 className="mt-3 text-3xl font-semibold tracking-tight">Commande</h1>
+      <h1 id="checkout-heading" className="mt-3 text-3xl font-semibold tracking-tight">Commande</h1>
       <p className="mt-2 text-sm text-ink-soft">{codBlurb}</p>
 
       {errLabel && (
@@ -128,15 +128,16 @@ export default async function CheckoutPage({
                   {formatPrice(
                     (BigInt(l.unitPriceMinor) * BigInt(l.qty)).toString(),
                     cart.currency,
+                    "fr-DZ",
                   )}
                 </div>
               </li>
             ))}
           </ul>
-          <div className="mt-4 pt-4 border-t border-line-soft flex justify-between text-base font-medium">
-            <span>Total</span>
-            <span className="tabular-nums">{formatPrice(cart.totals.totalMinor, cart.currency)}</span>
-          </div>
+          <dl className="mt-4 pt-4 border-t border-line-soft flex justify-between text-base font-medium">
+            <dt>Total</dt>
+            <dd className="tabular-nums">{formatPrice(cart.totals.totalMinor, cart.currency, "fr-DZ")}</dd>
+          </dl>
           <p className="mt-3 text-xs text-ink-mute">Livraison : gratuite (paiement à la livraison).</p>
         </aside>
       </div>

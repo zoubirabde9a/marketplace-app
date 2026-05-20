@@ -88,9 +88,11 @@ describe("ProductCard", () => {
   it("renders a price for a single-variant hit using formatPrice", () => {
     // 19999 santeem = 199.99 — above the MIN_REAL_PRICE_MINOR=10000 floor
     // that's collapsing sub-100-DZD listings to "Prix sur demande" (the
-    // Ouedkniss "1 DA" / "0 DA" placeholder bucket).
+    // Ouedkniss "1 DA" / "0 DA" placeholder bucket). formatPrice default
+    // locale is fr-DZ, so the decimal separator is a comma; match either
+    // a dot or comma so this test is locale-agnostic.
     const { container } = render(<ProductCard hit={baseHit({ priceMinor: "19999", currency: "USD" })} />);
-    expect(container.textContent).toMatch(/199\.99/);
+    expect(container.textContent).toMatch(/199[.,]99/);
   });
 
   it("renders 'Prix sur demande' for the explicit priceMinor=0 sentinel", () => {
