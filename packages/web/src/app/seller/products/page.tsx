@@ -20,6 +20,7 @@ import { cleanProductTitle } from "@/lib/format";
 import { ProductRow, type ProductRowData } from "../dashboard/ProductRow";
 import { ProductsListFilter } from "../dashboard/ProductsListFilter";
 import { ProductsStockFilter, type StockTab } from "../dashboard/ProductsStockFilter";
+import { ProductsShopFilter } from "./ProductsShopFilter";
 import { AutoRefresh } from "../orders/AutoRefresh";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,9 @@ export const metadata: Metadata = {
 
 interface UnifiedProduct {
   product: ProductRowData;
+  /** Owning shop's UUID. Used by ProductsShopFilter to scope the
+   *  list to one shop on multi-shop accounts. */
+  sellerId: string;
   shopName: string;
   /** Server time the listing was created — used for chronological sort.
    * Falls back to the empty string when missing (puts those last). */
@@ -55,6 +59,7 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
     if (r.status === "fulfilled") {
       for (const h of r.value.data) {
         products.push({
+          sellerId: s.sellerId,
           shopName: s.displayName,
           postedAt: h.postedAt ?? "",
           product: {
@@ -88,6 +93,12 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
     in: products.filter((u) => u.product.inStock).length,
     out: products.filter((u) => !u.product.inStock).length,
   };
+  // Per-shop counts for the shop filter chips (multi-shop only).
+  const shopCounts = sellers.map((s) => ({
+    sellerId: s.sellerId,
+    displayName: s.displayName,
+    count: products.filter((u) => u.sellerId === s.sellerId).length,
+  }));
   const showShopName = sellers.length > 1;
 
   return (
@@ -182,6 +193,7 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
             </Link>
           </div>
         ) : (
+          <ProductsShopFilter shops={shopCounts} totalCount={products.length}>
           <ProductsStockFilter counts={stockCounts}>
             <ProductsListFilter totalCount={products.length}>
               <ul className="divide-y divide-line-soft">
@@ -190,6 +202,7 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
                     key={u.product.productId}
                     data-search={`${cleanProductTitle(u.product.title)} ${u.product.brand ?? ""} ${u.shopName}`.toLowerCase()}
                     data-stock={u.product.inStock ? "in" : "out"}
+                    data-shop-id={u.sellerId}
                   >
                     <ProductRow
                       product={u.product}
@@ -200,6 +213,7 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
               </ul>
             </ProductsListFilter>
           </ProductsStockFilter>
+          </ProductsShopFilter>
         )}
       </div>
     </section>
