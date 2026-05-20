@@ -23,6 +23,7 @@ import { OrderRow } from "../dashboard/OrderRow";
 import { OrdersSearch } from "./OrdersSearch";
 import { OrdersStats } from "./OrdersStats";
 import { OrdersStatusTabs, type StatusTab } from "./OrdersStatusTabs";
+import { OrdersRangeFilter, type RangeTab } from "./OrdersRangeFilter";
 import { TabTitleBadge } from "./TabTitleBadge";
 import { AutoRefresh } from "./AutoRefresh";
 
@@ -157,6 +158,23 @@ export default async function SellerOrdersPage({
   const actionableCount = orders.filter((u) =>
     ACTIONABLE_STATUSES.has(u.order.status),
   ).length;
+  // Per-range counts for the period filter strip. Computed off the
+  // same now used elsewhere on the page so the chip counts and the
+  // per-row data-within-Xd attributes can't drift apart across a
+  // slow render. Inclusive of the 30-day mark: an order created
+  // exactly 30 days ago is "within 30d".
+  const nowMs = Date.now();
+  const DAY_MS = 86_400_000;
+  function ageMs(u: UnifiedOrder): number {
+    const t = new Date(u.order.createdAt).getTime();
+    return Number.isNaN(t) ? Infinity : nowMs - t;
+  }
+  const rangeCounts: Record<RangeTab, number> = {
+    all: orders.length,
+    "30d": orders.filter((u) => ageMs(u) <= 30 * DAY_MS).length,
+    "7d": orders.filter((u) => ageMs(u) <= 7 * DAY_MS).length,
+  };
+
   // Per-tab counts for the status filter strip. "closed" combines
   // cancelled + refunded since both share a single "Annulées" tab.
   const tabCounts: Record<StatusTab, number> = {
@@ -293,9 +311,17 @@ export default async function SellerOrdersPage({
           </p>
         ) : (
           <OrdersSearch totalCount={orders.length} initialQuery={initialQuery}>
+          <OrdersRangeFilter counts={rangeCounts}>
           <OrdersStatusTabs counts={tabCounts} totalCount={orders.length}>
             <ul className="divide-y divide-line-soft">
-              {buckets.flatMap((bucket) => [
+              {buckets.flatMap((bucket) => {
+                // Per-bucket "any within Xd" precomputation — drives
+                // the heading's data-any-within-Xd attributes the
+                // OrdersRangeFilter uses to hide the heading when
+                // none of its rows pass the active range.
+                const anyWithin7d = bucket.orders.some((u) => ageMs(u) <= 7 * DAY_MS);
+                const anyWithin30d = bucket.orders.some((u) => ageMs(u) <= 30 * DAY_MS);
+                return [
                 <li
                   key={`h-${bucket.label}`}
                   role="presentation"
@@ -304,6 +330,8 @@ export default async function SellerOrdersPage({
                   data-status-set={Array.from(
                     new Set(bucket.orders.map((u) => u.order.status)),
                   ).join(" ")}
+                  data-any-within-7d={anyWithin7d ? "true" : "false"}
+                  data-any-within-30d={anyWithin30d ? "true" : "false"}
                   className="pt-4 pb-1 text-[10px] uppercase tracking-widest text-ink-mute first:pt-1"
                 >
                   {bucket.label}
@@ -311,12 +339,16 @@ export default async function SellerOrdersPage({
                     ({bucket.orders.length})
                   </span>
                 </li>,
-                ...bucket.orders.map((u) => (
+                ...bucket.orders.map((u) => {
+                  const a = ageMs(u);
+                  return (
                   <li
                     key={u.order.orderId}
                     data-actionable={ACTIONABLE_STATUSES.has(u.order.status) ? "true" : "false"}
                     data-status={u.order.status}
                     data-bucket={bucket.label}
+                    data-within-7d={a <= 7 * DAY_MS ? "true" : "false"}
+                    data-within-30d={a <= 30 * DAY_MS ? "true" : "false"}
                     data-search={[
                       u.order.publicNumber,
                       u.order.customer?.name ?? "",
@@ -341,10 +373,13 @@ export default async function SellerOrdersPage({
                       }
                     />
                   </li>
-                )),
-              ])}
+                  );
+                }),
+              ];
+              })}
             </ul>
           </OrdersStatusTabs>
+          </OrdersRangeFilter>
           </OrdersSearch>
         )}
       </div>
