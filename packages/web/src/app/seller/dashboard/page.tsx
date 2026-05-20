@@ -223,13 +223,21 @@ export default async function DashboardPage() {
   const STALE_AFTER_MS = 48 * 60 * 60_000;
   const STALE_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling"]);
   let staleActionableCount = 0;
+  // Track the OLDEST stale order's age (in ms) so the banner can
+  // surface "the worst one is X days old" — different sense of
+  // urgency than just "N orders are stale".
+  let oldestStaleMs = 0;
   ordersResults.forEach((r) => {
     if (r.status !== "fulfilled") return;
     for (const o of r.value.data) {
       if (!STALE_STATUSES.has(o.status)) continue;
       const t = new Date(o.createdAt).getTime();
       if (Number.isNaN(t)) continue;
-      if (Date.now() - t > STALE_AFTER_MS) staleActionableCount++;
+      const ageMs = Date.now() - t;
+      if (ageMs > STALE_AFTER_MS) {
+        staleActionableCount++;
+        if (ageMs > oldestStaleMs) oldestStaleMs = ageMs;
+      }
     }
   });
 
@@ -399,11 +407,29 @@ export default async function DashboardPage() {
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
           </svg>
           <div className="min-w-0">
-            <p className="text-sm font-medium">
-              {staleActionableCount} commande
-              {staleActionableCount === 1 ? "" : "s"} en attente depuis plus de
-              48 heures
-            </p>
+            {(() => {
+              // Headline phrasing: when there's exactly one stale
+              // order, show its precise age ("depuis 3 jours").
+              // When there's a backlog, surface the oldest one's
+              // age ("dont la plus ancienne depuis X jours") so
+              // the seller can gauge severity beyond just count.
+              const hours = Math.floor(oldestStaleMs / (60 * 60_000));
+              const days = Math.floor(hours / 24);
+              const ageLabel = days >= 2 ? `${days} jours` : `${hours} heures`;
+              if (staleActionableCount === 1) {
+                return (
+                  <p className="text-sm font-medium">
+                    1 commande en attente depuis {ageLabel}
+                  </p>
+                );
+              }
+              return (
+                <p className="text-sm font-medium">
+                  {staleActionableCount} commandes en attente, dont la plus
+                  ancienne depuis {ageLabel}
+                </p>
+              );
+            })()}
             <p className="mt-0.5 text-xs text-warn/80">
               Marquez-{staleActionableCount === 1 ? "la" : "les"} en préparation
               ou expédiée{staleActionableCount === 1 ? "" : "s"} — les acheteurs
