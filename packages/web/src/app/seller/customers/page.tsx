@@ -115,6 +115,34 @@ export default async function SellerCustomersPage({
       }
     }
   });
+  // Aggregate metrics surfaced as a small strip above the list:
+  // total unique customers, total lifetime revenue (dominant
+  // currency), average orders per customer. Computed off the same
+  // aggregation we built for rows so the numbers reconcile exactly.
+  let totalOrders = 0;
+  const totalRevenueByCcy: Record<string, bigint> = {};
+  for (const c of byPhone.values()) {
+    totalOrders += c.orderCount;
+    for (const [ccy, amount] of Object.entries(c.revenueByCcy)) {
+      totalRevenueByCcy[ccy] = (totalRevenueByCcy[ccy] ?? 0n) + amount;
+    }
+  }
+  const totalTopCcy = Object.entries(totalRevenueByCcy).sort(
+    (a, b) => Number(b[1] - a[1]),
+  )[0];
+  const totalRevenueLabel = totalTopCcy
+    ? formatPrice(totalTopCcy[1].toString(), totalTopCcy[0], "fr-DZ")
+    : null;
+  // Round to one decimal so 2.45 → 2,5 reads cleanly. Locale-aware
+  // separator via toLocaleString.
+  const avgOrdersPerCustomer =
+    byPhone.size > 0
+      ? (totalOrders / byPhone.size).toLocaleString("fr-DZ", {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
+        })
+      : null;
+
   const customers = Array.from(byPhone.values()).sort((a, b) => {
     if (sortBy === "orders") {
       // Most loyal first; tie-break by recent-activity so frequent
@@ -195,6 +223,48 @@ export default async function SellerCustomersPage({
           </Link>
         </div>
       </header>
+
+      {customers.length > 0 && (
+        // Aggregate strip — surfaces the "how big is my customer
+        // base?" answer without making the seller do the math down
+        // the list. Hidden when the seller has zero customers.
+        <dl
+          aria-label="Indicateurs clients"
+          className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3"
+        >
+          <div className="rounded-2xl border border-line-soft bg-bg-soft/60 px-4 py-3">
+            <dt className="text-[10px] uppercase tracking-widest text-ink-mute">
+              Clients
+            </dt>
+            <dd className="mt-1 text-2xl font-semibold tabular-nums text-ink">
+              {customers.length}
+            </dd>
+          </div>
+          {totalRevenueLabel && (
+            <div className="rounded-2xl border border-line-soft bg-bg-soft/60 px-4 py-3">
+              <dt className="text-[10px] uppercase tracking-widest text-ink-mute">
+                Revenu total
+              </dt>
+              <dd className="mt-1 text-2xl font-semibold tabular-nums text-ink">
+                {totalRevenueLabel}
+              </dd>
+            </div>
+          )}
+          {avgOrdersPerCustomer && (
+            <div className="rounded-2xl border border-line-soft bg-bg-soft/60 px-4 py-3">
+              <dt className="text-[10px] uppercase tracking-widest text-ink-mute">
+                Commandes par client
+              </dt>
+              <dd
+                title="Moyenne des commandes par client (lifetime)"
+                className="mt-1 text-2xl font-semibold tabular-nums text-ink"
+              >
+                {avgOrdersPerCustomer}
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
 
       {anyFetchFailed && (
         <p className="mt-4 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs text-warn">
