@@ -20,6 +20,8 @@ import { ProductRow } from "./ProductRow";
 import { GetStartedChecklist } from "./GetStartedChecklist";
 import { AutoRefresh } from "../orders/AutoRefresh";
 import { LastRefreshed } from "../orders/LastRefreshed";
+import { CopyIconButton } from "@/components/CopyButton";
+import { SITE_URL } from "@/lib/sitemap";
 
 // Status set that the seller still owes the buyer some action on. Mirrors
 // the actionableCount calculation below so the filter chip's count and the
@@ -463,11 +465,43 @@ async function SellerSection({
         {ordersError ? (
           <p className="text-sm text-bad">Impossible de charger les commandes.</p>
         ) : orders.length === 0 ? (
-          <p className="text-sm text-ink-mute">
-            {products.length === 0
-              ? "Aucune commande possible tant que la boutique est vide — ajoutez un premier produit ci-dessous pour ouvrir aux acheteurs."
-              : "Aucune commande pour le moment. Dès qu’un acheteur commande, vous verrez son nom et son téléphone ici."}
-          </p>
+          products.length === 0 ? (
+            // Empty shop — orders impossible until a product exists.
+            // The GetStartedChecklist below already drives that next
+            // step; here we just say "nothing's possible yet".
+            <p className="text-sm text-ink-mute">
+              Aucune commande possible tant que la boutique est vide —
+              ajoutez un premier produit ci-dessous pour ouvrir aux acheteurs.
+            </p>
+          ) : (
+            // Shop is stocked but no orders yet. Same share-the-store
+            // nudge the unified /seller/orders empty state shows
+            // (iteration 41), scoped to this shop. The seller's next
+            // useful action when waiting on first orders is to
+            // promote the shop link, not wait silently.
+            <div className="space-y-3">
+              <p className="text-sm text-ink-soft">
+                Aucune commande pour le moment. Partagez le lien de cette
+                boutique avec vos contacts pour ramener vos premiers
+                acheteurs.
+              </p>
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line-soft bg-bg/40 px-3 py-2">
+                <a
+                  href={`${SITE_URL}/store/${seller.sellerId}`}
+                  target="_blank"
+                  rel="noopener"
+                  dir="ltr"
+                  className="font-mono text-xs text-ink-soft hover:text-accent active:text-accent transition truncate min-w-0 flex-1"
+                >
+                  {`${SITE_URL}/store/${seller.sellerId}`}
+                </a>
+                <CopyIconButton
+                  value={`${SITE_URL}/store/${seller.sellerId}`}
+                  ariaLabel="Copier le lien de la boutique"
+                />
+              </div>
+            </div>
+          )
         ) : (
           <OrdersListFilter actionableCount={actionableCount} totalCount={orders.length}>
           <ul className="divide-y divide-line-soft">
