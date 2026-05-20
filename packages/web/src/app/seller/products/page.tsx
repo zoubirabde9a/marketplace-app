@@ -119,6 +119,18 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap shrink-0">
+          {/* Primary CTA — completes the page's "manage products"
+              mandate. NewProductForm already renders a shop picker
+              when sellers.length > 1, so we link without a sellerId
+              and the form handles defaulting. Styled with the accent
+              fill to be visibly the principal action vs the muted
+              Exporter / back link next to it. */}
+          <Link
+            href="/seller/products/new"
+            className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center gap-1.5 rounded-md bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition"
+          >
+            <span aria-hidden>+</span> Nouveau produit
+          </Link>
           {products.length > 0 && (
             <a
               href="/seller/products/export"
@@ -157,10 +169,18 @@ export default async function SellerProductsPage(): Promise<React.JSX.Element> {
 
       <div className="mt-8 rounded-2xl border border-line-soft bg-bg-soft/60 p-4 sm:p-6">
         {products.length === 0 ? (
-          <p className="text-sm text-ink-mute">
-            Aucun produit pour le moment. Ouvrez votre tableau de bord pour
-            ajouter votre première annonce.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p className="text-sm text-ink-mute">
+              Aucun produit pour le moment. Ajoutez votre première annonce
+              pour la rendre visible aux acheteurs.
+            </p>
+            <Link
+              href="/seller/products/new"
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center justify-center gap-1.5 rounded-md bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition shrink-0"
+            >
+              <span aria-hidden>+</span> Nouveau produit
+            </Link>
+          </div>
         ) : (
           <ProductsStockFilter counts={stockCounts}>
             <ProductsListFilter totalCount={products.length}>
