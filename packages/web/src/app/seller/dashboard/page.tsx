@@ -16,6 +16,8 @@ import { OrdersListFilter } from "./OrdersListFilter";
 import { ProductsListFilter } from "./ProductsListFilter";
 import { OrderRow } from "./OrderRow";
 import { StockToggle } from "./StockToggle";
+import { CopyIconButton } from "@/components/CopyButton";
+import { SITE_URL } from "@/lib/sitemap";
 
 // Status set that the seller still owes the buyer some action on. Mirrors
 // the actionableCount calculation below so the filter chip's count and the
@@ -475,6 +477,14 @@ async function SellerSection({
                         {p.inStock ? "en stock" : "rupture de stock"}
                       </span>
                     )}
+                    {/* Public product URL → clipboard. Sellers paste
+                        these into WhatsApp chats with buyers all day;
+                        one tap beats opening the storefront in another
+                        tab and copying the address bar. */}
+                    <CopyIconButton
+                      value={`${SITE_URL}/product/${p.productId}`}
+                      ariaLabel="Copier le lien public du produit"
+                    />
                     <span aria-hidden className="text-ink-mute">›</span>
                   </div>
                 </Link>
