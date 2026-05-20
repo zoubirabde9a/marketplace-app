@@ -135,6 +135,50 @@ export default async function DashboardPage() {
     }
   });
 
+  // "Aujourd'hui" aggregate strip — count + revenue for orders
+  // created today, across every shop. Computed off the same orders
+  // we already fanned out above. Renders between header and the
+  // sellers list; gives the seller the "how's today going so far?"
+  // signal without bouncing to /seller/orders for the full stats
+  // banner. Hidden when there are no orders at all to report on
+  // (new sellers shouldn't see a zero strip).
+  const now = new Date();
+  const startOfTodayMs = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
+  const TODAY_REVENUE_STATUSES: ReadonlySet<string> = new Set([
+    "paid",
+    "fulfilling",
+    "shipped",
+    "delivered",
+  ]);
+  let todayOrderCount = 0;
+  const todayRevenueByCcy: Record<string, bigint> = {};
+  ordersResults.forEach((r) => {
+    if (r.status !== "fulfilled") return;
+    for (const o of r.value.data) {
+      const t = new Date(o.createdAt).getTime();
+      if (Number.isNaN(t) || t < startOfTodayMs) continue;
+      todayOrderCount++;
+      if (TODAY_REVENUE_STATUSES.has(o.status)) {
+        try {
+          todayRevenueByCcy[o.currency] =
+            (todayRevenueByCcy[o.currency] ?? 0n) + BigInt(o.subtotalMinor);
+        } catch {
+          // skip unparseable subtotal
+        }
+      }
+    }
+  });
+  const todayTopCcy = Object.entries(todayRevenueByCcy).sort(
+    (a, b) => Number(b[1] - a[1]),
+  )[0];
+  const todayRevenueLabel = todayTopCcy
+    ? formatPrice(todayTopCcy[1].toString(), todayTopCcy[0], "fr-DZ")
+    : null;
+
   return (
     <section aria-labelledby="dashboard-heading" className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-5xl mx-auto" lang="fr">
       {/* Same 60s polling pattern as /seller/orders: aggregate
@@ -239,6 +283,38 @@ export default async function DashboardPage() {
           <LogoutButton />
         </div>
       </header>
+
+      {/* "Aujourd'hui" aggregate strip. Renders only when the seller
+          has at least one shop AND there's at least one order today
+          across all shops — quiet days hide the strip entirely
+          rather than showing a depressing "0 commandes aujourd'hui"
+          line. */}
+      {sellers.length > 0 && todayOrderCount > 0 && (
+        <p className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-ink-soft">
+          <span className="text-[10px] uppercase tracking-widest text-ink-mute">
+            Aujourd’hui
+          </span>
+          <span>
+            <span className="text-ink font-medium tabular-nums">{todayOrderCount}</span>{" "}
+            commande{todayOrderCount === 1 ? "" : "s"}
+          </span>
+          {todayRevenueLabel && (
+            <span>
+              ·{" "}
+              <span className="text-ink font-medium tabular-nums">{todayRevenueLabel}</span>
+            </span>
+          )}
+          {aggregateActionableCount > 0 && (
+            <span>
+              ·{" "}
+              <span className="text-accent font-medium tabular-nums">
+                {aggregateActionableCount}
+              </span>{" "}
+              à traiter
+            </span>
+          )}
+        </p>
+      )}
 
       {sellers.length === 0 ? (
         <section aria-labelledby="create-seller-heading" className="mt-10 rounded-2xl border border-line-soft bg-bg-soft/60 p-8">
