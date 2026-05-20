@@ -269,18 +269,33 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
             ];
           }
           let r: Response;
+          // 30s safety timeout via AbortController, same pattern as
+          // OrderActions / StockToggle / PriceEditor / delete
+          // (33cf141, 9dd44eb, 55156ba). A stalled save would
+          // otherwise leave the useTransition pending forever and
+          // the Enregistrer button disabled with no feedback.
+          const ctrl = new AbortController();
+          const timeoutId = window.setTimeout(() => ctrl.abort(), 30_000);
           try {
             r = await fetch(`/api/seller/products/${encodeURIComponent(initial.productId)}`, {
               method: "PATCH",
               headers: { "content-type": "application/json" },
               body: JSON.stringify(payload),
+              signal: ctrl.signal,
             });
-          } catch {
-            // Network-layer failure (offline, DNS, CORS) — fetch throws
-            // before any response. Surface a clear message instead of
-            // leaving the seller staring at a snapped-back idle button.
-            setError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+          } catch (e) {
+            // Network-layer failure (offline, DNS, CORS) OR our
+            // timeout firing. Differentiate so the seller knows
+            // whether to wait-and-retry or check their network.
+            const aborted = (e as { name?: string }).name === "AbortError";
+            setError(
+              aborted
+                ? "Le serveur ne répond pas — réessayez dans un instant."
+                : "Connexion impossible. Vérifiez votre réseau et réessayez.",
+            );
             return;
+          } finally {
+            window.clearTimeout(timeoutId);
           }
           if (!r.ok) {
             const j = (await r.json().catch(() => ({}))) as { error?: string; detail?: string };
