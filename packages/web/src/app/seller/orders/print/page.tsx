@@ -79,6 +79,12 @@ export default async function BulkPrintPage(): Promise<React.JSX.Element> {
       className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-3xl mx-auto print:max-w-none print:pt-0 print:pb-0"
       lang="fr"
     >
+      {/* Same tightened margins as the single-slip detail page — N
+          slips means N times the wasted-paper cost otherwise. A4
+          since that's the Algerian default; Letter printers clip
+          slightly but the courier-critical content (recipient +
+          articles) stays on the page. */}
+      <style>{`@page { margin: 1cm; size: A4 }`}</style>
       <header className="flex items-start justify-between gap-4 print:hidden flex-wrap">
         <div className="min-w-0">
           <Link

@@ -74,6 +74,14 @@ export default async function OrderDetailPage({ params }: PageProps): Promise<Re
       className="pt-6 sm:pt-10 pb-12 sm:pb-24 max-w-3xl mx-auto print:max-w-none print:pt-0 print:pb-0"
       lang="fr"
     >
+      {/* Tighten paper margins. Browser defaults sit around 2.5cm
+          which leaves the slip floating in a sea of whitespace and
+          eats space for ad-hoc notes. 1cm gives the slip room to
+          breathe without the slip itself feeling crowded. A4 since
+          that's the standard sheet in Algeria; printers configured
+          for Letter still respect the margin and just clip the
+          bottom of the slip slightly. */}
+      <style>{`@page { margin: 1cm; size: A4 }`}</style>
       {/* Header — hidden on print. Back link + page title + print
           trigger button. The print button is a small client component
           that calls window.print(). */}
