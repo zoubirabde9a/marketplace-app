@@ -120,7 +120,20 @@ export function OrderRow({
         {o.customer && (
           <div className="mt-1 text-sm text-ink-soft">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span dir="auto" className="text-ink untrusted">{o.customer.name}</span>
+              {/* Customer name → deep-link to that buyer's full
+                  history with the seller. Same URL as the repeat-
+                  customer chip, just lit up for every customer
+                  (one-time buyers still have ONE order's worth of
+                  history to look at, and the seller may want to
+                  see it before calling back). */}
+              <Link
+                href={`/seller/orders?q=${encodeURIComponent(o.customer.phone)}`}
+                dir="auto"
+                className="text-ink untrusted hover:text-accent active:text-accent transition"
+                aria-label={`Voir les commandes de ${o.customer.name}`}
+              >
+                {o.customer.name}
+              </Link>
               {isRepeat && o.customer && (
                 // Deep-links to /seller/orders pre-filtered by this
                 // customer's phone, so the seller sees the buyer's
