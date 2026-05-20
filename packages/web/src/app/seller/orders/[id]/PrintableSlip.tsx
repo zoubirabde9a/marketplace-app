@@ -55,6 +55,20 @@ export function PrintableSlip({
           >
             Commande #{order.publicNumber}
           </p>
+          {/* Creation date — useful both for the seller looking at
+              the slip on screen ("how old is this?") and for the
+              courier holding the paper ("when was this ordered?"
+              gives them context if there's a delivery dispute).
+              Locale-formatted in fr-DZ to match the rest of the
+              French chrome. */}
+          <p className="mt-0.5 text-xs text-ink-mute tabular-nums print:text-black/70">
+            Passée le{" "}
+            {new Date(order.createdAt).toLocaleDateString("fr-DZ", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </p>
         </div>
         <div className="text-right shrink-0">
           <p className="text-[10px] uppercase tracking-widest text-ink-mute print:text-black/50">
