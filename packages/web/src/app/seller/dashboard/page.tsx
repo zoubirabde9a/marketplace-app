@@ -13,6 +13,12 @@ import { cleanProductTitle, formatPrice, formatRelativeTime } from "@/lib/format
 import { CreateSellerForm } from "./CreateSellerForm";
 import { LogoutButton } from "./LogoutButton";
 import { OrderActions } from "./OrderActions";
+import { OrdersListFilter } from "./OrdersListFilter";
+
+// Status set that the seller still owes the buyer some action on. Mirrors
+// the actionableCount calculation below so the filter chip's count and the
+// per-row `data-actionable` attribute can't drift apart.
+const ACTIONABLE_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling", "disputed"]);
 
 // Maps the domain order-status enum (packages/domain/src/order/state-machine.ts)
 // to French labels for the seller dashboard badge. The raw enum is English
@@ -188,9 +194,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
   // - disputed: seller must respond
   // Excludes shipped/delivered/cancelled/refunded (closed) and
   // created/authorized (pre-payment, no seller action yet).
-  const actionableCount = orders.filter((o) =>
-    o.status === "paid" || o.status === "fulfilling" || o.status === "disputed",
-  ).length;
+  const actionableCount = orders.filter((o) => ACTIONABLE_STATUSES.has(o.status)).length;
 
   const revenueByCcy = orders.reduce<Record<string, bigint>>((acc, o) => {
     try {
@@ -279,9 +283,14 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
               : "Aucune commande pour le moment. Dès qu’un acheteur commande, vous verrez son nom et son téléphone ici."}
           </p>
         ) : (
+          <OrdersListFilter actionableCount={actionableCount} totalCount={orders.length}>
           <ul className="divide-y divide-line-soft">
             {orders.map((o) => (
-              <li key={o.orderId} className="py-3 flex items-start justify-between gap-4">
+              <li
+                key={o.orderId}
+                data-actionable={ACTIONABLE_STATUSES.has(o.status) ? "true" : "false"}
+                className="py-3 flex items-start justify-between gap-4"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <span dir="ltr" className="font-mono text-sm text-ink">#{o.publicNumber}</span>
@@ -411,6 +420,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
               </li>
             ))}
           </ul>
+          </OrdersListFilter>
         )}
       </section>
       <section aria-labelledby={`${headingId}-products`} className="p-4 sm:p-6">
