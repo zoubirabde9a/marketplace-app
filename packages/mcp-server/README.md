@@ -47,12 +47,9 @@ newest first, with the `storeUrl` for each.
 
 These are real product gaps an agent should NOT pretend to work around:
 
-- **No product/shop delete or archive tool.** Once you publish a listing via
-  `product.create_listing`, there is no MCP call to take it down. Test
-  listings stay in your agent-owned shop forever. If the operator asks
-  you to "delete prod-X", tell them this honestly and point them at the
-  web UI (which today also doesn't expose this for agent-owned shops —
-  full cleanup needs operator-side database access).
+- **No shop delete or archive tool** (per-shop, not per-listing). Sellers
+  themselves cannot be taken down via MCP yet. For individual listings,
+  use `product.delete_listing` (soft-delete; idempotent).
 - **No agent↔web-user account linking.** Shops created here cannot be
   managed from the operator's web login and vice versa. See the
   ownership model section above.
@@ -104,9 +101,10 @@ patterns, error shapes, ownership caveats).
 Currently registered tool families (see `src/tools/` for the source):
 
 - **Seller (write)** — `seller.create_account`, `seller.list_mine`,
-  `product.create_listing`, `product.update_listing`. Create + rediscover
-  agent-owned shops; publish + update listings under them (media not
-  editable here).
+  `product.create_listing`, `product.update_listing`, `product.delete_listing`.
+  Create + rediscover agent-owned shops; publish, update, and soft-delete
+  listings under them (media still not editable in place — re-create to
+  swap photos).
 - **Seller (read/preview)** — `seller.preview_listing`, `seller.list_orders`.
   Dry-run listing text through the moderation pipeline; list orders for a
   shop you own.

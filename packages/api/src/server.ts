@@ -242,6 +242,8 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
           opts.repos.sellers.listOwnedBy(ownerAgentId, listOpts),
       },
       products: {
+        softDelete: (productId, callerAgentId) =>
+          opts.repos.products.softDelete(productId, callerAgentId),
         getOwner: async (productId) => {
           const ownerAgentId = await opts.repos.products.getOwnerAgentId(productId);
           if (!ownerAgentId) return undefined;

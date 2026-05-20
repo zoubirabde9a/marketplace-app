@@ -184,6 +184,54 @@ describe("seller write tools — snapshots", () => {
     ).rejects.toThrow(/ISO 3166|country/i);
   });
 
+  it("product.delete_listing returns removed for an owned product", async () => {
+    const reg = new McpRegistry();
+    const adapter: SellerWriteAdapter = {
+      ...fakeAdapter,
+      products: {
+        ...fakeAdapter.products,
+        softDelete: async (productId, callerAgentId) => {
+          expect(productId).toBe("prd_mine");
+          expect(callerAgentId).toBe("agt_1");
+          return "removed";
+        },
+      },
+    };
+    registerSellerWriteTools(reg, adapter);
+    const out = (await reg.invoke(
+      "product.delete_listing",
+      { productId: "prd_mine" },
+      ctx(),
+    )) as { productId: string; result: string };
+    expect(out).toEqual({ productId: "prd_mine", result: "removed" });
+  });
+
+  it("product.delete_listing surfaces not_owned without throwing — agent can explain to operator", async () => {
+    const reg = new McpRegistry();
+    const adapter: SellerWriteAdapter = {
+      ...fakeAdapter,
+      products: {
+        ...fakeAdapter.products,
+        softDelete: async () => "not_owned",
+      },
+    };
+    registerSellerWriteTools(reg, adapter);
+    const out = (await reg.invoke(
+      "product.delete_listing",
+      { productId: "prd_other" },
+      ctx(),
+    )) as { result: string };
+    expect(out.result).toBe("not_owned");
+  });
+
+  it("product.delete_listing returns not_implemented when adapter omits softDelete", async () => {
+    const reg = new McpRegistry();
+    registerSellerWriteTools(reg, fakeAdapter);
+    await expect(
+      reg.invoke("product.delete_listing", { productId: "prd_1" }, ctx()),
+    ).rejects.toThrow(/not_implemented/);
+  });
+
   it("product.update_listing patches a product the calling agent owns", async () => {
     const reg = new McpRegistry();
     const updateAdapter: SellerWriteAdapter = {

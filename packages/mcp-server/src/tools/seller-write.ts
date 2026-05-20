@@ -130,6 +130,14 @@ export interface SellerWriteAdapter {
      * within a transaction); the rest are partial — undefined leaves the
      * field alone, null clears nullable fields (description/brand).
      */
+    /**
+     * Optional. Soft-delete a product owned by the calling agent. Returns
+     * one of: "removed" (just took it down), "already_removed" (idempotent
+     * replay), "not_found" (no such product), or "not_owned" (the caller's
+     * agent identity doesn't own the product's seller). When omitted,
+     * `product.delete_listing` returns `not_implemented`.
+     */
+    softDelete?(productId: string, callerAgentId: string): Promise<"removed" | "not_found" | "not_owned" | "already_removed">;
     update?(productId: string, patch: {
       title?: string;
       description?: string | null;
@@ -500,6 +508,48 @@ export function registerSellerWriteTools(
           };
         }),
       };
+    },
+  });
+
+  reg.register({
+    name: "product.delete_listing",
+    description: [
+      "Soft-delete a product you own. Flips the product's status to `removed` — it disappears from",
+      "search, catalog browse, the storefront, and `seller.list_orders` for new orders. Existing orders",
+      "that already reference the product are preserved (the platform keeps order history immutable).",
+      "",
+      "Why soft-delete (not hard-delete): a hard DELETE would either violate the FK from order_items to",
+      "the variant or destroy order history. Soft-delete preserves the audit trail and is filtered out",
+      "of every public-read query, which is what the operator actually wants.",
+      "",
+      "Idempotent — re-deleting the same product returns `already_removed` rather than failing. Tell the",
+      "operator the listing is down regardless of which result came back.",
+      "",
+      "Result outcomes the agent should explain rather than retry blindly:",
+      "  • `removed` — success, listing is down. Tell the operator and remove it from any local UI.",
+      "  • `already_removed` — idempotent replay; same outcome as `removed`.",
+      "  • `not_found` — productId doesn't exist (or was malformed). Ask the operator to confirm the id.",
+      "  • `not_owned` — the calling agent isn't the seller's owner OR the product is an unowned scraper-",
+      "    seeded reference listing. Tell the operator we can't take down listings we don't own.",
+    ].join("\n"),
+    scope: "seller:product:write",
+    auditEvent: "product.delete_listing",
+    idempotent: true,
+    inputSchema: z.object({
+      productId: z.string().min(1).max(200),
+    }),
+    outputSchema: z.object({
+      productId: z.string(),
+      result: z.enum(["removed", "already_removed", "not_found", "not_owned"]),
+    }),
+    handler: async (input, ctx) => {
+      if (!deps.products.softDelete) {
+        throw new ValidationError([
+          { path: "_", message: "not_implemented:product_delete_unsupported" },
+        ]);
+      }
+      const result = await deps.products.softDelete(input.productId, ctx.agentId);
+      return { productId: input.productId, result };
     },
   });
 
