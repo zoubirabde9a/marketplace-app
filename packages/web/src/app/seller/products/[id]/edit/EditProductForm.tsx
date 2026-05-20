@@ -71,14 +71,28 @@ export function EditProductForm({ initial }: { initial: EditableProduct }) {
     setDeleting(true);
     setDeleteError(null);
     let res: Response;
+    // 30s safety timeout via AbortController. Without it the
+    // confirm modal would stay locked on "Veuillez patienter…"
+    // forever if the network stalled mid-DELETE. Same pattern as
+    // OrderActions / StockToggle / PriceEditor (9dd44eb).
+    const ctrl = new AbortController();
+    const timeoutId = window.setTimeout(() => ctrl.abort(), 30_000);
     try {
       res = await fetch(`/api/seller/products/${encodeURIComponent(initial.productId)}`, {
         method: "DELETE",
+        signal: ctrl.signal,
       });
-    } catch {
-      setDeleteError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+    } catch (e) {
+      const aborted = (e as { name?: string }).name === "AbortError";
+      setDeleteError(
+        aborted
+          ? "Le serveur ne répond pas — réessayez dans un instant."
+          : "Connexion impossible. Vérifiez votre réseau et réessayez.",
+      );
       setDeleting(false);
       return;
+    } finally {
+      window.clearTimeout(timeoutId);
     }
     if (!res.ok) {
       const j = (await res.json().catch(() => ({}))) as { detail?: string; error?: string };
