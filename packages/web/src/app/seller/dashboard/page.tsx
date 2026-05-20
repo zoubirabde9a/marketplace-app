@@ -16,6 +16,7 @@ import { OrderActions } from "./OrderActions";
 import { OrdersListFilter } from "./OrdersListFilter";
 import { ProductsListFilter } from "./ProductsListFilter";
 import { OrderProgress } from "./OrderProgress";
+import { StockToggle } from "./StockToggle";
 
 // Status set that the seller still owes the buyer some action on. Mirrors
 // the actionableCount calculation below so the filter chip's count and the
@@ -490,16 +491,26 @@ async function SellerSection({
                         {p.variantCount} variantes
                       </span>
                     )}
-                    <span
-                      className={
-                        "px-2 py-0.5 rounded-full border " +
-                        (p.inStock
-                          ? "border-ok/40 text-ok bg-ok/10"
-                          : "border-line text-ink-mute")
-                      }
-                    >
-                      {p.inStock ? "en stock" : "rupture de stock"}
-                    </span>
+                    {/* Single-variant products get a clickable inline
+                        toggle so the seller can flip stock without a
+                        round-trip to the edit page (most common edit
+                        op). Multi-variant products keep the static
+                        chip — per-variant stock should be picked
+                        explicitly on the edit page. */}
+                    {p.variantCount === undefined || p.variantCount <= 1 ? (
+                      <StockToggle productId={p.productId} initialInStock={p.inStock} />
+                    ) : (
+                      <span
+                        className={
+                          "px-2 py-0.5 rounded-full border " +
+                          (p.inStock
+                            ? "border-ok/40 text-ok bg-ok/10"
+                            : "border-line text-ink-mute")
+                        }
+                      >
+                        {p.inStock ? "en stock" : "rupture de stock"}
+                      </span>
+                    )}
                     <span aria-hidden className="text-ink-mute">›</span>
                   </div>
                 </Link>
