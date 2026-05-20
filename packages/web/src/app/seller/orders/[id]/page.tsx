@@ -99,15 +99,38 @@ export default async function OrderDetailPage({ params }: PageProps): Promise<Re
 
       {/* Action buttons — hidden on print. Same OrderActions component
           the list uses; here it serves the "I just packed this, mark
-          it shipped" workflow without the seller having to scroll back
-          to the list. */}
-      <div className="mt-6 print:hidden">
-        <OrderActions
-          sellerId={owningSeller.sellerId}
-          orderId={order.orderId}
-          status={order.status as Parameters<typeof OrderActions>[0]["status"]}
-        />
-      </div>
+          it shipped" workflow without the seller having to scroll
+          back to the list. On mobile the bar sticks to the bottom of
+          the viewport so the seller doesn't have to scroll past the
+          slip to reach the primary state-machine action; on desktop
+          it sits in normal flow under the slip. Backdrop blur lets
+          the slip text behind it stay vaguely visible without
+          fighting for attention.
+          The sticky wrapper only renders for statuses that actually
+          have an action (paid/fulfilling/shipped — same set as
+          OrderActions's actionsFor); other states would float an
+          empty bar. */}
+      {(["paid", "fulfilling", "shipped"] as const).includes(
+        order.status as "paid" | "fulfilling" | "shipped",
+      ) ? (
+        <div className="mt-6 sticky bottom-0 sm:static z-10 print:hidden">
+          <div className="rounded-2xl border border-line-soft bg-bg-soft/95 backdrop-blur p-3 sm:p-4 shadow-lg sm:shadow-none sm:bg-transparent sm:border-0 sm:p-0">
+            <OrderActions
+              sellerId={owningSeller.sellerId}
+              orderId={order.orderId}
+              status={order.status as Parameters<typeof OrderActions>[0]["status"]}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="mt-6 print:hidden">
+          <OrderActions
+            sellerId={owningSeller.sellerId}
+            orderId={order.orderId}
+            status={order.status as Parameters<typeof OrderActions>[0]["status"]}
+          />
+        </div>
+      )}
     </section>
   );
 }
