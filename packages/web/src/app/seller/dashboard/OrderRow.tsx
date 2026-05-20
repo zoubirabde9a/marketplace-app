@@ -150,7 +150,7 @@ export function OrderRow({
             </div>
           </div>
         )}
-        <ul className="mt-2 text-xs text-ink-mute space-y-1">
+        <ul data-rich-only="true" className="mt-2 text-xs text-ink-mute space-y-1">
           {o.lines.map((l) => (
             <li key={l.variantId} className="flex items-center gap-2 min-w-0">
               {l.heroImageUrl ? (

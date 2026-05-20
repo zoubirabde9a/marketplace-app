@@ -27,6 +27,7 @@ import { OrdersStats } from "./OrdersStats";
 import { OrdersStatusTabs, type StatusTab } from "./OrdersStatusTabs";
 import { OrdersRangeFilter, type RangeTab } from "./OrdersRangeFilter";
 import { OrdersShopFilter } from "./OrdersShopFilter";
+import { OrdersDensityToggle } from "./OrdersDensityToggle";
 import { TabTitleBadge } from "./TabTitleBadge";
 import { AutoRefresh } from "./AutoRefresh";
 import { LastRefreshed } from "./LastRefreshed";
@@ -378,6 +379,7 @@ export default async function SellerOrdersPage({
           <OrdersShopFilter shops={shopCounts} totalCount={orders.length}>
           <OrdersRangeFilter counts={rangeCounts}>
           <OrdersStatusTabs counts={tabCounts} totalCount={orders.length}>
+          <OrdersDensityToggle>
             <ul className="divide-y divide-line-soft">
               {buckets.flatMap((bucket) => {
                 // Per-bucket "any within Xd" precomputation — drives
@@ -451,6 +453,7 @@ export default async function SellerOrdersPage({
               ];
               })}
             </ul>
+          </OrdersDensityToggle>
           </OrdersStatusTabs>
           </OrdersRangeFilter>
           </OrdersShopFilter>
