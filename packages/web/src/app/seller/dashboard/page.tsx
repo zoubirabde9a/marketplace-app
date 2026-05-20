@@ -16,11 +16,8 @@ import { OrdersListFilter } from "./OrdersListFilter";
 import { ProductsListFilter } from "./ProductsListFilter";
 import { ProductsStockFilter, type StockTab } from "./ProductsStockFilter";
 import { OrderRow } from "./OrderRow";
-import { StockToggle } from "./StockToggle";
-import { PriceEditor } from "./PriceEditor";
+import { ProductRow } from "./ProductRow";
 import { GetStartedChecklist } from "./GetStartedChecklist";
-import { CopyIconButton } from "@/components/CopyButton";
-import { SITE_URL } from "@/lib/sitemap";
 
 // Status set that the seller still owes the buyer some action on. Mirrors
 // the actionableCount calculation below so the filter chip's count and the
@@ -161,6 +158,17 @@ export default async function DashboardPage() {
           {/* Cross-shop unified orders view. Hidden for sellers with
               no shops yet — the link target redirects back here in
               that case but showing it would be a dead-end loop. */}
+          {sellers.length > 0 && (
+            // Unified product view — symmetric with "Toutes les
+            // commandes". Lands on /seller/products which collapses
+            // every shop's inventory into one searchable list.
+            <Link
+              href="/seller/products"
+              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center rounded-md border border-line text-ink-soft hover:text-ink hover:border-accent/40 active:text-ink active:border-accent/40 transition"
+            >
+              Tous les produits
+            </Link>
+          )}
           {sellers.length > 0 && (
             // <a> not <Link> — the export route returns text/csv with
             // a Content-Disposition: attachment header; Next's Link
@@ -508,98 +516,7 @@ async function SellerSection({
                 data-search={`${cleanProductTitle(p.title)} ${p.brand ?? ""}`.toLowerCase()}
                 data-stock={p.inStock ? "in" : "out"}
               >
-                {/* Whole row is the edit affordance — bigger tap target on
-                    mobile than the old "Détails" pill, and there's no second
-                    action competing for the seller's attention. Negative
-                    margin + padding extends the click surface to the row
-                    edges without breaking the divider. */}
-                <Link
-                  href={`/seller/products/${encodeURIComponent(p.productId)}/edit`}
-                  aria-label={`Modifier ${cleanProductTitle(p.title)}`}
-                  className="-mx-2 px-2 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 rounded-lg hover:bg-bg/60 active:bg-bg/60 transition"
-                >
-                  <div className="flex items-center gap-3 min-w-0 sm:flex-1">
-                    {p.heroImageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={p.heroImageUrl}
-                        alt=""
-                        className="w-10 h-10 rounded object-cover border border-line-soft bg-bg shrink-0"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <span
-                        aria-hidden
-                        className="w-10 h-10 rounded border border-line-soft bg-bg-elev shrink-0"
-                      />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div dir="auto" className="text-ink truncate">{cleanProductTitle(p.title)}</div>
-                      {p.brand && (
-                        <div className="text-xs text-ink-mute">{p.brand}</div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-ink-soft pl-[52px] sm:pl-0">
-                    {p.currency && (p.priceMinor || p.priceFromMinor) && (
-                      // Single-variant + single-price → inline editor;
-                      // any range or multi-variant pricing stays read-
-                      // only here and routes through the edit page.
-                      p.priceMinor && (p.variantCount === undefined || p.variantCount <= 1) ? (
-                        <PriceEditor
-                          productId={p.productId}
-                          initialPriceMinor={p.priceMinor}
-                          currency={p.currency}
-                        />
-                      ) : (
-                        <span className="text-ink">
-                          {p.priceMinor
-                            ? formatPrice(p.priceMinor, p.currency, "fr-DZ")
-                            : p.priceToMinor && p.priceToMinor !== p.priceFromMinor
-                            ? `${formatPrice(p.priceFromMinor!, p.currency, "fr-DZ")} – ${formatPrice(p.priceToMinor, p.currency, "fr-DZ")}`
-                            : formatPrice(p.priceFromMinor!, p.currency, "fr-DZ")}
-                        </span>
-                      )
-                    )}
-                    {/* Variants badge — sellers managing multi-variant
-                        listings (3 colors / 4 sizes / etc.) can spot them
-                        at a glance instead of clicking in. */}
-                    {p.variantCount !== undefined && p.variantCount > 1 && (
-                      <span className="px-2 py-0.5 rounded-full border border-line text-ink-mute">
-                        {p.variantCount} variantes
-                      </span>
-                    )}
-                    {/* Single-variant products get a clickable inline
-                        toggle so the seller can flip stock without a
-                        round-trip to the edit page (most common edit
-                        op). Multi-variant products keep the static
-                        chip — per-variant stock should be picked
-                        explicitly on the edit page. */}
-                    {p.variantCount === undefined || p.variantCount <= 1 ? (
-                      <StockToggle productId={p.productId} initialInStock={p.inStock} />
-                    ) : (
-                      <span
-                        className={
-                          "px-2 py-0.5 rounded-full border " +
-                          (p.inStock
-                            ? "border-ok/40 text-ok bg-ok/10"
-                            : "border-line text-ink-mute")
-                        }
-                      >
-                        {p.inStock ? "en stock" : "rupture de stock"}
-                      </span>
-                    )}
-                    {/* Public product URL → clipboard. Sellers paste
-                        these into WhatsApp chats with buyers all day;
-                        one tap beats opening the storefront in another
-                        tab and copying the address bar. */}
-                    <CopyIconButton
-                      value={`${SITE_URL}/product/${p.productId}`}
-                      ariaLabel="Copier le lien public du produit"
-                    />
-                    <span aria-hidden className="text-ink-mute">›</span>
-                  </div>
-                </Link>
+                <ProductRow product={p} />
               </li>
             ))}
           </ul>
