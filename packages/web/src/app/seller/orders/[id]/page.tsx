@@ -21,6 +21,7 @@ import {
   type SellerOrder,
   type SellerRecord,
 } from "@/lib/api";
+import { CopyIconButton } from "@/components/CopyButton";
 import { OrderActions } from "../../dashboard/OrderActions";
 import { PrintButton } from "./PrintButton";
 import { PrintableSlip } from "./PrintableSlip";
@@ -94,9 +95,19 @@ export default async function OrderDetailPage({ params }: PageProps): Promise<Re
           >
             ← Toutes les commandes
           </Link>
-          <h1 className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight">
-            Commande{" "}
-            <span dir="ltr" className="font-mono">#{order.publicNumber}</span>
+          <h1 className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight inline-flex items-center gap-2 flex-wrap">
+            <span>
+              Commande{" "}
+              <span dir="ltr" className="font-mono">#{order.publicNumber}</span>
+            </span>
+            {/* Copy the public number in one tap — sellers
+                referencing this order in WhatsApp chats or
+                phone calls do this constantly. Same icon
+                button the order rows use (3cc37b7). */}
+            <CopyIconButton
+              value={order.publicNumber}
+              ariaLabel={`Copier le numéro de commande ${order.publicNumber}`}
+            />
           </h1>
         </div>
         <PrintButton />
