@@ -57,9 +57,7 @@ export function CopyIconButton({
 }
 
 // Defaults are French ("Copier" / "Copié") so a caller that doesn't pass
-// explicit labels lands consistently on the French-locale site. Existing
-// callers (AgentActivity's intentionally English MCP setup steps) already
-// override these props — the defaults exist only for the next caller.
+// explicit labels lands consistently on the French-locale site.
 export function CopyButton({
   value,
   label = "Copier",

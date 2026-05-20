@@ -17,6 +17,7 @@ import { ProductsListFilter } from "./ProductsListFilter";
 import { ProductsStockFilter, type StockTab } from "./ProductsStockFilter";
 import { OrderRow } from "./OrderRow";
 import { StockToggle } from "./StockToggle";
+import { GetStartedChecklist } from "./GetStartedChecklist";
 import { CopyIconButton } from "@/components/CopyButton";
 import { SITE_URL } from "@/lib/sitemap";
 
@@ -484,17 +485,7 @@ async function SellerSection({
         {productsError ? (
           <p className="text-sm text-bad">Impossible de charger les produits.</p>
         ) : products.length === 0 ? (
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <p className="text-sm text-ink-mute">
-              Aucun produit pour le moment. Ajoutez votre premier produit pour le rendre visible aux acheteurs.
-            </p>
-            <Link
-              href={`/seller/products/new?sellerId=${encodeURIComponent(seller.sellerId)}`}
-              className="text-sm px-3.5 h-11 sm:h-9 inline-flex items-center justify-center rounded-md bg-accent text-bg font-medium hover:bg-accent-hover active:brightness-90 transition sm:shrink-0"
-            >
-              Ajouter <span aria-hidden>→</span>
-            </Link>
-          </div>
+          <GetStartedChecklist seller={seller} />
         ) : (
           (() => {
             // Counts for the stock tab strip. Computed inline so the
