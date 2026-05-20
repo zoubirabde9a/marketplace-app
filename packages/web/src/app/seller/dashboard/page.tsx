@@ -21,6 +21,7 @@ import { GetStartedChecklist } from "./GetStartedChecklist";
 import { ClearLocalNotesButton } from "./ClearLocalNotesButton";
 import { AutoRefresh } from "../orders/AutoRefresh";
 import { LastRefreshed } from "../orders/LastRefreshed";
+import { OfflineIndicator } from "../orders/OfflineIndicator";
 import { CopyIconButton } from "@/components/CopyButton";
 import { SITE_URL } from "@/lib/sitemap";
 
@@ -215,6 +216,7 @@ export default async function DashboardPage() {
           Pauses when tab is hidden or any input has focus (the
           price/stock editors live inline on rows). */}
       <AutoRefresh />
+      <OfflineIndicator />
       <header className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 id="dashboard-heading" className="text-2xl sm:text-3xl font-semibold tracking-tight break-words">Tableau de bord vendeur</h1>

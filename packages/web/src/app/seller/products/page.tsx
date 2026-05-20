@@ -24,6 +24,7 @@ import { ProductsShopFilter } from "./ProductsShopFilter";
 import { ProductsSortToggle } from "./ProductsSortToggle";
 import { AutoRefresh } from "../orders/AutoRefresh";
 import { LastRefreshed } from "../orders/LastRefreshed";
+import { OfflineIndicator } from "../orders/OfflineIndicator";
 import { ResetFiltersWrapper } from "../orders/ResetFiltersWrapper";
 
 export const dynamic = "force-dynamic";
@@ -124,6 +125,7 @@ export default async function SellerProductsPage({
       lang="fr"
     >
       <AutoRefresh />
+      <OfflineIndicator />
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <h1 id="products-heading" className="text-2xl sm:text-3xl font-semibold tracking-tight">

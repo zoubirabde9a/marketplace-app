@@ -33,6 +33,7 @@ import { OrdersSortToggle } from "./OrdersSortToggle";
 import { TabTitleBadge } from "./TabTitleBadge";
 import { AutoRefresh } from "./AutoRefresh";
 import { LastRefreshed } from "./LastRefreshed";
+import { OfflineIndicator } from "./OfflineIndicator";
 
 export const dynamic = "force-dynamic";
 
@@ -246,6 +247,7 @@ export default async function SellerOrdersPage({
     >
       <TabTitleBadge count={actionableCount} />
       <AutoRefresh />
+      <OfflineIndicator />
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <h1 id="orders-heading" className="text-2xl sm:text-3xl font-semibold tracking-tight">
