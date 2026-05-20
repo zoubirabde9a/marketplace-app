@@ -6,6 +6,13 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy product.update_listing fix (993d0cb, api-only)
+
+- Rebuilt and rolled `marketplace-api:local`; web skipped (broken at source by an unrelated WIP type error in `OrdersStats.tsx`).
+- Fixed a TS2339 build error introduced by a16b2d0 — the `product.update_listing` tool referenced `updatedAt` on `StoredProduct`, which the repo's return type doesn't expose. Dropped the field from the adapter interface, output schema, and handler.
+- All 4 api worker processes log `product.update_listing` as `mcp_tool_registered`; tool is live.
+- `/livez` returned `{"status":"ok"}` after restart.
+
 ## 2026-05-20 — vps-eu — deploy 13 seller-UX commits + MCP description expansion (727430c)
 
 - Tar-shipped working tree, rebuilt `marketplace-web:local` and `marketplace-api:local`, rolled `web` + `api`.
