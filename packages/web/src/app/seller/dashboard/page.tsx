@@ -392,8 +392,13 @@ export default async function DashboardPage() {
           one. Links into /seller/orders pre-filtered to À traiter
           so one tap brings the seller to the offending rows. */}
       {staleActionableCount > 0 && (
+        // Land with ?sort=oldest so the seller's first scroll is the
+        // worst offenders, not the freshest. Combined with the À
+        // traiter tab default, the stale rows surface at the top of
+        // the list immediately — natural FIFO triage for the
+        // backlog cleanup workflow.
         <Link
-          href="/seller/orders"
+          href="/seller/orders?sort=oldest"
           className="mt-6 flex items-start gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-warn hover:bg-warn/15 active:bg-warn/20 transition"
         >
           <svg

@@ -691,6 +691,51 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
   productJsonLd.mpn = p.productId;
   if (offers) productJsonLd.offers = offers;
 
+  // Google Search Console's Product Snippet validation (newer, variant-aware)
+  // flags multi-variant listings that only carry AggregateOffer as missing
+  // "hasVariant.offers, review, or aggregateRating" — plain offers is no
+  // longer sufficient when variant-level pricing is detectable. We don't have
+  // real reviews to surface, so satisfy the rule by also emitting a
+  // `hasVariant` array of Product nodes, each with its own Offer carrying a
+  // concrete price. We keep `offers: AggregateOffer` above for the Merchant
+  // Listing track (which still wants the rollup) — schema.org allows both
+  // shapes on the same Product node. Only emit when there are 2+ variants
+  // AND at least one carries a real (non-placeholder) price; single-variant
+  // and price-on-request cases don't trigger the snippet validation rule.
+  if (variants.length > 1 && hasRealPrice) {
+    const hasVariant: Array<Record<string, unknown>> = [];
+    for (const v of variants) {
+      const n = Number(v.priceMinor);
+      if (!Number.isFinite(n) || n < MIN_REAL_PRICE_MINOR || n > MAX_REAL_PRICE_MINOR) continue;
+      const variantOffer: Record<string, unknown> = {
+        "@type": "Offer",
+        price: minorToMajor(v.priceMinor),
+        priceCurrency: v.currency,
+        availability: v.inStock
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
+        priceValidUntil,
+        url: `${SITE_URL}/product/${encodeURIComponent(p.productId)}`,
+        shippingDetails: offerShippingDetails,
+        hasMerchantReturnPolicy: merchantReturnPolicy,
+        ...(offerAreaServed ? { areaServed: offerAreaServed } : {}),
+        ...offerSeller,
+      };
+      const variantNode: Record<string, unknown> = {
+        "@type": "Product",
+        "@id": `${SITE_URL}/product/${encodeURIComponent(p.productId)}#variant-${encodeURIComponent(v.id)}`,
+        name: productJsonLdName,
+        ...(v.sku ? { sku: v.sku } : {}),
+        mpn: v.sku || `${p.productId}-${v.id}`,
+        offers: variantOffer,
+      };
+      hasVariant.push(variantNode);
+    }
+    if (hasVariant.length > 0) {
+      productJsonLd.hasVariant = hasVariant;
+    }
+  }
+
   // ProductDetail doesn't carry aggregate rating today; if the API starts
   // returning one (e.g. p.rating / p.ratingCount), it can be plugged in here.
   const maybeRating = (p as unknown as { rating?: number; ratingCount?: number });

@@ -6,6 +6,17 @@ Format: `## YYYY-MM-DD — short summary`, then bullets.
 
 ---
 
+## 2026-05-20 — vps-eu — deploy seller UX batch (cc8546e..1b78d46, 4 commits)
+
+- Rebuilt `marketplace-web:local` and `marketplace-api:local`; rolled both.
+- What shipped (web only — UX work on seller pages):
+  - `5de597d` seller products: URL-driven sort toggle (Plus récents / Plus anciens).
+  - `adc2a44` seller orders: stale-actionable banner on the detail page.
+  - `0cfa48a` seller dashboard: stale chip on collapsed shop disclosure summary.
+  - `1b78d46` seller orders: "Effacer la note" inline link on the order note field when non-empty.
+- One transient 504 from the apex right after `up -d` while web was warming; cleared after ~10 s. `/livez` healthy throughout.
+- Smoke from vps-eu after warmup: `/livez` → `{"status":"ok"}`, `https://teno-store.com/` → 200.
+
 ## 2026-05-20 — vps-eu — deploy product.add_media + product.remove_media (4e0b30d, api-only)
 
 - Rebuilt and rolled `marketplace-api:local`; web untouched.
