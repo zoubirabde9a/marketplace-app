@@ -184,6 +184,88 @@ describe("seller write tools — snapshots", () => {
     ).rejects.toThrow(/ISO 3166|country/i);
   });
 
+  it("product.update_listing patches a product the calling agent owns", async () => {
+    const reg = new McpRegistry();
+    const updateAdapter: SellerWriteAdapter = {
+      ...fakeAdapter,
+      products: {
+        ...fakeAdapter.products,
+        getOwner: async (productId) => {
+          expect(productId).toBe("prd_existing");
+          return { sellerId: "slr_1", ownerAgentId: "agt_1" };
+        },
+        update: async (productId, patch) => {
+          expect(productId).toBe("prd_existing");
+          expect(patch.title).toBe("New Title");
+          expect(patch.variants?.[0]?.inStock).toBe(false);
+          return {
+            productId,
+            sellerId: "slr_1",
+            titleSanitized: "New Title",
+            variants: [{
+              id: "var_1",
+              sku: patch.variants![0]!.sku,
+              priceMinor: patch.variants![0]!.priceMinor,
+              currency: patch.variants![0]!.currency,
+              inStock: patch.variants![0]!.inStock ?? true,
+            }],
+          };
+        },
+      },
+    };
+    process.env.MARKETPLACE_WEB_BASE_URL = "https://example.test";
+    registerSellerWriteTools(reg, updateAdapter);
+
+    const out = (await reg.invoke(
+      "product.update_listing",
+      {
+        productId: "prd_existing",
+        title: "New Title",
+        variants: [{ sku: "sku-1", priceMinor: 9999, currency: "USD", inStock: false }],
+      },
+      ctx(),
+    )) as { title: string; productUrl?: string; variants: Array<{ inStock: boolean }> };
+    expect(out.title).toBe("New Title");
+    expect(out.productUrl).toBe("https://example.test/product/prd_existing");
+    expect(out.variants[0]?.inStock).toBe(false);
+  });
+
+  it("product.update_listing rejects when calling agent does not own the product", async () => {
+    const reg = new McpRegistry();
+    const updateAdapter: SellerWriteAdapter = {
+      ...fakeAdapter,
+      products: {
+        ...fakeAdapter.products,
+        getOwner: async () => ({ sellerId: "slr_other", ownerAgentId: "agt_other" }),
+        update: async () => { throw new Error("update should not be reached"); },
+      },
+    };
+    registerSellerWriteTools(reg, updateAdapter);
+    await expect(
+      reg.invoke(
+        "product.update_listing",
+        { productId: "prd_other", title: "Hijack Attempt" },
+        ctx(),
+      ),
+    ).rejects.toThrow(/not_seller_owner/);
+  });
+
+  it("product.update_listing returns not_implemented when adapter omits update/getOwner", async () => {
+    const reg = new McpRegistry();
+    registerSellerWriteTools(reg, fakeAdapter);
+    await expect(
+      reg.invoke("product.update_listing", { productId: "prd_1", title: "Whatever" }, ctx()),
+    ).rejects.toThrow(/not_implemented/);
+  });
+
+  it("product.update_listing requires at least one field beyond productId", async () => {
+    const reg = new McpRegistry();
+    registerSellerWriteTools(reg, fakeAdapter);
+    await expect(
+      reg.invoke("product.update_listing", { productId: "prd_1" }, ctx()),
+    ).rejects.toThrow(/at_least_one_field_to_update/);
+  });
+
   it("seller.list_mine returns owned shops newest-first when the adapter implements listOwnedBy", async () => {
     const reg = new McpRegistry();
     const adapterWithList: SellerWriteAdapter = {
