@@ -38,10 +38,46 @@ export function OrdersSearch({
   initialQuery = "",
 }: OrdersSearchProps): React.JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState(initialQuery);
   const [visibleCount, setVisibleCount] = useState(totalCount);
 
   const normalized = useMemo(() => query.trim().toLowerCase(), [query]);
+
+  // Global keyboard shortcuts. "/" focuses the search input (GitHub /
+  // Linear / Slack pattern) and "Escape" clears + blurs. Active only
+  // when the input is actually rendered — when totalCount drops below
+  // minCount and there's no initialQuery we early-return below and
+  // this effect's cleanup pulls the listener.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    function onKeyDown(e: KeyboardEvent): void {
+      const ae = document.activeElement as HTMLElement | null;
+      const inField =
+        ae != null &&
+        (ae.tagName === "INPUT" ||
+          ae.tagName === "TEXTAREA" ||
+          ae.tagName === "SELECT" ||
+          ae.isContentEditable);
+      if (e.key === "/" && !inField && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        // Don't pre-empt the slash when the seller is typing into a
+        // field; only act on the global / "press to search" gesture.
+        e.preventDefault();
+        inputRef.current?.focus();
+        return;
+      }
+      if (e.key === "Escape" && ae === inputRef.current) {
+        // Clearing on Escape mirrors the "Effacer" pill behavior so
+        // the keyboard shortcut and the visible button do the same
+        // thing. Then blur so the seller can keep typing global
+        // shortcuts without the input swallowing them.
+        setQuery("");
+        inputRef.current?.blur();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   useEffect(() => {
     const root = containerRef.current;
@@ -104,12 +140,24 @@ export function OrdersSearch({
             🔍
           </span>
           <input
+            ref={inputRef}
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Numéro de commande ou nom client…"
-            className="w-full rounded-full bg-bg border border-line pl-9 pr-3 h-9 text-sm text-ink focus:border-accent/60 outline-none placeholder:text-ink-mute"
+            // Right-aligned "/ to search" keyboard hint when the input
+            // isn't focused or has nothing typed. Disappears once the
+            // seller starts typing so it doesn't overlap text.
+            className="w-full rounded-full bg-bg border border-line pl-9 pr-12 h-9 text-sm text-ink focus:border-accent/60 outline-none placeholder:text-ink-mute"
           />
+          {query === "" && (
+            <kbd
+              aria-hidden
+              className="hidden sm:inline-flex absolute right-3 top-1/2 -translate-y-1/2 items-center justify-center min-w-[1.25rem] h-5 px-1 rounded border border-line text-[10px] text-ink-mute bg-bg-elev pointer-events-none"
+            >
+              /
+            </kbd>
+          )}
         </label>
         {query !== "" && (
           <button
