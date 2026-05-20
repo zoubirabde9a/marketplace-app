@@ -14,6 +14,7 @@ import { CreateSellerForm } from "./CreateSellerForm";
 import { LogoutButton } from "./LogoutButton";
 import { OrderActions } from "./OrderActions";
 import { OrdersListFilter } from "./OrdersListFilter";
+import { ProductsListFilter } from "./ProductsListFilter";
 
 // Status set that the seller still owes the buyer some action on. Mirrors
 // the actionableCount calculation below so the filter chip's count and the
@@ -442,9 +443,13 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
             </Link>
           </div>
         ) : (
+          <ProductsListFilter totalCount={products.length}>
           <ul className="divide-y divide-line-soft">
             {products.map((p) => (
-              <li key={p.productId}>
+              <li
+                key={p.productId}
+                data-search={`${cleanProductTitle(p.title)} ${p.brand ?? ""}`.toLowerCase()}
+              >
                 {/* Whole row is the edit affordance — bigger tap target on
                     mobile than the old "Détails" pill, and there's no second
                     action competing for the seller's attention. Negative
@@ -511,6 +516,7 @@ async function SellerSection({ seller, sessionJwt }: { seller: SellerRecord; ses
               </li>
             ))}
           </ul>
+          </ProductsListFilter>
         )}
       </section>
     </article>
