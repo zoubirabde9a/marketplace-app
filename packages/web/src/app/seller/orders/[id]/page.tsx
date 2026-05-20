@@ -102,6 +102,36 @@ export default async function OrderDetailPage({ params }: PageProps): Promise<Re
         <PrintButton />
       </header>
 
+      {/* Stale banner — mirror of the dashboard's stale-actionable
+          warning (b552ef5) and the row's "Lent" chip (206a116). A
+          seller landing here from elsewhere should see the same
+          urgency cue. Fires when paid/fulfilling AND >48h old.
+          Print-hidden because the courier never needs to read
+          "this took us too long" on the slip. */}
+      {(order.status === "paid" || order.status === "fulfilling") &&
+        Date.now() - new Date(order.createdAt).getTime() > 48 * 60 * 60_000 && (
+          <div className="mt-6 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-warn print:hidden flex items-start gap-3">
+            <svg
+              className="w-5 h-5 shrink-0 mt-0.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            </svg>
+            <div className="min-w-0">
+              <p className="text-sm font-medium">
+                Commande en attente depuis plus de 48 heures
+              </p>
+              <p className="mt-0.5 text-xs text-warn/80">
+                Marquez-la en préparation ou expédiée — l’acheteur attend.
+              </p>
+            </div>
+          </div>
+        )}
+
       <div className="mt-6">
         <PrintableSlip order={order} shopName={owningSeller.displayName} />
       </div>
