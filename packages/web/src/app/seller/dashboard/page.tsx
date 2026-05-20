@@ -15,40 +15,12 @@ import { LogoutButton } from "./LogoutButton";
 import { OrderActions } from "./OrderActions";
 import { OrdersListFilter } from "./OrdersListFilter";
 import { ProductsListFilter } from "./ProductsListFilter";
+import { OrderProgress } from "./OrderProgress";
 
 // Status set that the seller still owes the buyer some action on. Mirrors
 // the actionableCount calculation below so the filter chip's count and the
 // per-row `data-actionable` attribute can't drift apart.
 const ACTIONABLE_STATUSES: ReadonlySet<string> = new Set(["paid", "fulfilling", "disputed"]);
-
-// Maps the domain order-status enum (packages/domain/src/order/state-machine.ts)
-// to French labels for the seller dashboard badge. The raw enum is English
-// ("paid" / "shipped" / "delivered" / "cancelled" / "refunded" / "disputed"
-// / "fulfilling" / "authorized" / "created") because it's a code identifier,
-// but the dashboard is French and a seller seeing "PAID" mid-page is jarring.
-const ORDER_STATUS_FR: Record<string, string> = {
-  created: "créée",
-  authorized: "autorisée",
-  paid: "payée",
-  fulfilling: "préparation",
-  shipped: "expédiée",
-  delivered: "livrée",
-  cancelled: "annulée",
-  refunded: "remboursée",
-  disputed: "litige",
-};
-
-// Per-status badge styling. Three tiers:
-// - actionable-positive (paid, fulfilling): green/ok — seller owes shipment.
-// - actionable-urgent (disputed): red/bad — seller must respond to dispute.
-// - closed / pre-payment: muted — informational only, no seller action.
-// Mirrors the "à traiter" chip in the section header so the visual signal
-// is consistent between the count and the per-row badge.
-const ORDER_STATUS_CLASS: Record<string, string> = {
-  paid: "border-ok/40 text-ok bg-ok/10",
-  fulfilling: "border-ok/40 text-ok bg-ok/10",
-  disputed: "border-bad/40 text-bad bg-bad/10",
-};
 
 export const dynamic = "force-dynamic";
 
@@ -327,15 +299,7 @@ async function SellerSection({
                     >
                       {formatRelativeTime(o.createdAt) ?? new Date(o.createdAt).toLocaleString("fr-DZ")}
                     </span>
-                    <span
-                      title={o.status}
-                      className={
-                        "text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full border " +
-                        (ORDER_STATUS_CLASS[o.status] ?? "border-line text-ink-mute")
-                      }
-                    >
-                      {ORDER_STATUS_FR[o.status] ?? o.status}
-                    </span>
+                    <OrderProgress status={o.status} />
                   </div>
                   {o.customer && (
                     <div className="mt-1 text-sm text-ink-soft">
