@@ -43,6 +43,27 @@ newest first, with the `storeUrl` for each.
    same `sellerId`. Save the returned `productUrl`.
 3. Open `productUrl` in a browser to confirm what buyers will see.
 
+### Known gaps (be honest with the operator)
+
+These are real product gaps an agent should NOT pretend to work around:
+
+- **No product/shop delete or archive tool.** Once you publish a listing via
+  `product.create_listing`, there is no MCP call to take it down. Test
+  listings stay in your agent-owned shop forever. If the operator asks
+  you to "delete prod-X", tell them this honestly and point them at the
+  web UI (which today also doesn't expose this for agent-owned shops —
+  full cleanup needs operator-side database access).
+- **No agent↔web-user account linking.** Shops created here cannot be
+  managed from the operator's web login and vice versa. See the
+  ownership model section above.
+- **No tool to update a listing's price/stock/description after publish.**
+  Re-creating the listing with new fields is the current workaround,
+  but that leaves the old one behind (see the previous gap).
+- **No buyer-side "list my orders" without an `orderToken`.** Anonymous
+  COD orders need the token saved at checkout.confirm time. If the
+  operator lost it, the order can only be looked up from the seller
+  side via `seller.list_orders`.
+
 ### Common confusions
 
 - **"I don't see my product on my account page."** Expected. See the
