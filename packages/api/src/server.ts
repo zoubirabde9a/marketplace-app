@@ -263,7 +263,6 @@ export async function buildServer(opts: BuildOptions): Promise<FastifyInstance> 
               currency: v.currency,
               inStock: v.inStock,
             })),
-            updatedAt: u.updatedAt,
           };
         },
         create: async (input) => {

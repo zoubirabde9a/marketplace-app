@@ -143,7 +143,6 @@ export interface SellerWriteAdapter {
       sellerId: string;
       titleSanitized: string;
       variants: Array<{ id: string; sku: string; priceMinor: bigint; currency: string; inStock: boolean }>;
-      updatedAt: number;
     } | undefined>;
   };
 }
@@ -563,7 +562,6 @@ export function registerSellerWriteTools(
         currency: z.string(),
         inStock: z.boolean(),
       })),
-      updatedAt: z.string(),
       productUrl: z.string().url().optional(),
       storeUrl: z.string().url().optional(),
     }),
@@ -608,7 +606,6 @@ export function registerSellerWriteTools(
           currency: v.currency,
           inStock: v.inStock,
         })),
-        updatedAt: new Date(updated.updatedAt).toISOString(),
         ...(pUrl ? { productUrl: pUrl } : {}),
         ...(sUrl ? { storeUrl: sUrl } : {}),
       };
