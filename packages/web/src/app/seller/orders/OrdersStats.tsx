@@ -47,6 +47,23 @@ export function OrdersStats({ orders, actionableCount, now, shops }: OrdersStats
   // exactly 7 days old counts in "this week", not "last week".
   const fourteenDaysAgo = now.getTime() - 14 * DAY_MS;
 
+  // "Actionable today" — orders that fell into À-traiter AND landed
+  // today. Surfaces urgency context: a backlog of 12 with 0 new
+  // today is a very different operational state than 12 with 8 new
+  // today. Day boundary is calendar-day local to `now` (which is
+  // already locale-aware since the page is force-dynamic).
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
+  const ACTIONABLE_STATUSES_LOCAL: ReadonlySet<string> = new Set([
+    "paid",
+    "fulfilling",
+    "disputed",
+  ]);
+  let actionableToday = 0;
+
   let shippedThisWeek = 0;
   let shippedLastWeek = 0;
   const revenueByCcy: Record<string, bigint> = {};
@@ -62,6 +79,8 @@ export function OrdersStats({ orders, actionableCount, now, shops }: OrdersStats
     if (Number.isNaN(t)) continue;
     const within7d = t >= sevenDaysAgo;
     const within14to7 = t >= fourteenDaysAgo && t < sevenDaysAgo;
+    const withinToday = t >= startOfToday;
+    if (withinToday && ACTIONABLE_STATUSES_LOCAL.has(o.status)) actionableToday++;
     if (within7d && o.status === "shipped") shippedThisWeek++;
     if (within14to7 && o.status === "shipped") shippedLastWeek++;
     if (within7d && REVENUE_STATUSES.has(o.status)) {
@@ -149,6 +168,11 @@ export function OrdersStats({ orders, actionableCount, now, shops }: OrdersStats
         value={actionableCount.toString()}
         tone={actionableCount > 0 ? "accent" : "muted"}
         hint="Commandes en attente d’action"
+        subLine={
+          actionableToday > 0
+            ? `dont ${actionableToday} aujourd’hui`
+            : null
+        }
       />
       <Tile
         label="Expédiées (7 jours)"
@@ -191,6 +215,7 @@ function Tile({
   hint,
   tone,
   delta,
+  subLine,
 }: {
   label: string;
   value: string;
@@ -201,6 +226,11 @@ function Tile({
    * comparison is technically "infinity up" but visually a "—"
    * is honest). */
   delta?: { label: string; up: boolean | null } | null;
+  /** Plain-text supporting line under the value (e.g. "dont 3
+   *  aujourd'hui"). Mutually exclusive with delta — a tile that
+   *  shows a week-over-week comparison isn't surfacing the
+   *  "fresh-today" subset; one tile, one supporting axis. */
+  subLine?: string | null;
 }): React.JSX.Element {
   const valueClass =
     tone === "accent" ? "text-accent" : "text-ink";
@@ -232,6 +262,9 @@ function Tile({
           {delta.label}
           <span className="text-ink-mute"> vs semaine dernière</span>
         </p>
+      )}
+      {subLine && (
+        <p className="mt-1 text-[11px] text-ink-soft tabular-nums">{subLine}</p>
       )}
     </div>
   );
